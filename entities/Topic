@@ -1,0 +1,364 @@
+{
+  "name": "Topic",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre del tema o patolog\u00eda"
+    },
+    "category_id": {
+      "type": "string",
+      "description": "ID de la categor\u00eda padre"
+    },
+    "subcategory": {
+      "type": "string",
+      "description": "Subcategor\u00eda"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published"
+      ],
+      "default": "draft",
+      "description": "Estado del contenido"
+    },
+    "title": {
+      "type": "string",
+      "description": "T\u00edtulo principal del contenido"
+    },
+    "authors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Autores del contenido"
+    },
+    "published_date": {
+      "type": "string",
+      "description": "Fecha de publicaci\u00f3n"
+    },
+    "last_updated": {
+      "type": "string",
+      "description": "\u00daltima actualizaci\u00f3n"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descripci\u00f3n general del tema"
+    },
+    "layout_mode": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "single",
+        "two-panel-6040",
+        "two-panel-5050",
+        "two-panel-4060",
+        "full-width"
+      ],
+      "default": "auto",
+      "description": "Modo de dise\u00f1o del contenido"
+    },
+    "tipo_contenido": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "protocolo",
+          "contenido_medico",
+          "herramienta_clinica"
+        ]
+      },
+      "description": "Tipo(s) de contenido del tema"
+    },
+    "clasificacion_ges": {
+      "type": "string",
+      "enum": [
+        "GES",
+        "No GES"
+      ],
+      "description": "Clasificaci\u00f3n GES del tema"
+    },
+    "has_local_protocol": {
+      "type": "boolean",
+      "default": false,
+      "description": "Indica si tiene protocolo local establecido \u2014 debe marcarse expl\u00edcitamente"
+    },
+    "content_blocks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "layout_position": {
+            "type": "string",
+            "enum": [
+              "main",
+              "sidebar",
+              "full"
+            ]
+          },
+          "order": {
+            "type": "number"
+          },
+          "color": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reference_id": {
+            "type": "string"
+          },
+          "reference_type": {
+            "type": "string"
+          },
+          "reference_label": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Bloques de contenido estructurado"
+    },
+    "related_topics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "topic_id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Topics relacionados"
+    },
+    "related_tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tool_id": {
+            "type": "string"
+          },
+          "tool_type": {
+            "type": "string",
+            "enum": [
+              "calculator",
+              "clinical_tool"
+            ]
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Herramientas y calculadoras relacionadas"
+    },
+    "clinical_summary": {
+      "type": "string",
+      "description": "Resumen cl\u00ednico"
+    },
+    "diagnostic_orientation": {
+      "type": "string",
+      "description": "Orientaci\u00f3n diagn\u00f3stica"
+    },
+    "complementary_studies": {
+      "type": "string",
+      "description": "Estudios complementarios"
+    },
+    "initial_treatment": {
+      "type": "string",
+      "description": "Tratamiento inicial"
+    },
+    "guarantee_days": {
+      "type": "number",
+      "description": "D\u00edas de garant\u00eda GES"
+    },
+    "guarantee_details": {
+      "type": "string",
+      "description": "Detalles de la garant\u00eda GES"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Etiquetas para b\u00fasqueda"
+    },
+    "order": {
+      "type": "number",
+      "description": "Orden de aparici\u00f3n"
+    },
+    "protocol_code": {
+      "type": "string",
+      "description": "C\u00f3digo del protocolo"
+    },
+    "protocol_edition": {
+      "type": "string",
+      "description": "Edici\u00f3n del protocolo"
+    },
+    "protocol_date": {
+      "type": "string",
+      "description": "Fecha de elaboraci\u00f3n del protocolo"
+    },
+    "protocol_validity": {
+      "type": "string",
+      "description": "Vigencia del protocolo"
+    },
+    "protocol_authors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Autores y responsables del protocolo"
+    },
+    "protocol_objective": {
+      "type": "string",
+      "description": "Objetivo principal del protocolo"
+    },
+    "protocol_participants": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Participantes responsables de la ejecuci\u00f3n"
+    },
+    "protocol_flowchart": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "responsible": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "alert": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "description": "Flujograma operativo del protocolo"
+    },
+    "protocol_algorithm": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "description": "Algoritmo de manejo"
+    },
+    "protocol_medications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "dose": {
+            "type": "string"
+          },
+          "indication": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Medicamentos y dosis del protocolo"
+    },
+    "protocol_file_url": {
+      "type": "string",
+      "description": "URL del archivo PDF del protocolo para descarga"
+    }
+  },
+  "required": [
+    "name",
+    "category_id"
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "name": "Category",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre de la categor\u00eda"
+    },
+    "slug": {
+      "type": "string",
+      "description": "Identificador \u00fanico para URL"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descripci\u00f3n breve de la categor\u00eda"
+    },
+    "icon": {
+      "type": "string",
+      "description": "Nombre del \u00edcono de Lucide"
+    },
+    "color": {
+      "type": "string",
+      "description": "Color identificador de la categor\u00eda"
+    },
+    "order": {
+      "type": "number",
+      "description": "Orden de aparici\u00f3n"
+    }
+  },
+  "required": [
+    "name",
+    "slug"
+  ]
+}

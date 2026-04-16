@@ -1,0 +1,61 @@
+{
+  "name": "FlowStep",
+  "type": "object",
+  "properties": {
+    "topic_id": {
+      "type": "string",
+      "description": "ID del tema al que pertenece"
+    },
+    "step_number": {
+      "type": "number",
+      "description": "N\u00famero de paso en el flujo"
+    },
+    "title": {
+      "type": "string",
+      "description": "T\u00edtulo del paso"
+    },
+    "responsible": {
+      "type": "string",
+      "description": "Responsable del paso"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descripci\u00f3n detallada"
+    },
+    "time_limit": {
+      "type": "string",
+      "description": "Plazo m\u00e1ximo"
+    },
+    "location": {
+      "type": "string",
+      "description": "Lugar donde se realiza"
+    },
+    "derivation_options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "condition": {
+            "type": "string"
+          },
+          "destination": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Opciones de derivaci\u00f3n seg\u00fan condiciones"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Notas adicionales"
+    }
+  },
+  "required": [
+    "topic_id",
+    "step_number",
+    "title"
+  ]
+}

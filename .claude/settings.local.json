@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const fs=require\\('fs'\\); const files=['entities/Category','entities/ClinicalTool','entities/FlowStep','entities/RequestTemplate','entities/TopicVersion']; files.forEach\\(f=>{ const content=fs.readFileSync\\('c:/Users/Daniel/Downloads/SaludBulnes_app/'+f,'utf8'\\); console.log\\('=== '+f+' ==='\\); console.log\\(content.substring\\(0,200\\)\\); console.log\\(\\); }\\)\")"
+    ]
+  }
+}

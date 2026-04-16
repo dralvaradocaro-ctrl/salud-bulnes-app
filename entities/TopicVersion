@@ -1,0 +1,30 @@
+{
+  "name": "TopicVersion",
+  "type": "object",
+  "properties": {
+    "topic_id": {
+      "type": "string",
+      "description": "ID del tema"
+    },
+    "version_number": {
+      "type": "number",
+      "description": "N\u00famero de versi\u00f3n"
+    },
+    "changed_by": {
+      "type": "string",
+      "description": "Usuario que realiz\u00f3 el cambio"
+    },
+    "change_description": {
+      "type": "string",
+      "description": "Descripci\u00f3n del cambio realizado"
+    },
+    "content_snapshot": {
+      "type": "object",
+      "description": "Snapshot completo del contenido"
+    }
+  },
+  "required": [
+    "topic_id",
+    "version_number"
+  ]
+}

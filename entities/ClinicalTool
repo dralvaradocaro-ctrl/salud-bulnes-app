@@ -1,0 +1,164 @@
+{
+  "name": "ClinicalTool",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre de la herramienta"
+    },
+    "category_id": {
+      "type": "string",
+      "description": "ID de la categor\u00eda padre"
+    },
+    "specialty": {
+      "type": "string",
+      "enum": [
+        "Neurolog\u00eda",
+        "Cardiolog\u00eda",
+        "Pediatr\u00eda",
+        "Diabetes",
+        "Nefrolog\u00eda",
+        "Gastroenterolog\u00eda",
+        "Respiratorio",
+        "Infectolog\u00eda",
+        "Nutrici\u00f3n",
+        "Urgencias",
+        "Otro"
+      ],
+      "description": "Especialidad m\u00e9dica"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "calculator",
+        "score",
+        "assessment"
+      ],
+      "default": "calculator",
+      "description": "Tipo de herramienta"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published"
+      ],
+      "default": "draft",
+      "description": "Estado de la herramienta"
+    },
+    "version": {
+      "type": "string",
+      "description": "Versi\u00f3n de la herramienta"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descripci\u00f3n de la herramienta"
+    },
+    "content": {
+      "type": "string",
+      "description": "Contenido o f\u00f3rmula de la herramienta (Markdown)"
+    },
+    "input_schema": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "number",
+              "select",
+              "checkbox",
+              "text",
+              "date"
+            ]
+          },
+          "unit": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "placeholder": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Esquema de inputs de la calculadora"
+    },
+    "calculation_logic": {
+      "type": "string",
+      "description": "L\u00f3gica de c\u00e1lculo en formato string (funci\u00f3n JS)"
+    },
+    "result_interpretation": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "condition": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "recommendations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "description": "Interpretaci\u00f3n de resultados seg\u00fan rangos"
+    },
+    "interpretation": {
+      "type": "string",
+      "description": "Interpretaci\u00f3n de resultados"
+    },
+    "reference_url": {
+      "type": "string",
+      "description": "URL de referencia"
+    },
+    "show_patient_info": {
+      "type": "boolean",
+      "default": true,
+      "description": "Mostrar campos de informaci\u00f3n del paciente"
+    }
+  },
+  "required": [
+    "name",
+    "specialty"
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "name": "RequestTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre de la plantilla"
+    },
+    "category_id": {
+      "type": "string",
+      "description": "ID de la categor\u00eda"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Protocolo Im\u00e1genes",
+        "Laboratorio Especial",
+        "Estudio Endosc\u00f3pico",
+        "Interconsulta",
+        "Otro"
+      ],
+      "description": "Tipo de solicitud"
+    },
+    "template_content": {
+      "type": "string",
+      "description": "Contenido de la plantilla con placeholders"
+    },
+    "required_fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field_name": {
+            "type": "string"
+          },
+          "field_label": {
+            "type": "string"
+          },
+          "field_type": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Campos requeridos para completar"
+    },
+    "destination_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Correos de destino"
+    },
+    "instructions": {
+      "type": "string",
+      "description": "Instrucciones de uso"
+    }
+  },
+  "required": [
+    "name",
+    "type"
+  ]
+}
