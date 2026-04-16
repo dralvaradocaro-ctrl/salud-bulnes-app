@@ -67,7 +67,12 @@ const ProtocoloInsulina = () => {
         open={showExclusion}
         onContinue={(hasExclusions) => { setUsoCondicionado(hasExclusions); setShowExclusion(false); }}
       />
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50" style={{
+        '--primary': '210 100% 45%',
+        '--primary-foreground': '0 0% 100%',
+        '--accent': '199 89% 48%',
+        '--accent-foreground': '0 0% 100%',
+      } as React.CSSProperties}>
         <header className="bg-card border-b border-border shadow-sm">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
             <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-3">
