@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import CategoryCard from '@/components/home/CategoryCard';
 import { createPageUrl } from '@/utils';
-import { Activity, Users, FileText, Sparkles, Calculator } from 'lucide-react';
+import { Activity, Users, FileText, Sparkles, Calculator, Syringe, ArrowRight } from 'lucide-react';
 
 export default function Home() {
   const { data: categories = [], isLoading } = useQuery({
@@ -71,7 +71,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="flex flex-wrap justify-center gap-4 mb-16"
+            className="flex flex-wrap justify-center gap-4 mb-8"
           >
             <div className="flex items-center gap-3 px-5 py-3 bg-white rounded-2xl shadow-sm border border-slate-100">
               <div className="p-2 bg-blue-100 rounded-xl">
@@ -100,7 +100,7 @@ export default function Home() {
                 <p className="text-sm text-slate-500">Categorías</p>
               </div>
             </div>
-            <Link 
+            <Link
               to={createPageUrl('AllCalculators')}
               className="flex items-center gap-3 px-5 py-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-md hover:shadow-lg transition-all group cursor-pointer"
             >
@@ -110,6 +110,42 @@ export default function Home() {
               <div>
                 <p className="text-2xl font-bold text-white">{calculatorCount}</p>
                 <p className="text-sm text-purple-100">Calculadoras</p>
+              </div>
+            </Link>
+          </motion.div>
+
+          {/* Protocolo Insulínico - Flashcard destacada */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="max-w-2xl mx-auto mb-16"
+          >
+            <Link to={createPageUrl('ProtocoloInsulina')}>
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer group">
+                {/* Decoración de fondo */}
+                <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                <div className="absolute bottom-0 left-20 w-24 h-24 bg-white/10 rounded-full translate-y-1/2"></div>
+
+                <div className="relative flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                      <Syringe className="h-7 w-7 text-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-semibold text-cyan-200 uppercase tracking-wider">Protocolo Local</span>
+                        <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs text-white font-medium">Nuevo</span>
+                      </div>
+                      <h3 className="text-xl font-bold text-white">Corrección Insulínica</h3>
+                      <p className="text-sm text-blue-100 mt-0.5">Hiperglicemia preprandial · Calculadora interactiva</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-white/80 group-hover:text-white group-hover:translate-x-1 transition-all">
+                    <span className="text-sm font-medium hidden sm:block">Abrir</span>
+                    <ArrowRight className="h-5 w-5" />
+                  </div>
+                </div>
               </div>
             </Link>
           </motion.div>
