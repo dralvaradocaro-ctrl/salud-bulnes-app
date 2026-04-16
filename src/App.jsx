@@ -9,6 +9,9 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import WelcomeLogin from '@/pages/WelcomeLogin';
+import { isLoggedIn } from '@/lib/hospitalAuth';
+import { useState } from 'react';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -66,6 +69,11 @@ const AuthenticatedApp = () => {
 };
 
 function App() {
+  const [authed, setAuthed] = useState(isLoggedIn());
+
+  if (!authed) {
+    return <WelcomeLogin onLogin={() => setAuthed(true)} />;
+  }
 
   return (
     <AuthProvider>
