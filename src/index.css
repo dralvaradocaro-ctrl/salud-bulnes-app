@@ -84,3 +84,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .print-section {
+    display: block !important;
+  }
+
+  @page {
+    margin: 1cm;
+    size: letter;
+  }
+}

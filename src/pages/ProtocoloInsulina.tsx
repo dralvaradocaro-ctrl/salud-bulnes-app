@@ -67,11 +67,29 @@ const ProtocoloInsulina = () => {
         open={showExclusion}
         onContinue={(hasExclusions) => { setUsoCondicionado(hasExclusions); setShowExclusion(false); }}
       />
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50" style={{
+      <div className="min-h-screen" style={{
+        '--background': '0 0% 100%',
+        '--foreground': '215 25% 27%',
+        '--card': '0 0% 100%',
+        '--card-foreground': '215 25% 27%',
+        '--popover': '0 0% 100%',
+        '--popover-foreground': '215 25% 27%',
         '--primary': '210 100% 45%',
         '--primary-foreground': '0 0% 100%',
-        '--accent': '199 89% 48%',
+        '--secondary': '210 40% 96.1%',
+        '--secondary-foreground': '215 25% 27%',
+        '--muted': '210 40% 96.1%',
+        '--muted-foreground': '215 20% 50%',
+        '--accent': '195 80% 50%',
         '--accent-foreground': '0 0% 100%',
+        '--destructive': '0 84.2% 60.2%',
+        '--destructive-foreground': '0 0% 100%',
+        '--border': '214 31.8% 91.4%',
+        '--input': '214 31.8% 91.4%',
+        '--ring': '210 100% 45%',
+        '--radius': '0.75rem',
+        background: 'hsl(0 0% 100%)',
+        color: 'hsl(215 25% 27%)',
       } as React.CSSProperties}>
         <header className="bg-card border-b border-border shadow-sm">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
