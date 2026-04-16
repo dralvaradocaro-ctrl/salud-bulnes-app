@@ -61,6 +61,7 @@ import SRIProtocol from './pages/SRIProtocol';
 import Templates from './pages/Templates';
 import ToolsManager from './pages/ToolsManager';
 import TopicDetail from './pages/TopicDetail';
+import ProtocoloInsulina from './pages/ProtocoloInsulina';
 import __Layout from './Layout.jsx';
 
 export const PAGES = {
@@ -78,6 +79,7 @@ export const PAGES = {
     "Templates": Templates,
     "ToolsManager": ToolsManager,
     "TopicDetail": TopicDetail,
+    "ProtocoloInsulina": ProtocoloInsulina,
 }
 
 export const pagesConfig = {
