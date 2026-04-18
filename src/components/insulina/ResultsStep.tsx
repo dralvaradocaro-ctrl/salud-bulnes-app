@@ -20,20 +20,20 @@ interface ResultsStepProps {
 const groupInfo = {
   sensible: {
     title: 'Grupo Insulino-Sensible',
-    color: 'bg-success',
-    textColor: 'text-success',
+    color: 'bg-green-500',
+    textColor: 'text-green-600',
     description: 'Paciente con alta sensibilidad a la insulina. Mayor riesgo de hipoglicemia.',
   },
   intermedio: {
     title: 'Grupo Intermedio',
-    color: 'bg-warning',
-    textColor: 'text-warning',
+    color: 'bg-amber-500',
+    textColor: 'text-amber-600',
     description: 'Paciente con sensibilidad normal a la insulina. Perfil metabólico estable.',
   },
   resistente: {
     title: 'Grupo Insulino-Resistente',
-    color: 'bg-destructive',
-    textColor: 'text-destructive',
+    color: 'bg-red-600',
+    textColor: 'text-red-600',
     description: 'Paciente con resistencia a la insulina. Requiere dosis más altas.',
   },
 };

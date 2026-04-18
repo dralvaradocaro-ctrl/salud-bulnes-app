@@ -95,8 +95,19 @@
     display: block !important;
   }
 
+  /* Elimina URL y número de página del browser en impresión */
   @page {
-    margin: 1cm;
-    size: letter;
+    size: A4;
+    margin: 0;
+  }
+
+  /* Compensa el margin:0 del @page con padding en el contenido */
+  body {
+    padding: 1.2cm 1.5cm;
+  }
+
+  /* Elimina sombras y bordes de cards en impresión */
+  .shadow-xl, .shadow-lg, .shadow-md, .shadow-sm {
+    box-shadow: none !important;
   }
 }

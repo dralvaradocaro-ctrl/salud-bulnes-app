@@ -91,7 +91,7 @@ const ProtocoloInsulina = () => {
         background: 'hsl(0 0% 100%)',
         color: 'hsl(215 25% 27%)',
       } as React.CSSProperties}>
-        <header className="bg-card border-b border-border shadow-sm">
+        <header className="bg-card border-b border-border shadow-sm print:hidden">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4">
             <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-3">
               <ArrowLeft className="w-4 h-4 mr-2" />Volver
@@ -115,7 +115,7 @@ const ProtocoloInsulina = () => {
         <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
           <Card className="p-6 sm:p-8 shadow-xl">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4 mb-8">
+              <TabsList className="grid w-full grid-cols-4 mb-8 print:hidden">
                 <TabsTrigger value="1">1. Demografía</TabsTrigger>
                 <TabsTrigger value="2" disabled={!tab1Complete}>2. Clínica</TabsTrigger>
                 <TabsTrigger value="3" disabled={!tab1Complete}>3. Metabolismo</TabsTrigger>
@@ -137,7 +137,7 @@ const ProtocoloInsulina = () => {
             </Tabs>
           </Card>
 
-          <footer className="mt-8 text-center text-sm text-muted-foreground space-y-1">
+          <footer className="mt-8 text-center text-sm text-muted-foreground space-y-1 print:hidden">
             <p>Protocolo desarrollado por Dr. Fernando Alvarado Caro</p>
             <p>Servicio de Medicina - Hospital de Bulnes | Septiembre 2025</p>
             <p className="text-xs mt-3">Última revisión: marzo 2026</p>
