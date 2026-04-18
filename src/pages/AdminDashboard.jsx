@@ -14,6 +14,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     const isLoggedIn = localStorage.getItem('admin_logged_in');
@@ -40,7 +41,8 @@ export default function AdminDashboard() {
   const filteredTopics = topics.filter(topic => {
     const matchesSearch = topic.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || topic.category_id === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesStatus = statusFilter === 'all' || topic.status === statusFilter;
+    return matchesSearch && matchesCategory && matchesStatus;
   });
 
   const groupedTopics = categories.map(cat => ({
@@ -100,11 +102,30 @@ export default function AdminDashboard() {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-xs"
             >
-              <option value="all">Todas</option>
+              <option value="all">Todas las categorías</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
+            <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+              {[
+                { value: 'all', label: `Todos (${topics.length})` },
+                { value: 'published', label: `✓ ${publishedCount}` },
+                { value: 'draft', label: `⏳ ${draftCount}` },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setStatusFilter(value)}
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                    statusFilter === value
+                      ? 'bg-white text-slate-800 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

@@ -7,9 +7,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
+import {
   GripVertical, X, Plus, FileText, Upload, Sparkles, Link as LinkIcon,
-  Save, Eye, EyeOff, History, GitBranch, AlertCircle
+  Save, Eye, EyeOff, History, GitBranch, AlertCircle, ChevronDown
 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import ReactMarkdown from 'react-markdown';
@@ -734,8 +734,12 @@ export default function TopicEditorFull({
                             className="bg-slate-50 border border-slate-200 rounded-lg p-4"
                           >
                             <div className="flex items-center gap-2 mb-3">
-                              <div {...provided.dragHandleProps}>
-                                <GripVertical className="h-5 w-5 text-slate-400 cursor-grab" />
+                              <div
+                                {...provided.dragHandleProps}
+                                title="Arrastrar para reordenar"
+                                className="p-1 rounded hover:bg-slate-200 cursor-grab active:cursor-grabbing transition-colors"
+                              >
+                                <GripVertical className="h-5 w-5 text-slate-400" />
                               </div>
                               <Input
                                 value={block.title}
@@ -783,14 +787,31 @@ export default function TopicEditorFull({
 
                             {(block.type === 'flowchart' || block.type === 'algorithm') && (
                               <div className="space-y-3">
+                                {/* Color selector */}
+                                <div>
+                                  <Label className="text-xs mb-1.5 block">Color del paso</Label>
+                                  <div className="flex gap-2">
+                                    {FLOW_COLORS.map(c => (
+                                      <button
+                                        key={c.value}
+                                        type="button"
+                                        onClick={() => updateBlock(block.id, 'color', c.value)}
+                                        title={c.label}
+                                        className={`w-6 h-6 rounded-full ${c.circle} border-2 transition-all ${
+                                          block.color === c.value ? 'border-slate-800 scale-110' : 'border-transparent opacity-60 hover:opacity-100'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                </div>
                                 <Textarea
                                   value={block.description || ''}
                                   onChange={(e) => updateBlock(block.id, 'description', e.target.value)}
-                                  placeholder="Descripción"
+                                  placeholder="Descripción del paso"
                                   rows={2}
                                 />
                                 <div className="flex items-center justify-between">
-                                  <Label className="text-xs">Detalles</Label>
+                                  <Label className="text-xs">Detalles / acciones</Label>
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -836,58 +857,118 @@ export default function TopicEditorFull({
 
         {/* Preview Panel */}
         {showPreview && (
-          <div className="sticky top-4 h-fit">
-            <Card className="p-6">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase mb-4">Vista Previa</h3>
+          <div className="sticky top-4 h-[calc(100vh-6rem)] overflow-y-auto">
+            <Card className="p-5">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+                <Eye className="h-4 w-4 text-slate-400" />
+                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Vista Previa — igual a lo que verá el usuario</h3>
+              </div>
               <div className="space-y-4">
+                {/* Header */}
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900">{formData.name || 'Sin título'}</h1>
+                  <h1 className="text-xl font-bold text-slate-900">{formData.name || <span className="text-slate-300 italic">Sin título</span>}</h1>
                   {formData.description && (
-                    <p className="text-slate-600 mt-2 text-sm">{formData.description}</p>
+                    <p className="text-slate-500 mt-1 text-sm">{formData.description}</p>
                   )}
-                  {formData.authors?.length > 0 && (
-                    <div className="mt-3 text-xs text-slate-600">
-                      <p className="font-semibold">Autores:</p>
-                      {formData.authors.map((author, idx) => (
-                        <p key={idx}>{author.name} - {author.role}</p>
-                      ))}
+                  {formData.tipo_contenido?.length > 0 && (
+                    <div className="flex gap-1.5 mt-2 flex-wrap">
+                      {formData.tipo_contenido.includes('protocolo') && (
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 font-medium">🟢 Protocolo</span>
+                      )}
+                      {formData.tipo_contenido.includes('contenido_medico') && (
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 font-medium">🔵 Contenido Médico</span>
+                      )}
+                      {formData.tipo_contenido.includes('herramienta_clinica') && (
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 font-medium">🟣 Herramienta</span>
+                      )}
+                      {formData.has_local_protocol && (
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800 font-semibold border border-green-300">✓ Prot. Local</span>
+                      )}
                     </div>
-                  )}
-                  {formData.published_date && (
-                    <p className="text-xs text-slate-500 mt-2">Publicado: {formData.published_date}</p>
                   )}
                 </div>
 
-                {formData.blocks.map((block) => {
+                {/* Blocks */}
+                {formData.blocks.length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-8 border-2 border-dashed border-slate-200 rounded-lg">
+                    Sin bloques aún — agrega contenido desde el panel izquierdo
+                  </p>
+                )}
+
+                {formData.blocks.map((block, index) => {
                   const colorConfig = FLOW_COLORS.find(c => c.value === block.color) || FLOW_COLORS[0];
                   return (
-                    <div key={block.id} className="border-t border-slate-200 pt-4">
+                    <div key={block.id}>
+                      {/* text */}
                       {block.type === 'text' && (
-                        <div>
-                          {block.title && <h3 className="font-semibold text-slate-900 mb-2">{block.title}</h3>}
-                          <ReactMarkdown className="prose prose-sm max-w-none">{block.content}</ReactMarkdown>
-                        </div>
-                      )}
-                      {(block.type === 'flowchart' || block.type === 'algorithm') && (
-                        <div className={`p-4 rounded-lg ${colorConfig.bg} border ${colorConfig.border}`}>
-                          <h3 className="font-bold text-slate-900 mb-2">{block.title}</h3>
-                          {block.description && <p className="text-sm text-slate-700 mb-2">{block.description}</p>}
-                          {block.details?.length > 0 && (
-                            <ul className="space-y-1 text-sm">
-                              {block.details.map((d, i) => (
-                                <li key={i} className="flex items-start gap-2">
-                                  <span className="text-blue-600 font-bold">{i + 1}.</span>
-                                  <span>{d}</span>
-                                </li>
-                              ))}
-                            </ul>
+                        <div className="border-t border-slate-100 pt-4">
+                          {block.title && (
+                            <h3 className="font-semibold text-slate-900 mb-2 text-sm">{block.title}</h3>
+                          )}
+                          {block.content ? (
+                            <ReactMarkdown className="prose prose-sm max-w-none text-slate-700">
+                              {block.content}
+                            </ReactMarkdown>
+                          ) : (
+                            <p className="text-xs text-slate-300 italic">Sin contenido</p>
                           )}
                         </div>
                       )}
+
+                      {/* flowchart / algorithm — igual a ProtocolFlowchart */}
+                      {(block.type === 'flowchart' || block.type === 'algorithm') && (
+                        <div className="border-t border-slate-100 pt-4">
+                          <div className="flex gap-3">
+                            <div className="flex flex-col items-center">
+                              <div className={`w-7 h-7 rounded-full ${colorConfig.circle} flex items-center justify-center text-white text-xs font-bold flex-shrink-0`}>
+                                {index + 1}
+                              </div>
+                              <div className="w-0.5 flex-1 bg-slate-200 mt-1" />
+                            </div>
+                            <div className={`flex-1 pb-4 p-3 rounded-lg ${colorConfig.bg} border ${colorConfig.border}`}>
+                              {block.title && (
+                                <h4 className="font-bold text-slate-900 text-sm mb-1">{block.title}</h4>
+                              )}
+                              {block.description && (
+                                <p className="text-xs text-slate-700 mb-2">{block.description}</p>
+                              )}
+                              {block.details?.length > 0 && (
+                                <ul className="space-y-1">
+                                  {block.details.map((d, i) => (
+                                    <li key={i} className="flex items-start gap-1.5 text-xs text-slate-700">
+                                      <span className="font-bold text-slate-500 flex-shrink-0">{i + 1}.</span>
+                                      <span>{d}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* alert */}
+                      {block.type === 'alert' && (
+                        <div className="border-t border-slate-100 pt-4">
+                          <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              {block.title && (
+                                <p className="font-semibold text-amber-900 text-sm">{block.title}</p>
+                              )}
+                              {block.content && (
+                                <p className="text-xs text-amber-800 mt-0.5">{block.content}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* reference */}
                       {block.type === 'reference' && block.reference_label && (
-                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <LinkIcon className="h-4 w-4 text-blue-600" />
+                        <div className="border-t border-slate-100 pt-4">
+                          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2">
+                            <LinkIcon className="h-4 w-4 text-blue-600 flex-shrink-0" />
                             <span className="text-sm font-semibold text-blue-900">{block.reference_label}</span>
                           </div>
                         </div>

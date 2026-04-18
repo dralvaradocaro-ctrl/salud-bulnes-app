@@ -46,7 +46,8 @@ import {
 export default function Category() {
   const urlParams = new URLSearchParams(window.location.search);
   const categoryId = urlParams.get('id');
-  
+
+  const [activeTab, setActiveTab] = useState('topics');
   const [activeSubcategory, setActiveSubcategory] = useState('all');
 
   const { data: category, isLoading: loadingCategory } = useQuery({
@@ -196,38 +197,57 @@ export default function Category() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        {/* Navigation / Filters — unified block */}
-        <div className="mb-8 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-          <div className="flex flex-wrap gap-2 items-center">
-            {/* Section anchors — only shown when there are multiple content types */}
-            {(tools.length > 0 || templates.length > 0) && (
-              <>
-                {topics.length > 0 && (
-                  <a href="#topics" className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-colors text-sm font-medium">
-                    <FileText className="h-4 w-4" />
-                    Temas ({topics.length})
-                  </a>
-                )}
-                {tools.length > 0 && (
-                  <a href="#tools" className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl transition-colors text-sm font-medium">
-                    <Stethoscope className="h-4 w-4" />
-                    Herramientas ({tools.length})
-                  </a>
-                )}
-                {templates.length > 0 && (
-                  <a href="#templates" className="flex items-center gap-2 px-4 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 rounded-xl transition-colors text-sm font-medium">
-                    <ClipboardList className="h-4 w-4" />
-                    Plantillas ({templates.length})
-                  </a>
-                )}
-                {subcategories.length > 0 && <div className="w-px h-6 bg-slate-200 mx-1" />}
-              </>
-            )}
+      <div className="max-w-5xl mx-auto px-4 py-6">
 
-            {/* Subcategory filters */}
+        {/* Tab bar */}
+        <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-2xl w-fit">
+          {topics.length > 0 && (
+            <button
+              onClick={() => setActiveTab('topics')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                activeTab === 'topics'
+                  ? 'bg-white text-blue-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <FileText className="h-4 w-4" />
+              Temas ({topics.length})
+            </button>
+          )}
+          {tools.length > 0 && (
+            <button
+              onClick={() => setActiveTab('tools')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                activeTab === 'tools'
+                  ? 'bg-white text-emerald-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Stethoscope className="h-4 w-4" />
+              Herramientas ({tools.length})
+            </button>
+          )}
+          {templates.length > 0 && (
+            <button
+              onClick={() => setActiveTab('templates')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                activeTab === 'templates'
+                  ? 'bg-white text-violet-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <ClipboardList className="h-4 w-4" />
+              Plantillas ({templates.length})
+            </button>
+          )}
+        </div>
+
+        {/* Topics Tab */}
+        {activeTab === 'topics' && (
+          <div>
+            {/* Subcategory filters — only if there are multiple subcategories */}
             {subcategories.length > 0 && (
-              <>
+              <div className="flex flex-wrap gap-2 mb-6">
                 <button
                   onClick={() => setActiveSubcategory('all')}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
@@ -251,247 +271,197 @@ export default function Category() {
                     {sub} ({topics.filter(t => t.subcategory === sub).length})
                   </button>
                 ))}
-              </>
+              </div>
             )}
 
-            {/* Fallback: nothing to filter or navigate */}
-            {tools.length === 0 && templates.length === 0 && subcategories.length === 0 && (
-              <span className="text-sm text-slate-500">{topics.length} tema{topics.length !== 1 ? 's' : ''} en esta categoría</span>
-            )}
-          </div>
-        </div>
-
-        {/* Topics Grid */}
-        <div id="topics" className="mb-12 scroll-mt-24">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600" />
-              Temas y Patologías
-            </h2>
-            {/* Content type quick filters */}
-            <div className="flex gap-2">
-              {topics.some(t => (t.tipo_contenido || []).includes('protocolo')) && (
-                <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700 font-medium">
-                  {topics.filter(t => (t.tipo_contenido || []).includes('protocolo')).length} protocolos
-                </span>
-              )}
-              {topics.some(t => (t.tipo_contenido || []).includes('herramienta_clinica')) && (
-                <span className="px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-700 font-medium">
-                  {topics.filter(t => (t.tipo_contenido || []).includes('herramienta_clinica')).length} herramientas
-                </span>
-              )}
-              {topics.some(t => t.clasificacion_ges === 'GES') && (
-                <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700 font-medium">
-                  {topics.filter(t => t.clasificacion_ges === 'GES').length} GES
-                </span>
-              )}
-            </div>
-          </div>
-          
-          {loadingTopics ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="bg-white rounded-2xl p-6 animate-pulse">
-                  <div className="w-14 h-14 bg-slate-200 rounded-2xl mb-4"></div>
-                  <div className="h-5 bg-slate-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-4 bg-slate-200 rounded w-full"></div>
-                </div>
-              ))}
-            </div>
-          ) : filteredTopics.length > 0 ? (
-            <div className="space-y-10">
-              {sortedSubcategories.map(subcategory => (
-                <div key={subcategory}>
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent"></div>
-                    <h3 className="text-base font-bold text-slate-700 uppercase tracking-wide px-4 py-2 bg-slate-100 rounded-full">
-                      {subcategory}
-                    </h3>
-                    <div className="flex-1 h-px bg-gradient-to-l from-slate-200 to-transparent"></div>
+            {loadingTopics ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="bg-white rounded-2xl p-6 animate-pulse">
+                    <div className="w-14 h-14 bg-slate-200 rounded-2xl mb-4"></div>
+                    <div className="h-5 bg-slate-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-4 bg-slate-200 rounded w-full"></div>
                   </div>
-                  
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {groupedTopics[subcategory].map((topic, index) => {
-                      const TopicIcon = getTopicIcon(topic);
-                      const colors = getTopicColor(topic);
-
-                      return (
-                        <motion.div
-                          key={topic.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.05 }}
-                        >
-                          <Link
-                           to={createPageUrl(`TopicDetail?id=${topic.id}`)}
-                           className={`group block bg-white rounded-2xl p-6 border transition-all h-full ${
-                             topic.has_local_protocol 
-                               ? 'border-green-200 shadow-md hover:shadow-2xl ring-2 ring-green-100'
-                               : (topic.tipo_contenido || []).includes('protocolo')
-                                 ? 'border-green-100 hover:border-green-300 hover:shadow-xl'
-                                 : (topic.tipo_contenido || []).includes('herramienta_clinica')
-                                   ? 'border-purple-100 hover:border-purple-300 hover:shadow-xl'
-                                   : 'border-slate-100 hover:border-blue-200 hover:shadow-xl'
-                           }`}
+                ))}
+              </div>
+            ) : filteredTopics.length > 0 ? (
+              <div className="space-y-10">
+                {sortedSubcategories.map(subcategory => (
+                  <div key={subcategory}>
+                    {activeSubcategory === 'all' && (
+                      <div className="flex items-center gap-3 mb-5">
+                        <div className="flex-1 h-px bg-gradient-to-r from-slate-200 to-transparent"></div>
+                        <h3 className="text-base font-bold text-slate-700 uppercase tracking-wide px-4 py-2 bg-slate-100 rounded-full">
+                          {subcategory}
+                        </h3>
+                        <div className="flex-1 h-px bg-gradient-to-l from-slate-200 to-transparent"></div>
+                      </div>
+                    )}
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {groupedTopics[subcategory].map((topic, index) => {
+                        const TopicIcon = getTopicIcon(topic);
+                        const colors = getTopicColor(topic);
+                        return (
+                          <motion.div
+                            key={topic.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
                           >
-                            <div className="flex flex-col h-full">
-                              <div className={`p-3 ${colors.bg} rounded-2xl w-fit mb-4 group-hover:scale-110 transition-transform`}>
-                                <TopicIcon className={`h-7 w-7 ${colors.text}`} />
-                              </div>
-                              <div className="flex-1">
-                                <h3 className={`font-bold text-slate-900 transition-colors mb-2 line-clamp-2 ${
-                                  topic.has_local_protocol ? 'text-base' : 'text-sm'
-                                }`}>
-                                  {topic.name}
-                                </h3>
-
-                                <div className="flex flex-wrap gap-1.5 mb-3">
-                                  {/* Tipo de contenido badges */}
-                                  {(topic.tipo_contenido || []).includes('protocolo') && (
-                                    <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">🟢 Protocolo</Badge>
-                                  )}
-                                  {(topic.tipo_contenido || []).includes('contenido_medico') && (
-                                    <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">🔵 Contenido Médico</Badge>
-                                  )}
-                                  {(topic.tipo_contenido || []).includes('herramienta_clinica') && (
-                                    <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">🟣 Herramienta</Badge>
-                                  )}
-                                  {/* Protocolo Local — solo si marcado explícitamente */}
-                                  {topic.has_local_protocol && (
-                                    <Badge className="bg-green-100 text-green-700 border-green-300 flex items-center gap-1 text-xs font-semibold">
-                                      <CheckCircle2 className="h-3 w-3" />
-                                      Prot. Local
-                                    </Badge>
-                                  )}
-                                  {/* GES */}
-                                  {topic.clasificacion_ges === 'GES' && (
-                                    <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">GES</Badge>
-                                  )}
-                                  {topic.guarantee_days && (
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Badge className="bg-sky-100 text-sky-700 border-sky-200 flex items-center gap-1 cursor-help text-xs">
-                                            <Clock className="h-3 w-3" />
-                                            {topic.guarantee_days}d garantía
-                                          </Badge>
-                                        </TooltipTrigger>
-                                        <TooltipContent className="max-w-xs">
-                                          <p className="font-semibold mb-1">Garantía GES</p>
-                                          <p className="text-sm">{topic.guarantee_details || `Tratamiento garantizado en ${topic.guarantee_days} días`}</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
+                            <Link
+                              to={createPageUrl(`TopicDetail?id=${topic.id}`)}
+                              className={`group block bg-white rounded-2xl p-6 border transition-all h-full ${
+                                topic.has_local_protocol
+                                  ? 'border-green-200 shadow-md hover:shadow-2xl ring-2 ring-green-100'
+                                  : (topic.tipo_contenido || []).includes('protocolo')
+                                    ? 'border-green-100 hover:border-green-300 hover:shadow-xl'
+                                    : (topic.tipo_contenido || []).includes('herramienta_clinica')
+                                      ? 'border-purple-100 hover:border-purple-300 hover:shadow-xl'
+                                      : 'border-slate-100 hover:border-blue-200 hover:shadow-xl'
+                              }`}
+                            >
+                              <div className="flex flex-col h-full">
+                                <div className={`p-3 ${colors.bg} rounded-2xl w-fit mb-4 group-hover:scale-110 transition-transform`}>
+                                  <TopicIcon className={`h-7 w-7 ${colors.text}`} />
+                                </div>
+                                <div className="flex-1">
+                                  <h3 className={`font-bold text-slate-900 transition-colors mb-2 line-clamp-2 ${
+                                    topic.has_local_protocol ? 'text-base' : 'text-sm'
+                                  }`}>
+                                    {topic.name}
+                                  </h3>
+                                  <div className="flex flex-wrap gap-1.5 mb-3">
+                                    {(topic.tipo_contenido || []).includes('protocolo') && (
+                                      <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">🟢 Protocolo</Badge>
+                                    )}
+                                    {(topic.tipo_contenido || []).includes('contenido_medico') && (
+                                      <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">🔵 Contenido Médico</Badge>
+                                    )}
+                                    {(topic.tipo_contenido || []).includes('herramienta_clinica') && (
+                                      <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">🟣 Herramienta</Badge>
+                                    )}
+                                    {topic.has_local_protocol && (
+                                      <Badge className="bg-green-100 text-green-700 border-green-300 flex items-center gap-1 text-xs font-semibold">
+                                        <CheckCircle2 className="h-3 w-3" />
+                                        Prot. Local
+                                      </Badge>
+                                    )}
+                                    {topic.clasificacion_ges === 'GES' && (
+                                      <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">GES</Badge>
+                                    )}
+                                    {topic.guarantee_days && (
+                                      <TooltipProvider>
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
+                                            <Badge className="bg-sky-100 text-sky-700 border-sky-200 flex items-center gap-1 cursor-help text-xs">
+                                              <Clock className="h-3 w-3" />
+                                              {topic.guarantee_days}d garantía
+                                            </Badge>
+                                          </TooltipTrigger>
+                                          <TooltipContent className="max-w-xs">
+                                            <p className="font-semibold mb-1">Garantía GES</p>
+                                            <p className="text-sm">{topic.guarantee_details || `Tratamiento garantizado en ${topic.guarantee_days} días`}</p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    )}
+                                  </div>
+                                  {topic.description && (
+                                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                                      {topic.description}
+                                    </p>
                                   )}
                                 </div>
-
-                                {topic.description && (
-                                  <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                                    {topic.description}
-                                  </p>
-                                )}
+                                <div className={`flex items-center text-xs font-semibold mt-4 group-hover:gap-2 transition-all ${
+                                  (topic.tipo_contenido || []).includes('protocolo') ? 'text-green-600'
+                                  : (topic.tipo_contenido || []).includes('herramienta_clinica') ? 'text-purple-600'
+                                  : 'text-blue-600'
+                                }`}>
+                                  {(topic.tipo_contenido || []).includes('protocolo') ? 'Ver protocolo'
+                                    : (topic.tipo_contenido || []).includes('herramienta_clinica') ? 'Ver herramienta'
+                                    : 'Ver contenido'}
+                                  <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                                </div>
                               </div>
-                              <div className={`flex items-center text-xs font-semibold mt-4 group-hover:gap-2 transition-all ${
-                                (topic.tipo_contenido || []).includes('protocolo') ? 'text-green-600' 
-                                : (topic.tipo_contenido || []).includes('herramienta_clinica') ? 'text-purple-600'
-                                : 'text-blue-600'
-                              }`}>
-                                {(topic.tipo_contenido || []).includes('protocolo') ? 'Ver protocolo' 
-                                  : (topic.tipo_contenido || []).includes('herramienta_clinica') ? 'Ver herramienta'
-                                  : 'Ver contenido'}
-                                <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                              </div>
-                            </div>
-                          </Link>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 bg-white rounded-2xl border border-slate-200">
-              <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500">No hay temas en esta categoría aún</p>
-            </div>
-          )}
-        </div>
-
-        {/* Clinical Tools Section */}
-        {tools.length > 0 && (
-          <div id="tools" className="mb-12 scroll-mt-24">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <Stethoscope className="h-5 w-5 text-emerald-600" />
-              Herramientas Clínicas
-            </h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              {tools.map((tool, index) => (
-                <motion.div
-                  key={tool.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <Link
-                    to={createPageUrl(`ClinicalTools?tool=${tool.id}`)}
-                    className="group block bg-white rounded-2xl p-5 border border-slate-100 hover:border-emerald-200 hover:shadow-lg transition-all"
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-emerald-100 rounded-xl">
-                        <Stethoscope className="h-5 w-5 text-emerald-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-slate-900 group-hover:text-emerald-600 transition-colors">
-                          {tool.name}
-                        </h3>
-                        <span className="text-xs text-slate-500">{tool.specialty}</span>
-                      </div>
+                            </Link>
+                          </motion.div>
+                        );
+                      })}
                     </div>
-                    {tool.description && (
-                      <p className="text-sm text-slate-600 line-clamp-2">{tool.description}</p>
-                    )}
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-white rounded-2xl border border-slate-200">
+                <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-500">No hay temas en esta categoría aún</p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Request Templates Section */}
-        {templates.length > 0 && (
-          <div id="templates" className="mb-12 scroll-mt-24">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-violet-600" />
-              Plantillas de Solicitud
-            </h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              {templates.map((template, index) => (
-                <motion.div
-                  key={template.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
+        {/* Tools Tab */}
+        {activeTab === 'tools' && (
+          <div className="grid md:grid-cols-2 gap-4">
+            {tools.map((tool, index) => (
+              <motion.div
+                key={tool.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Link
+                  to={createPageUrl(`ClinicalTools?tool=${tool.id}`)}
+                  className="group block bg-white rounded-2xl p-5 border border-slate-100 hover:border-emerald-200 hover:shadow-lg transition-all"
                 >
-                  <Link
-                    to={createPageUrl(`Templates?id=${template.id}`)}
-                    className="group block bg-white rounded-2xl p-5 border border-slate-100 hover:border-violet-200 hover:shadow-lg transition-all"
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-violet-100 rounded-xl">
-                        <ClipboardList className="h-5 w-5 text-violet-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-slate-900 group-hover:text-violet-600 transition-colors">
-                          {template.name}
-                        </h3>
-                        <span className="text-xs text-slate-500">{template.type}</span>
-                      </div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-emerald-100 rounded-xl">
+                      <Stethoscope className="h-5 w-5 text-emerald-600" />
                     </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-900 group-hover:text-emerald-600 transition-colors">
+                        {tool.name}
+                      </h3>
+                      <span className="text-xs text-slate-500">{tool.specialty}</span>
+                    </div>
+                  </div>
+                  {tool.description && (
+                    <p className="text-sm text-slate-600 line-clamp-2">{tool.description}</p>
+                  )}
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* Templates Tab */}
+        {activeTab === 'templates' && (
+          <div className="grid md:grid-cols-2 gap-4">
+            {templates.map((template, index) => (
+              <motion.div
+                key={template.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Link
+                  to={createPageUrl(`Templates?id=${template.id}`)}
+                  className="group block bg-white rounded-2xl p-5 border border-slate-100 hover:border-violet-200 hover:shadow-lg transition-all"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-violet-100 rounded-xl">
+                      <ClipboardList className="h-5 w-5 text-violet-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-900 group-hover:text-violet-600 transition-colors">
+                        {template.name}
+                      </h3>
+                      <span className="text-xs text-slate-500">{template.type}</span>
+                    </div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
           </div>
         )}
       </div>
