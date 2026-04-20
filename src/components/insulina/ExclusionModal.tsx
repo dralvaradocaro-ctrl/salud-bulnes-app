@@ -57,7 +57,7 @@ export const ExclusionModal = ({ open, onContinue }: ExclusionModalProps) => {
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
-        className="sm:max-w-xl max-h-[90vh] overflow-y-auto [&>button]:hidden"
+        className="sm:max-w-xl max-h-[90vh] overflow-y-auto [&>button]:hidden theme-blue"
         onPointerDownOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >

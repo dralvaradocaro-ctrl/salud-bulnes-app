@@ -11,11 +11,9 @@ import {
   ChevronLeft, 
   FileText, 
   Stethoscope, 
-  GitBranch, 
   ClipboardList,
   CheckCircle2,
   ChevronRight,
-  Filter,
   Heart,
   Brain,
   Activity,
@@ -36,6 +34,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { isHiddenClinicalTool } from '@/components/utils/hiddenContent';
 import {
   Tooltip,
   TooltipContent,
@@ -70,6 +69,8 @@ export default function Category() {
     queryFn: () => db.entities.ClinicalTool.filter({ category_id: categoryId }),
     enabled: !!categoryId
   });
+
+  const visibleTools = tools.filter(tool => !isHiddenClinicalTool(tool));
 
   const { data: templates = [] } = useQuery({
     queryKey: ['templates', categoryId],
@@ -214,7 +215,7 @@ export default function Category() {
               Temas ({topics.length})
             </button>
           )}
-          {tools.length > 0 && (
+          {visibleTools.length > 0 && (
             <button
               onClick={() => setActiveTab('tools')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
@@ -224,7 +225,7 @@ export default function Category() {
               }`}
             >
               <Stethoscope className="h-4 w-4" />
-              Herramientas ({tools.length})
+              Herramientas ({visibleTools.length})
             </button>
           )}
           {templates.length > 0 && (
@@ -403,7 +404,7 @@ export default function Category() {
         {/* Tools Tab */}
         {activeTab === 'tools' && (
           <div className="grid md:grid-cols-2 gap-4">
-            {tools.map((tool, index) => (
+            {visibleTools.map((tool, index) => (
               <motion.div
                 key={tool.id}
                 initial={{ opacity: 0, y: 10 }}

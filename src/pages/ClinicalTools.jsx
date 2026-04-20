@@ -23,9 +23,8 @@ import {
 import { Button } from '@/components/ui/button';
 import NIHSSCalculator from '@/components/calculators/NIHSSCalculator';
 import HEARTScoreCalculator from '@/components/calculators/HEARTScoreCalculator';
-import InsulinCorrectionCalculator from '@/components/calculators/InsulinCorrectionCalculator';
 import MOCACalculator from '@/components/calculators/MOCACalculator';
-import SRICalculator from '@/components/calculators/SRICalculator';
+import { isHiddenClinicalTool } from '@/components/utils/hiddenContent';
 
 const specialtyIcons = {
   'Neurología': Brain,
@@ -63,13 +62,15 @@ export default function ClinicalTools() {
     queryFn: () => db.entities.ClinicalTool.list('specialty'),
   });
 
+  const visibleTools = tools.filter(tool => !isHiddenClinicalTool(tool));
+
   // Get unique specialties
-  const specialties = [...new Set(tools.map(t => t.specialty).filter(Boolean))];
+  const specialties = [...new Set(visibleTools.map(t => t.specialty).filter(Boolean))];
 
   // Filter tools
   const filteredTools = activeSpecialty === 'all'
-    ? tools
-    : tools.filter(t => t.specialty === activeSpecialty);
+    ? visibleTools
+    : visibleTools.filter(t => t.specialty === activeSpecialty);
 
   // Group by specialty
   const groupedTools = filteredTools.reduce((acc, tool) => {
@@ -111,7 +112,7 @@ export default function ClinicalTools() {
                   : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
               }`}
             >
-              Todas ({tools.length})
+              Todas ({visibleTools.length})
             </button>
             {specialties.map(specialty => {
               const Icon = specialtyIcons[specialty] || Stethoscope;
@@ -208,12 +209,6 @@ export default function ClinicalTools() {
                                     <MOCACalculator />
                                   </div>
                                 )}
-                                {tool.name.includes('Insul') && (
-                                  <div className="mb-4">
-                                    <InsulinCorrectionCalculator />
-                                  </div>
-                                )}
-
                                 {tool.content && (
                                   <div className="bg-slate-50 rounded-xl p-4 mb-4">
                                     <div className="flex items-center gap-2 mb-2">

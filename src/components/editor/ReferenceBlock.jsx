@@ -7,15 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link, Calculator } from 'lucide-react';
-
-const CALCULATORS = [
-  { id: 'nrs2002', name: 'NRS-2002 - Riesgo Nutricional' },
-  { id: 'sri', name: 'SRI - Intubación Rápida' },
-  { id: 'heart', name: 'HEART Score' },
-  { id: 'nihss', name: 'NIHSS - Escala ACV' },
-  { id: 'moca', name: 'MoCA - Cognición' },
-  { id: 'insulin', name: 'Corrección de Insulina' }
-];
+import { calculatorReferences as CALCULATORS } from '@/components/calculators/catalog';
 
 export default function ReferenceBlock({ block, onUpdate }) {
   const [searchTerm, setSearchTerm] = useState('');

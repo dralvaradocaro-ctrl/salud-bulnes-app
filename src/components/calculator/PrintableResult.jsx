@@ -1,7 +1,7 @@
 import React from 'react';
 
-export default function PrintableResult({ title, inputs, result, patientInfo }) {
-  const printDate = new Date().toLocaleString('es-CL', {
+export default function PrintableResult({ title, inputs, result, patientInfo, generatedAt }) {
+  const printDate = new Date(generatedAt || Date.now()).toLocaleString('es-CL', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -115,22 +115,22 @@ export default function PrintableResult({ title, inputs, result, patientInfo }) 
 
         {/* Print Info */}
         <div className="border-t border-slate-300 pt-4 mb-8">
-          <p className="text-xs text-slate-600">Fecha y hora de impresión: {printDate}</p>
+          <p className="text-xs text-slate-600">Fecha y hora de generación: {printDate}</p>
         </div>
 
         {/* Signature */}
         <div className="mt-12 space-y-6">
-          <div className="border-b border-slate-400 pb-2">
-            <p className="text-xs text-slate-600 mb-1">Firma del profesional:</p>
-          </div>
-          
           <div className="grid grid-cols-2 gap-6">
-            <div className="border-b border-slate-400 pb-2">
-              <p className="text-xs text-slate-600 mb-1">Nombre:</p>
+            <div className="border-b border-slate-400 pb-3 min-h-[3.5rem]">
+              <p className="text-xs text-slate-600 mb-1">Nombre del profesional:</p>
             </div>
-            <div className="border-b border-slate-400 pb-2">
-              <p className="text-xs text-slate-600 mb-1">Cargo / Unidad:</p>
+            <div className="border-b border-slate-400 pb-3 min-h-[3.5rem]">
+              <p className="text-xs text-slate-600 mb-1">Unidad / Cargo:</p>
             </div>
+          </div>
+
+          <div className="border-b border-slate-400 pb-3 min-h-[4.5rem]">
+            <p className="text-xs text-slate-600 mb-1">Firma del profesional:</p>
           </div>
         </div>
 

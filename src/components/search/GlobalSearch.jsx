@@ -1,12 +1,14 @@
 const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, FileText, Stethoscope, ArrowRight } from 'lucide-react';
+import { Search, X, FileText, Stethoscope, ArrowRight, Calculator } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isHiddenClinicalTool } from '@/components/utils/hiddenContent';
+import { calculatorReferences } from '@/components/calculators/catalog';
 
 export default function GlobalSearch({ className = "", autoFocus = false }) {
   const [query, setQuery] = useState('');
@@ -49,11 +51,22 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
         ).map(t => ({ ...t, type: 'topic' }));
 
         const filteredTools = tools.filter(t =>
-          t.name?.toLowerCase().includes(queryLower) ||
-          t.specialty?.toLowerCase().includes(queryLower)
+          !isHiddenClinicalTool(t) &&
+          (
+            t.name?.toLowerCase().includes(queryLower) ||
+            t.specialty?.toLowerCase().includes(queryLower)
+          )
         ).map(t => ({ ...t, type: 'tool' }));
 
-        setResults([...filteredTopics.slice(0, 5), ...filteredTools.slice(0, 3)]);
+        const filteredCalculators = calculatorReferences
+          .filter(calc => calc.name.toLowerCase().includes(queryLower))
+          .map(calc => ({ ...calc, type: 'calculator' }));
+
+        setResults([
+          ...filteredTopics.slice(0, 5),
+          ...filteredTools.slice(0, 3),
+          ...filteredCalculators.slice(0, 3)
+        ]);
       } catch (error) {
         console.error('Search error:', error);
       }
@@ -113,13 +126,27 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
                 {results.map((item, index) => (
                   <Link
                     key={`${item.type}-${item.id}`}
-                    to={createPageUrl(item.type === 'topic' ? `TopicDetail?id=${item.id}` : `ClinicalTools?tool=${item.id}`)}
+                    to={createPageUrl(
+                      item.type === 'topic'
+                        ? `TopicDetail?id=${item.id}`
+                        : item.type === 'calculator'
+                          ? `AllCalculators?calc=${item.id}`
+                          : `ClinicalTools?tool=${item.id}`
+                    )}
                     onClick={() => setIsOpen(false)}
                     className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
                   >
-                    <div className={`p-2 rounded-xl ${item.type === 'topic' ? 'bg-blue-100' : 'bg-emerald-100'}`}>
+                    <div className={`p-2 rounded-xl ${
+                      item.type === 'topic'
+                        ? 'bg-blue-100'
+                        : item.type === 'calculator'
+                          ? 'bg-purple-100'
+                          : 'bg-emerald-100'
+                    }`}>
                       {item.type === 'topic' ? (
                         <FileText className={`h-5 w-5 ${item.type === 'topic' ? 'text-blue-600' : 'text-emerald-600'}`} />
+                      ) : item.type === 'calculator' ? (
+                        <Calculator className="h-5 w-5 text-purple-600" />
                       ) : (
                         <Stethoscope className="h-5 w-5 text-emerald-600" />
                       )}
@@ -127,7 +154,11 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-slate-900 truncate">{item.name}</p>
                       <p className="text-sm text-slate-500 truncate">
-                        {item.type === 'topic' ? item.subcategory || 'Patología' : item.specialty}
+                        {item.type === 'topic'
+                          ? item.subcategory || 'Patología'
+                          : item.type === 'calculator'
+                            ? 'Calculadora'
+                            : item.specialty}
                       </p>
                     </div>
                     {item.has_local_protocol && (

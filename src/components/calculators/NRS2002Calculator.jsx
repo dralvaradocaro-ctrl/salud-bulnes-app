@@ -23,6 +23,12 @@ export default function NRS2002Calculator() {
 
   const screeningComplete = Object.values(screeningAnswers).every(v => v !== null);
   const needsFullAssessment = Object.values(screeningAnswers).some(v => v === true);
+  const screeningSummary = {
+    'IMC < 20,5 kg/m²': screeningAnswers.lowIMC === null ? 'No contestado' : screeningAnswers.lowIMC ? 'Sí' : 'No',
+    'Pérdida de peso últimos 3 meses': screeningAnswers.weightLoss === null ? 'No contestado' : screeningAnswers.weightLoss ? 'Sí' : 'No',
+    'Disminución de ingesta última semana': screeningAnswers.reducedIntake === null ? 'No contestado' : screeningAnswers.reducedIntake ? 'Sí' : 'No',
+    'Paciente gravemente enfermo': screeningAnswers.severeIllness === null ? 'No contestado' : screeningAnswers.severeIllness ? 'Sí' : 'No'
+  };
 
   const calculateTotalScore = () => {
     return fullScore.nutritionalStatus + fullScore.diseaseSeverity + fullScore.age;
@@ -87,23 +93,54 @@ export default function NRS2002Calculator() {
   };
 
   const totalScore = calculateTotalScore();
-  const interpretation = showFullAssessment && (fullScore.nutritionalStatus > 0 || fullScore.diseaseSeverity > 0) 
-    ? getInterpretation(totalScore) 
-    : null;
+  const interpretation = showFullAssessment ? getInterpretation(totalScore) : null;
 
-  const resultData = interpretation ? {
-    score: totalScore,
-    label: `Puntaje NRS-2002 (${fullScore.nutritionalStatus} + ${fullScore.diseaseSeverity} + ${fullScore.age})`,
-    interpretation: `${interpretation.level} - ${interpretation.action}. ${interpretation.timing}`,
-    recommendations: interpretation.details
-  } : null;
+  const resultData = (() => {
+    if (screeningComplete && !needsFullAssessment) {
+      return {
+        score: 0,
+        label: 'Tamizaje inicial negativo',
+        interpretation: 'Sin riesgo nutricional actual. Mantener vigilancia clínica y reevaluar ante cambios.',
+        recommendations: [
+          'Mantener vigilancia clínica',
+          'Reevaluar ante deterioro o cambios en la ingesta',
+          'Solicitar evaluación nutricional según criterio clínico'
+        ]
+      };
+    }
 
-  const inputsData = showFullAssessment ? {
-    'Tamizaje inicial': Object.values(screeningAnswers).some(v => v === true) ? 'Alterado' : 'Normal',
-    'Estado nutricional': `${fullScore.nutritionalStatus} puntos`,
-    'Severidad enfermedad': `${fullScore.diseaseSeverity} puntos`,
-    'Edad': fullScore.age === 1 ? '≥ 70 años' : '< 70 años'
-  } : null;
+    if (interpretation) {
+      return {
+        score: totalScore,
+        label: `Puntaje NRS-2002 (${fullScore.nutritionalStatus} + ${fullScore.diseaseSeverity} + ${fullScore.age})`,
+        interpretation: `${interpretation.level} - ${interpretation.action}. ${interpretation.timing}`,
+        recommendations: interpretation.details
+      };
+    }
+
+    return null;
+  })();
+
+  const inputsData = (() => {
+    if (screeningComplete && !needsFullAssessment) {
+      return {
+        ...screeningSummary,
+        'Resultado tamizaje': 'Normal'
+      };
+    }
+
+    if (showFullAssessment) {
+      return {
+        ...screeningSummary,
+        'Resultado tamizaje': 'Alterado',
+        'Estado nutricional': `${fullScore.nutritionalStatus} puntos`,
+        'Severidad enfermedad': `${fullScore.diseaseSeverity} puntos`,
+        'Edad': fullScore.age === 1 ? '≥ 70 años' : '< 70 años'
+      };
+    }
+
+    return null;
+  })();
 
   return (
     <CalculatorWrapper
@@ -397,7 +434,7 @@ export default function NRS2002Calculator() {
             </div>
 
             {/* Resultado */}
-            {(fullScore.nutritionalStatus > 0 || fullScore.diseaseSeverity > 0) && (
+            {interpretation && (
               <div className="mt-6">
                 <div className="bg-slate-900 text-white rounded-xl p-5 mb-4">
                   <div className="text-center">

@@ -9,6 +9,7 @@ import GlobalSearch from '@/components/search/GlobalSearch';
 import CategoryCard from '@/components/home/CategoryCard';
 import { createPageUrl } from '@/utils';
 import { Activity, Users, FileText, Sparkles, Calculator, Syringe, ArrowRight } from 'lucide-react';
+import { countedCalculators } from '@/components/calculators/catalog';
 
 export default function Home() {
   const { data: categories = [], isLoading } = useQuery({
@@ -21,13 +22,8 @@ export default function Home() {
     queryFn: () => db.entities.Topic.list(),
   });
 
-  const { data: tools = [] } = useQuery({
-    queryKey: ['tools-count'],
-    queryFn: () => db.entities.ClinicalTool.list(),
-  });
-
   const protocolCount = topics.filter(t => t.has_local_protocol).length;
-  const calculatorCount = tools.length;
+  const calculatorCount = countedCalculators.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">

@@ -1,63 +1,32 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
-import { ChevronLeft, Calculator, Heart, Brain, Activity, Stethoscope, Baby } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
-import NIHSSCalculator from '@/components/calculators/NIHSSCalculator';
-import HEARTScoreCalculator from '@/components/calculators/HEARTScoreCalculator';
-import InsulinCorrectionCalculator from '@/components/calculators/InsulinCorrectionCalculator';
-import MOCACalculator from '@/components/calculators/MOCACalculator';
-import SRICalculator from '@/components/calculators/SRICalculator';
-import NRS2002Calculator from '@/components/calculators/NRS2002Calculator';
-
-const calculatorsByCategory = {
-  'Urgencias': [
-    { id: 'sri', name: 'SRI - Intubación Rápida', component: SRICalculator, icon: Activity }
-  ],
-  'Cardiología': [
-    { id: 'heart', name: 'HEART Score', component: HEARTScoreCalculator, icon: Heart }
-  ],
-  'Neurología': [
-    { id: 'nihss', name: 'NIHSS - Escala ACV', component: NIHSSCalculator, icon: Brain },
-    { id: 'moca', name: 'MoCA - Cognición', component: MOCACalculator, icon: Brain }
-  ],
-  'Endocrinología': [
-    { id: 'insulin', name: 'Corrección de Insulina', component: InsulinCorrectionCalculator, icon: Activity }
-  ],
-  'Nutrición': [
-    { id: 'nrs2002', name: 'NRS-2002 - Riesgo Nutricional', component: NRS2002Calculator, icon: Stethoscope }
-  ]
-};
-
-const categoryIcons = {
-  'Urgencias': Activity,
-  'Cardiología': Heart,
-  'Neurología': Brain,
-  'Endocrinología': Activity,
-  'Nutrición': Stethoscope
-};
-
-const categoryColors = {
-  'Urgencias': 'from-red-500 to-red-600',
-  'Cardiología': 'from-rose-500 to-rose-600',
-  'Neurología': 'from-violet-500 to-violet-600',
-  'Endocrinología': 'from-amber-500 to-amber-600',
-  'Nutrición': 'from-green-500 to-green-600'
-};
+import {
+  calculatorsByCategory,
+  categoryIcons,
+  categoryColors,
+  allCalculators
+} from '@/components/calculators/catalog';
 
 export default function AllCalculators() {
   const urlParams = new URLSearchParams(window.location.search);
   const initialCalc = urlParams.get('calc');
   
-  const [activeCalculator, setActiveCalculator] = useState(initialCalc);
+  const [activeCalculator, setActiveCalculator] = useState(
+    allCalculators.some(calc => calc.id === initialCalc) ? initialCalc : null
+  );
 
   const ActiveComponent = activeCalculator ? 
-    Object.values(calculatorsByCategory)
-      .flat()
-      .find(c => c.id === activeCalculator)?.component 
+    allCalculators.find(c => c.id === activeCalculator)?.component 
     : null;
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeCalculator]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">

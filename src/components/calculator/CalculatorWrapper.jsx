@@ -26,8 +26,10 @@ export default function CalculatorWrapper({
   });
   const [showPatient, setShowPatient] = useState(false);
   const [isPrintMode, setIsPrintMode] = useState(false);
+  const [printTimestamp, setPrintTimestamp] = useState(null);
 
   const handlePrint = () => {
+    setPrintTimestamp(new Date().toISOString());
     setIsPrintMode(true);
     setTimeout(() => {
       window.print();
@@ -59,6 +61,7 @@ export default function CalculatorWrapper({
         inputs={inputs}
         result={result}
         patientInfo={showPatient ? patientInfo : null}
+        generatedAt={printTimestamp}
       />
     );
   }

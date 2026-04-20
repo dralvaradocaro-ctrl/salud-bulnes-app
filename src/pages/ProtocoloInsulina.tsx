@@ -67,15 +67,13 @@ const ProtocoloInsulina = () => {
         open={showExclusion}
         onContinue={(hasExclusions) => { setUsoCondicionado(hasExclusions); setShowExclusion(false); }}
       />
-      <div className="min-h-screen" style={{
+      <div className="min-h-screen theme-blue" style={{
         '--background': '0 0% 100%',
         '--foreground': '215 25% 27%',
         '--card': '0 0% 100%',
         '--card-foreground': '215 25% 27%',
         '--popover': '0 0% 100%',
         '--popover-foreground': '215 25% 27%',
-        '--primary': '210 100% 45%',
-        '--primary-foreground': '0 0% 100%',
         '--secondary': '210 40% 96.1%',
         '--secondary-foreground': '215 25% 27%',
         '--muted': '210 40% 96.1%',
@@ -86,7 +84,6 @@ const ProtocoloInsulina = () => {
         '--destructive-foreground': '0 0% 100%',
         '--border': '214 31.8% 91.4%',
         '--input': '214 31.8% 91.4%',
-        '--ring': '210 100% 45%',
         '--radius': '0.75rem',
         background: 'hsl(0 0% 100%)',
         color: 'hsl(215 25% 27%)',

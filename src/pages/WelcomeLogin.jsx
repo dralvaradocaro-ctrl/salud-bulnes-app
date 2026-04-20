@@ -52,7 +52,7 @@ export default function WelcomeLogin({ onLogin }) {
         <div className="w-full max-w-md">
           <div className="bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl p-8">
             <h2 className="text-white font-semibold text-lg mb-6 text-center">
-              Acceso para Funcionarios
+              Acceso Funcionarios/as
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">

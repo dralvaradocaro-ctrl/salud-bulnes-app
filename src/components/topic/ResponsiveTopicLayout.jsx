@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { LinkIcon, Calculator, ExternalLink } from 'lucide-react';
+import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils/hiddenContent';
 
 const FLOW_COLORS = {
   blue: { bg: 'bg-blue-50', border: 'border-blue-200', circle: 'bg-blue-600' },
@@ -14,6 +15,10 @@ const FLOW_COLORS = {
 };
 
 export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto', relatedTopics = [], relatedTools = [] }) {
+  const visibleRelatedTools = relatedTools.filter(ref =>
+    !isHiddenCalculatorId(ref.tool_id) && !isHiddenCalculatorName(ref.label)
+  );
+
   const renderBlock = (block) => {
     const colorConfig = FLOW_COLORS[block.color] || FLOW_COLORS.blue;
 
@@ -59,6 +64,13 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
         if (!block.reference_id || !block.reference_label) return null;
         
         const isCalculator = block.reference_type === 'calculator';
+        if (isCalculator && (
+          isHiddenCalculatorId(block.reference_id) ||
+          isHiddenCalculatorName(block.reference_label)
+        )) {
+          return null;
+        }
+
         const linkUrl = isCalculator 
           ? createPageUrl(`AllCalculators?calc=${block.reference_id}`)
           : createPageUrl(`TopicDetail?id=${block.reference_id}`);
@@ -148,7 +160,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
       </div>
 
       {/* Related Content */}
-      {(relatedTopics?.length > 0 || relatedTools?.length > 0) && (
+      {(relatedTopics?.length > 0 || visibleRelatedTools.length > 0) && (
         <div className="mt-12 p-6 bg-slate-50 rounded-2xl border border-slate-200">
           <h3 className="text-lg font-bold text-slate-900 mb-4">Contenido Relacionado</h3>
           <div className="grid md:grid-cols-2 gap-4">
@@ -163,7 +175,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                 </div>
               </Link>
             ))}
-            {relatedTools?.map((ref, idx) => (
+            {visibleRelatedTools.map((ref, idx) => (
               <Link key={idx} to={createPageUrl(`AllCalculators?calc=${ref.tool_id}`)}>
                 <div className="p-4 bg-white rounded-xl border border-slate-200 hover:border-purple-300 transition-all">
                   <div className="flex items-center gap-2 mb-2">

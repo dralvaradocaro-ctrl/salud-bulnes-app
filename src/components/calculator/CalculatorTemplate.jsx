@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import CalculatorWrapper from './CalculatorWrapper';
+import CalculatorReferences from './CalculatorReferences';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 
 /**
  * Template genérico para crear calculadoras rápidamente
@@ -47,7 +47,15 @@ export default function CalculatorTemplate({ config }) {
   const handleCalculate = () => {
     // Validate required fields
     const missingFields = config.inputs
-      .filter(input => input.required && !inputValues[input.id])
+      .filter(input =>
+        input.required &&
+        (
+          inputValues[input.id] === '' ||
+          inputValues[input.id] === null ||
+          inputValues[input.id] === undefined ||
+          Number.isNaN(inputValues[input.id])
+        )
+      )
       .map(input => input.label);
     
     if (missingFields.length > 0) {
@@ -69,6 +77,23 @@ export default function CalculatorTemplate({ config }) {
     setResult(null);
   };
 
+  const getPrintableInputs = () => config.inputs.reduce((acc, input) => {
+    const value = inputValues[input.id];
+
+    if (value === '' || value === null || value === undefined || Number.isNaN(value)) {
+      return acc;
+    }
+
+    if (input.type === 'select') {
+      const optionLabel = input.options.find(opt => opt.value === value)?.label || value;
+      acc[input.label] = optionLabel;
+      return acc;
+    }
+
+    acc[input.label] = input.unit ? `${value} ${input.unit}` : value;
+    return acc;
+  }, {});
+
   const renderInput = (input) => {
     switch (input.type) {
       case 'number':
@@ -81,7 +106,10 @@ export default function CalculatorTemplate({ config }) {
             <Input
               type="number"
               value={inputValues[input.id]}
-              onChange={(e) => handleInputChange(input.id, parseFloat(e.target.value))}
+              onChange={(e) => {
+                const rawValue = e.target.value;
+                handleInputChange(input.id, rawValue === '' ? '' : parseFloat(rawValue));
+              }}
               placeholder={input.placeholder || ''}
               min={input.min}
               max={input.max}
@@ -140,7 +168,7 @@ export default function CalculatorTemplate({ config }) {
       icon={config.icon}
       gradientFrom={config.gradientFrom || 'blue'}
       gradientTo={config.gradientTo || 'purple'}
-      inputs={inputValues}
+      inputs={getPrintableInputs()}
       result={result}
       onCalculate={handleCalculate}
       onReset={handleReset}
@@ -181,6 +209,11 @@ export default function CalculatorTemplate({ config }) {
           )}
         </div>
       )}
+
+      <CalculatorReferences
+        references={config.references}
+        note={config.referencesNote}
+      />
     </CalculatorWrapper>
   );
 }
