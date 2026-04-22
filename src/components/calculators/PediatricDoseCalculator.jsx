@@ -2,7 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Pencil, Check, X, Search } from 'lucide-react';
+import { Pencil, Check, X, Search, FlaskConical } from 'lucide-react';
+
+// ── Presentación del hospital ──────────────────────────────────────────────
+// type: 'liquid' → calcular mL; 'solid' → calcular comprimidos/unidades
+// concMg: mg por mL (líquidos) | mgPerUnit: mg por unidad (sólidos)
+// ──────────────────────────────────────────────────────────────────────────
 
 const DEFAULT_MEDS = [
   // ── Analgésicos / Antipiréticos ─────────────────────────────────────
@@ -18,8 +23,15 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 4000,
     minAge: null,
     route: 'VO / EV / Rectal',
-    forms: 'Jarabe 120 mg/5 mL · Supositorios 125 mg · Comp 500 mg · EV 10 mg/mL',
     notes: 'Dosis máxima única 1 g. Precaución en insuficiencia hepática.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Jarabe 125 mg/5 mL', type: 'liquid', concMg: 25,  via: 'VO',    unitLabel: 'mL' },
+      { label: 'Gotas 100 mg/mL',    type: 'liquid', concMg: 100, via: 'VO',    unitLabel: 'mL' },
+      { label: 'EV 10 mg/mL',        type: 'liquid', concMg: 10,  via: 'EV',    unitLabel: 'mL' },
+      { label: 'Comp 500 mg',        type: 'solid',  mgPerUnit: 500, via: 'VO', unitLabel: 'comp' },
+      { label: 'Comp 160 mg',        type: 'solid',  mgPerUnit: 160, via: 'VO', unitLabel: 'comp' },
+    ],
   },
   {
     id: 'ibuprofeno',
@@ -33,8 +45,12 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 2400,
     minAge: '> 3 meses',
     route: 'VO',
-    forms: 'Suspensión 200 mg/5 mL · Comp 200/400 mg',
     notes: 'Evitar en < 3 meses, asma, IR o deshidratación. No usar en varicela.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Suspensión 200 mg/5 mL', type: 'liquid', concMg: 40, via: 'VO', unitLabel: 'mL' },
+      { label: 'Comp 400 mg',            type: 'solid', mgPerUnit: 400, via: 'VO', unitLabel: 'comp' },
+    ],
   },
   {
     id: 'metamizol',
@@ -47,9 +63,33 @@ const DEFAULT_MEDS = [
     maxDailyDosePerKg: 60,
     maxDailyDoseMg: 4000,
     minAge: '> 3 meses',
-    route: 'VO / EV / IM',
-    forms: 'Gotas 500 mg/mL · Amp 1 g/2 mL',
-    notes: 'Riesgo de agranulocitosis (raro). Uso IM solo en urgencia.',
+    route: 'VO / EV / Rectal',
+    notes: 'Riesgo de agranulocitosis (raro). Sup disponible 250 mg.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Sol iny 500 mg/mL (diluir)', type: 'liquid', concMg: 500, via: 'EV/IM', unitLabel: 'mL' },
+      { label: 'Comp 300 mg',               type: 'solid',  mgPerUnit: 300, via: 'VO',  unitLabel: 'comp' },
+      { label: 'Supositorio 250 mg',        type: 'solid',  mgPerUnit: 250, via: 'Rectal', unitLabel: 'sup' },
+    ],
+  },
+  {
+    id: 'diclofenaco',
+    name: 'Diclofenaco',
+    category: 'AINE',
+    doseMin: 1, doseMax: 2,
+    unit: 'mg/kg/día',
+    frequency: 'c/8 h (dividir)',
+    maxSingleDose: 50,
+    maxDailyDosePerKg: 3,
+    maxDailyDoseMg: 150,
+    minAge: '> 1 año',
+    route: 'VO / Rectal',
+    notes: 'Sup infantil 12,5 mg disponible en arsenal. Uso puntual, evitar en IR.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Supositorio infantil 12,5 mg', type: 'solid', mgPerUnit: 12.5, via: 'Rectal', unitLabel: 'sup' },
+      { label: 'Comp 50 mg',                  type: 'solid', mgPerUnit: 50,   via: 'VO',    unitLabel: 'comp' },
+    ],
   },
   // ── Antieméticos ─────────────────────────────────────────────────────
   {
@@ -64,8 +104,13 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 12,
     minAge: '> 6 meses',
     route: 'VO / EV',
-    forms: 'Comp ODT 4/8 mg · Amp 2 mg/mL',
     notes: 'Dosis máxima única 4 mg en < 40 kg. Prolongación QT a dosis altas.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Sol iny 4 mg/2 mL (= 2 mg/mL)', type: 'liquid', concMg: 2, via: 'EV', unitLabel: 'mL' },
+      { label: 'Comp 4 mg',                      type: 'solid',  mgPerUnit: 4, via: 'VO', unitLabel: 'comp' },
+      { label: 'Comp 8 mg',                      type: 'solid',  mgPerUnit: 8, via: 'VO', unitLabel: 'comp' },
+    ],
   },
   {
     id: 'dimenhidrinato',
@@ -79,8 +124,9 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 150,
     minAge: '> 2 años',
     route: 'VO / EV / IM',
-    forms: 'Comp 50 mg · Amp 50 mg/mL · Supositorios 40 mg',
-    notes: 'Sedación frecuente. Evitar en < 2 años. Máx 25 mg/dosis en menores.',
+    notes: 'Sedación frecuente. Evitar en < 2 años. No listado en arsenal HCSF — confirmar stock.',
+    inArsenal: false,
+    hospitalPresentations: [],
   },
   // ── Antihistamínicos ──────────────────────────────────────────────────
   {
@@ -95,8 +141,29 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 10,
     minAge: '> 2 años',
     route: 'VO',
-    forms: 'Jarabe 1 mg/mL · Comp 10 mg',
     notes: '6–12 años: 5 mg/día; > 12 años: 10 mg/día. Poca sedación.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Comp 10 mg', type: 'solid', mgPerUnit: 10, via: 'VO', unitLabel: 'comp' },
+    ],
+  },
+  {
+    id: 'levocetirizina',
+    name: 'Levocetirizina',
+    category: 'Antihistamínico',
+    doseMin: 0.125, doseMax: 0.125,
+    unit: 'mg/kg/dosis',
+    frequency: 'c/24 h',
+    maxSingleDose: 5,
+    maxDailyDosePerKg: 0.125,
+    maxDailyDoseMg: 5,
+    minAge: '> 2 años',
+    route: 'VO',
+    notes: '2–6 años: 1,25 mg/día; > 6 años: 2,5–5 mg/día.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Jarabe 5 mg/5 mL (= 1 mg/mL)', type: 'liquid', concMg: 1, via: 'VO', unitLabel: 'mL' },
+    ],
   },
   {
     id: 'clorfeniramina',
@@ -110,8 +177,12 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 12,
     minAge: '> 2 años',
     route: 'VO',
-    forms: 'Jarabe 2 mg/5 mL · Comp 4 mg',
-    notes: 'Dosis diaria dividida en 4 tomas. Sedante, uso cauteloso.',
+    notes: 'Dosis diaria dividida en 4 tomas. Sedante.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Comp 4 mg',              type: 'solid',  mgPerUnit: 4,  via: 'VO', unitLabel: 'comp' },
+      { label: 'Sol iny 10 mg/mL',       type: 'liquid', concMg: 10,   via: 'EV/IM', unitLabel: 'mL' },
+    ],
   },
   {
     id: 'loratadina',
@@ -125,8 +196,12 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 10,
     minAge: '> 2 años',
     route: 'VO',
-    forms: 'Jarabe 1 mg/mL · Comp 10 mg',
-    notes: '2–12 años < 30 kg: 5 mg/día; > 30 kg o > 12 años: 10 mg/día.',
+    notes: '< 30 kg: 5 mg/día; ≥ 30 kg: 10 mg/día.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Jarabe 5 mg/5 mL (= 1 mg/mL)', type: 'liquid', concMg: 1,  via: 'VO', unitLabel: 'mL' },
+      { label: 'Comp 10 mg',                    type: 'solid',  mgPerUnit: 10, via: 'VO', unitLabel: 'comp' },
+    ],
   },
   // ── Psicotrópicos ─────────────────────────────────────────────────────
   {
@@ -141,8 +216,11 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 25,
     minAge: '> 6 años (uso especialista)',
     route: 'VO',
-    forms: 'Comp 10/25 mg',
-    notes: '⚠ Solo bajo supervisión de especialista (neurología/psiquiatría pediátrica). Monitoreo cardíaco.',
+    notes: '⚠ Solo bajo supervisión de especialista. Monitoreo cardíaco.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Comp 25 mg', type: 'solid', mgPerUnit: 25, via: 'VO', unitLabel: 'comp' },
+    ],
   },
   {
     id: 'sertralina',
@@ -156,9 +234,12 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 200,
     minAge: '> 6 años (uso especialista)',
     route: 'VO',
-    forms: 'Comp 50/100 mg · Sol oral 20 mg/mL',
-    notes: '⚠ Solo bajo supervisión psiquiátrica. Inicio 25 mg/día, titular lentamente. No dosificación por kg en práctica clínica.',
+    notes: '⚠ Solo bajo supervisión psiquiátrica. Titular lentamente.',
     fixedDose: true,
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Comp 50 mg', type: 'solid', mgPerUnit: 50, via: 'VO', unitLabel: 'comp' },
+    ],
   },
   // ── Benzodiacepinas ───────────────────────────────────────────────────
   {
@@ -173,8 +254,12 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 30,
     minAge: null,
     route: 'VO / EV / Rectal',
-    forms: 'Comp 5/10 mg · Amp 5 mg/mL · Solución rectal 5/10 mg',
-    notes: '⚠ Uso puntual (convulsiones, procedimientos). Monitoreo respiratorio EV.',
+    notes: '⚠ Monitoreo respiratorio EV obligatorio.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Sol iny 10 mg/mL', type: 'liquid', concMg: 10, via: 'EV', unitLabel: 'mL' },
+      { label: 'Comp 10 mg',       type: 'solid',  mgPerUnit: 10, via: 'VO', unitLabel: 'comp' },
+    ],
   },
   {
     id: 'lorazepam',
@@ -188,8 +273,13 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 8,
     minAge: null,
     route: 'VO / EV / SL',
-    forms: 'Comp 1/2 mg · Amp 2 mg/mL',
-    notes: '⚠ Primera línea en estatus epiléptico EV. Monitoreo respiratorio.',
+    notes: '⚠ Primera línea estatus epiléptico EV. Monitoreo respiratorio.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Sol iny 4 mg/mL',   type: 'liquid', concMg: 4, via: 'EV', unitLabel: 'mL' },
+      { label: 'Comp 2 mg',         type: 'solid',  mgPerUnit: 2, via: 'VO', unitLabel: 'comp' },
+      { label: 'Comp SL 2 mg',      type: 'solid',  mgPerUnit: 2, via: 'SL', unitLabel: 'comp' },
+    ],
   },
   {
     id: 'midazolam',
@@ -202,9 +292,12 @@ const DEFAULT_MEDS = [
     maxDailyDosePerKg: null,
     maxDailyDoseMg: null,
     minAge: null,
-    route: 'VO / EV / IM / IN / Bucal',
-    forms: 'Amp 1 mg/mL / 5 mg/mL · Jarabe 2 mg/mL',
-    notes: '⚠ Sedación/convulsiones. Vía intranasal: 0.2 mg/kg (máx 10 mg). Monitoreo estricto.',
+    route: 'EV / IM / IN / Bucal',
+    notes: '⚠ Vía intranasal: 0,2 mg/kg (máx 10 mg). Monitoreo estricto.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Sol iny 5 mg/mL', type: 'liquid', concMg: 5, via: 'EV/IM/IN', unitLabel: 'mL' },
+    ],
   },
   // ── Antibióticos ──────────────────────────────────────────────────────
   {
@@ -219,23 +312,32 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 3000,
     minAge: null,
     route: 'VO',
-    forms: 'Suspensión 250 mg/5 mL · Comp 500 mg',
-    notes: '40 mg/kg/día para infecciones leves-moderadas; 80-90 mg/kg/día para SBO/OTITIS alta resistencia.',
+    notes: '40 mg/kg/día leve-moderado; 80–90 mg/kg/día para SBO/otitis de alta resistencia.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Suspensión 500 mg/5 mL (= 100 mg/mL)', type: 'liquid', concMg: 100, via: 'VO', unitLabel: 'mL', perDose: true },
+      { label: 'Comp 500 mg',                          type: 'solid',  mgPerUnit: 500, via: 'VO', unitLabel: 'comp', perDose: true },
+    ],
   },
   {
     id: 'amoxiclav',
-    name: 'Amoxicilina/Ácido Clavulánico',
+    name: 'Amoxicilina/Ác. Clavulánico',
     category: 'Antibiótico — Penicilina + inhibidor',
     doseMin: 40, doseMax: 90,
     unit: 'mg/kg/día (de amoxicilina)',
-    frequency: 'c/8 h o c/12 h',
+    frequency: 'c/8–12 h',
     maxSingleDose: 500,
     maxDailyDosePerKg: 90,
     maxDailyDoseMg: 3000,
     minAge: null,
     route: 'VO',
-    forms: 'Suspensión 250/62,5 mg/5 mL · Comp 500/125 mg',
-    notes: 'Dosis expresada en componente amoxicilina. Formulación 7:1 para dosis altas. Tomar con alimentos.',
+    notes: 'Dosis expresada en amoxicilina. Tomar con alimentos.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Suspensión 400/57 mg/5 mL (= 80 mg/mL amox)', type: 'liquid', concMg: 80, via: 'VO', unitLabel: 'mL', perDose: true },
+      { label: 'Comp 500/125 mg',                              type: 'solid', mgPerUnit: 500, via: 'VO', unitLabel: 'comp', perDose: true },
+      { label: 'Comp 875/125 mg',                              type: 'solid', mgPerUnit: 875, via: 'VO', unitLabel: 'comp', perDose: true },
+    ],
   },
   {
     id: 'azitromicina',
@@ -249,8 +351,13 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 500,
     minAge: null,
     route: 'VO',
-    forms: 'Suspensión 200 mg/5 mL · Comp 500 mg',
-    notes: 'Faringoamigdalitis: 5 días; Atípicas: 3-5 días. Prolongación QT — evitar con otros QT.',
+    notes: 'Prolongación QT — evitar con otros fármacos QT.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Suspensión 200 mg/5 mL (= 40 mg/mL)', type: 'liquid', concMg: 40, via: 'VO', unitLabel: 'mL' },
+      { label: 'Suspensión 400 mg/5 mL (= 80 mg/mL)', type: 'liquid', concMg: 80, via: 'VO', unitLabel: 'mL' },
+      { label: 'Comp 500 mg',                          type: 'solid', mgPerUnit: 500, via: 'VO', unitLabel: 'comp' },
+    ],
   },
   {
     id: 'claritromicina',
@@ -264,8 +371,12 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 1000,
     minAge: null,
     route: 'VO',
-    forms: 'Suspensión 125/250 mg/5 mL · Comp 250/500 mg',
-    notes: 'Múltiples interacciones medicamentosas (CYP3A4). Tomar con alimentos.',
+    notes: 'Múltiples interacciones (CYP3A4). Tomar con alimentos.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Suspensión 250 mg/5 mL (= 50 mg/mL)', type: 'liquid', concMg: 50,  via: 'VO', unitLabel: 'mL', perDose: true },
+      { label: 'Comp 500 mg',                          type: 'solid', mgPerUnit: 500, via: 'VO', unitLabel: 'comp', perDose: true },
+    ],
   },
   {
     id: 'clindamicina',
@@ -279,8 +390,12 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 1800,
     minAge: null,
     route: 'VO / EV',
-    forms: 'Cáps 150/300 mg · Amp 150 mg/mL',
-    notes: 'Excelente cobertura piel y tejidos blandos. Riesgo de colitis por C. difficile.',
+    notes: 'Excelente cobertura piel y tejidos blandos. Riesgo C. difficile.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Sol iny 600 mg/4 mL (= 150 mg/mL)', type: 'liquid', concMg: 150, via: 'EV', unitLabel: 'mL', perDose: true },
+      { label: 'Comp 300 mg',                        type: 'solid',  mgPerUnit: 300, via: 'VO', unitLabel: 'comp', perDose: true },
+    ],
   },
   {
     id: 'cefadroxilo',
@@ -294,23 +409,13 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 2000,
     minAge: null,
     route: 'VO',
-    forms: 'Suspensión 250 mg/5 mL · Comp 500 mg',
-    notes: 'Buena opción en infecciones de piel y faringoamigdalitis. Posología cómoda c/12h.',
-  },
-  {
-    id: 'cefalexina',
-    name: 'Cefalexina',
-    category: 'Antibiótico — Cefalosporina 1ª',
-    doseMin: 25, doseMax: 50,
-    unit: 'mg/kg/día',
-    frequency: 'c/6 h (dividir)',
-    maxSingleDose: 500,
-    maxDailyDosePerKg: 50,
-    maxDailyDoseMg: 2000,
-    minAge: null,
-    route: 'VO',
-    forms: 'Suspensión 250 mg/5 mL · Comp 500 mg',
-    notes: 'Primera línea infecciones piel/tejidos blandos. Alternativa a amoxicilina.',
+    notes: 'Buena opción piel y faringoamigdalitis. Posología cómoda c/12h.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Suspensión 250 mg/5 mL (= 50 mg/mL)', type: 'liquid', concMg: 50,  via: 'VO', unitLabel: 'mL', perDose: true },
+      { label: 'Suspensión 500 mg/5 mL (= 100 mg/mL)',type: 'liquid', concMg: 100, via: 'VO', unitLabel: 'mL', perDose: true },
+      { label: 'Comp 500 mg',                          type: 'solid', mgPerUnit: 500, via: 'VO', unitLabel: 'comp', perDose: true },
+    ],
   },
   {
     id: 'nitrofurantoina',
@@ -318,18 +423,21 @@ const DEFAULT_MEDS = [
     category: 'Antibiótico — ITU',
     doseMin: 5, doseMax: 7,
     unit: 'mg/kg/día',
-    frequency: 'c/6 h (dividir en 4 tomas)',
+    frequency: 'c/6 h (4 tomas)',
     maxSingleDose: 100,
     maxDailyDosePerKg: 7,
     maxDailyDoseMg: 400,
     minAge: '> 1 mes',
     route: 'VO',
-    forms: 'Cáps 100 mg · Suspensión magistral',
-    notes: 'Solo ITU baja (no pielonefritis). Contraindicado en < 1 mes y con ClCr < 30.',
+    notes: 'Solo ITU baja. Contraindicado en < 1 mes y ClCr < 30.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Cáps macrocristales 100 mg', type: 'solid', mgPerUnit: 100, via: 'VO', unitLabel: 'cáps', perDose: true },
+    ],
   },
   {
-    id: 'trimetoprim-smc',
-    name: 'Trimetoprim/Sulfametoxazol (TMP-SMX)',
+    id: 'cotrimoxazol',
+    name: 'Cotrimoxazol (TMP-SMX)',
     category: 'Antibiótico — Sulfonamida',
     doseMin: 8, doseMax: 12,
     unit: 'mg/kg/día (de TMP)',
@@ -339,8 +447,11 @@ const DEFAULT_MEDS = [
     maxDailyDoseMg: 320,
     minAge: '> 2 meses',
     route: 'VO',
-    forms: 'Suspensión 40/200 mg/5 mL · Comp 80/400 mg',
-    notes: 'Dosis expresada en TMP. Contraindicado < 2 meses. Buena opción ITU y otitis.',
+    notes: 'Dosis en TMP. Arsenal: Forte (SMT 800mg + TMP 160mg). Solo comp Forte disponible.',
+    inArsenal: true,
+    hospitalPresentations: [
+      { label: 'Comp Forte (TMP 160 mg + SMT 800 mg)', type: 'solid', mgPerUnit: 160, via: 'VO', unitLabel: 'comp', perDose: true },
+    ],
   },
 ];
 
@@ -350,7 +461,57 @@ function normalize(s) {
   return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-function round2(n) { return Math.round(n * 100) / 100; }
+function r1(n) { return Math.round(n * 10) / 10; }
+function r2(n) { return Math.round(n * 100) / 100; }
+
+// ── Cálculo en mL o unidades según presentación ────────────────────────────
+function calcPresentation(pres, doseMg) {
+  if (pres.type === 'liquid') {
+    const vol = doseMg / pres.concMg;
+    return { value: r1(vol), label: pres.unitLabel };
+  } else {
+    const units = doseMg / pres.mgPerUnit;
+    return { value: r2(units), label: pres.unitLabel };
+  }
+}
+
+function HospitalDose({ med, doseMg }) {
+  if (!med.inArsenal || !med.hospitalPresentations?.length) return null;
+
+  return (
+    <div className="rounded-xl border border-teal-200 bg-teal-50 p-3 space-y-2">
+      <div className="flex items-center gap-1.5">
+        <FlaskConical className="h-3.5 w-3.5 text-teal-600" />
+        <p className="text-[10px] font-bold uppercase tracking-wide text-teal-700">
+          Presentaciones en arsenal HCSF Bulnes
+        </p>
+      </div>
+      <div className="space-y-1">
+        {med.hospitalPresentations.map((pres, i) => {
+          const calc = calcPresentation(pres, doseMg);
+          const isFraction = pres.type === 'solid' && calc.value % 1 !== 0;
+          return (
+            <div key={i} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-1.5 border border-teal-100">
+              <div>
+                <span className="text-xs text-slate-700">{pres.label}</span>
+                <span className="ml-2 text-[10px] text-slate-400">· {pres.via}</span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <span className={`text-sm font-bold ${isFraction ? 'text-amber-700' : 'text-teal-800'}`}>
+                  {calc.value}
+                </span>
+                <span className="text-xs text-slate-500">{calc.label}</span>
+                {isFraction && (
+                  <span className="text-[10px] text-amber-600 ml-1">(fracción)</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function DoseResult({ med, weight }) {
   if (!weight || weight <= 0) return null;
@@ -358,34 +519,38 @@ function DoseResult({ med, weight }) {
 
   if (med.fixedDose) {
     return (
-      <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
-        <p className="mb-1 text-xs font-bold uppercase tracking-wide text-blue-700">Dosis fija — no depende del peso</p>
-        <p className="text-lg font-bold text-blue-900">{med.doseMin} mg / día</p>
-        <p className="mt-1 text-xs text-blue-700">{med.frequency} · {med.route}</p>
-        <p className="mt-2 text-xs text-slate-600">{med.forms}</p>
-        {med.notes && <p className="mt-2 text-xs text-amber-700">{med.notes}</p>}
+      <div className="space-y-2">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+          <p className="mb-1 text-xs font-bold uppercase tracking-wide text-blue-700">Dosis fija — no depende del peso</p>
+          <p className="text-lg font-bold text-blue-900">{med.doseMin} mg / día</p>
+          <p className="mt-1 text-xs text-slate-600">{med.frequency} · {med.route}</p>
+        </div>
+        {med.inArsenal && med.hospitalPresentations.length > 0 && (
+          <HospitalDose med={med} doseMg={med.doseMin} />
+        )}
+        {med.notes && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">{med.notes}</p>}
       </div>
     );
   }
 
   const isDaily = med.unit.includes('/día');
-  const rawMin = round2(med.doseMin * w);
-  const rawMax = round2(med.doseMax * w);
+  const rawMin  = r2(med.doseMin * w);
+  const rawMax  = r2(med.doseMax * w);
   const cappedMin = med.maxSingleDose ? Math.min(rawMin, med.maxSingleDose) : rawMin;
   const cappedMax = med.maxSingleDose ? Math.min(rawMax, med.maxSingleDose) : rawMax;
-  const cappedDaily = med.maxDailyDoseMg;
-  const dailyMin = isDaily ? cappedMin : null;
-  const dailyMax = isDaily ? cappedMax : null;
-
   const hitCap = rawMax > (med.maxSingleDose ?? Infinity);
 
+  // Para antibióticos expresados en mg/kg/día, la dosis por toma = dailyDose / nTomas
+  const doseMgForPresentation = cappedMax; // usamos dosis máxima para cálculo de presentación
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
+      {/* Dosis calculada */}
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-emerald-700">
+        <p className="mb-1 text-xs font-bold uppercase tracking-wide text-emerald-700">
           {isDaily ? 'Dosis diaria calculada' : 'Dosis por administración'}
         </p>
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2 flex-wrap">
           <p className="text-2xl font-bold text-emerald-900">
             {cappedMin === cappedMax ? cappedMin : `${cappedMin}–${cappedMax}`}
             <span className="ml-1 text-base font-normal text-emerald-600">mg</span>
@@ -399,43 +564,31 @@ function DoseResult({ med, weight }) {
         <p className="mt-1 text-xs text-emerald-700">
           {med.doseMin === med.doseMax ? med.doseMin : `${med.doseMin}–${med.doseMax}`} {med.unit} × {w} kg
         </p>
-        <p className="mt-1 text-xs text-slate-600">{med.frequency} · {med.route}</p>
+        <p className="mt-0.5 text-xs text-slate-500">{med.frequency} · {med.route}</p>
       </div>
 
-      {/* Dosis diaria si la unidad es por dosis */}
-      {!isDaily && cappedMax && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-          <p className="text-xs font-semibold text-slate-500">
-            Dosis diaria estimada:{' '}
-            <span className="font-bold text-slate-700">
-              {cappedMin === cappedMax ? cappedMin * 4 : `${cappedMin * 3}–${cappedMax * 4}`} mg/día
-            </span>
-            {cappedDaily && (
-              <span className="ml-2 text-slate-400">
-                (máx {cappedDaily} mg/día)
-              </span>
-            )}
-          </p>
+      {/* Límites */}
+      {(med.maxSingleDose || med.maxDailyDoseMg) && (
+        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 flex flex-wrap gap-x-4">
+          {med.maxSingleDose && <span>Dosis máx única: <strong className="text-slate-700">{med.maxSingleDose} mg</strong></span>}
+          {med.maxDailyDoseMg && <span>Dosis máx diaria: <strong className="text-slate-700">{med.maxDailyDoseMg} mg</strong></span>}
         </div>
       )}
 
-      {med.maxSingleDose && (
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs text-slate-500">
-          Dosis máxima única: <span className="font-bold text-slate-700">{med.maxSingleDose} mg</span>
-          {med.maxDailyDoseMg && (
-            <> · Dosis máxima diaria: <span className="font-bold text-slate-700">{med.maxDailyDoseMg} mg</span></>
-          )}
-        </div>
-      )}
+      {/* Presentaciones del hospital */}
+      <HospitalDose med={med} doseMg={doseMgForPresentation} />
 
-      <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-        <p className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">Presentaciones</p>
-        <p className="text-xs text-slate-600">{med.forms}</p>
-      </div>
-
+      {/* Notas */}
       {med.notes && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
           <p className="text-xs leading-relaxed text-amber-800">{med.notes}</p>
+        </div>
+      )}
+
+      {/* Sin arsenal */}
+      {!med.inArsenal && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+          <p className="text-xs text-slate-500">⚠ Medicamento no listado en arsenal HCSF Bulnes 2023 — confirmar disponibilidad en farmacia.</p>
         </div>
       )}
     </div>
@@ -498,37 +651,31 @@ export default function PediatricDoseCalculator() {
 
   return (
     <Card className="overflow-hidden rounded-2xl border border-slate-200 shadow-sm">
-      {/* Header */}
       <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-6 py-4 text-white">
         <h2 className="text-lg font-bold">Calculadora de Dosis Pediátrica</h2>
         <p className="mt-0.5 text-sm text-teal-100">
-          Dosis por peso · Pool editable de medicamentos
+          Dosis por peso · Presentaciones arsenal HCSF Bulnes 2023
         </p>
       </div>
 
       <div className="p-5 space-y-5">
 
-        {/* Weight */}
+        {/* Peso */}
         <div>
           <Label className="text-sm font-semibold text-slate-700">Peso del paciente (kg)</Label>
           <Input
-            type="number"
-            min="0.5"
-            max="120"
-            step="0.1"
+            type="number" min="0.5" max="120" step="0.1"
             value={weight}
             onChange={e => setWeight(e.target.value)}
             placeholder="Ej: 18.5"
             className="mt-1 text-lg font-semibold"
           />
           {weight && parseFloat(weight) > 0 && (
-            <p className="mt-1 text-xs text-slate-500">
-              Peso registrado: <strong>{parseFloat(weight)} kg</strong>
-            </p>
+            <p className="mt-1 text-xs text-slate-500">Peso: <strong>{parseFloat(weight)} kg</strong></p>
           )}
         </div>
 
-        {/* Category chips */}
+        {/* Categorías */}
         <div className="overflow-x-auto pb-1">
           <div className="flex gap-2 min-w-max">
             {['Todos', ...CATEGORIES].map(cat => (
@@ -547,7 +694,7 @@ export default function PediatricDoseCalculator() {
           </div>
         </div>
 
-        {/* Search */}
+        {/* Búsqueda */}
         <div ref={searchRef} className="relative">
           <Label className="text-sm font-semibold text-slate-700">Medicamento</Label>
           <div className="relative mt-1">
@@ -561,7 +708,7 @@ export default function PediatricDoseCalculator() {
               className="flex h-10 w-full rounded-xl border border-input bg-white pl-9 pr-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
-          {showList && (filtered.length > 0) && (
+          {showList && filtered.length > 0 && (
             <ul className="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
               {filtered.map(med => (
                 <li key={med.id}>
@@ -570,9 +717,14 @@ export default function PediatricDoseCalculator() {
                     onMouseDown={e => { e.preventDefault(); handleSelect(med); }}
                     className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-teal-50 transition-colors"
                   >
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">{med.name}</p>
-                      <p className="text-xs text-slate-500">{med.category}</p>
+                    <div className="flex items-center gap-2">
+                      {med.inArsenal && (
+                        <FlaskConical className="h-3 w-3 text-teal-500 shrink-0" />
+                      )}
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">{med.name}</p>
+                        <p className="text-xs text-slate-500">{med.category}</p>
+                      </div>
                     </div>
                     <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
                       {med.doseMin === med.doseMax ? med.doseMin : `${med.doseMin}–${med.doseMax}`} {med.unit}
@@ -584,44 +736,37 @@ export default function PediatricDoseCalculator() {
           )}
         </div>
 
-        {/* Selected medication card */}
+        {/* Medicamento seleccionado */}
         {currentMed && (
-          <div className="rounded-2xl border border-teal-200 bg-teal-50/40 p-4 space-y-3">
+          <div className="rounded-2xl border border-teal-200 bg-teal-50/30 p-4 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="font-bold text-slate-900">{currentMed.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-slate-900">{currentMed.name}</p>
+                  {currentMed.inArsenal && (
+                    <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-700 border border-teal-200">
+                      Arsenal HCSF
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-teal-700">{currentMed.category}</p>
                 {currentMed.minAge && (
                   <p className="text-xs text-amber-700 font-medium">Edad mínima: {currentMed.minAge}</p>
                 )}
               </div>
-              {/* Editable dose */}
+              {/* Editar dosis */}
               {editingId === currentMed.id ? (
                 <div className="flex items-center gap-1.5">
                   <div className="text-right">
                     <p className="text-[10px] text-slate-500 mb-0.5">Min–Max {currentMed.unit}</p>
                     <div className="flex gap-1 items-center">
-                      <input
-                        type="number"
-                        value={editVal.min}
-                        onChange={e => setEditVal(v => ({ ...v, min: e.target.value }))}
-                        className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-xs text-center"
-                      />
+                      <input type="number" value={editVal.min} onChange={e => setEditVal(v => ({ ...v, min: e.target.value }))} className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-xs text-center" />
                       <span className="text-xs text-slate-400">–</span>
-                      <input
-                        type="number"
-                        value={editVal.max}
-                        onChange={e => setEditVal(v => ({ ...v, max: e.target.value }))}
-                        className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-xs text-center"
-                      />
+                      <input type="number" value={editVal.max} onChange={e => setEditVal(v => ({ ...v, max: e.target.value }))} className="w-16 rounded-lg border border-slate-300 px-2 py-1 text-xs text-center" />
                     </div>
                   </div>
-                  <button onClick={saveEdit} className="p-1 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200">
-                    <Check className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => setEditingId(null)} className="p-1 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200">
-                    <X className="h-4 w-4" />
-                  </button>
+                  <button onClick={saveEdit} className="p-1 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200"><Check className="h-4 w-4" /></button>
+                  <button onClick={() => setEditingId(null)} className="p-1 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200"><X className="h-4 w-4" /></button>
                 </div>
               ) : (
                 <button
@@ -633,21 +778,22 @@ export default function PediatricDoseCalculator() {
                 </button>
               )}
             </div>
-
             <DoseResult med={currentMed} weight={weight} />
           </div>
         )}
 
         {!currentMed && !query && (
           <div className="rounded-2xl border-2 border-dashed border-slate-200 py-10 text-center text-slate-400">
+            <FlaskConical className="h-8 w-8 mx-auto mb-2 text-slate-300" />
             <p className="text-sm">Selecciona un medicamento para calcular la dosis</p>
+            <p className="text-xs mt-1 text-slate-300">El ícono <span className="text-teal-400">⬡</span> indica disponibilidad en arsenal HCSF</p>
           </div>
         )}
       </div>
 
       <div className="border-t border-slate-100 px-6 py-3">
         <p className="text-[11px] text-slate-400">
-          Ref: Taketomo CK et al. Pediatric & Neonatal Dosage Handbook (Lexicomp) · BNF for Children · Minsal Chile. Siempre verificar contra ficha técnica local y ajustar según clínica.
+          Arsenal: Res. Exenta N°5235 Oct 2023, Servicio de Salud Ñuble · Dosis: Lexicomp Pediatric, BNFc, Minsal Chile. Verificar siempre contra ficha técnica y ajustar según clínica.
         </p>
       </div>
     </Card>
