@@ -189,15 +189,41 @@ export default function Home() {
       </div>
 
       {/* Footer note */}
-      <div className="text-center pb-8 text-sm text-slate-500">
-        <p>Hospital de Bulnes - Servicio de Salud Ñuble</p>
-        <p className="mt-1">Plataforma de consulta interna para personal médico</p>
-        <Link 
-          to={createPageUrl('AdminLogin')}
-          className="inline-block mt-4 text-xs text-slate-400 hover:text-blue-600 transition-colors"
-        >
-          Ingresar
-        </Link>
+      <div className="pb-10 px-4 max-w-2xl mx-auto space-y-5">
+
+        {/* Créditos */}
+        <div className="text-center text-sm text-slate-500">
+          <p>Hospital de Bulnes · Servicio de Salud Ñuble</p>
+          <p className="mt-1">Plataforma de consulta interna para personal médico</p>
+          <p className="mt-3 text-slate-600 font-medium">
+            Desarrollado en conjunto por Dr. Fernando Alvarado Caro e Ing. Daniel Vargas Quinteros
+          </p>
+          <p className="mt-0.5 text-xs text-slate-400">Abril 2026 · Última edición: abril 2026</p>
+        </div>
+
+        {/* Disclaimer */}
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-amber-700">Aviso importante</p>
+          <p className="text-xs leading-relaxed text-amber-900">
+            Esta plataforma es una herramienta de consulta y apoyo a la gestión clínica, de carácter
+            referencial y de uso exclusivo para personal de salud. La información contenida{' '}
+            <strong>no reemplaza el juicio clínico del profesional</strong> ni constituye una indicación
+            médica formal. Los desarrolladores no se hacen responsables de errores, imprecisiones,
+            posologías o indicaciones farmacológicas, derivaciones o solicitudes de estudios basadas
+            en el contenido de esta plataforma. Para certeza sobre cualquier antecedente, remítase a
+            los protocolos institucionales vigentes. En caso de duda, consulte directamente con el
+            profesional o especialista a cargo.
+          </p>
+        </div>
+
+        <div className="text-center">
+          <Link
+            to={createPageUrl('AdminLogin')}
+            className="inline-block text-xs text-slate-300 hover:text-blue-500 transition-colors"
+          >
+            Ingresar
+          </Link>
+        </div>
       </div>
     </div>
   );
