@@ -127,6 +127,7 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
   useEffect(() => {
     if (query.length < 3) {
       setAiResults([]);
+      setIsAiLoading(false);
       return;
     }
 
@@ -153,7 +154,7 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
 
         setAiResults(matched);
       } catch (err) {
-        // AI failure → silent fallback
+        console.error('[AI Search] Error:', err?.message ?? err);
         setAiResults([]);
       }
       setIsAiLoading(false);
