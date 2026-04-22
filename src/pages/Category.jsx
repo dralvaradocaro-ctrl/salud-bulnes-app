@@ -1,12 +1,14 @@
 const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
+import { getTopicVisual } from '@/lib/topicVisuals';
+import { hasVisibleGuaranteeDays } from '@/lib/guarantees';
 import { 
   ChevronLeft, 
   FileText, 
@@ -14,23 +16,7 @@ import {
   ClipboardList,
   CheckCircle2,
   ChevronRight,
-  Heart,
-  Brain,
-  Activity,
-  Zap,
-  AlertTriangle,
-  Thermometer,
-  Baby,
-  Droplet,
-  Eye,
-  Bone,
-  Pill,
-  Wind,
-  Scale,
-  Radio,
-  Users,
   Clock,
-  Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,9 +31,12 @@ import {
 export default function Category() {
   const urlParams = new URLSearchParams(window.location.search);
   const categoryId = urlParams.get('id');
+  const initialTopicFilter = urlParams.get('topicFilter') || 'all';
+  const initialSubcategory = urlParams.get('topicArea') || 'all';
 
   const [activeTab, setActiveTab] = useState('topics');
-  const [activeSubcategory, setActiveSubcategory] = useState('all');
+  const [activeSubcategory, setActiveSubcategory] = useState(initialSubcategory);
+  const [activeTopicFilter, setActiveTopicFilter] = useState(initialTopicFilter);
 
   const { data: category, isLoading: loadingCategory } = useQuery({
     queryKey: ['category', categoryId],
@@ -78,13 +67,21 @@ export default function Category() {
     enabled: !!categoryId
   });
 
+  const matchesTopicFilter = (topic) => {
+    if (activeTopicFilter === 'local') return !!topic.has_local_protocol;
+    if (activeTopicFilter === 'ges') return topic.clasificacion_ges === 'GES';
+    return true;
+  };
+
+  const filteredByTopicType = topics.filter(matchesTopicFilter);
+
   // Get unique subcategories
-  const subcategories = [...new Set(topics.map(t => t.subcategory).filter(Boolean))];
+  const subcategories = [...new Set(filteredByTopicType.map(t => t.subcategory).filter(Boolean))];
 
   // Filter topics by subcategory
   const filteredTopics = activeSubcategory === 'all' 
-    ? topics 
-    : topics.filter(t => t.subcategory === activeSubcategory);
+    ? filteredByTopicType 
+    : filteredByTopicType.filter(t => t.subcategory === activeSubcategory);
 
   // Group topics by subcategory and sort
   const groupedTopics = filteredTopics.reduce((acc, topic) => {
@@ -94,21 +91,86 @@ export default function Category() {
     return acc;
   }, {});
 
-  // Sort within each group: by tipo_contenido, then protocol local
+  const hasMeaningfulTopicContent = (topic) => {
+    const textFields = [
+      topic.clinical_summary,
+      topic.diagnostic_orientation,
+      topic.complementary_studies,
+      topic.initial_treatment,
+      topic.protocol_objective,
+      topic.protocol_file_url,
+      topic.guarantee_details,
+    ];
+
+    const hasTextContent = textFields.some((value) => typeof value === 'string' && value.trim().length > 0);
+    const hasStructuredContent = [
+      topic.content_blocks,
+      topic.protocol_flowchart,
+      topic.protocol_algorithm,
+      topic.protocol_medications,
+      topic.protocol_authors,
+      topic.protocol_participants,
+      topic.related_topics,
+      topic.related_tools,
+    ].some((value) => Array.isArray(value) && value.length > 0);
+
+    return hasTextContent || hasStructuredContent;
+  };
+
+  // Sort within each group:
+  // 1) protocolo local con contenido real
+  // 2) protocolo local
+  // 3) contenido real
+  // 4) tipo de contenido
+  // 5) orden / nombre
   const typeOrder = { protocolo: 0, contenido_medico: 1, herramienta_clinica: 2 };
   Object.keys(groupedTopics).forEach(sub => {
     groupedTopics[sub].sort((a, b) => {
+      const aFeatured = a.has_local_protocol && hasMeaningfulTopicContent(a);
+      const bFeatured = b.has_local_protocol && hasMeaningfulTopicContent(b);
+      if (aFeatured !== bFeatured) return aFeatured ? -1 : 1;
+
+      if (a.has_local_protocol && !b.has_local_protocol) return -1;
+      if (!a.has_local_protocol && b.has_local_protocol) return 1;
+
+      const aHasContent = hasMeaningfulTopicContent(a);
+      const bHasContent = hasMeaningfulTopicContent(b);
+      if (aHasContent !== bHasContent) return aHasContent ? -1 : 1;
+
       const aType = a.tipo_contenido?.[0] || 'contenido_medico';
       const bType = b.tipo_contenido?.[0] || 'contenido_medico';
       if (aType !== bType) return (typeOrder[aType] ?? 1) - (typeOrder[bType] ?? 1);
-      if (a.has_local_protocol && !b.has_local_protocol) return -1;
-      if (!a.has_local_protocol && b.has_local_protocol) return 1;
-      return 0;
+
+      const orderDiff = (a.order ?? Number.MAX_SAFE_INTEGER) - (b.order ?? Number.MAX_SAFE_INTEGER);
+      if (orderDiff !== 0) return orderDiff;
+
+      return (a.name || '').localeCompare(b.name || '', 'es');
     });
   });
 
   // Define subcategory order for better organization
-  const subcategoryOrder = ['Protocolos Locales', 'Herramientas Clínicas', 'Patologías Prevalentes', 'Otros'];
+  const subcategoryOrder = [
+    'Cardiovascular',
+    'Neurología',
+    'Respiratorio',
+    'Endocrinología y Metabólico',
+    'Nefrología y Urología',
+    'Oftalmología',
+    'Oncología',
+    'Ginecología y Obstetricia',
+    'Salud Mental',
+    'Digestivo y Hepatología',
+    'Pediatría y Neonatología',
+    'Traumatología y Rehabilitación',
+    'Reumatología e Inmunología',
+    'Otorrinolaringología',
+    'Odontología y Salud Oral',
+    'GES General',
+    'Protocolos Locales',
+    'Herramientas Clínicas',
+    'Patologías Prevalentes',
+    'Otros'
+  ];
   const sortedSubcategories = Object.keys(groupedTopics).sort((a, b) => {
     const indexA = subcategoryOrder.indexOf(a);
     const indexB = subcategoryOrder.indexOf(b);
@@ -118,57 +180,42 @@ export default function Category() {
     return indexA - indexB;
   });
 
-  // Get icon for topic based on name/tags
-  const getTopicIcon = (topic) => {
-    const name = topic.name?.toLowerCase() || '';
-    const tags = topic.tags?.map(t => t.toLowerCase()).join(' ') || '';
-    const searchText = `${name} ${tags}`;
+  const topicFilterOptions = [
+    { value: 'all', count: topics.length, label: `Todos (${topics.length})` },
+    { value: 'local', count: topics.filter(topic => topic.has_local_protocol).length, label: `Protocolo local (${topics.filter(topic => topic.has_local_protocol).length})` },
+    { value: 'ges', count: topics.filter(topic => topic.clasificacion_ges === 'GES').length, label: `GES (${topics.filter(topic => topic.clasificacion_ges === 'GES').length})` },
+  ];
+  const meaningfulTopicFilterOptions = topicFilterOptions.filter((option) =>
+    option.value === 'all' || (option.count > 0 && option.count < topics.length)
+  );
+  const shouldShowTopicFilters = meaningfulTopicFilterOptions.length > 1;
+  const shouldShowAreaFilters = subcategories.length > 1;
+  const shouldShowFilterPanel = shouldShowTopicFilters || shouldShowAreaFilters;
 
-    if (searchText.includes('acv') || searchText.includes('stroke') || searchText.includes('neurolog')) return Brain;
-    if (searchText.includes('lactante') || searchText.includes('suplementación') || searchText.includes('vitamina') || searchText.includes('hierro')) return Baby;
-    if (searchText.includes('cuerpo extraño')) return AlertTriangle;
-    if (searchText.includes('cie-10') || searchText.includes('código')) return ClipboardList;
-    if (searchText.includes('imagen') || searchText.includes('imagenología') || searchText.includes('radiología') || searchText.includes('scanner')) return Radio;
-    if (searchText.includes('policlínico') || searchText.includes('atenciones') || searchText.includes('formulario')) return Stethoscope;
-    if (searchText.includes('cardio') || searchText.includes('corazón') || searchText.includes('infarto')) return Heart;
-    if (searchText.includes('diabetes') || searchText.includes('glicemia')) return Activity;
-    if (searchText.includes('urgencia') || searchText.includes('emergencia') || searchText.includes('shock')) return Zap;
-    if (searchText.includes('trauma') || searchText.includes('fractura') || searchText.includes('hueso')) return Bone;
-    if (searchText.includes('respiratorio') || searchText.includes('pulmon') || searchText.includes('asma') || searchText.includes('epoc')) return Wind;
-    if (searchText.includes('pediatr') || searchText.includes('niño') || searchText.includes('neonato')) return Baby;
-    if (searchText.includes('hemorragia') || searchText.includes('sangrado') || searchText.includes('hematoma')) return Droplet;
-    if (searchText.includes('oftalmo') || searchText.includes('ojo') || searchText.includes('visión')) return Eye;
-    if (searchText.includes('fármaco') || searchText.includes('medicamento') || searchText.includes('intoxicación')) return Pill;
-    if (searchText.includes('fiebre') || searchText.includes('temperatura')) return Thermometer;
-    if (searchText.includes('obesidad') || searchText.includes('peso') || searchText.includes('nutrición')) return Scale;
-    if (searchText.includes('gineco') || searchText.includes('embarazo') || searchText.includes('parto')) return Users;
-    if (searchText.includes('sepsis') || searchText.includes('infección')) return Shield;
-    if (searchText.includes('dolor')) return AlertTriangle;
-    
-    return FileText;
-  };
+  useEffect(() => {
+    if (activeSubcategory !== 'all' && (!shouldShowAreaFilters || !subcategories.includes(activeSubcategory))) {
+      setActiveSubcategory('all');
+    }
+  }, [activeSubcategory, shouldShowAreaFilters, subcategories]);
 
-  // Get icon color for topic
-  const getTopicColor = (topic) => {
-    const Icon = getTopicIcon(topic);
-    if (Icon === Heart) return { bg: 'bg-red-100', text: 'text-red-600' };
-    if (Icon === Brain) return { bg: 'bg-purple-100', text: 'text-purple-600' };
-    if (Icon === Activity) return { bg: 'bg-blue-100', text: 'text-blue-600' };
-    if (Icon === Zap) return { bg: 'bg-yellow-100', text: 'text-yellow-600' };
-    if (Icon === Bone) return { bg: 'bg-slate-100', text: 'text-slate-600' };
-    if (Icon === Wind) return { bg: 'bg-cyan-100', text: 'text-cyan-600' };
-    if (Icon === Baby) return { bg: 'bg-pink-100', text: 'text-pink-600' };
-    if (Icon === Droplet) return { bg: 'bg-rose-100', text: 'text-rose-600' };
-    if (Icon === Eye) return { bg: 'bg-indigo-100', text: 'text-indigo-600' };
-    if (Icon === Pill) return { bg: 'bg-emerald-100', text: 'text-emerald-600' };
-    if (Icon === Thermometer) return { bg: 'bg-orange-100', text: 'text-orange-600' };
-    if (Icon === Scale) return { bg: 'bg-amber-100', text: 'text-amber-600' };
-    if (Icon === Radio) return { bg: 'bg-violet-100', text: 'text-violet-600' };
-    if (Icon === Users) return { bg: 'bg-fuchsia-100', text: 'text-fuchsia-600' };
-    if (Icon === Shield) return { bg: 'bg-red-100', text: 'text-red-600' };
-    if (Icon === AlertTriangle) return { bg: 'bg-orange-100', text: 'text-orange-600' };
-    return { bg: 'bg-blue-100', text: 'text-blue-600' };
-  };
+  useEffect(() => {
+    if (activeTopicFilter !== 'all' && !meaningfulTopicFilterOptions.some((option) => option.value === activeTopicFilter)) {
+      setActiveTopicFilter('all');
+    }
+  }, [activeTopicFilter, meaningfulTopicFilterOptions]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams(window.location.search);
+    if (categoryId) nextParams.set('id', categoryId);
+    if (activeTopicFilter !== 'all') nextParams.set('topicFilter', activeTopicFilter);
+    else nextParams.delete('topicFilter');
+    if (activeSubcategory !== 'all') nextParams.set('topicArea', activeSubcategory);
+    else nextParams.delete('topicArea');
+
+    const nextSearch = nextParams.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}`;
+    window.history.replaceState({}, '', nextUrl);
+  }, [activeSubcategory, activeTopicFilter, categoryId]);
 
   if (loadingCategory) {
     return (
@@ -246,32 +293,63 @@ export default function Category() {
         {/* Topics Tab */}
         {activeTab === 'topics' && (
           <div>
-            {/* Subcategory filters — only if there are multiple subcategories */}
-            {subcategories.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-6">
-                <button
-                  onClick={() => setActiveSubcategory('all')}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                    activeSubcategory === 'all'
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                  }`}
-                >
-                  Todos ({topics.length})
-                </button>
-                {subcategories.map(sub => (
-                  <button
-                    key={sub}
-                    onClick={() => setActiveSubcategory(sub)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                      activeSubcategory === sub
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                    }`}
-                  >
-                    {sub} ({topics.filter(t => t.subcategory === sub).length})
-                  </button>
-                ))}
+            {shouldShowFilterPanel && (
+              <div className="mb-6 space-y-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                {shouldShowTopicFilters && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 mb-2">
+                      Filtro de contenido
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {meaningfulTopicFilterOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => setActiveTopicFilter(option.value)}
+                          className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                            activeTopicFilter === option.value
+                              ? 'bg-blue-600 text-white shadow-md'
+                              : 'border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {shouldShowAreaFilters && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 mb-2">
+                    Filtrar por área o tema
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setActiveSubcategory('all')}
+                      className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                        activeSubcategory === 'all'
+                          ? 'bg-slate-900 text-white shadow-md'
+                          : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      Todas las áreas ({filteredByTopicType.length})
+                    </button>
+                    {subcategories.map(sub => (
+                      <button
+                        key={sub}
+                        onClick={() => setActiveSubcategory(sub)}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                          activeSubcategory === sub
+                            ? 'bg-slate-900 text-white shadow-md'
+                            : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        {sub} ({filteredByTopicType.filter(t => t.subcategory === sub).length})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                )}
               </div>
             )}
 
@@ -300,8 +378,8 @@ export default function Category() {
                     )}
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {groupedTopics[subcategory].map((topic, index) => {
-                        const TopicIcon = getTopicIcon(topic);
-                        const colors = getTopicColor(topic);
+                        const topicVisual = getTopicVisual(topic);
+                        const TopicIcon = topicVisual.icon;
                         return (
                           <motion.div
                             key={topic.id}
@@ -322,8 +400,8 @@ export default function Category() {
                               }`}
                             >
                               <div className="flex flex-col h-full">
-                                <div className={`p-3 ${colors.bg} rounded-2xl w-fit mb-4 group-hover:scale-110 transition-transform`}>
-                                  <TopicIcon className={`h-7 w-7 ${colors.text}`} />
+                                <div className={`p-3 ${topicVisual.bg} rounded-2xl w-fit mb-4 ring-1 ${topicVisual.ring} group-hover:scale-110 transition-transform`}>
+                                  <TopicIcon className={`h-7 w-7 ${topicVisual.text}`} />
                                 </div>
                                 <div className="flex-1">
                                   <h3 className={`font-bold text-slate-900 transition-colors mb-2 line-clamp-2 ${
@@ -333,13 +411,13 @@ export default function Category() {
                                   </h3>
                                   <div className="flex flex-wrap gap-1.5 mb-3">
                                     {(topic.tipo_contenido || []).includes('protocolo') && (
-                                      <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">🟢 Protocolo</Badge>
+                                      <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Protocolo</Badge>
                                     )}
                                     {(topic.tipo_contenido || []).includes('contenido_medico') && (
-                                      <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">🔵 Contenido Médico</Badge>
+                                      <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Contenido Médico</Badge>
                                     )}
                                     {(topic.tipo_contenido || []).includes('herramienta_clinica') && (
-                                      <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">🟣 Herramienta</Badge>
+                                      <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">Herramienta</Badge>
                                     )}
                                     {topic.has_local_protocol && (
                                       <Badge className="bg-green-100 text-green-700 border-green-300 flex items-center gap-1 text-xs font-semibold">
@@ -350,7 +428,7 @@ export default function Category() {
                                     {topic.clasificacion_ges === 'GES' && (
                                       <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">GES</Badge>
                                     )}
-                                    {topic.guarantee_days && (
+                                    {hasVisibleGuaranteeDays(topic.guarantee_days) && (
                                       <TooltipProvider>
                                         <Tooltip>
                                           <TooltipTrigger asChild>
@@ -395,7 +473,7 @@ export default function Category() {
             ) : (
               <div className="text-center py-12 bg-white rounded-2xl border border-slate-200">
                 <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-500">No hay temas en esta categoría aún</p>
+                <p className="text-slate-500">No hay temas que coincidan con los filtros actuales</p>
               </div>
             )}
           </div>

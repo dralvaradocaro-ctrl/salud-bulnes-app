@@ -627,9 +627,9 @@ export default function TopicEditorFull({
               <Label className="mb-2 block text-sm">Tipo de Contenido <span className="text-red-500">*</span></Label>
               <div className="flex flex-wrap gap-2">
                 {[
-                  { value: 'protocolo', label: '🟢 Protocolo', bg: 'bg-green-100 border-green-400 text-green-800' },
-                  { value: 'contenido_medico', label: '🔵 Contenido Médico', bg: 'bg-blue-100 border-blue-400 text-blue-800' },
-                  { value: 'herramienta_clinica', label: '🟣 Herramienta Clínica', bg: 'bg-purple-100 border-purple-400 text-purple-800' },
+                  { value: 'protocolo', label: 'Protocolo', bg: 'bg-green-100 border-green-400 text-green-800' },
+                  { value: 'contenido_medico', label: 'Contenido Médico', bg: 'bg-blue-100 border-blue-400 text-blue-800' },
+                  { value: 'herramienta_clinica', label: 'Herramienta Clínica', bg: 'bg-purple-100 border-purple-400 text-purple-800' },
                 ].map(({ value, label, bg }) => {
                   const selected = (formData.tipo_contenido || []).includes(value);
                   return (
@@ -665,8 +665,8 @@ export default function TopicEditorFull({
                     <SelectValue placeholder="Seleccionar" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="GES">🔵 GES</SelectItem>
-                    <SelectItem value="No GES">⚪ No GES</SelectItem>
+                    <SelectItem value="GES">GES</SelectItem>
+                    <SelectItem value="No GES">No GES</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -873,13 +873,13 @@ export default function TopicEditorFull({
                   {formData.tipo_contenido?.length > 0 && (
                     <div className="flex gap-1.5 mt-2 flex-wrap">
                       {formData.tipo_contenido.includes('protocolo') && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 font-medium">🟢 Protocolo</span>
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 font-medium">Protocolo</span>
                       )}
                       {formData.tipo_contenido.includes('contenido_medico') && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 font-medium">🔵 Contenido Médico</span>
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 font-medium">Contenido Médico</span>
                       )}
                       {formData.tipo_contenido.includes('herramienta_clinica') && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 font-medium">🟣 Herramienta</span>
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 font-medium">Herramienta</span>
                       )}
                       {formData.has_local_protocol && (
                         <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800 font-semibold border border-green-300">✓ Prot. Local</span>

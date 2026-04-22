@@ -1,7 +1,7 @@
 const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, FileText, Stethoscope, ArrowRight, Calculator } from 'lucide-react';
+import { Search, X, Stethoscope, ArrowRight, Calculator } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 import { Link } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { createPageUrl } from '@/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isHiddenClinicalTool } from '@/components/utils/hiddenContent';
 import { calculatorReferences } from '@/components/calculators/catalog';
+import { getTopicVisual } from '@/lib/topicVisuals';
 
 export default function GlobalSearch({ className = "", autoFocus = false }) {
   const [query, setQuery] = useState('');
@@ -123,7 +124,11 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
               </div>
             ) : results.length > 0 ? (
               <div className="max-h-96 overflow-y-auto">
-                {results.map((item, index) => (
+                {results.map((item) => {
+                  const topicVisual = item.type === 'topic' ? getTopicVisual(item) : null;
+                  const TopicIcon = topicVisual?.icon;
+
+                  return (
                   <Link
                     key={`${item.type}-${item.id}`}
                     to={createPageUrl(
@@ -138,13 +143,13 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
                   >
                     <div className={`p-2 rounded-xl ${
                       item.type === 'topic'
-                        ? 'bg-blue-100'
+                        ? `${topicVisual.bg} ring-1 ${topicVisual.ring}`
                         : item.type === 'calculator'
                           ? 'bg-purple-100'
                           : 'bg-emerald-100'
                     }`}>
                       {item.type === 'topic' ? (
-                        <FileText className={`h-5 w-5 ${item.type === 'topic' ? 'text-blue-600' : 'text-emerald-600'}`} />
+                        <TopicIcon className={`h-5 w-5 ${topicVisual.text}`} />
                       ) : item.type === 'calculator' ? (
                         <Calculator className="h-5 w-5 text-purple-600" />
                       ) : (
@@ -168,7 +173,8 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
                     )}
                     <ArrowRight className="h-4 w-4 text-slate-400" />
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="p-6 text-center text-slate-500">

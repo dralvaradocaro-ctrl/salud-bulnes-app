@@ -33,6 +33,7 @@ const colorMap = {
 export default function CategoryCard({ category, index }) {
   const Icon = iconMap[category.icon] || Heart;
   const colorClass = colorMap[category.color] || colorMap['blue'];
+  const targetUrl = createPageUrl(`Category?id=${category.id}`);
 
   return (
     <motion.div
@@ -41,7 +42,7 @@ export default function CategoryCard({ category, index }) {
       transition={{ delay: index * 0.1 }}
     >
       <Link
-        to={createPageUrl(`Category?id=${category.id}`)}
+        to={targetUrl}
         className="group block"
       >
         <div className="relative bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 overflow-hidden">

@@ -17,6 +17,26 @@ const TABLE_MAP = {
   TopicVersion: 'topic_versions',
 };
 
+function applySort(query, sort) {
+  if (!sort) return query;
+
+  const ascending = !String(sort).startsWith('-');
+  const column = ascending ? String(sort) : String(sort).slice(1);
+
+  if (!column) return query;
+
+  return query.order(column, { ascending });
+}
+
+function applyPagination(query, limit, skip) {
+  let nextQuery = query;
+
+  if (limit) nextQuery = nextQuery.limit(limit);
+  if (skip && limit) nextQuery = nextQuery.range(skip, skip + limit - 1);
+
+  return nextQuery;
+}
+
 function createEntityHandler(entityName) {
   const table = TABLE_MAP[entityName];
   if (!table) {
@@ -35,22 +55,23 @@ function createEntityHandler(entityName) {
     /** Lista todos los registros. sort = nombre de columna para ordenar */
     async list(sort, limit, skip) {
       let q = supabase.from(table).select('*');
-      if (sort) q = q.order(sort, { ascending: true });
-      if (limit) q = q.limit(limit);
-      if (skip && limit) q = q.range(skip, skip + limit - 1);
+      q = applySort(q, sort);
+      q = applyPagination(q, limit, skip);
       const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
     },
 
     /** Filtra por condiciones simples { campo: valor } */
-    async filter(conditions) {
+    async filter(conditions, sort, limit, skip) {
       let q = supabase.from(table).select('*');
       if (conditions) {
         for (const [key, value] of Object.entries(conditions)) {
           if (value !== undefined && value !== null) q = q.eq(key, value);
         }
       }
+      q = applySort(q, sort);
+      q = applyPagination(q, limit, skip);
       const { data, error } = await q;
       if (error) throw error;
       return data ?? [];

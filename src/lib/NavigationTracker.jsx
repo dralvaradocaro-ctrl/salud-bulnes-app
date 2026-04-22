@@ -12,6 +12,27 @@ export default function NavigationTracker() {
     const { Pages, mainPage } = pagesConfig;
     const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 
+    useEffect(() => {
+        if (!window.history || !('scrollRestoration' in window.history)) return undefined;
+
+        const previousRestoration = window.history.scrollRestoration;
+        window.history.scrollRestoration = 'manual';
+
+        return () => {
+            window.history.scrollRestoration = previousRestoration;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (location.hash) return;
+
+        window.requestAnimationFrame(() => {
+            window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+            document.documentElement?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+            document.body?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        });
+    }, [location.pathname, location.search, location.hash]);
+
     // Log user activity when navigating to a page
     useEffect(() => {
         // Extract page name from pathname

@@ -24,6 +24,7 @@ export default function Home() {
 
   const protocolCount = topics.filter(t => t.has_local_protocol).length;
   const calculatorCount = countedCalculators.length;
+  const categoryEntries = categories;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
@@ -170,11 +171,19 @@ export default function Home() {
               </div>
             ))}
           </div>
-        ) : (
+        ) : categoryEntries.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categories.map((category, index) => (
-              <CategoryCard key={category.id} category={category} index={index} />
+            {categoryEntries.map((category, index) => (
+              <CategoryCard
+                key={category.id}
+                category={category}
+                index={index}
+              />
             ))}
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+            <p className="text-lg font-semibold text-slate-800">No hay categorías disponibles</p>
           </div>
         )}
       </div>
