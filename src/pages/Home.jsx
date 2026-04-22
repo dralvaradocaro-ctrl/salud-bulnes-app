@@ -195,25 +195,43 @@ export default function Home() {
         <div className="text-center text-sm text-slate-500">
           <p>Hospital de Bulnes · Servicio de Salud Ñuble</p>
           <p className="mt-1">Plataforma de consulta interna para personal médico</p>
-          <p className="mt-3 text-slate-600 font-medium">
+          <p className="mt-3 text-slate-500">
             Desarrollado en conjunto por Dr. Fernando Alvarado Caro e Ing. Daniel Vargas Quinteros
           </p>
           <p className="mt-0.5 text-xs text-slate-400">Abril 2026 · Última edición: abril 2026</p>
         </div>
 
         {/* Disclaimer */}
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
-          <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-amber-700">Aviso importante</p>
-          <p className="text-xs leading-relaxed text-amber-900">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 space-y-3">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Aviso legal y de uso</p>
+
+          <p className="text-xs leading-relaxed text-slate-600">
             Esta plataforma es una herramienta de consulta y apoyo a la gestión clínica, de carácter
-            referencial y de uso exclusivo para personal de salud. La información contenida{' '}
-            <strong>no reemplaza el juicio clínico del profesional</strong> ni constituye una indicación
-            médica formal. Los desarrolladores no se hacen responsables de errores, imprecisiones,
-            posologías o indicaciones farmacológicas, derivaciones o solicitudes de estudios basadas
-            en el contenido de esta plataforma. Para certeza sobre cualquier antecedente, remítase a
-            los protocolos institucionales vigentes. En caso de duda, consulte directamente con el
-            profesional o especialista a cargo.
+            estrictamente referencial, destinada al uso exclusivo de personal de salud del Hospital de Bulnes.
+            La información contenida no reemplaza el juicio clínico del profesional ni constituye
+            una indicación médica formal. Los desarrolladores no se hacen responsables de errores,
+            imprecisiones, posologías, indicaciones farmacológicas, derivaciones o solicitudes de estudios
+            realizadas en base al contenido aquí presentado. Para certeza sobre cualquier antecedente,
+            remítase a los protocolos institucionales vigentes. En caso de duda, consulte directamente
+            con el profesional o especialista a cargo.
           </p>
+
+          <div className="border-t border-slate-200 pt-3 space-y-1.5">
+            <p className="text-xs font-semibold text-slate-500">Marco normativo respetado</p>
+            <ul className="space-y-1">
+              {[
+                { ley: 'Ley 20.584', desc: 'Derechos y Deberes de las Personas en Salud — esta plataforma apoya la atención clínica sin almacenar ni procesar datos de pacientes, resguardando en todo momento la dignidad, privacidad y autonomía de las personas.' },
+                { ley: 'Ley 19.628', desc: 'Protección de Datos Personales — la plataforma no recopila, almacena ni procesa datos personales ni datos sensibles de salud de pacientes.' },
+                { ley: 'Ley 20.285', desc: 'Acceso a la Información Pública — la plataforma opera con transparencia como herramienta de apoyo institucional.' },
+                { ley: 'Ley 19.966 (GES/AUGE)', desc: 'Los contenidos relacionados con garantías GES son de carácter informativo y referencial; las garantías legales vigentes se rigen por los decretos MINSAL correspondientes.' },
+              ].map(({ ley, desc }) => (
+                <li key={ley} className="flex items-start gap-2 text-xs text-slate-500">
+                  <span className="mt-0.5 shrink-0 font-semibold text-slate-600">{ley}:</span>
+                  <span className="leading-relaxed">{desc}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         <div className="text-center">
