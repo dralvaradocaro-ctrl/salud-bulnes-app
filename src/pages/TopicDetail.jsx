@@ -19,13 +19,19 @@ import PolicinicTable from '@/components/topic/PolicinicTable';
 import FlowDiagram from '@/components/topic/FlowDiagram';
 import PolicinicGuide from '@/components/topic/PolicinicGuide';
 import ResponsiveTopicLayout from '@/components/topic/ResponsiveTopicLayout';
+import GESStructuredFallback from '@/components/topic/GESStructuredFallback';
+import { getTopicVisual } from '@/lib/topicVisuals';
+import { hasGuaranteeContent, extractGuaranteeStages } from '@/lib/guarantees';
+import { getGesTopicMeta, buildGesClinicalBlock } from '@/lib/ges';
 import ReactMarkdown from 'react-markdown';
-import { 
-  ChevronLeft, 
+import {
+  ChevronLeft,
   CheckCircle2,
   FileText,
   GitBranch,
-  Tag
+  Tag,
+  Clock,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -336,6 +342,38 @@ export default function TopicDetail() {
     );
   }
 
+  const hasContentBlocks = topic.content_blocks?.length > 0;
+  const hasClinicalInfo = Boolean(
+    topic.clinical_summary ||
+    topic.diagnostic_orientation ||
+    topic.complementary_studies ||
+    topic.initial_treatment
+  );
+  const hasProtocolFlowchart = topic.protocol_flowchart?.length > 0;
+  const hasProtocolMedications = topic.protocol_medications?.length > 0;
+  const hasSpecialContent = shouldRenderSpecial(topic);
+  const isSriTopic = topic.name.includes('Secuencia Rápida de Intubación');
+  const showGesFallback = (
+    topic.clasificacion_ges === 'GES' &&
+    !isSriTopic &&
+    !hasContentBlocks &&
+    !hasClinicalInfo &&
+    !hasProtocolFlowchart &&
+    !hasProtocolMedications &&
+    !hasSpecialContent &&
+    flowSteps.length === 0
+  );
+  const topicVisual = getTopicVisual(topic);
+  const TopicIcon = topicVisual.icon;
+  const isGesTopic = topic.clasificacion_ges === 'GES';
+  const { area: gesArea, theme: gesTheme } = isGesTopic ? getGesTopicMeta(topic.name) : { area: null, theme: null };
+
+  // For GES topics with existing content_blocks: prepend clinical block if not already present
+  const hasClinicalBlock = topic.content_blocks?.some(b => b.type === 'clinical');
+  const enhancedBlocks = isGesTopic && hasContentBlocks && !hasClinicalBlock
+    ? [buildGesClinicalBlock(topic), ...(topic.content_blocks || [])]
+    : (topic.content_blocks || []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       {/* Sticky Header */}
@@ -369,36 +407,140 @@ export default function TopicDetail() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
-        {/* Topic Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex flex-wrap items-center gap-3 mb-4">
-            {topic.has_local_protocol && (
-              <Badge className="bg-green-100 text-green-700 border-green-200 flex items-center gap-1 px-3 py-1.5">
-                <CheckCircle2 className="h-4 w-4" />
-                Protocolo local establecido
-              </Badge>
+        {/* Topic Header — GES gradient for GES topics, generic for others, hidden when fallback renders its own */}
+        {!showGesFallback && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            {isGesTopic && gesTheme ? (() => {
+                const gesGuaranteeStages = extractGuaranteeStages(topic);
+                const isOncologyTopic = gesArea === 'Oncología';
+                const oncologyFallback = [
+                  { label: 'Confirmación diagnóstica', timeframe: '45 días', description: 'Desde sospecha fundada hasta confirmación histológica o citológica.' },
+                  { label: 'Inicio de tratamiento',    timeframe: '45 días', description: 'Desde indicación médica (cirugía, quimioterapia o radioterapia).' },
+                  { label: 'Seguimiento',              timeframe: '15 días', description: 'Desde indicación médica para control y continuidad asistencial.' },
+                ];
+                const stagesToShow = gesGuaranteeStages.length > 0 ? gesGuaranteeStages : (isOncologyTopic ? oncologyFallback : []);
+                return (
+                  <div className={`relative overflow-hidden rounded-[2rem] bg-gradient-to-br ${gesTheme.hero} p-6 md:p-8 text-white shadow-xl`}>
+                    <div className="absolute inset-0 opacity-20 pointer-events-none">
+                      <div className="absolute -top-12 -right-8 h-40 w-40 rounded-full bg-white/30 blur-3xl" />
+                      <div className="absolute bottom-0 left-8 h-24 w-24 rounded-full bg-white/20 blur-2xl" />
+                    </div>
+                    <div className="relative space-y-5">
+                      {/* Badges + title */}
+                      <div>
+                        <div className="mb-3 flex flex-wrap gap-2">
+                          {topic.order && <Badge className={`border ${gesTheme.softBadge}`}>GES N.°{topic.order}</Badge>}
+                          {gesArea && <Badge className={`border ${gesTheme.softBadge}`}>{gesArea}</Badge>}
+                          <Badge className={`border ${gesTheme.softBadge}`}>
+                            {topic.has_local_protocol ? 'Con protocolo local' : 'Sin protocolo local'}
+                          </Badge>
+                        </div>
+                        {topic.description && (
+                          <h2 className="text-xl font-bold leading-snug tracking-tight text-white md:text-2xl">
+                            {topic.description}
+                          </h2>
+                        )}
+                      </div>
+                      {/* Guarantee — full width, categories as horizontal grid */}
+                      <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
+                        <div className="mb-3 flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-white/80" />
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                            Garantía de oportunidad
+                          </p>
+                          {isOncologyTopic && (
+                            <span className="ml-auto flex items-center gap-1 rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-medium text-white/80">
+                              <AlertCircle className="h-3 w-3" />
+                              Oncológica
+                            </span>
+                          )}
+                        </div>
+                        {(() => {
+                          const GRP_STYLES = [
+                            { pill: 'bg-sky-400/20 border-sky-300/30',      dot: 'bg-sky-300'    },
+                            { pill: 'bg-violet-400/20 border-violet-300/30', dot: 'bg-violet-300' },
+                            { pill: 'bg-teal-400/20 border-teal-300/30',    dot: 'bg-teal-300'   },
+                            { pill: 'bg-amber-400/20 border-amber-300/30',  dot: 'bg-amber-300'  },
+                          ];
+                          const groups = stagesToShow.reduce((acc, s) => {
+                            const g = acc.find(x => x.label === s.label);
+                            if (g) g.items.push(s); else acc.push({ label: s.label, items: [s] });
+                            return acc;
+                          }, []);
+                          return groups.length > 0 ? (
+                            <div className="space-y-2">
+                              {groups.map(({ label, items }, gi) => {
+                                const st = GRP_STYLES[gi % GRP_STYLES.length];
+                                return (
+                                  <div key={label}>
+                                    <div className={`mb-1.5 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/90 ${st.pill}`}>
+                                      <div className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />
+                                      {label}
+                                    </div>
+                                    <div className="space-y-1">
+                                      {items.map((item, ii) => (
+                                        <div key={ii} className="flex items-center justify-between gap-4 rounded-lg bg-white/10 px-3 py-2">
+                                          <p className="text-sm leading-relaxed text-white/85">{item.description}</p>
+                                          {item.timeframe && (
+                                            <span className="shrink-0 rounded-lg border border-white/20 bg-white/15 px-3 py-1 text-sm font-bold text-white">
+                                              {item.timeframe}
+                                            </span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-white/70">Plazos específicos pendientes de carga para esta ficha.</p>
+                          );
+                        })()}
+                        <p className="mt-3 text-[11px] text-white/50">
+                          Acceso · Calidad · Protección financiera: también garantizados en todas las prestaciones GES.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })() : (
+              <div className="flex flex-col gap-5 md:flex-row md:items-start">
+                <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.5rem] bg-gradient-to-br ${topicVisual.gradient} shadow-lg shadow-slate-200`}>
+                  <TopicIcon className="h-8 w-8 text-white" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-3 mb-4">
+                    {topic.has_local_protocol && (
+                      <Badge className="bg-green-100 text-green-700 border-green-200 flex items-center gap-1 px-3 py-1.5">
+                        <CheckCircle2 className="h-4 w-4" />
+                        Protocolo local establecido
+                      </Badge>
+                    )}
+                    {topic.tags?.map((tag, idx) => (
+                      <Badge key={idx} variant="outline" className="flex items-center gap-1">
+                        <Tag className="h-3 w-3" />
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                  {topic.description && (
+                    <p className="text-lg text-slate-600 leading-relaxed">
+                      {topic.description}
+                    </p>
+                  )}
+                </div>
+              </div>
             )}
-            {topic.tags?.map((tag, idx) => (
-              <Badge key={idx} variant="outline" className="flex items-center gap-1">
-                <Tag className="h-3 w-3" />
-                {tag}
-              </Badge>
-            ))}
-          </div>
+          </motion.div>
+        )}
 
-          {topic.description && (
-            <p className="text-lg text-slate-600 leading-relaxed">
-              {topic.description}
-            </p>
-          )}
-        </motion.div>
-
-        {/* GES Guarantee (if applicable) */}
-        {(topic.guarantee_days || topic.guarantee_details) && (
+        {/* GES Guarantee — only for non-GES topics with guarantee content (GES topics show it inside the hero) */}
+        {!showGesFallback && !isGesTopic && hasGuaranteeContent(topic) && (
           <div className="mb-8">
             <GESGuarantee topic={topic} />
           </div>
@@ -430,14 +572,14 @@ export default function TopicDetail() {
         )}
 
         {/* New Content Blocks System - If content_blocks exists */}
-        {topic.content_blocks?.length > 0 && (
+        {hasContentBlocks && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-10"
           >
-            <ResponsiveTopicLayout 
-              blocks={topic.content_blocks}
+            <ResponsiveTopicLayout
+              blocks={enhancedBlocks}
               layoutMode={topic.layout_mode || 'auto'}
               relatedTopics={topic.related_topics}
               relatedTools={topic.related_tools}
@@ -446,7 +588,7 @@ export default function TopicDetail() {
         )}
 
         {/* Protocol Flowchart - If protocol_flowchart exists */}
-        {topic.protocol_flowchart?.length > 0 && (
+        {hasProtocolFlowchart && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -462,7 +604,7 @@ export default function TopicDetail() {
         )}
 
         {/* Medications - If protocol_medications exists */}
-        {topic.protocol_medications?.length > 0 && (
+        {hasProtocolMedications && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -476,8 +618,22 @@ export default function TopicDetail() {
         {/* Special Rendering for Specific Topics */}
         {renderSpecialContent(topic)}
 
+        {/* Clinical Orientation block — for GES topics using ClinicalInfo (no content_blocks) */}
+        {isGesTopic && !hasContentBlocks && hasClinicalInfo && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <ResponsiveTopicLayout
+              blocks={[buildGesClinicalBlock(topic)]}
+              layoutMode="single"
+            />
+          </motion.div>
+        )}
+
         {/* Clinical Information */}
-        {!topic.name.includes('Secuencia Rápida de Intubación') && !shouldRenderSpecial(topic) && (topic.clinical_summary || topic.diagnostic_orientation || topic.complementary_studies || topic.initial_treatment) && (
+        {!isSriTopic && !hasSpecialContent && hasClinicalInfo && (
           <div className="mb-10">
             <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
               <FileText className="h-5 w-5 text-blue-600" />
@@ -488,7 +644,7 @@ export default function TopicDetail() {
         )}
 
         {/* Flow Timeline */}
-        {!topic.name.includes('Secuencia Rápida de Intubación') && flowSteps.length > 0 && (
+        {!isSriTopic && flowSteps.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -502,8 +658,15 @@ export default function TopicDetail() {
           </motion.div>
         )}
 
+        {/* Structured GES fallback */}
+        {showGesFallback && (
+          <div className="mb-10">
+            <GESStructuredFallback topic={topic} />
+          </div>
+        )}
+
         {/* Empty state if no content */}
-        {!topic.name.includes('Secuencia Rápida de Intubación') && !topic.clinical_summary && !topic.diagnostic_orientation && flowSteps.length === 0 && (
+        {!isSriTopic && !hasSpecialContent && !showGesFallback && !hasClinicalInfo && !hasContentBlocks && !hasProtocolFlowchart && !hasProtocolMedications && flowSteps.length === 0 && (
           <div className="text-center py-16 bg-white rounded-3xl border border-slate-200">
             <FileText className="h-16 w-16 text-slate-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-700 mb-2">
