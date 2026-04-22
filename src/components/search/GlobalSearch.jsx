@@ -74,17 +74,23 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // ── Regular search (300ms debounce) ─────────────────────────────────────
+  // ── Search effect ────────────────────────────────────────────────────────
+  // Regular search runs at 300ms. AI only fires if exact results = 0.
   useEffect(() => {
     if (query.length < 2) {
       setResults([]);
       setAiResults([]);
+      setIsAiLoading(false);
       resultsRef.current = [];
       return;
     }
 
     setIsLoading(true);
+    setAiResults([]);
+    setIsAiLoading(false);
+
     const timer = setTimeout(async () => {
+      let exactResults = [];
       try {
         const { topics, tools } = await loadData();
         const queryLower = query.toLowerCase();
@@ -107,58 +113,45 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
           .filter(calc => calc.name.toLowerCase().includes(queryLower))
           .map(calc => ({ ...calc, type: 'calculator' }));
 
-        const newResults = [
+        exactResults = [
           ...filteredTopics.slice(0, 5),
           ...filteredTools.slice(0, 3),
           ...filteredCalculators.slice(0, 3)
         ];
-        resultsRef.current = newResults;
-        setResults(newResults);
+        resultsRef.current = exactResults;
+        setResults(exactResults);
       } catch (err) {
         console.error('Search error:', err);
       }
       setIsLoading(false);
-    }, 300);
 
-    return () => clearTimeout(timer);
-  }, [query]);
+      // ── AI only when no exact matches and query is meaningful ────────────
+      if (exactResults.length === 0 && query.length >= 3) {
+        setIsAiLoading(true);
+        try {
+          const { topics } = await loadData();
+          const suggestions = await fetchAISuggestions(query, topics, calculatorReferences);
 
-  // ── AI search (800ms debounce) ───────────────────────────────────────────
-  useEffect(() => {
-    if (query.length < 3) {
-      setAiResults([]);
-      setIsAiLoading(false);
-      return;
-    }
+          const matched = suggestions
+            .filter(s => s.name)
+            .map(s => {
+              const topic = topics.find(t => t.name?.toLowerCase() === s.name.toLowerCase());
+              const calc = calculatorReferences.find(c => c.name?.toLowerCase() === s.name.toLowerCase());
+              if (topic) return { ...topic, type: 'topic', aiReason: s.reason };
+              if (calc) return { ...calc, type: 'calculator', aiReason: s.reason };
+              return null;
+            })
+            .filter(Boolean)
+            .slice(0, 4);
 
-    setIsAiLoading(true);
-    const timer = setTimeout(async () => {
-      try {
-        const { topics } = await loadData();
-        const suggestions = await fetchAISuggestions(query, topics, calculatorReferences);
-
-        // Match suggestions to real objects; exclude already-shown exact results
-        const exactNames = new Set(resultsRef.current.map(r => r.name?.toLowerCase()));
-
-        const matched = suggestions
-          .filter(s => s.name && !exactNames.has(s.name.toLowerCase()))
-          .map(s => {
-            const topic = topics.find(t => t.name?.toLowerCase() === s.name.toLowerCase());
-            const calc = calculatorReferences.find(c => c.name?.toLowerCase() === s.name.toLowerCase());
-            if (topic) return { ...topic, type: 'topic', aiReason: s.reason };
-            if (calc) return { ...calc, type: 'calculator', aiReason: s.reason };
-            return null;
-          })
-          .filter(Boolean)
-          .slice(0, 4);
-
-        setAiResults(matched);
-      } catch (err) {
-        console.error('[AI Search] Error:', err?.message ?? err);
-        setAiResults([]);
+          setAiResults(matched);
+        } catch (err) {
+          console.error('[AI Search] Error:', err?.message ?? err);
+          setAiResults([]);
+        }
+        setIsAiLoading(false);
       }
-      setIsAiLoading(false);
-    }, 800);
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [query]);
