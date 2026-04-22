@@ -25,7 +25,7 @@ export default function Layout({ children, currentPageName }) {
   const navItems = [
     { name: 'Inicio', page: 'Home', icon: Home, to: createPageUrl('Home') },
     { name: 'Temas', page: null, icon: BookOpen, to: lastTopicUrl, active: isOnTopicPage },
-    { name: 'Herramientas', page: 'ClinicalTools', icon: Stethoscope, to: createPageUrl('ClinicalTools') },
+    { name: 'Herramientas', page: 'AllCalculators', icon: Stethoscope, to: createPageUrl('AllCalculators') },
     { name: 'Plantillas', page: 'Templates', icon: ClipboardList, to: createPageUrl('Templates') },
   ];
 
