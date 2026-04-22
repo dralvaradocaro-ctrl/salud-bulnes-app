@@ -189,7 +189,7 @@ export default function Home() {
       </div>
 
       {/* Footer note */}
-      <div className="pb-10 px-4 max-w-2xl mx-auto space-y-5">
+      <div className="pb-10 px-4 max-w-5xl mx-auto space-y-5">
 
         {/* Créditos */}
         <div className="text-center text-sm text-slate-500">
