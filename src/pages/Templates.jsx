@@ -42,10 +42,13 @@ export default function Templates() {
   const [activeTemplate, setActiveTemplate] = useState(null);
   const [activeType, setActiveType] = useState('all');
 
-  const { data: templates = [], isLoading } = useQuery({
+  const HIDDEN_TYPES = ['Estudio Endoscópico'];
+
+  const { data: rawTemplates = [], isLoading } = useQuery({
     queryKey: ['templates'],
     queryFn: () => db.entities.RequestTemplate.list('type'),
   });
+  const templates = rawTemplates.filter(t => !HIDDEN_TYPES.includes(t.type));
 
   // Open template from URL param
   useEffect(() => {
