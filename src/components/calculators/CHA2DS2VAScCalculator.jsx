@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
+import { createPageUrl } from '@/utils';
 
 const items = [
   {
@@ -111,7 +113,7 @@ function getResult(score, isFemale) {
     guidance: 'Se puede considerar anticoagulación. Evaluar preferencias del paciente y riesgo de sangrado (HAS-BLED).',
     recs: [
       'Considerar NACO (anticoagulante oral directo) si se decide tratar.',
-      'Calcular HAS-BLED para estimar riesgo de sangrado.',
+      { text: 'Calcular HAS-BLED para estimar riesgo de sangrado.', link: createPageUrl('AllCalculators?calc=has-bled') },
       'Discutir riesgo-beneficio con el paciente.',
       'Reevaluar en 3–6 meses.',
     ],
@@ -130,7 +132,7 @@ function getResult(score, isFemale) {
     recs: [
       'Iniciar NACO (apixabán, rivaroxabán, dabigatrán o edoxabán).',
       'Usar warfarina solo si NACO contraindicado (estenosis mitral severa, válvula mecánica).',
-      'Calcular HAS-BLED para identificar factores de sangrado modificables.',
+      { text: 'Calcular HAS-BLED para identificar factores de sangrado modificables.', link: createPageUrl('AllCalculators?calc=has-bled') },
       'No suspender anticoagulación por HAS-BLED alto — corregir factores modificables.',
       'Control clínico a los 30 días y luego cada 3–6 meses.',
     ],
@@ -234,7 +236,14 @@ export default function CHA2DS2VAScCalculator() {
             {result.recs.map((r, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
                 <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${result.dot}`} />
-                {r}
+                {typeof r === 'string' ? r : (
+                  <Link
+                    to={r.link}
+                    className="font-medium text-rose-600 underline underline-offset-2 hover:text-rose-800 transition-colors"
+                  >
+                    {r.text}
+                  </Link>
+                )}
               </li>
             ))}
           </ul>
