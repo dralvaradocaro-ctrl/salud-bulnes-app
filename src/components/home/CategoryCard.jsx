@@ -2,14 +2,15 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
-import { 
-  Heart, 
-  Building2, 
-  Stethoscope, 
-  Siren, 
+import {
+  Heart,
+  Building2,
+  Stethoscope,
+  Siren,
   ClipboardList,
   ChevronRight,
-  Baby
+  Baby,
+  HeartHandshake
 } from 'lucide-react';
 
 const iconMap = {
@@ -18,7 +19,8 @@ const iconMap = {
   'Stethoscope': Stethoscope,
   'Siren': Siren,
   'ClipboardList': ClipboardList,
-  'Baby': Baby
+  'Baby': Baby,
+  'HeartHandshake': HeartHandshake
 };
 
 const colorMap = {
