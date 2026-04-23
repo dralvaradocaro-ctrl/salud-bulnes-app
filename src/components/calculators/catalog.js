@@ -11,6 +11,7 @@ import AsciticFluidCalculator from '@/components/calculators/AsciticFluidCalcula
 import RFactorCalculator from '@/components/calculators/RFactorCalculator';
 import ABCD2Calculator from '@/components/calculators/ABCD2Calculator';
 import HASBLEDCalculator from '@/components/calculators/HASBLEDCalculator';
+import CHA2DS2VAScCalculator from '@/components/calculators/CHA2DS2VAScCalculator';
 import PediatricDoseCalculator from '@/components/calculators/PediatricDoseCalculator';
 
 export const calculatorsByCategory = {
@@ -19,6 +20,7 @@ export const calculatorsByCategory = {
   ],
   'Cardiología': [
     { id: 'heart', name: 'HEART Score', component: HEARTScoreCalculator, icon: Heart },
+    { id: 'cha2ds2vasc', name: 'CHA₂DS₂-VASc — Riesgo de ACV en FA', component: CHA2DS2VAScCalculator, icon: Heart },
     { id: 'has-bled', name: 'HAS-BLED — Riesgo de Sangrado', component: HASBLEDCalculator, icon: ShieldAlert }
   ],
   'Neurología': [
