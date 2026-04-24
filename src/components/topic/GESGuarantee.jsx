@@ -1,10 +1,13 @@
-import { Clock, AlertCircle } from 'lucide-react';
+import { Clock, AlertCircle, FileText, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import {
   extractGuaranteeStages,
   hasGuaranteeContent,
 } from '@/lib/guarantees';
 import { getGesTopicMeta } from '@/lib/ges';
+
+// URL del formulario GES desplegado — actualizar cuando esté en Vercel
+const GES_FORM_URL = 'https://formulario-ges-hb.vercel.app';
 
 const ONCOLOGY_FALLBACK_STAGES = [
   {
@@ -109,6 +112,23 @@ export default function GESGuarantee({ topic }) {
       <p className="mt-3 text-[11px] text-amber-600/70">
         Acceso · Calidad · Protección financiera: también garantizados en todas las prestaciones GES.
       </p>
+
+      {/* Formulario GES */}
+      <a
+        href={GES_FORM_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-3 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 transition-all hover:border-emerald-300 hover:bg-emerald-100 hover:shadow-sm group"
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 group-hover:bg-emerald-200 transition-colors">
+          <FileText className="h-4 w-4 text-emerald-700" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-emerald-900">Formulario de Notificación GES</p>
+          <p className="text-xs text-emerald-700">Certificación Art. 24 · Ley 19.966</p>
+        </div>
+        <ExternalLink className="h-4 w-4 text-emerald-500 group-hover:text-emerald-700 transition-colors shrink-0" />
+      </a>
     </motion.div>
   );
 }
