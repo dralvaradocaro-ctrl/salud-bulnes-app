@@ -1,0 +1,2204 @@
+[
+{
+"id": 1,
+"nombre": "Enfermedad Renal Crónica Etapa 4 y 5",
+"categoria": "Nefrología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"renal",
+"riñón",
+"diálisis",
+"hemodiálisis",
+"ERC",
+"insuficiencia renal"
+],
+"observaciones": "Incluye peritoneodiálisis y hemodiálisis",
+"activo": true
+},
+{
+"id": 2,
+"nombre": "Cardiopatías Congénitas Operables en menores de 15 años",
+"categoria": "Cardiología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 14,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"cardiopatía",
+"corazón",
+"congénita",
+"CIV",
+"CIA",
+"tetralogía"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 3,
+"nombre": "Cáncer Cervicouterino",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "femenino",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"cervicouterino",
+"cuello uterino",
+"PAP",
+"VPH",
+"cérvix"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 4,
+"nombre": "Alivio del dolor y cuidados paliativos por cáncer avanzado",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"paliativo",
+"dolor",
+"cáncer avanzado",
+"terminal",
+"opioides"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 5,
+"nombre": "Infarto Agudo del Miocardio",
+"categoria": "Cardiología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"infarto",
+"IAM",
+"miocardio",
+"STEMI",
+"NSTEMI",
+"coronario",
+"troponina"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 6,
+"nombre": "Diabetes Mellitus Tipo 1",
+"categoria": "Endocrinología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"diabetes",
+"DM1",
+"insulina",
+"tipo 1",
+"juvenil",
+"autoinmune"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 7,
+"nombre": "Diabetes Mellitus Tipo 2",
+"categoria": "Endocrinología",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"diabetes",
+"DM2",
+"tipo 2",
+"metformina",
+"glicemia",
+"HbA1c"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 8,
+"nombre": "Cáncer de Mama en personas de 15 años y más",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "femenino",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"mama",
+"mamario",
+"mamografía",
+"mastectomía",
+"cáncer mama"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 9,
+"nombre": "Disrafias Espinales",
+"categoria": "Neurología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"disrafia",
+"espina bífida",
+"mielomeningocele",
+"tubo neural"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 10,
+"nombre": "Tratamiento Quirúrgico de Escoliosis en menores de 25 años",
+"categoria": "Traumatología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 24,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"escoliosis",
+"columna",
+"curvatura",
+"cifosis"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 11,
+"nombre": "Tratamiento Quirúrgico de Cataratas",
+"categoria": "Oftalmología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"catarata",
+"cristalino",
+"facoemulsificación",
+"lente intraocular",
+"visión"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 12,
+"nombre": "Endoprótesis Total de Cadera en personas de 65 años y más con Artrosis de Cadera con Limitación Funcional Severa",
+"categoria": "Traumatología",
+"oncologico": false,
+"edadMin": 65,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"cadera",
+"artrosis",
+"prótesis",
+"endoprótesis",
+"reemplazo cadera"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 13,
+"nombre": "Fisura Labiopalatina",
+"categoria": "Cirugía",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 14,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"labiopalatina",
+"labio leporino",
+"fisura",
+"paladar hendido"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 14,
+"nombre": "Cáncer en menores de 15 años",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 0,
+"edadMax": 14,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"cáncer infantil",
+"leucemia",
+"linfoma",
+"tumor",
+"pediátrico"
+],
+"observaciones": "Incluye todos los cánceres en menores de 15",
+"activo": true
+},
+{
+"id": 15,
+"nombre": "Esquizofrenia",
+"categoria": "Psiquiatría",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"esquizofrenia",
+"psicosis",
+"alucinaciones",
+"delirio",
+"antipsicótico"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 16,
+"nombre": "Cáncer de Testículo en personas de 15 años y más",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "masculino",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"testículo",
+"testicular",
+"seminoma",
+"tumor testicular"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 17,
+"nombre": "Linfomas en personas de 15 años y más",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"linfoma",
+"hodgkin",
+"no hodgkin",
+"linfático",
+"adenopatía"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 18,
+"nombre": "Síndrome de Inmunodeficiencia Adquirida VIH/SIDA",
+"categoria": "Infectología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"VIH",
+"SIDA",
+"inmunodeficiencia",
+"antirretroviral",
+"TARV",
+"CD4"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 19,
+"nombre": "Infección Respiratoria Aguda (IRA) de manejo ambulatorio en menores de 5 años",
+"categoria": "Pediatría",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 4,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"IRA",
+"respiratoria",
+"bronquitis",
+"bronquiolitis",
+"neumonía",
+"tos"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 20,
+"nombre": "Neumonía adquirida en la comunidad de manejo ambulatorio en personas de 65 años y más",
+"categoria": "Neumología",
+"oncologico": false,
+"edadMin": 65,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"neumonía",
+"NAC",
+"pulmonar",
+"pulmón",
+"tos",
+"fiebre"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 21,
+"nombre": "Hipertensión Arterial Primaria o Esencial en personas de 15 años y más",
+"categoria": "Cardiología",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"hipertensión",
+"HTA",
+"presión arterial",
+"antihipertensivo",
+"presión alta"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 22,
+"nombre": "Epilepsia en personas desde 1 año y menores de 15 años",
+"categoria": "Neurología",
+"oncologico": false,
+"edadMin": 1,
+"edadMax": 14,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"epilepsia",
+"convulsión",
+"crisis",
+"antiepiléptico",
+"EEG"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 23,
+"nombre": "Salud Oral Integral para niños y niñas de 6 años",
+"categoria": "Odontología",
+"oncologico": false,
+"edadMin": 6,
+"edadMax": 6,
+"sexo": "ambos",
+"activacion": [
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"dental",
+"oral",
+"dientes",
+"caries",
+"sellante",
+"6 años"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 24,
+"nombre": "Prematurez",
+"categoria": "Neonatología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 0,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"prematuro",
+"prematurez",
+"RNPT",
+"bajo peso",
+"neonatal"
+],
+"observaciones": "Menor de 1500g o menor de 32 semanas",
+"activo": true
+},
+{
+"id": 25,
+"nombre": "Trastornos de Generación del Impulso y Conducción en personas de 15 años y más que requieren Marcapaso",
+"categoria": "Cardiología",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"marcapaso",
+"arritmia",
+"bloqueo",
+"bradicardia",
+"conducción"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 26,
+"nombre": "Colecistectomía Preventiva del Cáncer de Vesícula en personas de 35 a 49 años",
+"categoria": "Cirugía",
+"oncologico": false,
+"edadMin": 35,
+"edadMax": 49,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"colecistectomía",
+"vesícula",
+"colelitiasis",
+"cálculos biliares"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 27,
+"nombre": "Cáncer Gástrico",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"gástrico",
+"estómago",
+"estomacal",
+"endoscopía",
+"cáncer gástrico"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 28,
+"nombre": "Cáncer de Próstata en personas de 15 años y más",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "masculino",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"próstata",
+"prostático",
+"PSA",
+"prostatectomía"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 29,
+"nombre": "Vicios de Refracción en personas de 65 años y más",
+"categoria": "Oftalmología",
+"oncologico": false,
+"edadMin": 65,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"refracción",
+"lentes",
+"miopía",
+"hipermetropía",
+"astigmatismo",
+"presbicia"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 30,
+"nombre": "Estrabismo en menores de 9 años",
+"categoria": "Oftalmología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 8,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"estrabismo",
+"ojo desviado",
+"bizquera",
+"ambliopía"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 31,
+"nombre": "Retinopatía Diabética",
+"categoria": "Oftalmología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"retinopatía",
+"retina",
+"diabética",
+"fotocoagulación",
+"fondo de ojo"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 32,
+"nombre": "Desprendimiento de Retina Regmatógeno No Traumático",
+"categoria": "Oftalmología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"desprendimiento",
+"retina",
+"regmatógeno",
+"vitrectomía"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 33,
+"nombre": "Hemofilia",
+"categoria": "Hematología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"hemofilia",
+"factor VIII",
+"factor IX",
+"coagulación",
+"hemorragia"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 34,
+"nombre": "Depresión en personas de 15 años y más",
+"categoria": "Psiquiatría",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"depresión",
+"depresivo",
+"ánimo",
+"antidepresivo",
+"tristeza",
+"suicidio"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 35,
+"nombre": "Tratamiento de Erradicación del Helicobacter Pylori",
+"categoria": "Gastroenterología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"helicobacter",
+"H. pylori",
+"úlcera",
+"gástrico",
+"erradicación"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 36,
+"nombre": "Cáncer de Colon y Recto en personas de 15 años y más",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"colon",
+"recto",
+"colorrectal",
+"colonoscopía",
+"intestino"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 37,
+"nombre": "Cáncer Vesical en personas de 15 años y más",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"vejiga",
+"vesical",
+"hematuria",
+"cistoscopía"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 38,
+"nombre": "Cáncer de Ovario Epitelial",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "femenino",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"ovario",
+"ovárico",
+"CA-125",
+"anexial"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 39,
+"nombre": "Cáncer de Pulmón en personas de 15 años y más",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"pulmón",
+"pulmonar",
+"broncogénico",
+"fumador",
+"tos crónica"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 40,
+"nombre": "Leucemia en personas de 15 años y más",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"leucemia",
+"LLA",
+"LMA",
+"LLC",
+"LMC",
+"mieloide",
+"linfoide"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 41,
+"nombre": "Urgencia Odontológica Ambulatoria",
+"categoria": "Odontología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"confirmación",
+"tratamiento"
+],
+"keywords": [
+"urgencia dental",
+"dolor dental",
+"absceso dental",
+"pericoronaritis",
+"trauma dental"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 42,
+"nombre": "Salud Oral Integral del Adulto de 60 años",
+"categoria": "Odontología",
+"oncologico": false,
+"edadMin": 60,
+"edadMax": 60,
+"sexo": "ambos",
+"activacion": [
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"dental adulto",
+"prótesis dental",
+"60 años",
+"oral adulto mayor"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 43,
+"nombre": "Politraumatizado Grave",
+"categoria": "Urgencias",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"politraumatizado",
+"trauma",
+"accidente",
+"TEC",
+"fractura múltiple"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 44,
+"nombre": "Traumatismo Cráneo Encefálico moderado o grave",
+"categoria": "Neurología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"TEC",
+"cráneo",
+"encefálico",
+"traumatismo",
+"craneal",
+"Glasgow"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 45,
+"nombre": "Trauma Ocular Grave",
+"categoria": "Oftalmología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"trauma ocular",
+"ojo",
+"perforación ocular",
+"globo ocular"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 46,
+"nombre": "Fibrosis Quística",
+"categoria": "Neumología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"fibrosis quística",
+"FQ",
+"mucoviscidosis",
+"cloro sudor",
+"CFTR"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 47,
+"nombre": "Artritis Reumatoide",
+"categoria": "Reumatología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"artritis",
+"reumatoide",
+"AR",
+"articular",
+"factor reumatoide",
+"anti-CCP"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 48,
+"nombre": "Consumo Perjudicial o Dependencia de riesgo bajo a moderado de Alcohol y Drogas en personas menores de 20 años",
+"categoria": "Psiquiatría",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 19,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"alcohol",
+"drogas",
+"adicción",
+"consumo",
+"sustancias",
+"dependencia",
+"adolescente"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 49,
+"nombre": "Analgesia del Parto",
+"categoria": "Obstetricia",
+"oncologico": false,
+"edadMin": 10,
+"edadMax": 55,
+"sexo": "femenino",
+"activacion": [
+"confirmación",
+"tratamiento"
+],
+"keywords": [
+"analgesia",
+"parto",
+"epidural",
+"peridural",
+"trabajo de parto"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 50,
+"nombre": "Gran Quemado",
+"categoria": "Urgencias",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"quemado",
+"quemadura",
+"gran quemado",
+"injerto",
+"piel"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 51,
+"nombre": "Hipoacusia Bilateral en personas de 65 años y más que requieren uso de audífono",
+"categoria": "Otorrinolaringología",
+"oncologico": false,
+"edadMin": 65,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"hipoacusia",
+"sordera",
+"audífono",
+"audiometría",
+"oído"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 52,
+"nombre": "Retinopatía del Prematuro",
+"categoria": "Oftalmología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 0,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"retinopatía",
+"prematuro",
+"ROP",
+"retina",
+"neonatal"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 53,
+"nombre": "Displasia Broncopulmonar del Prematuro",
+"categoria": "Neonatología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 0,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"displasia",
+"broncopulmonar",
+"DBP",
+"prematuro",
+"oxígeno"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 54,
+"nombre": "Epilepsia No Refractaria en personas de 15 años y más",
+"categoria": "Neurología",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"epilepsia",
+"convulsión",
+"crisis",
+"EEG",
+"antiepiléptico"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 55,
+"nombre": "Asma Bronquial en menores de 15 años",
+"categoria": "Neumología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 14,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"asma",
+"bronquial",
+"sibilancia",
+"inhalador",
+"broncodilatador"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 56,
+"nombre": "Síndrome de Dificultad Respiratoria en el Recién Nacido",
+"categoria": "Neonatología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 0,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"SDR",
+"dificultad respiratoria",
+"surfactante",
+"neonatal",
+"membrana hialina"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 57,
+"nombre": "Tratamiento Médico en personas de 55 años y más con Artrosis de Cadera y/o Rodilla, leve o moderada",
+"categoria": "Traumatología",
+"oncologico": false,
+"edadMin": 55,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"artrosis",
+"rodilla",
+"cadera",
+"articular",
+"degenerativo"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 58,
+"nombre": "Hemorragia Subaracnoidea secundaria a Ruptura de Aneurismas Cerebrales",
+"categoria": "Neurología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"hemorragia subaracnoidea",
+"HSA",
+"aneurisma",
+"cerebral",
+"cefalea"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 59,
+"nombre": "Tumores Primarios del Sistema Nervioso Central en personas de 15 años y más",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"tumor cerebral",
+"SNC",
+"glioma",
+"meningioma",
+"cerebro"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 60,
+"nombre": "Tratamiento Quirúrgico de Hernia del Núcleo Pulposo Lumbar",
+"categoria": "Neurología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"hernia",
+"disco",
+"lumbar",
+"núcleo pulposo",
+"ciática",
+"lumbociática"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 61,
+"nombre": "Leucemia en personas menores de 15 años",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 0,
+"edadMax": 14,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"leucemia",
+"infantil",
+"LLA",
+"LMA",
+"pediátrica"
+],
+"observaciones": "Incluida en Cáncer menores de 15",
+"activo": true
+},
+{
+"id": 62,
+"nombre": "Urgencias Médicas en personas de 15 años y más con Diabetes Mellitus Tipo 1",
+"categoria": "Endocrinología",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"cetoacidosis",
+"hipoglicemia",
+"diabetes urgencia",
+"DM1 urgencia"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 63,
+"nombre": "Accidente Cerebrovascular Isquémico en personas de 15 años y más",
+"categoria": "Neurología",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"ACV",
+"ictus",
+"cerebrovascular",
+"isquémico",
+"stroke",
+"hemiplejia",
+"trombolisis"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 64,
+"nombre": "Enfermedad Pulmonar Obstructiva Crónica de tratamiento ambulatorio",
+"categoria": "Neumología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"EPOC",
+"enfisema",
+"bronquitis crónica",
+"obstructiva",
+"espirometría",
+"tabaco"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 65,
+"nombre": "Asma Bronquial moderada y grave en menores de 15 años",
+"categoria": "Neumología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 14,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"asma",
+"moderada",
+"grave",
+"bronquial",
+"corticoide inhalado"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 66,
+"nombre": "Síndrome de Dificultad Respiratoria del adulto",
+"categoria": "Neumología",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"SDRA",
+"distrés respiratorio",
+"ventilación mecánica",
+"UCI"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 67,
+"nombre": "Tratamiento Quirúrgico de Lesiones Crónicas de la Válvula Aórtica en personas de 15 años y más",
+"categoria": "Cardiología",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"válvula aórtica",
+"estenosis aórtica",
+"insuficiencia aórtica",
+"reemplazo valvular"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 68,
+"nombre": "Tratamiento Quirúrgico de Lesiones Crónicas de las Válvulas Mitral y Tricúspide en personas de 15 años y más",
+"categoria": "Cardiología",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"válvula mitral",
+"tricúspide",
+"insuficiencia mitral",
+"estenosis mitral",
+"reemplazo valvular"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 69,
+"nombre": "Hernia del Núcleo Pulposo Lumbar",
+"categoria": "Traumatología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"hernia",
+"lumbar",
+"disco",
+"ciática",
+"columna",
+"lumbago"
+],
+"observaciones": "Tratamiento médico",
+"activo": true
+},
+{
+"id": 70,
+"nombre": "Hipotiroidismo en personas de 15 años y más",
+"categoria": "Endocrinología",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"hipotiroidismo",
+"tiroides",
+"TSH",
+"T4",
+"levotiroxina"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 71,
+"nombre": "Tratamiento de Hipoacusia moderada en menores de 2 años",
+"categoria": "Otorrinolaringología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 1,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"hipoacusia",
+"audición",
+"audífono",
+"sordera",
+"neonatal screening"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 72,
+"nombre": "Lupus Eritematoso Sistémico",
+"categoria": "Reumatología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"lupus",
+"LES",
+"autoinmune",
+"ANA",
+"anti-DNA"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 73,
+"nombre": "Tratamiento Quirúrgico de la Hiperplasia Benigna de la Próstata en personas sintomáticas",
+"categoria": "Urología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "masculino",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"próstata",
+"hiperplasia",
+"HPB",
+"prostatismo",
+"RTUP",
+"disuria"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 74,
+"nombre": "Órtesis (o Ayudas Técnicas) para personas de 65 años y más",
+"categoria": "Rehabilitación",
+"oncologico": false,
+"edadMin": 65,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"órtesis",
+"ayuda técnica",
+"bastón",
+"andador",
+"silla de ruedas"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 75,
+"nombre": "Accidente Cerebrovascular Hemorrágico",
+"categoria": "Neurología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"ACV hemorrágico",
+"hemorragia cerebral",
+"intracerebral",
+"hematoma"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 76,
+"nombre": "Tratamiento de la enfermedad de Parkinson",
+"categoria": "Neurología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"parkinson",
+"temblor",
+"bradicinesia",
+"rigidez",
+"levodopa"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 77,
+"nombre": "Artritis Idiopática Juvenil / Artritis Reumatoide Juvenil",
+"categoria": "Reumatología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 17,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"artritis juvenil",
+"AIJ",
+"ARJ",
+"articular juvenil"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 78,
+"nombre": "Prevención Secundaria insuficiencia renal crónica terminal",
+"categoria": "Nefrología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"renal",
+"insuficiencia renal",
+"prevención",
+"crónica terminal"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 79,
+"nombre": "Displasia Luxante de Caderas",
+"categoria": "Traumatología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 0,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"displasia",
+"cadera",
+"luxante",
+"Pavlik",
+"neonatal",
+"screening"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 80,
+"nombre": "Salud Oral Integral de la Embarazada",
+"categoria": "Odontología",
+"oncologico": false,
+"edadMin": 10,
+"edadMax": 55,
+"sexo": "femenino",
+"activacion": [
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"dental embarazada",
+"oral embarazo",
+"gingivitis embarazo"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 81,
+"nombre": "Esclerosis Múltiple Remitente Recurrente",
+"categoria": "Neurología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"esclerosis múltiple",
+"EM",
+"desmielinizante",
+"brote",
+"interferón"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 82,
+"nombre": "Hepatitis B",
+"categoria": "Infectología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"hepatitis B",
+"HBV",
+"HBsAg",
+"hígado",
+"viral"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 83,
+"nombre": "Hepatitis C",
+"categoria": "Infectología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"hepatitis C",
+"HCV",
+"hígado",
+"viral",
+"interferón"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 84,
+"nombre": "Cáncer Renal en personas de 15 años y más",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"renal",
+"riñón",
+"nefrectomía",
+"tumor renal"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 85,
+"nombre": "Mieloma Múltiple en personas de 15 años y más",
+"categoria": "Oncología",
+"oncologico": true,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"etapificación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"mieloma",
+"múltiple",
+"plasmocitoma",
+"proteína monoclonal",
+"Bence Jones"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 86,
+"nombre": "Trastorno Bipolar en personas de 15 años y más",
+"categoria": "Psiquiatría",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"bipolar",
+"manía",
+"maníaco",
+"litio",
+"estabilizador ánimo"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 87,
+"nombre": "Hipoacusia Neurosensorial Bilateral del Prematuro",
+"categoria": "Otorrinolaringología",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 3,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento",
+"rehabilitación"
+],
+"keywords": [
+"hipoacusia",
+"prematuro",
+"neurosensorial",
+"implante coclear"
+],
+"observaciones": "",
+"activo": true
+},
+{
+"id": 88,
+"nombre": "Hospitalización por Depresión Grave en menores de 15 años",
+"categoria": "Psiquiatría",
+"oncologico": false,
+"edadMin": 0,
+"edadMax": 14,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"depresión grave",
+"depresión infantil",
+"hospitalización psiquiátrica",
+"salud mental adolescente",
+"ideación suicida",
+"intento de suicidio",
+"depresión menor",
+"psiquiatría infantil"
+],
+"observaciones": "Nueva patología GES 2025-2026. Garantiza hospitalización inmediata y cuidados posteriores en menores de 15 años con depresión grave.",
+"activo": true
+},
+{
+"id": 89,
+"nombre": "Tratamiento Post Alta por Cirrosis Hepática",
+"categoria": "Gastroenterología",
+"oncologico": false,
+"edadMin": 15,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"cirrosis",
+"cirrosis hepática",
+"hígado",
+"hepatopatía",
+"insuficiencia hepática",
+"post alta",
+"descompensación hepática",
+"ascitis",
+"encefalopatía hepática",
+"várices esofágicas"
+],
+"observaciones": "Nueva patología GES 2025-2026. Continuidad terapéutica post alta hospitalaria para prevenir complicaciones y rehospitalizaciones.",
+"activo": true
+},
+{
+"id": 90,
+"nombre": "Cesación del Consumo de Tabaco en personas de 25 años y más",
+"categoria": "Atención Primaria",
+"oncologico": false,
+"edadMin": 25,
+"edadMax": 999,
+"sexo": "ambos",
+"activacion": [
+"sospecha",
+"confirmación",
+"tratamiento",
+"seguimiento"
+],
+"keywords": [
+"tabaco",
+"tabaquismo",
+"fumador",
+"cesación tabáquica",
+"dejar de fumar",
+"nicotina",
+"vareniclina",
+"bupropión",
+"terapia reemplazo nicotina",
+"cigarrillo",
+"adicción tabaco"
+],
+"observaciones": "Nueva patología GES 2025-2026. Incluye terapia farmacológica y apoyo psicológico para cesación del consumo de tabaco.",
+"activo": true
+}
+]

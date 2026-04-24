@@ -483,7 +483,8 @@ export default function Category() {
         {activeTab === 'tools' && (
           <div className="grid md:grid-cols-2 gap-4">
             {visibleTools.map((tool, index) => {
-              const isExternal = !!tool.reference_url;
+              const isExternal = tool.reference_url && tool.reference_url.startsWith('http');
+              const isInternal = tool.reference_url && !isExternal;
               const cardClass = "group block bg-white rounded-2xl p-5 border border-slate-100 hover:border-emerald-200 hover:shadow-lg transition-all";
               const inner = (
                 <div className="flex items-start gap-3">
@@ -496,8 +497,8 @@ export default function Category() {
                         {tool.name}
                       </h3>
                       {isExternal && (
-                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
-                          Externo
+                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
+                          Externo ↗
                         </span>
                       )}
                     </div>
@@ -519,6 +520,10 @@ export default function Category() {
                     <a href={tool.reference_url} target="_blank" rel="noopener noreferrer" className={cardClass}>
                       {inner}
                     </a>
+                  ) : isInternal ? (
+                    <Link to={tool.reference_url} className={cardClass}>
+                      {inner}
+                    </Link>
                   ) : (
                     <Link to={createPageUrl(`ClinicalTools?tool=${tool.id}`)} className={cardClass}>
                       {inner}

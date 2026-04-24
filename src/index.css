@@ -123,3 +123,197 @@
     --ring: 221.2 83.2% 53.3%;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   FORMULARIO GES — estilos portados del formulario-ges-hb
+   ═══════════════════════════════════════════════════════════ */
+@layer components {
+  .ges-formulario-wrapper {
+    background: #f3f3f3;
+    min-height: 100%;
+    padding: 12px 8px 32px;
+  }
+
+  .ges-form {
+    background: #fff;
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 14px 20px;
+    font-size: 13px;
+    line-height: 1.4;
+    font-family: 'Arial', sans-serif;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.12);
+    margin-top: 8px;
+    margin-bottom: 16px;
+  }
+
+  .ges-form-title {
+    font-weight: 700;
+    font-size: 18px;
+    text-align: center;
+    margin-bottom: 2px;
+  }
+  .ges-form-subtitle {
+    font-size: 13px;
+    text-align: center;
+    margin-bottom: 8px;
+    color: #555;
+  }
+
+  .ges-section-title {
+    font-weight: 700;
+    font-size: 14px;
+    padding: 5px 0 2px;
+    margin-top: 4px;
+    border-bottom: 1.5px solid #333;
+    margin-bottom: 5px;
+  }
+
+  .ges-section-body {
+    padding: 2px 0 6px;
+  }
+
+  .f-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    min-height: 24px;
+  }
+
+  .f-label {
+    font-size: 13px;
+    white-space: nowrap;
+    color: #222;
+  }
+
+  .f-input {
+    flex: 1;
+    border: none;
+    background: #e8e8e8;
+    outline: none;
+    font-size: 13px;
+    padding: 3px 6px;
+    min-height: 22px;
+    font-family: inherit;
+    line-height: 1.4;
+    border-radius: 0;
+  }
+  .f-input:focus {
+    background: #e8f0fe;
+    box-shadow: inset 0 0 0 1px #3b6fd4;
+  }
+  .f-input::placeholder {
+    color: #aaa;
+    font-size: 11px;
+    font-style: italic;
+  }
+
+  select.f-input {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23666'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    background-color: #e8e8e8;
+    padding-right: 16px;
+    cursor: pointer;
+  }
+
+  .f-chk-large {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    margin-right: 16px;
+  }
+  .f-chk-large input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    margin: 0;
+  }
+  .f-chk-large span { font-size: 13px; }
+
+  .f-chk {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    margin-right: 12px;
+  }
+  .f-chk input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    margin: 0;
+  }
+
+  .ges-line {
+    border-top: 1.5px solid #333;
+    margin: 6px 0;
+  }
+
+  .sig-line {
+    border-top: 1px solid #333;
+    min-width: 200px;
+    margin-top: 40px;
+    text-align: center;
+    padding-top: 2px;
+    font-size: 13px;
+    font-weight: bold;
+  }
+  .sig-caption {
+    font-size: 11px;
+    font-weight: normal;
+    font-style: italic;
+  }
+
+  .toolbar-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid #bbb;
+    background: #fff;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-radius: 0;
+  }
+  .toolbar-btn:hover { background: #ededed; }
+
+  .toolbar-btn-primary {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid #222;
+    background: #222;
+    color: #fff;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    border-radius: 0;
+  }
+  .toolbar-btn-primary:hover { opacity: 0.85; }
+
+  .form-field { @apply f-input; }
+}
+
+@media print {
+  @page { size: Letter; margin: 8mm 10mm; }
+  body { background: white !important; margin: 0 !important; padding: 0 !important; font-size: 12px !important; }
+  .ges-formulario-wrapper { background: white !important; padding: 0 !important; }
+  .ges-form { box-shadow: none !important; margin: 0 auto !important; padding: 0 !important; max-width: none !important; width: 100% !important; font-size: 12px !important; }
+  .ges-form-title { font-size: 16px !important; margin-bottom: 1px !important; }
+  .ges-form-subtitle { font-size: 10px !important; margin-bottom: 5px !important; }
+  .ges-section-title { font-size: 12px !important; margin-top: 2px !important; margin-bottom: 2px !important; padding: 2px 0 1px !important; }
+  .f-label, .f-input, .f-chk span, .f-chk-large span { font-size: 10.5px !important; }
+  .f-row { margin-bottom: 2px !important; min-height: 17px !important; gap: 4px !important; }
+  .f-input { min-height: 15px !important; padding: 1px 4px !important; background: #e8e8e8 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .sig-line { font-size: 10px !important; margin-top: 22px !important; min-width: 150px !important; }
+  .sig-caption { font-size: 8.5px !important; }
+  .ges-section-body { padding: 1px 0 2px !important; }
+  .ges-line { margin: 3px 0 !important; }
+  .no-print, .print\:hidden { display: none !important; }
+  .print-constancia-text { font-size: 10px !important; line-height: 1.2 !important; margin-bottom: 3px !important; }
+  .print-signatures { padding: 1px 0 !important; }
+  .print-teleconsulta-note, .print-representante, .print-important { font-size: 10px !important; padding: 2px 0 !important; }
+}
