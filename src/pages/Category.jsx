@@ -482,34 +482,51 @@ export default function Category() {
         {/* Tools Tab */}
         {activeTab === 'tools' && (
           <div className="grid md:grid-cols-2 gap-4">
-            {visibleTools.map((tool, index) => (
-              <motion.div
-                key={tool.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Link
-                  to={createPageUrl(`ClinicalTools?tool=${tool.id}`)}
-                  className="group block bg-white rounded-2xl p-5 border border-slate-100 hover:border-emerald-200 hover:shadow-lg transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-emerald-100 rounded-xl">
-                      <Stethoscope className="h-5 w-5 text-emerald-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-900 group-hover:text-emerald-600 transition-colors">
+            {visibleTools.map((tool, index) => {
+              const isExternal = !!tool.reference_url;
+              const cardClass = "group block bg-white rounded-2xl p-5 border border-slate-100 hover:border-emerald-200 hover:shadow-lg transition-all";
+              const inner = (
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-emerald-100 rounded-xl shrink-0">
+                    <Stethoscope className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-slate-900 group-hover:text-emerald-600 transition-colors leading-snug">
                         {tool.name}
                       </h3>
-                      <span className="text-xs text-slate-500">{tool.specialty}</span>
+                      {isExternal && (
+                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                          Externo
+                        </span>
+                      )}
                     </div>
+                    <span className="text-xs text-slate-500">{tool.specialty}</span>
+                    {tool.description && (
+                      <p className="text-sm text-slate-600 line-clamp-2 mt-1">{tool.description}</p>
+                    )}
                   </div>
-                  {tool.description && (
-                    <p className="text-sm text-slate-600 line-clamp-2">{tool.description}</p>
+                </div>
+              );
+              return (
+                <motion.div
+                  key={tool.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                >
+                  {isExternal ? (
+                    <a href={tool.reference_url} target="_blank" rel="noopener noreferrer" className={cardClass}>
+                      {inner}
+                    </a>
+                  ) : (
+                    <Link to={createPageUrl(`ClinicalTools?tool=${tool.id}`)} className={cardClass}>
+                      {inner}
+                    </Link>
                   )}
-                </Link>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         )}
 
