@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
+import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 
 export default function FormToolbar({ formRef, formData, onNew, onDuplicate, onLoad }) {
@@ -8,31 +8,39 @@ export default function FormToolbar({ formRef, formData, onNew, onDuplicate, onL
   const [exportError, setExportError] = useState('');
 
   const handleExportPdf = async () => {
-    if (!formRef.current || exporting) return;
+    if (exporting) return;
+    if (!formRef?.current) {
+      setExportError('No se pudo capturar el formulario.');
+      return;
+    }
     setExporting(true);
     setExportError('');
     try {
-      const canvas = await html2canvas(formRef.current, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
+      const dataUrl = await toPng(formRef.current, {
+        quality: 1,
+        pixelRatio: 2,
         backgroundColor: '#ffffff',
+        skipFonts: false,
+        cacheBust: true,
       });
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const imgH = (canvas.height * pageW) / canvas.width;
+      const ratio = img.naturalWidth / img.naturalHeight;
+      const imgH = pageW / ratio;
 
       if (imgH <= pageH) {
-        pdf.addImage(imgData, 'JPEG', 0, 0, pageW, imgH);
+        pdf.addImage(dataUrl, 'PNG', 0, 0, pageW, imgH);
       } else {
-        // Multi-page if content overflows
         let yOffset = 0;
         while (yOffset < imgH) {
           if (yOffset > 0) pdf.addPage();
-          pdf.addImage(imgData, 'JPEG', 0, -yOffset, pageW, imgH);
+          pdf.addImage(dataUrl, 'PNG', 0, -yOffset, pageW, imgH);
           yOffset += pageH;
         }
       }
@@ -40,7 +48,7 @@ export default function FormToolbar({ formRef, formData, onNew, onDuplicate, onL
       pdf.save(`formulario_ges_${Date.now()}.pdf`);
     } catch (err) {
       console.error('[PDF Export]', err);
-      setExportError('Error al generar PDF. Intente nuevamente.');
+      setExportError(`Error: ${err?.message ?? 'No se pudo generar el PDF.'}`);
     } finally {
       setExporting(false);
     }
@@ -86,6 +94,9 @@ export default function FormToolbar({ formRef, formData, onNew, onDuplicate, onL
       >
         {exporting ? '⏳ Generando...' : '📥 Exportar PDF'}
       </button>
+      {exportError && (
+        <div className="w-full text-red-600 text-xs mt-1">{exportError}</div>
+      )}
     </div>
   );
 }
