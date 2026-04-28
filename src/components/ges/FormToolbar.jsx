@@ -1,21 +1,25 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 export default function FormToolbar({ formRef, formData, onNew, onDuplicate, onLoad }) {
   const fileRef = useRef(null);
-
-  const handlePrint = () => window.print();
+  const [exporting, setExporting] = useState(false);
 
   const handleExportPdf = async () => {
-    if (!formRef.current) return;
-    const canvas = await html2canvas(formRef.current, { scale: 2, useCORS: true });
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const w = pdf.internal.pageSize.getWidth();
-    const h = (canvas.height * w) / canvas.width;
-    pdf.addImage(imgData, 'PNG', 0, 0, w, h);
-    pdf.save(`formulario_ges_${Date.now()}.pdf`);
+    if (!formRef.current || exporting) return;
+    setExporting(true);
+    try {
+      const canvas = await html2canvas(formRef.current, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const w = pdf.internal.pageSize.getWidth();
+      const h = (canvas.height * w) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, w, h);
+      pdf.save(`formulario_ges_${Date.now()}.pdf`);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const handleSave = () => {
@@ -50,8 +54,14 @@ export default function FormToolbar({ formRef, formData, onNew, onDuplicate, onL
       <button type="button" className="toolbar-btn" onClick={() => fileRef.current?.click()}>📂 Cargar borrador</button>
       <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleLoad} />
       <div className="flex-1" />
-      <button type="button" className="toolbar-btn" onClick={handlePrint}>🖨️ Imprimir</button>
-      <button type="button" className="toolbar-btn-primary" onClick={handleExportPdf}>📥 Exportar PDF</button>
+      <button
+        type="button"
+        className="toolbar-btn-primary"
+        onClick={handleExportPdf}
+        disabled={exporting}
+      >
+        {exporting ? '⏳ Generando...' : '📥 Exportar PDF'}
+      </button>
     </div>
   );
 }
