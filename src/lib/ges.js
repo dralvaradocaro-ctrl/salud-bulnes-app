@@ -1247,6 +1247,7 @@ export function buildGesClinicalBlock(topic) {
     sections: starter.clinicalSections,
     area: starter.area,
     layout_position: 'main',
+    defaultCollapsed: !!topic.has_local_protocol,
   };
 }
 

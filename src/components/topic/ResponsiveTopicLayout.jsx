@@ -52,7 +52,7 @@ const markdownComponents = {
 };
 
 function ClinicalBlock({ block }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(!block.defaultCollapsed);
   const sections = block.sections || [];
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
