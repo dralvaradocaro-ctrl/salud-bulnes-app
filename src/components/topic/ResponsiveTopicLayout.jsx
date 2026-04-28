@@ -267,6 +267,85 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
           </div>
         );
 
+      case 'criteria': {
+        const CRITERIA_PALETTES = {
+          blue:   { header: 'bg-blue-600',   badge: 'bg-blue-100 text-blue-800',   dot: 'bg-blue-500',   card: 'border-blue-100 bg-blue-50' },
+          red:    { header: 'bg-red-600',    badge: 'bg-red-100 text-red-800',    dot: 'bg-red-500',    card: 'border-red-100 bg-red-50' },
+          green:  { header: 'bg-emerald-600',badge: 'bg-emerald-100 text-emerald-800', dot: 'bg-emerald-500', card: 'border-emerald-100 bg-emerald-50' },
+          amber:  { header: 'bg-amber-500',  badge: 'bg-amber-100 text-amber-800',  dot: 'bg-amber-500',  card: 'border-amber-100 bg-amber-50' },
+          purple: { header: 'bg-violet-600', badge: 'bg-violet-100 text-violet-800', dot: 'bg-violet-500', card: 'border-violet-100 bg-violet-50' },
+        };
+        const cp = CRITERIA_PALETTES[block.color] || CRITERIA_PALETTES.blue;
+        const items = block.items || [];
+        return (
+          <div key={block.id} className={`overflow-hidden rounded-2xl border shadow-sm ${cp.card}`}>
+            <div className={`flex items-center gap-3 px-5 py-3.5 ${cp.header}`}>
+              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-white">
+                {block.title || 'Criterios de Derivación'}
+              </h3>
+              <span className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-bold ${cp.badge}`}>
+                {items.length} criterios
+              </span>
+            </div>
+            <ul className="divide-y divide-white/60 p-2">
+              {items.map((item, i) => (
+                <li key={i} className="flex items-start gap-3 rounded-xl px-4 py-2.5 transition-colors hover:bg-white/60">
+                  <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${cp.dot}`} />
+                  <span className="text-sm leading-relaxed text-slate-800">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      }
+
+      case 'checklist': {
+        const SECTION_COLORS = [
+          { bg: 'bg-blue-50',    border: 'border-blue-200',    label: 'text-blue-800',    icon: 'bg-blue-500' },
+          { bg: 'bg-violet-50',  border: 'border-violet-200',  label: 'text-violet-800',  icon: 'bg-violet-500' },
+          { bg: 'bg-emerald-50', border: 'border-emerald-200', label: 'text-emerald-800', icon: 'bg-emerald-500' },
+          { bg: 'bg-amber-50',   border: 'border-amber-200',   label: 'text-amber-800',   icon: 'bg-amber-500' },
+          { bg: 'bg-rose-50',    border: 'border-rose-200',    label: 'text-rose-800',    icon: 'bg-rose-500' },
+          { bg: 'bg-cyan-50',    border: 'border-cyan-200',    label: 'text-cyan-800',    icon: 'bg-cyan-500' },
+        ];
+        const sections = block.sections || [];
+        return (
+          <div key={block.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-100 bg-slate-800 px-5 py-3.5">
+              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-white">
+                {block.title || 'Requisitos de la Derivación (SIC)'}
+              </h3>
+            </div>
+            <div className="grid gap-3 p-4 sm:grid-cols-2">
+              {sections.map((section, i) => {
+                const c = SECTION_COLORS[i % SECTION_COLORS.length];
+                const sItems = section.items || [];
+                return (
+                  <div key={i} className={`rounded-xl border p-3.5 ${c.bg} ${c.border}`}>
+                    <div className="mb-2.5 flex items-center gap-2">
+                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-white ${c.icon}`}>
+                        {i + 1}
+                      </span>
+                      <span className={`text-xs font-bold uppercase tracking-wide ${c.label}`}>
+                        {section.label}
+                      </span>
+                    </div>
+                    <ul className="space-y-1.5">
+                      {sItems.map((item, j) => (
+                        <li key={j} className="flex items-start gap-2">
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                          <span className="text-xs leading-relaxed text-slate-700">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+
       default:
         return null;
     }
@@ -277,7 +356,20 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
   const hasTabs = tabValues.length > 0;
   const [activeTab, setActiveTab] = useState(hasTabs ? tabValues[0] : null);
 
-  const TAB_LABELS = { hiper: 'Hiperkalemia', hipo: 'Hipokalemia' };
+  const TAB_LABELS = {
+    hiper: 'Hiperkalemia',
+    hipo: 'Hipokalemia',
+    arritmia: 'Arritmia',
+    'dolor-toracico': 'Dolor Torácico',
+    ic: 'Insuf. Cardíaca',
+    disnea: 'Disnea',
+    palpitaciones: 'Palpitaciones',
+    sincope: 'Síncope',
+    soplos: 'Soplos',
+    ecg: 'Alt. ECG',
+    fa: 'Fibrilación A.',
+    valvulopatias: 'Valvulopatías',
+  };
 
   const visibleBlocks = hasTabs
     ? safeBlocks.filter(b => !b.tab || b.tab === activeTab)
@@ -290,20 +382,22 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     <div className="space-y-5">
       {/* Tab switcher */}
       {hasTabs && (
-        <div className="flex gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
-          {tabValues.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
-                activeTab === tab
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {TAB_LABELS[tab] || tab}
-            </button>
-          ))}
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
+          <div className="flex gap-1.5 min-w-max">
+            {tabValues.map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all whitespace-nowrap ${
+                  activeTab === tab
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {TAB_LABELS[tab] || tab}
+              </button>
+            ))}
+          </div>
         </div>
       )}
       {/* Main blocks — full width */}
