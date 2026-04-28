@@ -16,23 +16,25 @@ export default function FormToolbar({ formRef, formData, onNew, onDuplicate, onL
     setExporting(true);
     setExportError('');
     try {
-      const dataUrl = await toPng(formRef.current, {
+      const el = formRef.current;
+      const captureW = el.scrollWidth;
+      const captureH = el.scrollHeight;
+
+      const dataUrl = await toPng(el, {
         quality: 1,
         pixelRatio: 2,
         backgroundColor: '#ffffff',
-        skipFonts: false,
+        width: captureW,
+        height: captureH,
+        style: { overflow: 'visible' },
         cacheBust: true,
       });
-
-      const img = new Image();
-      img.src = dataUrl;
-      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
 
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const ratio = img.naturalWidth / img.naturalHeight;
-      const imgH = pageW / ratio;
+      // Scale image so its width = page width (height calculated from aspect ratio)
+      const imgH = (captureH / captureW) * pageW;
 
       if (imgH <= pageH) {
         pdf.addImage(dataUrl, 'PNG', 0, 0, pageW, imgH);
