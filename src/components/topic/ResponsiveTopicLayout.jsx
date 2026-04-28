@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import {
   LinkIcon, Calculator, ExternalLink,
   Eye, Stethoscope, FlaskConical, Scissors,
-  AlertTriangle, ChevronDown,
+  AlertTriangle, ChevronDown, Check,
 } from 'lucide-react';
 import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils/hiddenContent';
 import MermaidDiagram from './MermaidDiagram';
@@ -98,6 +98,99 @@ function ClinicalBlock({ block }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+const CHECKLIST_SECTION_META = [
+  { accent: 'bg-blue-500',    labelColor: 'text-blue-700',    headBg: 'bg-blue-50',    headBorder: 'border-blue-100'    },
+  { accent: 'bg-violet-500',  labelColor: 'text-violet-700',  headBg: 'bg-violet-50',  headBorder: 'border-violet-100'  },
+  { accent: 'bg-emerald-500', labelColor: 'text-emerald-700', headBg: 'bg-emerald-50', headBorder: 'border-emerald-100' },
+  { accent: 'bg-amber-500',   labelColor: 'text-amber-700',   headBg: 'bg-amber-50',   headBorder: 'border-amber-100'   },
+  { accent: 'bg-rose-500',    labelColor: 'text-rose-700',    headBg: 'bg-rose-50',    headBorder: 'border-rose-100'    },
+  { accent: 'bg-cyan-600',    labelColor: 'text-cyan-700',    headBg: 'bg-cyan-50',    headBorder: 'border-cyan-100'    },
+];
+
+function ChecklistBlock({ block }) {
+  const sections = block.sections || [];
+  const allItems = sections.flatMap((s, si) => (s.items || []).map((_, ii) => `${si}-${ii}`));
+  const [checked, setChecked] = useState({});
+
+  const toggle = (key) => setChecked(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const total = allItems.length;
+  const done = Object.values(checked).filter(Boolean).length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-800 px-5 py-3.5">
+        <h3 className="flex-1 text-sm font-bold uppercase tracking-[0.12em] text-white">
+          {block.title || 'Requisitos de la Derivación (SIC)'}
+        </h3>
+        <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold text-white">
+          {done}/{total}
+        </span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-1.5 bg-slate-100">
+        <div
+          className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-300"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+
+      {/* Sections */}
+      <div className="divide-y divide-slate-100">
+        {sections.map((section, si) => {
+          const meta = CHECKLIST_SECTION_META[si % CHECKLIST_SECTION_META.length];
+          const sItems = section.items || [];
+          return (
+            <div key={si}>
+              {/* Section label */}
+              <div className={`flex items-center gap-2.5 px-4 py-2 ${meta.headBg} border-b ${meta.headBorder}`}>
+                <span className={`h-2 w-2 shrink-0 rounded-full ${meta.accent}`} />
+                <span className={`text-[11px] font-bold uppercase tracking-[0.12em] ${meta.labelColor}`}>
+                  {section.label}
+                </span>
+              </div>
+              {/* Items */}
+              <ul>
+                {sItems.map((item, ii) => {
+                  const key = `${si}-${ii}`;
+                  const isChecked = !!checked[key];
+                  return (
+                    <li
+                      key={ii}
+                      onClick={() => toggle(key)}
+                      className={`flex cursor-pointer items-start gap-3 px-4 py-2.5 transition-colors hover:bg-slate-50 ${
+                        ii < sItems.length - 1 ? 'border-b border-slate-50' : ''
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all ${
+                        isChecked
+                          ? `${meta.accent} border-transparent`
+                          : 'border-slate-300 bg-white'
+                      }`}>
+                        {isChecked && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                      </span>
+                      {/* Text */}
+                      <span className={`text-sm leading-relaxed transition-colors ${
+                        isChecked ? 'text-slate-400 line-through' : 'text-slate-700'
+                      }`}>
+                        {item}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -299,52 +392,8 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
         );
       }
 
-      case 'checklist': {
-        const SECTION_COLORS = [
-          { bg: 'bg-blue-50',    border: 'border-blue-200',    label: 'text-blue-800',    icon: 'bg-blue-500' },
-          { bg: 'bg-violet-50',  border: 'border-violet-200',  label: 'text-violet-800',  icon: 'bg-violet-500' },
-          { bg: 'bg-emerald-50', border: 'border-emerald-200', label: 'text-emerald-800', icon: 'bg-emerald-500' },
-          { bg: 'bg-amber-50',   border: 'border-amber-200',   label: 'text-amber-800',   icon: 'bg-amber-500' },
-          { bg: 'bg-rose-50',    border: 'border-rose-200',    label: 'text-rose-800',    icon: 'bg-rose-500' },
-          { bg: 'bg-cyan-50',    border: 'border-cyan-200',    label: 'text-cyan-800',    icon: 'bg-cyan-500' },
-        ];
-        const sections = block.sections || [];
-        return (
-          <div key={block.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-100 bg-slate-800 px-5 py-3.5">
-              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-white">
-                {block.title || 'Requisitos de la Derivación (SIC)'}
-              </h3>
-            </div>
-            <div className="grid gap-3 p-4 sm:grid-cols-2">
-              {sections.map((section, i) => {
-                const c = SECTION_COLORS[i % SECTION_COLORS.length];
-                const sItems = section.items || [];
-                return (
-                  <div key={i} className={`rounded-xl border p-3.5 ${c.bg} ${c.border}`}>
-                    <div className="mb-2.5 flex items-center gap-2">
-                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-white ${c.icon}`}>
-                        {i + 1}
-                      </span>
-                      <span className={`text-xs font-bold uppercase tracking-wide ${c.label}`}>
-                        {section.label}
-                      </span>
-                    </div>
-                    <ul className="space-y-1.5">
-                      {sItems.map((item, j) => (
-                        <li key={j} className="flex items-start gap-2">
-                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
-                          <span className="text-xs leading-relaxed text-slate-700">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      }
+      case 'checklist':
+        return <ChecklistBlock key={block.id} block={block} />;
 
       default:
         return null;
