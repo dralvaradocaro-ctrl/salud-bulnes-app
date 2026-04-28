@@ -46,6 +46,19 @@ export default function FormToolbar({ formRef, formData, onNew, onDuplicate, onL
     }
   };
 
+  const handlePrint = () => {
+    if (!preview) return;
+    const win = window.open('', '_blank');
+    win.document.write(`<!DOCTYPE html><html><head><style>
+      *{margin:0;padding:0;box-sizing:border-box}
+      @page{size:A4 portrait;margin:0}
+      body{background:#fff}
+      img{width:100%;display:block}
+    </style></head><body><img src="${preview.dataUrl}" /></body></html>`);
+    win.document.close();
+    win.onload = () => { win.focus(); win.print(); };
+  };
+
   const handleDownloadPdf = () => {
     if (!preview) return;
     const { dataUrl, captureW, captureH } = preview;
@@ -121,6 +134,13 @@ export default function FormToolbar({ formRef, formData, onNew, onDuplicate, onL
                 onClick={() => setPreview(null)}
               >
                 Cancelar
+              </button>
+              <button
+                type="button"
+                className="toolbar-btn"
+                onClick={handlePrint}
+              >
+                🖨️ Imprimir
               </button>
               <button
                 type="button"
