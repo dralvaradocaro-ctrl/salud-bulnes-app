@@ -3,7 +3,7 @@ const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
@@ -294,8 +294,8 @@ const renderSpecialContent = (topic) => {
 };
 
 export default function TopicDetail() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const topicId = urlParams.get('id');
+  const location = useLocation();
+  const topicId = new URLSearchParams(location.search).get('id');
 
   const { data: topic, isLoading: loadingTopic } = useQuery({
     queryKey: ['topic', topicId],

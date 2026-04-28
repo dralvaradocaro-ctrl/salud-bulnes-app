@@ -210,7 +210,7 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
                 </div>
               ) : results.length > 0 ? (
                 results.map((item) => (
-                  <ResultRow key={`${item.type}-${item.id}`} item={item} onClose={() => setIsOpen(false)} />
+                  <ResultRow key={`${item.type}-${item.id}`} item={item} onClose={() => { setIsOpen(false); setQuery(''); }} />
                 ))
               ) : !isAiLoading && !showAiSection ? (
                 <div className="p-6 text-center text-slate-500">
@@ -240,7 +240,7 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
                       key={`ai-${item.type}-${item.id}`}
                       item={item}
                       aiReason={item.aiReason}
-                      onClose={() => setIsOpen(false)}
+                      onClose={() => { setIsOpen(false); setQuery(''); }}
                     />
                   ))}
                 </div>
@@ -260,20 +260,22 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
   );
 }
 
-function ResultRow({ item, aiReason, onClose }) {
+function ResultRow({ item, aiReason, onClose, onNavigate }) {
   const topicVisual = item.type === 'topic' ? getTopicVisual(item) : null;
   const TopicIcon = topicVisual?.icon;
 
+  const dest = createPageUrl(
+    item.type === 'topic'
+      ? `TopicDetail?id=${item.id}`
+      : item.type === 'calculator'
+        ? `AllCalculators?calc=${item.id}`
+        : `ClinicalTools?tool=${item.id}`
+  );
+
   return (
     <Link
-      to={createPageUrl(
-        item.type === 'topic'
-          ? `TopicDetail?id=${item.id}`
-          : item.type === 'calculator'
-            ? `AllCalculators?calc=${item.id}`
-            : `ClinicalTools?tool=${item.id}`
-      )}
-      onClick={onClose}
+      to={dest}
+      onClick={() => { onClose(); }}
       className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
     >
       <div className={`p-2 rounded-xl flex-shrink-0 ${

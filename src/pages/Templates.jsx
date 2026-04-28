@@ -95,6 +95,18 @@ export default function Templates() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* Solicitud de Exámenes shortcut */}
+        <Link to={createPageUrl('SolicitudExamenes')}>
+          <div className="mb-6 flex items-center gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 transition-all hover:border-blue-300 hover:shadow-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600">
+              <FlaskConical className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-900">Solicitud de Exámenes — Hospital de Bulnes</p>
+              <p className="text-sm text-slate-500">Selecciona exámenes con buscador e imprime el formulario oficial (COD. 32)</p>
+            </div>
+          </div>
+        </Link>
         {/* Type Filters */}
         <div className="mb-8 overflow-x-auto pb-2">
           <div className="flex gap-2 min-w-max">

@@ -9,6 +9,7 @@ import {
   AlertTriangle, ChevronDown,
 } from 'lucide-react';
 import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils/hiddenContent';
+import MermaidDiagram from './MermaidDiagram';
 
 const FLOW_COLORS = {
   blue:   { bg: 'bg-blue-50',   border: 'border-blue-200',   circle: 'bg-blue-600',   badge: 'bg-blue-100 text-blue-700',   bar: 'from-blue-500 to-indigo-500' },
@@ -155,14 +156,43 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
               </div>
               {block.details?.length > 0 && (
                 <div className="space-y-2.5">
-                  {block.details.map((detail, idx) => (
+                  {block.details.map((detail, idx) => {
+                    const lines = detail.split('\n');
+                    const mainText = lines.filter(l => !l.startsWith('~')).join(' ').trim();
+                    const subItems = lines.filter(l => l.startsWith('~')).map(l => l.slice(1).trim());
+                    return (
                     <div key={idx} className="relative rounded-xl border border-white/70 bg-white/85 p-3.5 pl-14 shadow-sm">
                       <div className={`absolute left-3.5 top-3.5 flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-white ${colorConfig.circle}`}>
                         {idx + 1}
                       </div>
-                      <p className="text-sm leading-relaxed text-slate-800">{detail}</p>
+                      <p className="text-sm leading-relaxed text-slate-800">
+                        {mainText.includes('→') ? (
+                          <>
+                            <strong className="font-semibold">{mainText.split('→')[0].trim()}</strong>
+                            {' → ' + mainText.split('→').slice(1).join('→').trim()}
+                          </>
+                        ) : mainText}
+                      </p>
+                      {subItems.length > 0 && (
+                        <div className="mt-2 space-y-1.5">
+                          {subItems.map((item, i) => (
+                            <div key={i} className={`flex items-start gap-2 rounded-lg px-3 py-1.5 ${colorConfig.bg} border ${colorConfig.border}`}>
+                              <span className="mt-0.5 shrink-0 text-xs font-bold text-slate-400">—</span>
+                              <span className="text-xs leading-relaxed text-slate-700">
+                                {item.includes(':') ? (
+                                  <>
+                                    <strong className="font-semibold text-slate-800">{item.split(':')[0]}</strong>
+                                    {':' + item.split(':').slice(1).join(':')}
+                                  </>
+                                ) : item}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -203,6 +233,25 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
         );
       }
 
+      case 'mermaid':
+        return (
+          <div key={block.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            {block.title && (
+              <div className="border-b border-slate-100 bg-slate-50 px-5 py-3.5">
+                <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-600">
+                  {block.title}
+                </h3>
+                {block.description && (
+                  <p className="mt-0.5 text-xs text-slate-500">{block.description}</p>
+                )}
+              </div>
+            )}
+            <div className="p-4">
+              <MermaidDiagram chart={block.content} />
+            </div>
+          </div>
+        );
+
       case 'alert':
         return (
           <div key={block.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
@@ -224,11 +273,39 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
   };
 
   const safeBlocks = blocks || [];
-  const mainBlocks = safeBlocks.filter(b => !b.layout_position || b.layout_position === 'main' || b.layout_position === 'full');
-  const sidebarBlocks = safeBlocks.filter(b => b.layout_position === 'sidebar');
+  const tabValues = [...new Set(safeBlocks.map(b => b.tab).filter(Boolean))];
+  const hasTabs = tabValues.length > 0;
+  const [activeTab, setActiveTab] = useState(hasTabs ? tabValues[0] : null);
+
+  const TAB_LABELS = { hiper: 'Hiperkalemia', hipo: 'Hipokalemia' };
+
+  const visibleBlocks = hasTabs
+    ? safeBlocks.filter(b => !b.tab || b.tab === activeTab)
+    : safeBlocks;
+
+  const mainBlocks = visibleBlocks.filter(b => !b.layout_position || b.layout_position === 'main' || b.layout_position === 'full');
+  const sidebarBlocks = visibleBlocks.filter(b => b.layout_position === 'sidebar');
 
   return (
     <div className="space-y-5">
+      {/* Tab switcher */}
+      {hasTabs && (
+        <div className="flex gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
+          {tabValues.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+                activeTab === tab
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {TAB_LABELS[tab] || tab}
+            </button>
+          ))}
+        </div>
+      )}
       {/* Main blocks — full width */}
       <div className="space-y-5">
         {mainBlocks.map(renderBlock).filter(Boolean)}

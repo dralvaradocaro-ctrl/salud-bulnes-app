@@ -63,6 +63,7 @@ import ToolsManager from './pages/ToolsManager';
 import TopicDetail from './pages/TopicDetail';
 import ProtocoloInsulina from './pages/ProtocoloInsulina';
 import FormularioGES from './pages/FormularioGES';
+import SolicitudExamenes from './pages/SolicitudExamenes';
 import __Layout from './Layout.jsx';
 
 export const PAGES = {
@@ -82,6 +83,7 @@ export const PAGES = {
     "TopicDetail": TopicDetail,
     "ProtocoloInsulina": ProtocoloInsulina,
     "FormularioGES": FormularioGES,
+    "SolicitudExamenes": SolicitudExamenes,
 }
 
 export const pagesConfig = {
