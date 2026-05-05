@@ -561,7 +561,8 @@ export default function TopicDetail() {
         )}
 
         {/* NRS-2002 Calculator - Special Case */}
-        {topic.name.toLowerCase().includes('nrs') && (
+        {(topic.name.toLowerCase().includes('nrs') ||
+          (topic.name.toLowerCase().includes('tamizaje') && topic.name.toLowerCase().includes('nutricional'))) && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
