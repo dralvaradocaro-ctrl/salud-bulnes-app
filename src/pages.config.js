@@ -64,6 +64,7 @@ import TopicDetail from './pages/TopicDetail';
 import ProtocoloInsulina from './pages/ProtocoloInsulina';
 import FormularioGES from './pages/FormularioGES';
 import SolicitudExamenes from './pages/SolicitudExamenes';
+import InformeBiomedico from './pages/InformeBiomedico';
 import __Layout from './Layout.jsx';
 
 export const PAGES = {
@@ -84,6 +85,7 @@ export const PAGES = {
     "ProtocoloInsulina": ProtocoloInsulina,
     "FormularioGES": FormularioGES,
     "SolicitudExamenes": SolicitudExamenes,
+    "InformeBiomedico": InformeBiomedico,
 }
 
 export const pagesConfig = {

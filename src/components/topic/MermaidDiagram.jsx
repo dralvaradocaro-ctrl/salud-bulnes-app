@@ -13,7 +13,7 @@ export default function MermaidDiagram({ chart }) {
       mermaid.initialize({
         startOnLoad: false,
         theme: 'neutral',
-        flowchart: { curve: 'basis', useMaxWidth: true, htmlLabels: true },
+        flowchart: { curve: 'basis', useMaxWidth: true, htmlLabels: true, nodeSpacing: 40, rankSpacing: 36, padding: 10 },
         fontSize: 13,
         fontFamily: 'ui-sans-serif, system-ui, sans-serif',
       });

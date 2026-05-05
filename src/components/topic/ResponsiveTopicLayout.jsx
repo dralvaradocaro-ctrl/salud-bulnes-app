@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import {
   LinkIcon, Calculator, ExternalLink,
   Eye, Stethoscope, FlaskConical, Scissors,
-  AlertTriangle, ChevronDown, Check,
+  AlertTriangle, ChevronDown, Check, FileText, Calendar, Building2, MapPin,
+  GitBranch, ClipboardList,
 } from 'lucide-react';
 import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils/hiddenContent';
 import MermaidDiagram from './MermaidDiagram';
@@ -53,7 +54,7 @@ const markdownComponents = {
 };
 
 function ClinicalBlock({ block }) {
-  const [open, setOpen] = useState(!block.defaultCollapsed);
+  const [open, setOpen] = useState(false);
   const sections = block.sections || [];
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -395,6 +396,82 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
       case 'checklist':
         return <ChecklistBlock key={block.id} block={block} />;
 
+      case 'protocol_header': {
+        return (
+          <div key={block.id} className="overflow-hidden rounded-2xl border border-indigo-200 bg-white shadow-sm">
+            <div className="bg-gradient-to-r from-indigo-700 to-indigo-800 px-5 py-4">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white/90">
+                  {block.ordinario || 'ORDINARIO 2G N°017'}
+                </span>
+              </div>
+              <h3 className="text-base font-bold leading-snug text-white">
+                {block.title || 'Pauta de Cotejo Patologías GES 2026'}
+              </h3>
+            </div>
+            <div className="divide-y divide-slate-100">
+              <div className="flex flex-wrap gap-x-5 gap-y-2 px-5 py-3">
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <Building2 className="h-4 w-4 shrink-0 text-indigo-400" />
+                  <span>{block.institution || 'Servicio de Salud Ñuble'}</span>
+                </div>
+                {block.department && (
+                  <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <FileText className="h-4 w-4 shrink-0 text-indigo-400" />
+                    <span>{block.department}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <Calendar className="h-4 w-4 shrink-0 text-indigo-400" />
+                  <span>{block.date || 'Febrero 2026'}</span>
+                </div>
+              </div>
+              {block.age_destinations?.length > 0 ? (
+                <div className="border-t border-indigo-100">
+                  <div className="divide-y divide-indigo-100">
+                    {block.age_destinations.map((row, i) => (
+                      <div key={i} className="flex flex-wrap items-center gap-x-5 gap-y-1 bg-indigo-50/60 px-5 py-2">
+                        <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-indigo-700 shrink-0">
+                          {row.age_range}
+                        </span>
+                        <div className="flex items-center gap-1.5 text-sm font-medium text-indigo-800">
+                          <Stethoscope className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
+                          <span>{row.specialty}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-sm font-medium text-indigo-800">
+                          <MapPin className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
+                          <span>{row.destination}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (block.specialty || block.destination) ? (
+                <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-indigo-100 bg-indigo-50/60 px-5 py-2.5">
+                  {block.specialty && (
+                    <div className="flex items-center gap-2 text-sm font-medium text-indigo-800">
+                      <Stethoscope className="h-4 w-4 shrink-0 text-indigo-500" />
+                      <span>{block.specialty}</span>
+                    </div>
+                  )}
+                  {block.destination && (
+                    <div className="flex items-center gap-2 text-sm font-medium text-indigo-800">
+                      <MapPin className="h-4 w-4 shrink-0 text-indigo-500" />
+                      <span>{block.destination}</span>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+              {block.summary && (
+                <div className="bg-indigo-50 px-5 py-3">
+                  <p className="text-sm leading-relaxed text-indigo-900">{block.summary}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
       default:
         return null;
     }
@@ -405,9 +482,17 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
   const hasTabs = tabValues.length > 0;
   const [activeTab, setActiveTab] = useState(hasTabs ? tabValues[0] : null);
 
+  // GES protocol auto-tab: when topic has protocol_header + mermaid but no explicit tabs
+  const hasProtocolHeader = safeBlocks.some(b => b.type === 'protocol_header');
+  const hasMermaid = safeBlocks.some(b => b.type === 'mermaid');
+  const isGESMode = hasProtocolHeader && hasMermaid && !hasTabs;
+  const [gesTab, setGesTab] = useState('protocolo');
+
   const TAB_LABELS = {
+    // Electrolitos
     hiper: 'Hiperkalemia',
     hipo: 'Hipokalemia',
+    // Cardiología policlínico (derivación)
     arritmia: 'Arritmia',
     'dolor-toracico': 'Dolor Torácico',
     ic: 'Insuf. Cardíaca',
@@ -418,6 +503,90 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     ecg: 'Alt. ECG',
     fa: 'Fibrilación A.',
     valvulopatias: 'Valvulopatías',
+    // GES Cardiología
+    'cardiopatias-congenitas': 'Cardiopatías Cong.',
+    iam: 'IAM',
+    hta: 'HTA',
+    marcapaso: 'Marcapaso',
+    'valvulopatia-aortica': 'Valvulopatía Aórt.',
+    'valvulopatia-mitral': 'Valvulopatía Mitral',
+    // GES Nefrología
+    'erc-4-5': 'ERC Etapa 4-5',
+    'erc-terminal': 'ERC Terminal',
+    // GES Oncología Sólida
+    cervicouterino: 'Cáncer Cervicouterino',
+    mama: 'Cáncer de Mama',
+    gastrico: 'Cáncer Gástrico',
+    colorrectal: 'Cáncer Colorrectal',
+    pulmon: 'Cáncer de Pulmón',
+    prostata: 'Cáncer de Próstata',
+    ovario: 'Cáncer de Ovario',
+    vesical: 'Cáncer Vesical',
+    renal: 'Cáncer Renal',
+    tiroides: 'Cáncer de Tiroides',
+    // GES Oncología Hematológica
+    linfoma: 'Linfoma',
+    leucemia: 'Leucemia',
+    mieloma: 'Mieloma Múltiple',
+    hemofilia: 'Hemofilia',
+    'cancer-pediatrico': 'Cáncer Pediátrico',
+    paliativos: 'Cuidados Paliativos',
+    osteosarcoma: 'Osteosarcoma',
+    // GES Endocrinología
+    dm1: 'Diabetes Tipo 1',
+    dm2: 'Diabetes Tipo 2',
+    'pie-diabetico': 'Pie Diabético',
+    hipotiroidismo: 'Hipotiroidismo',
+    'retinopatia-diabetica': 'Retinopatía Diab.',
+    // GES Neurología
+    acv: 'ACV',
+    'epilepsia-infantil': 'Epilepsia Infantil',
+    'epilepsia-adulto': 'Epilepsia Adulto',
+    parkinson: 'Parkinson',
+    'esclerosis-multiple': 'Esclerosis Múltiple',
+    alzheimer: 'Alzheimer',
+    'tumores-snc': 'Tumores SNC',
+    // GES Salud Mental
+    esquizofrenia: 'Esquizofrenia',
+    depresion: 'Depresión',
+    bipolar: 'T. Bipolar',
+    'alcohol-drogas': 'Alcohol y Drogas',
+    // GES Respiratorio
+    epoc: 'EPOC',
+    'asma-pediatrico': 'Asma Pediátrico',
+    'asma-adulto': 'Asma Adulto',
+    'fibrosis-quistica': 'Fibrosis Quística',
+    'covid-rehab': 'Rehab. Post-COVID',
+    // GES Traumatología
+    escoliosis: 'Escoliosis',
+    'endoprotesis-cadera': 'Endoprótesis Cadera',
+    artrosis: 'Artrosis',
+    'hnp-lumbar': 'HNP Lumbar',
+    colecistectomia: 'Colecistectomía',
+    'fisura-labiopalatina': 'Fisura Labiopalatina',
+    'displasia-cadera': 'Displasia Cadera',
+    'osteosarcoma-tmt': 'Osteosarcoma',
+    // GES Oftalmología y ORL
+    cataratas: 'Cataratas',
+    'vicios-refraccion': 'Vicios de Refracción',
+    estrabismo: 'Estrabismo',
+    'desprendimiento-retina': 'Desprendimiento Retina',
+    'hipoacusia-adulto': 'Hipoacusia Adulto',
+    'hipoacusia-pediatrico': 'Hipoacusia Pediátrico',
+    // GES Reumatología
+    'artritis-reumatoidea': 'Artritis Reumatoidea',
+    'artritis-juvenil': 'Artritis Juvenil',
+    lupus: 'Lupus',
+    // GES Gastroenterología
+    helicobacter: 'H. pylori',
+    'hepatitis-b': 'Hepatitis B',
+    'hepatitis-c': 'Hepatitis C',
+    cirrosis: 'Cirrosis',
+    'cancer-gastrico': 'Cáncer Gástrico',
+    'cancer-colorrectal': 'Cáncer Colorrectal',
+    // GES Ginecología
+    'parto-prematuro': 'Parto Prematuro',
+    'agresion-sexual': 'Agresión Sexual',
   };
 
   const visibleBlocks = hasTabs
@@ -427,10 +596,64 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
   const mainBlocks = visibleBlocks.filter(b => !b.layout_position || b.layout_position === 'main' || b.layout_position === 'full');
   const sidebarBlocks = visibleBlocks.filter(b => b.layout_position === 'sidebar');
 
+  // GES mode: split blocks into groups
+  // criteria (Criterios de Inclusión GES) is hidden in GES mode
+  // Order: protocol_header → flowchart/algorithm → other content (text, alert…) → checklist
+  const gesProtocolBlocks = (() => {
+    const filtered   = safeBlocks.filter(b => b.type !== 'mermaid' && b.type !== 'criteria');
+    const headers    = filtered.filter(b => b.type === 'protocol_header');
+    const flows      = filtered.filter(b => b.type === 'flowchart' || b.type === 'algorithm');
+    const checklists = filtered.filter(b => b.type === 'checklist');
+    const middle     = filtered.filter(b =>
+      b.type !== 'protocol_header' && b.type !== 'flowchart' &&
+      b.type !== 'algorithm'       && b.type !== 'checklist'
+    );
+    return [...headers, ...flows, ...middle, ...checklists];
+  })();
+  const gesMermaidBlocks = safeBlocks.filter(b => b.type === 'mermaid');
+
   return (
     <div className="space-y-5">
-      {/* Tab switcher */}
-      {hasTabs && (
+
+      {/* ── GES Protocol auto-tabs ── */}
+      {isGESMode && (
+        <>
+          <div className="flex gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
+            <button
+              onClick={() => setGesTab('protocolo')}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                gesTab === 'protocolo'
+                  ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <ClipboardList className="h-4 w-4" />
+              Criterios y Derivación
+            </button>
+            <button
+              onClick={() => setGesTab('algoritmo')}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                gesTab === 'algoritmo'
+                  ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <GitBranch className="h-4 w-4" />
+              Algoritmo
+            </button>
+          </div>
+
+          <div className="space-y-5">
+            {gesTab === 'protocolo'
+              ? gesProtocolBlocks.map(renderBlock).filter(Boolean)
+              : gesMermaidBlocks.map(renderBlock).filter(Boolean)
+            }
+          </div>
+        </>
+      )}
+
+      {/* ── Normal tab switcher ── */}
+      {!isGESMode && hasTabs && (
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
           <div className="flex gap-1.5 min-w-max">
             {tabValues.map(tab => (
@@ -449,15 +672,19 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
           </div>
         </div>
       )}
-      {/* Main blocks — full width */}
-      <div className="space-y-5">
-        {mainBlocks.map(renderBlock).filter(Boolean)}
-      </div>
-      {/* Sidebar blocks — below main, in 2-col grid if multiple */}
-      {sidebarBlocks.length > 0 && (
-        <div className={sidebarBlocks.length > 1 ? 'grid gap-5 sm:grid-cols-2' : ''}>
-          {sidebarBlocks.map(renderBlock).filter(Boolean)}
-        </div>
+
+      {/* ── Normal blocks (non-GES mode) ── */}
+      {!isGESMode && (
+        <>
+          <div className="space-y-5">
+            {mainBlocks.map(renderBlock).filter(Boolean)}
+          </div>
+          {sidebarBlocks.length > 0 && (
+            <div className={sidebarBlocks.length > 1 ? 'grid gap-5 sm:grid-cols-2' : ''}>
+              {sidebarBlocks.map(renderBlock).filter(Boolean)}
+            </div>
+          )}
+        </>
       )}
 
       {(safeRelatedTopics.length > 0 || visibleRelatedTools.length > 0) && (

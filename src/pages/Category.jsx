@@ -9,14 +9,16 @@ import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import { getTopicVisual } from '@/lib/topicVisuals';
 import { hasVisibleGuaranteeDays } from '@/lib/guarantees';
-import { 
-  ChevronLeft, 
-  FileText, 
-  Stethoscope, 
+import {
+  ChevronLeft,
+  FileText,
+  Stethoscope,
   ClipboardList,
   CheckCircle2,
   ChevronRight,
   Clock,
+  FlaskConical,
+  UserCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -60,6 +62,10 @@ export default function Category() {
   });
 
   const visibleTools = tools.filter(tool => !isHiddenClinicalTool(tool));
+
+  const hasPolicinico = topics.some(t => t.subcategory === 'Policlínico');
+  const hasHospitalizados = topics.some(t => t.subcategory === 'Hospitalizados') ||
+    category?.name?.toLowerCase().includes('hospitalizad');
 
   const { data: templates = [] } = useQuery({
     queryKey: ['templates', categoryId],
@@ -275,7 +281,7 @@ export default function Category() {
               Herramientas ({visibleTools.length})
             </button>
           )}
-          {templates.length > 0 && (
+          {(templates.length > 0 || hasPolicinico || hasHospitalizados) && (
             <button
               onClick={() => setActiveTab('templates')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
@@ -285,7 +291,7 @@ export default function Category() {
               }`}
             >
               <ClipboardList className="h-4 w-4" />
-              Plantillas ({templates.length})
+              Plantillas
             </button>
           )}
         </div>
@@ -537,7 +543,39 @@ export default function Category() {
 
         {/* Templates Tab */}
         {activeTab === 'templates' && (
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-4">
+
+            {/* Solicitud de Exámenes – solo en Hospitalizados */}
+            {hasHospitalizados && (
+              <Link to={createPageUrl('SolicitudExamenes')}>
+                <div className="flex items-center gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 transition-all hover:border-blue-300 hover:shadow-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600">
+                    <FlaskConical className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">Solicitud de Exámenes — Hospital de Bulnes</p>
+                    <p className="text-sm text-slate-500">Selecciona exámenes con buscador e imprime el formulario oficial (COD. 32)</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+
+            {/* Informe Biomédico Funcional – solo en Policlínico */}
+            {hasPolicinico && (
+              <Link to={createPageUrl('InformeBiomedico')}>
+                <div className="flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 transition-all hover:border-amber-300 hover:shadow-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500">
+                    <UserCheck className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">Informe Biomédico Funcional</p>
+                    <p className="text-sm text-slate-500">Formulario oficial editable con fecha automática, imprimible · Gobierno de Chile / MINSAL</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+
+            <div className="grid md:grid-cols-2 gap-4">
             {templates.map((template, index) => (
               <motion.div
                 key={template.id}
@@ -563,6 +601,7 @@ export default function Category() {
                 </Link>
               </motion.div>
             ))}
+            </div>
           </div>
         )}
       </div>
