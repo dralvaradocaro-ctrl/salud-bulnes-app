@@ -482,10 +482,10 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
   const hasTabs = tabValues.length > 0;
   const [activeTab, setActiveTab] = useState(hasTabs ? tabValues[0] : null);
 
-  // GES protocol auto-tab: when topic has protocol_header + mermaid but no explicit tabs
+  // Auto-tab: when topic has mermaid blocks alongside other content (GES or local protocols)
   const hasProtocolHeader = safeBlocks.some(b => b.type === 'protocol_header');
   const hasMermaid = safeBlocks.some(b => b.type === 'mermaid');
-  const isGESMode = hasProtocolHeader && hasMermaid && !hasTabs;
+  const isGESMode = hasMermaid && !hasTabs && safeBlocks.some(b => b.type !== 'mermaid');
   const [gesTab, setGesTab] = useState('protocolo');
 
   const TAB_LABELS = {
