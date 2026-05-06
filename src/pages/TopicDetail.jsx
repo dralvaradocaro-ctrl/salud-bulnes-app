@@ -22,6 +22,7 @@ import ResponsiveTopicLayout from '@/components/topic/ResponsiveTopicLayout';
 import GESStructuredFallback from '@/components/topic/GESStructuredFallback';
 import { getTopicVisual } from '@/lib/topicVisuals';
 import { hasGuaranteeContent, extractGuaranteeStages } from '@/lib/guarantees';
+import { getProtocolValidityStatus } from '@/lib/protocolUtils';
 import { getGesTopicMeta, buildGesClinicalBlock } from '@/lib/ges';
 import ReactMarkdown from 'react-markdown';
 import {
@@ -521,6 +522,21 @@ export default function TopicDetail() {
                         Protocolo local establecido
                       </Badge>
                     )}
+                    {topic.has_local_protocol && (() => {
+                      const vs = getProtocolValidityStatus(topic.protocol_validity);
+                      if (!vs) return null;
+                      const styles = {
+                        vigente: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                        proximo: 'bg-amber-50 text-amber-700 border-amber-300',
+                        vencido: 'bg-red-50 text-red-700 border-red-200',
+                      };
+                      const labels = { vigente: 'Vigente', proximo: 'Próximo a vencer', vencido: 'Vencido' };
+                      return (
+                        <Badge className={`${styles[vs]} flex items-center gap-1 px-3 py-1.5`}>
+                          {labels[vs]}
+                        </Badge>
+                      );
+                    })()}
                     {topic.tags?.map((tag, idx) => (
                       <Badge key={idx} variant="outline" className="flex items-center gap-1">
                         <Tag className="h-3 w-3" />

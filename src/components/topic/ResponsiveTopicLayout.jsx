@@ -7,7 +7,7 @@ import {
   LinkIcon, Calculator, ExternalLink,
   Eye, Stethoscope, FlaskConical, Scissors,
   AlertTriangle, ChevronDown, Check, FileText, Calendar, Building2, MapPin,
-  GitBranch, ClipboardList,
+  GitBranch, ClipboardList, BookOpen,
 } from 'lucide-react';
 import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils/hiddenContent';
 import MermaidDiagram from './MermaidDiagram';
@@ -112,6 +112,117 @@ const CHECKLIST_SECTION_META = [
   { accent: 'bg-cyan-600',    labelColor: 'text-cyan-700',    headBg: 'bg-cyan-50',    headBorder: 'border-cyan-100'    },
 ];
 
+const formatDoseNumber = (value) => {
+  if (!Number.isFinite(value)) return '';
+  if (value >= 100) return Math.round(value).toString();
+  if (value >= 10) return value.toFixed(1).replace(/\.0$/, '');
+  return value.toFixed(2).replace(/0$/, '').replace(/\.0$/, '');
+};
+
+function DoseCalculatorBlock({ block }) {
+  const [weight, setWeight] = useState('');
+  const kg = parseFloat(weight);
+  const validWeight = Number.isFinite(kg) && kg > 0;
+  const medications = block.medications || [];
+
+  const calculate = (med) => {
+    if (!validWeight) return null;
+    const raw = kg * med.dose_per_kg;
+    const capped = med.max_dose ? Math.min(raw, med.max_dose) : raw;
+    const volume = med.concentration ? capped / med.concentration : null;
+    return { raw, capped, volume, cappedByMax: med.max_dose && raw > med.max_dose };
+  };
+
+  return (
+    <div key={block.id} className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm">
+      <div className="bg-gradient-to-r from-emerald-700 to-teal-700 px-5 py-4 text-white">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-bold">{block.title || 'Calculadora de dosis por peso'}</h3>
+            {block.description && <p className="mt-0.5 text-sm text-emerald-100">{block.description}</p>}
+          </div>
+          <Calculator className="h-5 w-5 text-emerald-100" />
+        </div>
+      </div>
+
+      <div className="space-y-4 p-5">
+        <label className="block">
+          <span className="text-sm font-semibold text-slate-700">Peso del paciente (kg)</span>
+          <input
+            type="number"
+            min="0.5"
+            max="120"
+            step="0.1"
+            value={weight}
+            onChange={(event) => setWeight(event.target.value)}
+            placeholder="Ej: 18.5"
+            className="mt-1 flex h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-lg font-semibold text-slate-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+          />
+        </label>
+
+        {!validWeight && (
+          <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Ingresa el peso para calcular automáticamente dosis y volumen aproximado cuando hay concentración definida.
+          </div>
+        )}
+
+        <div className="grid gap-3 md:grid-cols-2">
+          {medications.map((med) => {
+            const result = calculate(med);
+            return (
+              <div key={med.name} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="mb-2 flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">{med.name}</h4>
+                    <p className="text-xs text-slate-500">{med.indication}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
+                    {med.route}
+                  </span>
+                </div>
+
+                <p className="text-xs font-medium text-slate-600">
+                  Base: {med.dose_label}
+                </p>
+
+                {result ? (
+                  <div className="mt-3 space-y-2">
+                    <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">Dosis calculada</p>
+                      <p className="text-lg font-bold text-slate-900">
+                        {formatDoseNumber(result.capped)} {med.unit}
+                        {result.cappedByMax && <span className="ml-2 text-xs font-semibold text-amber-700">(máx.)</span>}
+                      </p>
+                    </div>
+                    {result.volume !== null && (
+                      <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-teal-700">Volumen aprox.</p>
+                        <p className="text-base font-bold text-slate-900">
+                          {formatDoseNumber(result.volume)} mL
+                          <span className="ml-2 text-xs font-medium text-slate-500">({med.concentration_label})</span>
+                        </p>
+                      </div>
+                    )}
+                    {med.note && <p className="text-xs leading-relaxed text-slate-500">{med.note}</p>}
+                  </div>
+                ) : (
+                  <p className="mt-3 rounded-lg bg-white px-3 py-2 text-sm text-slate-400 ring-1 ring-slate-200">
+                    Pendiente de peso.
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {block.footer && (
+          <p className="text-xs leading-relaxed text-slate-500">{block.footer}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ChecklistBlock({ block }) {
   const sections = block.sections || [];
   const allItems = sections.flatMap((s, si) => (s.items || []).map((_, ii) => `${si}-${ii}`));
@@ -210,6 +321,9 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
 
       case 'clinical':
         return <ClinicalBlock key={block.id} block={block} />;
+
+      case 'dose_calculator':
+        return <DoseCalculatorBlock key={block.id} block={block} />;
 
       case 'text':
         return (
@@ -485,7 +599,14 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
   // Auto-tab: when topic has mermaid blocks alongside other content (GES or local protocols)
   const hasProtocolHeader = safeBlocks.some(b => b.type === 'protocol_header');
   const hasMermaid = safeBlocks.some(b => b.type === 'mermaid');
-  const isGESMode = hasMermaid && !hasTabs && safeBlocks.some(b => b.type !== 'mermaid');
+
+  // Local protocol 3-tab mode: topic has local_protocol blocks + checklist (GES topics with HCSFB protocol)
+  const hasLocalProtocolBlocks = safeBlocks.some(b => b.local_protocol === true);
+  const hasChecklistBlocks = safeBlocks.some(b => b.type === 'checklist');
+  const isLocalProtocolMode = hasLocalProtocolBlocks && hasChecklistBlocks && !hasTabs;
+  const [localTab, setLocalTab] = useState('local');
+
+  const isGESMode = hasMermaid && !hasTabs && !isLocalProtocolMode && safeBlocks.some(b => b.type !== 'mermaid');
   const [gesTab, setGesTab] = useState('protocolo');
 
   const TAB_LABELS = {
@@ -586,6 +707,18 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     'cancer-colorrectal': 'Cáncer Colorrectal',
     // GES Ginecología
     'parto-prematuro': 'Parto Prematuro',
+    // Protocolos Urgencias
+    rcpp_protocolo: 'Protocolo',
+    rcpp_equipo: 'Equipo',
+    rcpp_farmacos: 'Fármacos',
+    rcpp_flujogramas: 'Flujogramas',
+    rcpp_postparo: 'Post-PCR',
+    tec_adulto_clinica: 'Clínica',
+    tec_adulto_protocolo: 'Protocolo',
+    tec_adulto_neuroproteccion: 'Neuroprotección',
+    tec_adulto_farmacos: 'Fármacos',
+    tec_adulto_derivacion: 'Derivación',
+    tec_adulto_flujogramas: 'Flujogramas',
     'agresion-sexual': 'Agresión Sexual',
   };
 
@@ -614,6 +747,65 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
 
   return (
     <div className="space-y-5">
+
+      {/* ── Local Protocol 3-tab mode (GES topic + protocolo local HCSFB) ── */}
+      {isLocalProtocolMode && (
+        <>
+          <div className="flex gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
+            <button
+              onClick={() => setLocalTab('local')}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                localTab === 'local'
+                  ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-100'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <BookOpen className="h-4 w-4" />
+              Protocolo Local
+            </button>
+            <button
+              onClick={() => setLocalTab('checklist')}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                localTab === 'checklist'
+                  ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <ClipboardList className="h-4 w-4" />
+              Pauta de Cotejo
+            </button>
+            {hasMermaid && (
+              <button
+                onClick={() => setLocalTab('algoritmo')}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                  localTab === 'algoritmo'
+                    ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <GitBranch className="h-4 w-4" />
+                Algoritmo
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-5">
+            {localTab === 'local' &&
+              safeBlocks
+                .filter(b => b.local_protocol === true)
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .map(renderBlock)
+                .filter(Boolean)
+            }
+            {localTab === 'checklist' &&
+              safeBlocks.filter(b => b.type === 'checklist').map(renderBlock).filter(Boolean)
+            }
+            {localTab === 'algoritmo' &&
+              safeBlocks.filter(b => b.type === 'mermaid').map(renderBlock).filter(Boolean)
+            }
+          </div>
+        </>
+      )}
 
       {/* ── GES Protocol auto-tabs ── */}
       {isGESMode && (
@@ -673,8 +865,8 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
         </div>
       )}
 
-      {/* ── Normal blocks (non-GES mode) ── */}
-      {!isGESMode && (
+      {/* ── Normal blocks (non-GES, non-local-protocol mode) ── */}
+      {!isGESMode && !isLocalProtocolMode && (
         <>
           <div className="space-y-5">
             {mainBlocks.map(renderBlock).filter(Boolean)}

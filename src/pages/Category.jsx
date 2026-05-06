@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { isHiddenClinicalTool } from '@/components/utils/hiddenContent';
+import { getProtocolValidityStatus } from '@/lib/protocolUtils';
 import {
   Tooltip,
   TooltipContent,
@@ -431,6 +432,21 @@ export default function Category() {
                                         Prot. Local
                                       </Badge>
                                     )}
+                                    {topic.has_local_protocol && (() => {
+                                      const vs = getProtocolValidityStatus(topic.protocol_validity);
+                                      if (!vs) return null;
+                                      const styles = {
+                                        vigente:  'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                        proximo:  'bg-amber-50 text-amber-700 border-amber-200',
+                                        vencido:  'bg-red-50 text-red-700 border-red-200',
+                                      };
+                                      const labels = { vigente: 'Vigente', proximo: 'Próx. a vencer', vencido: 'Vencido' };
+                                      return (
+                                        <Badge className={`${styles[vs]} flex items-center gap-1 text-xs`}>
+                                          {labels[vs]}
+                                        </Badge>
+                                      );
+                                    })()}
                                     {topic.clasificacion_ges === 'GES' && (
                                       <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">GES</Badge>
                                     )}
