@@ -882,7 +882,7 @@ export default function TopicEditorFull({
                         <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 font-medium">Herramienta</span>
                       )}
                       {formData.has_local_protocol && (
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800 font-semibold border border-green-300">✓ Prot. Local</span>
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800 font-semibold border border-green-300">✓ Protocolo Local</span>
                       )}
                     </div>
                   )}

@@ -522,7 +522,7 @@ export default function TopicDetail() {
                         Protocolo local establecido
                       </Badge>
                     )}
-                    {topic.has_local_protocol && (() => {
+                    {(() => {
                       const vs = getProtocolValidityStatus(topic.protocol_validity);
                       if (!vs) return null;
                       const styles = {

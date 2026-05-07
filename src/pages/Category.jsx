@@ -157,25 +157,35 @@ export default function Category() {
 
   // Define subcategory order for better organization
   const subcategoryOrder = [
+    // Especialidades clínicas
     'Cardiovascular',
     'Neurología',
+    'Salud Mental',
+    'Traumatología y Rehabilitación',
     'Respiratorio',
     'Endocrinología y Metabólico',
+    'Nefrología y Electrolitos',
     'Nefrología y Urología',
+    'Hematología',
+    'Infectología',
+    'Nutrición',
+    'Pediatría',
+    'Pediatría y Neonatología',
     'Oftalmología',
     'Oncología',
     'Ginecología y Obstetricia',
-    'Salud Mental',
     'Digestivo y Hepatología',
-    'Pediatría y Neonatología',
-    'Traumatología y Rehabilitación',
     'Reumatología e Inmunología',
     'Otorrinolaringología',
     'Odontología y Salud Oral',
-    'GES General',
-    'Protocolos Locales',
+    // Transversales
+    'Urgencias y Emergencias',
+    'Procedimientos',
+    'Seguridad del Paciente',
     'Herramientas Clínicas',
+    'GES General',
     'Patologías Prevalentes',
+    'Protocolos Locales',
     'Otros'
   ];
   const sortedSubcategories = Object.keys(groupedTopics).sort((a, b) => {
@@ -417,7 +427,7 @@ export default function Category() {
                                     {topic.name}
                                   </h3>
                                   <div className="flex flex-wrap gap-1.5 mb-3">
-                                    {(topic.tipo_contenido || []).includes('protocolo') && (
+                                    {(topic.tipo_contenido || []).includes('protocolo') && !topic.has_local_protocol && (
                                       <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Protocolo</Badge>
                                     )}
                                     {(topic.tipo_contenido || []).includes('contenido_medico') && (
@@ -429,10 +439,10 @@ export default function Category() {
                                     {topic.has_local_protocol && (
                                       <Badge className="bg-green-100 text-green-700 border-green-300 flex items-center gap-1 text-xs font-semibold">
                                         <CheckCircle2 className="h-3 w-3" />
-                                        Prot. Local
+                                        Protocolo Local
                                       </Badge>
                                     )}
-                                    {topic.has_local_protocol && (() => {
+                                    {(() => {
                                       const vs = getProtocolValidityStatus(topic.protocol_validity);
                                       if (!vs) return null;
                                       const styles = {

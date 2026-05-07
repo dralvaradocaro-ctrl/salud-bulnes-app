@@ -223,6 +223,149 @@ function DoseCalculatorBlock({ block }) {
   );
 }
 
+function ImageGalleryBlock({ block }) {
+  const images = block.images || [];
+  const [active, setActive] = useState(null);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {block.title && (
+        <div className="border-b border-slate-100 bg-slate-50 px-5 py-3.5">
+          <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-600">{block.title}</h3>
+          {block.description && <p className="mt-0.5 text-xs text-slate-500">{block.description}</p>}
+        </div>
+      )}
+      <div className="p-4">
+        <div className={`grid gap-3 ${images.length === 1 ? 'grid-cols-1' : images.length === 2 ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3'}`}>
+          {images.map((img, i) => (
+            <button
+              key={i}
+              onClick={() => setActive(active === i ? null : i)}
+              className="group relative overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-left transition hover:border-slate-400 hover:shadow-md"
+            >
+              <img
+                src={img.url}
+                alt={img.alt || img.caption || ''}
+                className="h-40 w-full object-cover object-top transition group-hover:scale-105"
+                loading="lazy"
+              />
+              {img.caption && (
+                <div className="border-t border-slate-100 px-2.5 py-2">
+                  <p className="text-xs font-medium leading-snug text-slate-700">{img.caption}</p>
+                  {img.label && (
+                    <span className="mt-1 inline-block rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">{img.label}</span>
+                  )}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {active !== null && images[active] && (
+          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            <img
+              src={images[active].url}
+              alt={images[active].alt || images[active].caption || ''}
+              className="max-h-96 w-full object-contain"
+            />
+            {images[active].caption && (
+              <p className="border-t border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700">{images[active].caption}</p>
+            )}
+            {images[active].description && (
+              <p className="px-4 pb-3 text-xs leading-relaxed text-slate-500">{images[active].description}</p>
+            )}
+          </div>
+        )}
+
+        {block.source && (
+          <p className="mt-3 text-[11px] leading-relaxed text-slate-400">Fuente: {block.source}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ScoreCalculatorBlock({ block }) {
+  const items = block.items || [];
+  const thresholds = block.thresholds || [];
+  const [checked, setChecked] = useState({});
+
+  const score = items.reduce((sum, _, i) => sum + (checked[i] ? 1 : 0), 0);
+  const toggle = (i) => setChecked(prev => ({ ...prev, [i]: !prev[i] }));
+  const reset  = () => setChecked({});
+
+  const level = thresholds.find(t => score >= t.min && score <= t.max);
+  const colorMap = {
+    green: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', badge: 'bg-emerald-600', score: 'text-emerald-700' },
+    amber: { bg: 'bg-amber-50',   border: 'border-amber-200',   text: 'text-amber-800',   badge: 'bg-amber-500',   score: 'text-amber-700'   },
+    red:   { bg: 'bg-red-50',     border: 'border-red-200',     text: 'text-red-800',     badge: 'bg-red-600',     score: 'text-red-700'     },
+  };
+  const c = level ? (colorMap[level.color] || colorMap.green) : null;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-sm">
+      <div className="bg-gradient-to-r from-violet-700 to-indigo-700 px-5 py-4 text-white">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-bold">{block.title || 'Calculadora de puntaje'}</h3>
+            {block.description && <p className="mt-0.5 text-sm text-violet-200">{block.description}</p>}
+          </div>
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 text-xl font-bold">
+            {score}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-5 space-y-4">
+        <div className="grid gap-2 sm:grid-cols-2">
+          {items.map((item, i) => (
+            <button
+              key={i}
+              onClick={() => toggle(i)}
+              className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all ${
+                checked[i]
+                  ? 'border-violet-300 bg-violet-50 shadow-sm'
+                  : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'
+              }`}
+            >
+              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs font-bold transition-colors ${
+                checked[i] ? 'border-violet-500 bg-violet-600 text-white' : 'border-slate-300 bg-white text-transparent'
+              }`}>
+                ✓
+              </span>
+              <span className={`text-sm leading-snug ${checked[i] ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>
+                {item.label}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {level && (
+          <div className={`rounded-xl border-2 ${c.border} ${c.bg} px-4 py-3`}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className={`text-xs font-bold uppercase tracking-wider ${c.score}`}>Puntaje {score} — {level.label}</p>
+                <p className={`mt-0.5 text-sm font-medium ${c.text}`}>{level.action}</p>
+              </div>
+              <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-bold text-white ${c.badge}`}>{score}/10</span>
+            </div>
+          </div>
+        )}
+
+        {score === 0 && !level && (
+          <p className="text-sm text-slate-400 text-center">Marca los ítems presentes para calcular el riesgo.</p>
+        )}
+
+        {score > 0 && (
+          <button onClick={reset} className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors">
+            Reiniciar
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ChecklistBlock({ block }) {
   const sections = block.sections || [];
   const allItems = sections.flatMap((s, si) => (s.items || []).map((_, ii) => `${si}-${ii}`));
@@ -325,6 +468,12 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
       case 'dose_calculator':
         return <DoseCalculatorBlock key={block.id} block={block} />;
 
+      case 'score_calculator':
+        return <ScoreCalculatorBlock key={block.id} block={block} />;
+
+      case 'image_gallery':
+        return <ImageGalleryBlock key={block.id} block={block} />;
+
       case 'text':
         return (
           <div key={block.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -364,43 +513,75 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
               </div>
               {block.details?.length > 0 && (
                 <div className="space-y-2.5">
-                  {block.details.map((detail, idx) => {
-                    const lines = detail.split('\n');
-                    const mainText = lines.filter(l => !l.startsWith('~')).join(' ').trim();
-                    const subItems = lines.filter(l => l.startsWith('~')).map(l => l.slice(1).trim());
-                    return (
-                    <div key={idx} className="relative rounded-xl border border-white/70 bg-white/85 p-3.5 pl-14 shadow-sm">
-                      <div className={`absolute left-3.5 top-3.5 flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-white ${colorConfig.circle}`}>
-                        {idx + 1}
-                      </div>
-                      <p className="text-sm leading-relaxed text-slate-800">
-                        {mainText.includes('→') ? (
-                          <>
-                            <strong className="font-semibold">{mainText.split('→')[0].trim()}</strong>
-                            {' → ' + mainText.split('→').slice(1).join('→').trim()}
-                          </>
-                        ) : mainText}
-                      </p>
-                      {subItems.length > 0 && (
-                        <div className="mt-2 space-y-1.5">
-                          {subItems.map((item, i) => (
-                            <div key={i} className={`flex items-start gap-2 rounded-lg px-3 py-1.5 ${colorConfig.bg} border ${colorConfig.border}`}>
-                              <span className="mt-0.5 shrink-0 text-xs font-bold text-slate-400">—</span>
-                              <span className="text-xs leading-relaxed text-slate-700">
-                                {item.includes(':') ? (
-                                  <>
-                                    <strong className="font-semibold text-slate-800">{item.split(':')[0]}</strong>
-                                    {':' + item.split(':').slice(1).join(':')}
-                                  </>
-                                ) : item}
-                              </span>
+                  {(() => {
+                    // Group array items: ~ entries attach to the previous step as sub-items
+                    const groups = [];
+                    for (const detail of block.details) {
+                      const trimmed = detail.trim();
+                      if (trimmed === '') { groups.push({ type: 'spacer' }); continue; }
+                      if (/^[━═─]{3}/.test(trimmed)) { groups.push({ type: 'separator', text: trimmed }); continue; }
+                      if (trimmed.startsWith('~')) {
+                        const sub = trimmed.slice(1).trim();
+                        if (groups.length > 0 && groups[groups.length - 1].type === 'step') {
+                          groups[groups.length - 1].subItems.push(sub);
+                        } else {
+                          groups.push({ type: 'step', text: '', subItems: [sub] });
+                        }
+                        continue;
+                      }
+                      // Inline ~ via \n still supported
+                      const lines = trimmed.split('\n');
+                      const mainText = lines.filter(l => !l.startsWith('~')).join(' ').trim();
+                      const inlineSubs = lines.filter(l => l.startsWith('~')).map(l => l.slice(1).trim());
+                      groups.push({ type: 'step', text: mainText, subItems: inlineSubs });
+                    }
+                    let stepNum = 0;
+                    return groups.map((group, idx) => {
+                      if (group.type === 'spacer') return <div key={idx} className="h-1" />;
+                      if (group.type === 'separator') {
+                        const labelText = group.text.replace(/^[━═─\s]+|[━═─\s]+$/g, '').trim();
+                        return (
+                          <div key={idx} className={`rounded-lg px-3 py-1.5 ${colorConfig.badge}`}>
+                            <span className="text-xs font-bold uppercase tracking-wider">{labelText}</span>
+                          </div>
+                        );
+                      }
+                      stepNum += 1;
+                      const { text: mainText, subItems } = group;
+                      return (
+                        <div key={idx} className="relative rounded-xl border border-white/70 bg-white/85 p-3.5 pl-14 shadow-sm">
+                          <div className={`absolute left-3.5 top-3.5 flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold text-white ${colorConfig.circle}`}>
+                            {stepNum}
+                          </div>
+                          <p className="text-sm leading-relaxed text-slate-800">
+                            {mainText.includes('→') ? (
+                              <>
+                                <strong className="font-semibold">{mainText.split('→')[0].trim()}</strong>
+                                {' → ' + mainText.split('→').slice(1).join('→').trim()}
+                              </>
+                            ) : mainText}
+                          </p>
+                          {subItems.length > 0 && (
+                            <div className="mt-2 space-y-1.5">
+                              {subItems.map((item, i) => (
+                                <div key={i} className={`flex items-start gap-2 rounded-lg px-3 py-1.5 ${colorConfig.bg} border ${colorConfig.border}`}>
+                                  <span className="mt-0.5 shrink-0 text-xs font-bold text-slate-400">—</span>
+                                  <span className="text-xs leading-relaxed text-slate-700">
+                                    {item.includes(':') ? (
+                                      <>
+                                        <strong className="font-semibold text-slate-800">{item.split(':')[0]}</strong>
+                                        {':' + item.split(':').slice(1).join(':')}
+                                      </>
+                                    ) : item}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          )}
                         </div>
-                      )}
-                    </div>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </div>
               )}
             </div>
@@ -477,14 +658,17 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
 
       case 'criteria': {
         const CRITERIA_PALETTES = {
-          blue:   { header: 'bg-blue-600',   badge: 'bg-blue-100 text-blue-800',   dot: 'bg-blue-500',   card: 'border-blue-100 bg-blue-50' },
-          red:    { header: 'bg-red-600',    badge: 'bg-red-100 text-red-800',    dot: 'bg-red-500',    card: 'border-red-100 bg-red-50' },
-          green:  { header: 'bg-emerald-600',badge: 'bg-emerald-100 text-emerald-800', dot: 'bg-emerald-500', card: 'border-emerald-100 bg-emerald-50' },
-          amber:  { header: 'bg-amber-500',  badge: 'bg-amber-100 text-amber-800',  dot: 'bg-amber-500',  card: 'border-amber-100 bg-amber-50' },
-          purple: { header: 'bg-violet-600', badge: 'bg-violet-100 text-violet-800', dot: 'bg-violet-500', card: 'border-violet-100 bg-violet-50' },
+          blue:   { header: 'bg-blue-600',   badge: 'bg-blue-100 text-blue-800',   dot: 'bg-blue-500',   label: 'text-blue-700',    card: 'border-blue-100 bg-blue-50' },
+          red:    { header: 'bg-red-600',    badge: 'bg-red-100 text-red-800',    dot: 'bg-red-500',    label: 'text-red-700',     card: 'border-red-100 bg-red-50' },
+          green:  { header: 'bg-emerald-600',badge: 'bg-emerald-100 text-emerald-800', dot: 'bg-emerald-500', label: 'text-emerald-700', card: 'border-emerald-100 bg-emerald-50' },
+          amber:  { header: 'bg-amber-500',  badge: 'bg-amber-100 text-amber-800',  dot: 'bg-amber-500',  label: 'text-amber-700',   card: 'border-amber-100 bg-amber-50' },
+          purple: { header: 'bg-violet-600', badge: 'bg-violet-100 text-violet-800', dot: 'bg-violet-500', label: 'text-violet-700',  card: 'border-violet-100 bg-violet-50' },
         };
         const cp = CRITERIA_PALETTES[block.color] || CRITERIA_PALETTES.blue;
         const items = block.items || [];
+        const isSectionLabel = (s) => typeof s === 'string' && /^[━═─]{3}/.test(s.trim());
+        const isEmptyItem    = (s) => !s || s.trim() === '';
+        const realCount = items.filter(item => !isSectionLabel(item) && !isEmptyItem(item)).length;
         return (
           <div key={block.id} className={`overflow-hidden rounded-2xl border shadow-sm ${cp.card}`}>
             <div className={`flex items-center gap-3 px-5 py-3.5 ${cp.header}`}>
@@ -492,16 +676,27 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                 {block.title || 'Criterios de Derivación'}
               </h3>
               <span className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-bold ${cp.badge}`}>
-                {items.length} criterios
+                {realCount}
               </span>
             </div>
             <ul className="divide-y divide-white/60 p-2">
-              {items.map((item, i) => (
-                <li key={i} className="flex items-start gap-3 rounded-xl px-4 py-2.5 transition-colors hover:bg-white/60">
-                  <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${cp.dot}`} />
-                  <span className="text-sm leading-relaxed text-slate-800">{item}</span>
-                </li>
-              ))}
+              {items.map((item, i) => {
+                if (isEmptyItem(item)) return null;
+                if (isSectionLabel(item)) {
+                  const labelText = item.trim().replace(/^[━═─\s]+|[━═─\s]+$/g, '').trim();
+                  return (
+                    <div key={i} className="px-4 pb-1 pt-3">
+                      <span className={`text-xs font-bold uppercase tracking-wider ${cp.label}`}>{labelText}</span>
+                    </div>
+                  );
+                }
+                return (
+                  <li key={i} className="flex items-start gap-3 rounded-xl px-4 py-2.5 transition-colors hover:bg-white/60">
+                    <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${cp.dot}`} />
+                    <span className="text-sm leading-relaxed text-slate-800">{item}</span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         );
@@ -713,6 +908,22 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     rcpp_farmacos: 'Fármacos',
     rcpp_flujogramas: 'Flujogramas',
     rcpp_postparo: 'Post-PCR',
+    rcpa_protocolo: 'Protocolo',
+    rcpa_equipo: 'Equipo',
+    rcpa_farmacos: 'Fármacos',
+    rcpa_flujogramas: 'Flujogramas',
+    rcpa_postparo: 'Post-PCR',
+    intsuic_protocolo: 'Protocolo',
+    intsuic_derivacion: 'Derivación',
+    intsuic_flujogramas: 'Flujogramas',
+    dac_protocolo: 'Protocolo',
+    dac_tratamiento: 'Tratamiento',
+    dac_flujogramas: 'Flujogramas',
+    trombo_protocolo: 'Protocolo',
+    trombo_farmacos: 'Fármacos',
+    trombo_contrain: 'Contraindicaciones',
+    trombo_monitoreo: 'Monitoreo',
+    trombo_flujogramas: 'Flujogramas',
     tec_adulto_clinica: 'Clínica',
     tec_adulto_protocolo: 'Protocolo',
     tec_adulto_neuroproteccion: 'Neuroprotección',
@@ -720,6 +931,13 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     tec_adulto_derivacion: 'Derivación',
     tec_adulto_flujogramas: 'Flujogramas',
     'agresion-sexual': 'Agresión Sexual',
+    taco_protocolo: 'Protocolo',
+    taco_equipo: 'Equipo',
+    taco_farmacos: 'Fármacos',
+    taco_flujogramas: 'Flujogramas',
+    tele_protocolo: 'Protocolo',
+    tele_patologias: 'Patologías GES',
+    tele_flujogramas: 'Flujogramas',
   };
 
   const visibleBlocks = hasTabs
