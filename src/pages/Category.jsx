@@ -77,6 +77,7 @@ export default function Category() {
   const matchesTopicFilter = (topic) => {
     if (activeTopicFilter === 'local') return !!topic.has_local_protocol;
     if (activeTopicFilter === 'ges') return topic.clasificacion_ges === 'GES';
+    if (activeTopicFilter === 'complementario') return (topic.tipo_contenido || []).includes('tema_complementario');
     return true;
   };
 
@@ -197,10 +198,12 @@ export default function Category() {
     return indexA - indexB;
   });
 
+  const complementarioCount = topics.filter(topic => (topic.tipo_contenido || []).includes('tema_complementario')).length;
   const topicFilterOptions = [
     { value: 'all', count: topics.length, label: `Todos (${topics.length})` },
     { value: 'local', count: topics.filter(topic => topic.has_local_protocol).length, label: `Protocolo local (${topics.filter(topic => topic.has_local_protocol).length})` },
     { value: 'ges', count: topics.filter(topic => topic.clasificacion_ges === 'GES').length, label: `GES (${topics.filter(topic => topic.clasificacion_ges === 'GES').length})` },
+    { value: 'complementario', count: complementarioCount, label: `Temas complementarios (${complementarioCount})` },
   ];
   const meaningfulTopicFilterOptions = topicFilterOptions.filter((option) =>
     option.value === 'all' || (option.count > 0 && option.count < topics.length)
