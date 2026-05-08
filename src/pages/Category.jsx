@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Clock,
   FlaskConical,
+  Sparkles,
   UserCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -309,6 +310,13 @@ export default function Category() {
               Plantillas
             </button>
           )}
+          <Link
+            to={createPageUrl('PrescripcionInteligente')}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm hover:from-blue-700 hover:to-indigo-700 hover:shadow-md"
+          >
+            <Sparkles className="h-4 w-4" />
+            Prescripción Inteligente
+          </Link>
         </div>
 
         {/* Topics Tab */}

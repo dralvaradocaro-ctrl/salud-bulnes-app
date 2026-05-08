@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Home, Stethoscope, ClipboardList, BookOpen, Sparkles } from 'lucide-react';
+import { Home, Stethoscope, ClipboardList, BookOpen } from 'lucide-react';
 
 const TOPIC_PAGES = ['TopicDetail', 'Category'];
 const LAST_TOPIC_KEY = 'salud_bulnes_last_topic_url';
@@ -27,13 +27,6 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Temas', page: null, icon: BookOpen, to: lastTopicUrl, active: isOnTopicPage },
     { name: 'Herramientas', page: 'AllCalculators', icon: Stethoscope, to: createPageUrl('AllCalculators') },
     { name: 'Plantillas', page: 'Templates', icon: ClipboardList, to: createPageUrl('Templates') },
-    {
-      name: 'Prescripción Inteligente',
-      page: 'PrescripcionInteligente',
-      icon: Sparkles,
-      to: createPageUrl('PrescripcionInteligente'),
-      featured: true,
-    },
   ];
 
   // Don't show nav on home page
@@ -48,24 +41,6 @@ export default function Layout({ children, currentPageName }) {
         <div className="flex justify-around">
           {navItems.map((item) => {
             const isActive = item.active ?? currentPageName === item.page;
-            if (item.featured) {
-              return (
-                <Link
-                  key={item.name}
-                  to={item.to}
-                  className={`flex flex-col items-center gap-1 rounded-xl px-3 py-2 text-white shadow-md transition-all ${
-                    isActive
-                      ? 'bg-gradient-to-br from-blue-700 to-indigo-700 ring-2 ring-blue-300'
-                      : 'bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-indigo-600'
-                  }`}
-                >
-                  <item.icon className="h-5 w-5" />
-                  <span className="text-[10px] font-semibold leading-tight text-center">
-                    Prescripción
-                  </span>
-                </Link>
-              );
-            }
             return (
               <Link
                 key={item.name}
