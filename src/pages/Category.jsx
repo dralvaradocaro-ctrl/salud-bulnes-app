@@ -64,7 +64,8 @@ export default function Category() {
 
   const visibleTools = tools.filter(tool => !isHiddenClinicalTool(tool));
 
-  const hasPolicinico = topics.some(t => t.subcategory === 'Policlínico');
+  const hasPolicinico = topics.some(t => t.subcategory === 'Policlínico') ||
+    category?.name?.toLowerCase().includes('policlin');
   const hasHospitalizados = topics.some(t => t.subcategory === 'Hospitalizados') ||
     category?.name?.toLowerCase().includes('hospitalizad');
 
