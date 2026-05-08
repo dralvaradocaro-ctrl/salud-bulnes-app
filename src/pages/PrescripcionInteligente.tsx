@@ -18,7 +18,10 @@ import EducationView from '@/medispense/pages/EducationView';
 import UserManagement from '@/medispense/pages/UserManagement';
 import NotFound from '@/medispense/pages/NotFound';
 
-import '@/medispense/index.css';
+// NOTA: NO importar @/medispense/index.css aquí — sobrescribe todas las
+// variables CSS globales del proyecto y rompe el design system de salud-bulnes.
+// Como ambos proyectos usan shadcn, los componentes funcionan igual con el
+// tema de salud-bulnes.
 
 // QueryClient propio para aislar de la app principal
 const queryClient = new QueryClient();
