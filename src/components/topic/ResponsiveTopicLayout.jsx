@@ -12,6 +12,39 @@ import {
 import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils/hiddenContent';
 import MermaidDiagram from './MermaidDiagram';
 
+// Renders text with inline clickable links for patterns defined in block.links
+// block.links: { "pattern text": "topicId" }
+function renderWithLinks(text, links) {
+  if (!links || !text || Object.keys(links).length === 0) return text;
+  let segments = [text];
+  for (const [pattern, topicId] of Object.entries(links)) {
+    const next = [];
+    for (const seg of segments) {
+      if (typeof seg !== 'string') { next.push(seg); continue; }
+      const parts = seg.split(pattern);
+      if (parts.length === 1) { next.push(seg); continue; }
+      parts.forEach((part, i) => {
+        if (part) next.push(part);
+        if (i < parts.length - 1) next.push({ pattern, topicId });
+      });
+    }
+    segments = next;
+  }
+  return segments.map((seg, i) => {
+    if (typeof seg === 'string') return seg;
+    return (
+      <Link
+        key={i}
+        to={createPageUrl(`TopicDetail?id=${seg.topicId}`)}
+        onClick={e => e.stopPropagation()}
+        className="font-semibold text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-800 transition-colors"
+      >
+        {seg.pattern}
+      </Link>
+    );
+  });
+}
+
 const FLOW_COLORS = {
   blue:   { bg: 'bg-blue-50',   border: 'border-blue-200',   circle: 'bg-blue-600',   badge: 'bg-blue-100 text-blue-700',   bar: 'from-blue-500 to-indigo-500' },
   purple: { bg: 'bg-purple-50', border: 'border-purple-200', circle: 'bg-purple-600', badge: 'bg-purple-100 text-purple-700', bar: 'from-purple-500 to-indigo-500' },
@@ -554,12 +587,16 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                             {stepNum}
                           </div>
                           <p className="text-sm leading-relaxed text-slate-800">
-                            {mainText.includes('→') ? (
-                              <>
-                                <strong className="font-semibold">{mainText.split('→')[0].trim()}</strong>
-                                {' → ' + mainText.split('→').slice(1).join('→').trim()}
-                              </>
-                            ) : mainText}
+                            {block.links
+                              ? renderWithLinks(mainText, block.links)
+                              : mainText.includes('→')
+                                ? (
+                                  <>
+                                    <strong className="font-semibold">{mainText.split('→')[0].trim()}</strong>
+                                    {' → ' + mainText.split('→').slice(1).join('→').trim()}
+                                  </>
+                                )
+                                : mainText}
                           </p>
                           {subItems.length > 0 && (
                             <div className="mt-2 space-y-1.5">
@@ -567,12 +604,16 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                                 <div key={i} className={`flex items-start gap-2 rounded-lg px-3 py-1.5 ${colorConfig.bg} border ${colorConfig.border}`}>
                                   <span className="mt-0.5 shrink-0 text-xs font-bold text-slate-400">—</span>
                                   <span className="text-xs leading-relaxed text-slate-700">
-                                    {item.includes(':') ? (
-                                      <>
-                                        <strong className="font-semibold text-slate-800">{item.split(':')[0]}</strong>
-                                        {':' + item.split(':').slice(1).join(':')}
-                                      </>
-                                    ) : item}
+                                    {block.links
+                                      ? renderWithLinks(item, block.links)
+                                      : item.includes(':')
+                                        ? (
+                                          <>
+                                            <strong className="font-semibold text-slate-800">{item.split(':')[0]}</strong>
+                                            {':' + item.split(':').slice(1).join(':')}
+                                          </>
+                                        )
+                                        : item}
                                   </span>
                                 </div>
                               ))}
@@ -710,7 +751,9 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                 return (
                   <li key={i} className="flex items-start gap-3 rounded-xl px-4 py-2.5 transition-colors hover:bg-white/60">
                     <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${cp.dot}`} />
-                    <span className="text-sm leading-relaxed text-slate-800">{displayText}</span>
+                    <span className="text-sm leading-relaxed text-slate-800">
+                      {renderWithLinks(displayText, block.links)}
+                    </span>
                   </li>
                 );
               })}
