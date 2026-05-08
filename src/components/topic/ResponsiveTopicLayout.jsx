@@ -7,7 +7,7 @@ import {
   LinkIcon, Calculator, ExternalLink,
   Eye, Stethoscope, FlaskConical, Scissors,
   AlertTriangle, ChevronDown, Check, FileText, Calendar, Building2, MapPin,
-  GitBranch, ClipboardList, BookOpen,
+  GitBranch, ClipboardList, BookOpen, Phone,
 } from 'lucide-react';
 import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils/hiddenContent';
 import MermaidDiagram from './MermaidDiagram';
@@ -690,10 +690,27 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                     </div>
                   );
                 }
+                const displayText = item.replace(/^[•·]\s*/, '');
+                const isPhoneItem = /^[📞📱☎]/.test(item.trim());
+                if (isPhoneItem) {
+                  const numMatch = displayText.match(/\d[\d\s\-\.]{3,}\d/);
+                  const label = displayText.replace(/^[📞📱☎]\s*/, '').trim();
+                  return (
+                    <li key={i} className="px-4 py-2">
+                      <a
+                        href={numMatch ? `tel:${numMatch[0].replace(/[\s\-\.]/g, '')}` : undefined}
+                        className="inline-flex items-center gap-2 rounded-xl border bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+                      >
+                        <Phone className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                        {label}
+                      </a>
+                    </li>
+                  );
+                }
                 return (
                   <li key={i} className="flex items-start gap-3 rounded-xl px-4 py-2.5 transition-colors hover:bg-white/60">
                     <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${cp.dot}`} />
-                    <span className="text-sm leading-relaxed text-slate-800">{item}</span>
+                    <span className="text-sm leading-relaxed text-slate-800">{displayText}</span>
                   </li>
                 );
               })}
