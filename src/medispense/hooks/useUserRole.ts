@@ -8,21 +8,31 @@ export function useUserRole() {
   const { user } = useAuth();
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
       setRole(null);
+      setError(null);
       setLoading(false);
       return;
     }
 
+    setLoading(true);
+    setError(null);
     supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single()
-      .then(({ data }) => {
-        setRole((data?.role as AppRole) ?? null);
+      .maybeSingle()
+      .then(({ data, error: queryError }) => {
+        if (queryError) {
+          console.error('useUserRole error:', queryError);
+          setError(queryError.message);
+          setRole(null);
+        } else {
+          setRole((data?.role as AppRole) ?? null);
+        }
         setLoading(false);
       });
   }, [user]);
@@ -31,5 +41,5 @@ export function useUserRole() {
   const isNurse = role === 'nurse';
   const canDelete = isAdmin;
 
-  return { role, loading, isAdmin, isNurse, canDelete };
+  return { role, loading, error, isAdmin, isNurse, canDelete };
 }

@@ -30,11 +30,10 @@ export function AccessibilityButton() {
   };
 
   const applyTheme = (themeId: string) => {
-    const main = document.querySelector('main') as HTMLElement;
-    if (!main) return;
+    const target = document.querySelector('.medispense-root') as HTMLElement | null;
+    if (!target) return;
     const theme = COLOR_THEMES.find(t => t.id === themeId);
-    main.style.filter = theme?.filterValue || '';
-    setState(prev => ({ ...prev, theme: themeId }));
+    target.style.filter = theme?.filterValue || '';
     setState(prev => ({ ...prev, theme: themeId }));
   };
 
@@ -44,10 +43,10 @@ export function AccessibilityButton() {
         <Button
           variant="outline"
           size="icon"
-          className="h-9 w-9 rounded-full shadow-md border-2"
+          className="h-8 w-8 rounded-md shadow-none"
           aria-label="Opciones de accesibilidad"
         >
-          <Settings2 className="h-4 w-4" />
+          <Settings2 className="h-3.5 w-3.5" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-56 p-3 space-y-3" align="end">

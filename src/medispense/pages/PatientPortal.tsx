@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/med
 import { Badge } from '@/medispense/components/ui/badge';
 import { Button } from '@/medispense/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/medispense/components/ui/tooltip';
-import { Clock, Pill, Calendar, AlertCircle, CheckCircle2, Info, ChevronDown, ChevronUp, BookOpen, ShieldAlert } from 'lucide-react';
+import { Clock, Pill, Calendar, AlertCircle, CheckCircle2, Info, ChevronDown, ChevronUp, BookOpen, ShieldAlert, Bell } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/medispense/components/ui/dialog';
 import { supabase } from '@/medispense/integrations/supabase/client';
 import { ExpiryBanner } from '@/medispense/components/patient-portal/ExpiryBanner';
@@ -13,7 +13,6 @@ import { DiagnosesCard } from '@/medispense/components/patient-portal/DiagnosesC
 import { MedicationInfoDialog } from '@/medispense/components/patient-portal/MedicationInfoDialog';
 import { NotificationSettings } from '@/medispense/components/patient-portal/NotificationSettings';
 import { CompactCardiovascular } from '@/medispense/components/patient-portal/CompactCardiovascular';
-import { ExamBanner } from '@/medispense/components/patient-portal/ExamBanner';
 import { ExamDetailsCard } from '@/medispense/components/patient-portal/ExamDetailsCard';
 import { FloatingNav } from '@/medispense/components/patient-portal/FloatingNav';
 import { AccessibilityButton } from '@/medispense/components/patient-portal/AccessibilityButton';
@@ -133,6 +132,7 @@ export default function PatientPortal() {
   const expiringRef = useRef<HTMLDivElement>(null);
   const currentHourRef = useRef<HTMLDivElement>(null);
   const [showSosDialog, setShowSosDialog] = useState(false);
+  const [showNotifDialog, setShowNotifDialog] = useState(false);
   const tts = useSpeechSynthesis();
 
   useEffect(() => {
@@ -404,7 +404,9 @@ export default function PatientPortal() {
     hasDM2,
     hasDiabeticRetinopathy,
   ) : [];
-  const isInCardiovascularProgram = patient.is_cardiovascular_program ?? shouldDefaultToCardiovascularProgram(patient.diagnoses);
+  const isInCardiovascularProgram = patient
+    ? (patient.is_cardiovascular_program ?? shouldDefaultToCardiovascularProgram(patient.diagnoses))
+    : false;
   const visiblePrescriptions = [...activePrescriptions, ...recentlyExpiredPrescriptions];
 
   if (loading) {
@@ -438,34 +440,68 @@ export default function PatientPortal() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Pill className="h-8 w-8 text-primary" />
-              <div>
-                <h1 className="text-xl font-bold">Mi Plan de Medicamentos</h1>
-                <p className="text-sm text-muted-foreground">
-                  {patient.age ? `${patient.age} años` : ''} • Código: {patient.patient_code}
-                </p>
+      <header className="border-b bg-card/95">
+        <div className="container mx-auto px-4 py-3">
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-primary/5">
+                  <Pill className="h-5 w-5 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="truncate text-base font-semibold leading-tight">Plan de medicamentos</h1>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {patient.age ? `${patient.age} años` : 'Edad no registrada'} · Código {patient.patient_code}
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <TextToSpeechControls
+                  isSupported={tts.isSupported}
+                  status={tts.status}
+                  speed={tts.speed}
+                  onSpeedChange={tts.setSpeed}
+                  onPlay={handlePlayAll}
+                  onPause={tts.pause}
+                  onResume={tts.resume}
+                  onStop={tts.stop}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowNotifDialog(true)}
+                  className="h-8 gap-1.5 px-2.5 text-xs"
+                >
+                  <Bell className="h-3.5 w-3.5" />
+                  <span className="hidden md:inline">Avisos</span>
+                </Button>
+                <AccessibilityButton />
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <TextToSpeechControls
-                isSupported={tts.isSupported}
-                status={tts.status}
-                speed={tts.speed}
-                onSpeedChange={tts.setSpeed}
-                onPlay={handlePlayAll}
-                onPause={tts.pause}
-                onResume={tts.resume}
-                onStop={tts.stop}
+            {isInCardiovascularProgram && (
+              <CompactCardiovascular
+                lastControlDate={patient.last_cv_control_date || null}
+                lastControlProfessional={patient.last_cv_control_professional || null}
+                nextControlDate={patient.next_cv_control_date || null}
+                nextControlProfessional={patient.next_cv_control_professional || null}
+                cardiovascularRisk={patient.cardiovascular_risk || null}
+                diagnoses={patient.diagnoses}
               />
-              <AccessibilityButton />
-            </div>
+            )}
           </div>
         </div>
       </header>
+
+      {patient && (
+        <Dialog open={showNotifDialog} onOpenChange={setShowNotifDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Notificaciones</DialogTitle>
+            </DialogHeader>
+            <NotificationSettings patientId={patient.id} />
+          </DialogContent>
+        </Dialog>
+      )}
 
       <main className="container mx-auto px-4 py-4 space-y-3">
         {/* 1️⃣ Expired prescription alert - TOP PRIORITY */}
@@ -480,124 +516,6 @@ export default function PatientPortal() {
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)] xl:items-start">
           <section className="space-y-4 xl:min-w-0">
-            <div className="space-y-3" id="prescriptions-section">
-              <Card className="border-primary/20 bg-card/95">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div>
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        <Calendar className="h-5 w-5 text-primary" />
-                        Mis Recetas
-                      </CardTitle>
-                      <CardDescription className="mt-1">
-                        Recetas visibles primero para acceso clínico rápido.
-                      </CardDescription>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="secondary">{activePrescriptions.length} vigentes</Badge>
-                      {recentlyExpiredPrescriptions.length > 0 && (
-                        <Badge className="bg-warning text-warning-foreground">{recentlyExpiredPrescriptions.length} por renovar</Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-
-              {visiblePrescriptions.length > 0 ? (
-                visiblePrescriptions.map((prescription) => {
-              const daysUntilExpiry = getDaysUntilExpiry(prescription.expiry_date);
-              const isExpired = daysUntilExpiry <= 0;
-              const isFirstExpiring = prescription.id === firstExpiringPrescription?.id;
-
-              return (
-                <Card
-                  key={prescription.id}
-                  ref={isFirstExpiring ? expiringRef : undefined}
-                  className={isExpired ? 'opacity-70 border-destructive/50' : ''}
-                >
-                      <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <CardTitle className="text-base">
-                        Receta del {new Date(prescription.issue_date).toLocaleDateString('es-CL')}
-                      </CardTitle>
-                      <Badge
-                        className={`${
-                          isExpired
-                            ? 'bg-destructive text-destructive-foreground'
-                            : daysUntilExpiry <= 7
-                            ? 'bg-destructive text-destructive-foreground'
-                            : daysUntilExpiry <= 30
-                            ? 'bg-warning text-warning-foreground'
-                            : 'bg-success text-success-foreground'
-                        }`}
-                      >
-                        {isExpired
-                          ? '⚠️ VENCIDA - Renovar'
-                          : daysUntilExpiry <= 7
-                          ? `⚠️ Vence en ${daysUntilExpiry} día${daysUntilExpiry === 1 ? '' : 's'}`
-                          : `Válida ${daysUntilExpiry} días más`}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                      <CardContent className="pt-0">
-                        <div className="space-y-1.5">
-                      {prescription.items.map((item) => {
-                        const specificIndication = extractSpecificIndication(item.ai_description);
-                        const tabletDisplay = extractTabletDisplay(item.ai_description);
-                        return (
-                          <div
-                            key={item.id}
-                                className="flex items-start justify-between rounded-lg bg-accent/30 p-2.5 cursor-pointer hover:bg-accent/50 transition-colors"
-                            onClick={() => setSelectedMedication(item)}
-                          >
-                            <div className="flex items-start gap-2 flex-1">
-                              <Pill className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-medium">{item.medication_name}</span>
-                                  {tabletDisplay && (
-                                    <Badge variant="secondary" className="text-xs">
-                                      {tabletDisplay}
-                                    </Badge>
-                                  )}
-                                  {item.is_sos && (
-                                    <Badge className="text-[10px] bg-warning text-warning-foreground font-semibold">
-                                      🆘 SOS
-                                    </Badge>
-                                  )}
-                                </div>
-                                {specificIndication && (
-                                  <p className="text-xs text-primary/80 mt-0.5 italic">💊 {specificIndication}</p>
-                                )}
-                                {item.ai_description && !specificIndication && (
-                                  <p className="text-xs text-muted-foreground mt-0.5">{item.ai_description}</p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0 ml-2">
-                              <span>{item.frequency}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                        {prescription.notes && (
-                          <p className="mt-2 text-sm text-muted-foreground italic">📝 {prescription.notes}</p>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })
-          ) : (
-            <Card>
-                  <CardContent className="py-8 text-center">
-                <Pill className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
-                <p className="text-muted-foreground">No tienes recetas activas</p>
-              </CardContent>
-            </Card>
-          )}
-            </div>
-
             <Card id="schedule-section">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -742,25 +660,123 @@ export default function PatientPortal() {
           </section>
 
           <aside className="space-y-3 xl:sticky xl:top-4">
-            {isInCardiovascularProgram && (
-              <CompactCardiovascular
-                lastControlDate={patient.last_cv_control_date || null}
-                lastControlProfessional={patient.last_cv_control_professional || null}
-                nextControlDate={patient.next_cv_control_date || null}
-                nextControlProfessional={patient.next_cv_control_professional || null}
-                cardiovascularRisk={patient.cardiovascular_risk || null}
-                diagnoses={patient.diagnoses}
-              />
-            )}
+            <div className="space-y-3" id="prescriptions-section">
+              <Card className="border-primary/20 bg-card/95">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Calendar className="h-5 w-5 text-primary" />
+                        Mis Recetas
+                      </CardTitle>
+                      <CardDescription className="mt-1">
+                        Recetas visibles primero para acceso clínico rápido.
+                      </CardDescription>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="secondary">{activePrescriptions.length} vigentes</Badge>
+                      {recentlyExpiredPrescriptions.length > 0 && (
+                        <Badge className="bg-warning text-warning-foreground">{recentlyExpiredPrescriptions.length} por renovar</Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+              </Card>
 
-            {isInCardiovascularProgram && (
-              <ExamBanner
-                exams={exams}
-                showExamDates={showExamDates}
-                nextControlProfessional={patient.next_cv_control_professional || null}
-                nextControlDate={patient.next_cv_control_date || null}
-              />
-            )}
+              {visiblePrescriptions.length > 0 ? (
+                visiblePrescriptions.map((prescription) => {
+              const daysUntilExpiry = getDaysUntilExpiry(prescription.expiry_date);
+              const isExpired = daysUntilExpiry <= 0;
+              const isFirstExpiring = prescription.id === firstExpiringPrescription?.id;
+
+              return (
+                <Card
+                  key={prescription.id}
+                  ref={isFirstExpiring ? expiringRef : undefined}
+                  className={isExpired ? 'opacity-70 border-destructive/50' : ''}
+                >
+                      <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <CardTitle className="text-base">
+                        Receta del {new Date(prescription.issue_date).toLocaleDateString('es-CL')}
+                      </CardTitle>
+                      <Badge
+                        className={`${
+                          isExpired
+                            ? 'bg-destructive text-destructive-foreground'
+                            : daysUntilExpiry <= 7
+                            ? 'bg-destructive text-destructive-foreground'
+                            : daysUntilExpiry <= 30
+                            ? 'bg-warning text-warning-foreground'
+                            : 'bg-success text-success-foreground'
+                        }`}
+                      >
+                        {isExpired
+                          ? '⚠️ VENCIDA - Renovar'
+                          : daysUntilExpiry <= 7
+                          ? `⚠️ Vence en ${daysUntilExpiry} día${daysUntilExpiry === 1 ? '' : 's'}`
+                          : `Válida ${daysUntilExpiry} días más`}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="space-y-1.5">
+                      {prescription.items.map((item) => {
+                        const specificIndication = extractSpecificIndication(item.ai_description);
+                        const tabletDisplay = extractTabletDisplay(item.ai_description);
+                        return (
+                          <div
+                            key={item.id}
+                                className="flex items-start justify-between rounded-lg bg-accent/30 p-2.5 cursor-pointer hover:bg-accent/50 transition-colors"
+                            onClick={() => setSelectedMedication(item)}
+                          >
+                            <div className="flex items-start gap-2 flex-1">
+                              <Pill className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium">{item.medication_name}</span>
+                                  {tabletDisplay && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {tabletDisplay}
+                                    </Badge>
+                                  )}
+                                  {item.is_sos && (
+                                    <Badge className="text-[10px] bg-warning text-warning-foreground font-semibold">
+                                      🆘 SOS
+                                    </Badge>
+                                  )}
+                                </div>
+                                {specificIndication && (
+                                  <p className="text-xs text-primary/80 mt-0.5 italic">💊 {specificIndication}</p>
+                                )}
+                                {item.ai_description && !specificIndication && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">{item.ai_description}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground shrink-0 ml-2">
+                              <span>{item.frequency}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                        {prescription.notes && (
+                          <p className="mt-2 text-sm text-muted-foreground italic">📝 {prescription.notes}</p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
+          ) : (
+            <Card>
+                  <CardContent className="py-8 text-center">
+                <Pill className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground">No tienes recetas activas</p>
+              </CardContent>
+            </Card>
+          )}
+            </div>
 
             <DiagnosesCard diagnoses={patient.diagnoses} />
 
@@ -840,7 +856,6 @@ export default function PatientPortal() {
             </Card>
           )}
 
-          {patient && <NotificationSettings patientId={patient.id} />}
         </div>
 
         <div className="text-center py-6 text-sm text-muted-foreground">

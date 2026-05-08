@@ -15,6 +15,16 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/medispense/integrations/supabase/client';
+import { routes } from '@/medispense/lib/routes';
+
+const computeMinDaysUntilExpiry = (prescriptions: { expiry_date: string }[] | null | undefined): number | null => {
+  if (!prescriptions || prescriptions.length === 0) return null;
+  const today = new Date();
+  const days = prescriptions.map(p =>
+    Math.ceil((new Date(p.expiry_date).getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  );
+  return Math.min(...days);
+};
 
 interface PatientWithPrescription {
   id: string;
@@ -78,15 +88,7 @@ export default function Dashboard() {
                 .eq('patient_id', patient.id);
 
               const prescriptionCount = prescriptions?.length || 0;
-              let daysUntilExpiry: number | null = null;
-              if (prescriptions && prescriptions.length > 0) {
-                const today = new Date();
-                const expiryDates = prescriptions.map(p => {
-                  const expiry = new Date(p.expiry_date);
-                  return Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                });
-                daysUntilExpiry = Math.min(...expiryDates);
-              }
+              const daysUntilExpiry = computeMinDaysUntilExpiry(prescriptions);
 
               return {
                 id: patient.id,
@@ -134,17 +136,7 @@ export default function Dashboard() {
           .eq('patient_id', patient.id);
 
         const prescriptionCount = prescriptions?.length || 0;
-        
-        // Find the nearest expiry date
-        let daysUntilExpiry: number | null = null;
-        if (prescriptions && prescriptions.length > 0) {
-          const today = new Date();
-          const expiryDates = prescriptions.map(p => {
-            const expiry = new Date(p.expiry_date);
-            return Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          });
-          daysUntilExpiry = Math.min(...expiryDates);
-        }
+        const daysUntilExpiry = computeMinDaysUntilExpiry(prescriptions);
 
         return {
           id: patient.id,
@@ -192,7 +184,7 @@ export default function Dashboard() {
               />
             </div>
             <Button asChild>
-              <Link to="/PrescripcionInteligente/patients/new">
+              <Link to={routes.newPatient()}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nuevo Paciente
               </Link>
@@ -227,7 +219,7 @@ export default function Dashboard() {
                   {filteredPatients.map((patient) => (
                     <Link
                       key={patient.id}
-                      to={`/PrescripcionInteligente/patients/${patient.patient_code}`}
+                      to={routes.patient(patient.patient_code)}
                       className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors group"
                     >
                       <div className="flex items-center gap-4">
@@ -276,7 +268,7 @@ export default function Dashboard() {
                   <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground mb-4">No hay pacientes registrados</p>
                   <Button asChild>
-                    <Link to="/PrescripcionInteligente/patients/new">
+                    <Link to={routes.newPatient()}>
                       <Plus className="h-4 w-4 mr-2" />
                       Agregar Primer Paciente
                     </Link>
@@ -322,7 +314,7 @@ export default function Dashboard() {
                     {urgentPrescriptions.map((patient) => (
                       <Link
                         key={patient.id}
-                        to={`/PrescripcionInteligente/patients/${patient.patient_code}`}
+                        to={routes.patient(patient.patient_code)}
                         className="flex items-center justify-between p-2 rounded-lg bg-destructive/5 hover:bg-destructive/10 transition-colors"
                       >
                         <div>
@@ -351,19 +343,19 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="pt-0 space-y-2">
               <Button variant="outline" className="w-full justify-start" asChild>
-                <Link to="/PrescripcionInteligente/patients/new">
+                <Link to={routes.newPatient()}>
                   <Plus className="h-4 w-4 mr-2" />
                   Nuevo Paciente
                 </Link>
               </Button>
               <Button variant="outline" className="w-full justify-start" asChild>
-                <Link to="/PrescripcionInteligente/arsenal">
+                <Link to={routes.arsenal()}>
                   <Pill className="h-4 w-4 mr-2" />
                   Ver Arsenal
                 </Link>
               </Button>
               <Button variant="outline" className="w-full justify-start" asChild>
-                <Link to="/PrescripcionInteligente/education">
+                <Link to={routes.education()}>
                   <BookOpen className="h-4 w-4 mr-2" />
                   Herramientas Educativas
                 </Link>

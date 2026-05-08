@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/med
 import { Button } from '@/medispense/components/ui/button';
 import { Badge } from '@/medispense/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/medispense/components/ui/tooltip';
-import { ArrowLeft, Plus, Clock, Pill, Calendar, QrCode, User, Printer, Info, ChevronDown, ChevronUp, Pencil, BookOpen, Trash2, HeartPulse, ExternalLink, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Plus, Clock, Pill, Calendar, QrCode, User, Printer, Info, ChevronDown, ChevronUp, Pencil, BookOpen, Trash2, HeartPulse, ExternalLink } from 'lucide-react';
+import { routes } from '@/medispense/lib/routes';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   DropdownMenu,
@@ -249,7 +250,7 @@ export default function PatientDetail() {
     return Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   };
 
-  const getPatientPortalUrl = () => `${window.location.origin}/portal/${patientCode}`;
+  const getPatientPortalUrl = () => `${window.location.origin}${routes.portal(patientCode!)}`;
 
   const handleDeletePatient = async () => {
     if (!patient) return;
@@ -274,7 +275,7 @@ export default function PatientDetail() {
         description: `Eliminó paciente ${patient.full_name} (${patient.patient_code})`,
       });
       toast({ title: 'Paciente eliminado' });
-      navigate('/PrescripcionInteligente/dashboard');
+      navigate(routes.dashboard());
     } catch (error) {
       console.error('Error deleting patient:', error);
       toast({ title: 'Error', description: 'No se pudo eliminar el paciente', variant: 'destructive' });
@@ -375,7 +376,7 @@ export default function PatientDetail() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/PrescripcionInteligente/dashboard')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(routes.dashboard())}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -386,7 +387,7 @@ export default function PatientDetail() {
         <Card>
           <CardContent className="pt-6 text-center">
             <p className="text-muted-foreground mb-4">¿Deseas crear este paciente?</p>
-            <Button onClick={() => navigate('/PrescripcionInteligente/patients/new')}>
+            <Button onClick={() => navigate(routes.newPatient())}>
               <Plus className="h-4 w-4 mr-2" /> Crear Paciente
             </Button>
           </CardContent>
@@ -456,7 +457,7 @@ export default function PatientDetail() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/PrescripcionInteligente/dashboard')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(routes.dashboard())}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -479,7 +480,7 @@ export default function PatientDetail() {
           <Button variant="outline" size="sm" onClick={() => setShowQR(true)}>
             <QrCode className="h-4 w-4 mr-2" /> Ver QR
           </Button>
-          <Button variant="outline" size="sm" onClick={() => window.open(`/portal/${patientCode}`, '_blank')}>
+          <Button variant="outline" size="sm" onClick={() => window.open(routes.portal(patientCode!), '_blank')}>
             <ExternalLink className="h-4 w-4 mr-2" /> Ver Portal Paciente
           </Button>
           {educationPages.length > 0 && (
@@ -499,7 +500,7 @@ export default function PatientDetail() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <Button size="sm" onClick={() => navigate(`/PrescripcionInteligente/patients/${patientCode}/prescription/new`)}>
+          <Button size="sm" onClick={() => navigate(routes.newPrescription(patientCode!))}>
             <Plus className="h-4 w-4 mr-2" /> Nueva Receta
           </Button>
         </div>
@@ -912,9 +913,9 @@ export default function PatientDetail() {
                           prescriptionId={prescription.id}
                           prescriptionDate={prescription.issue_date}
                           onDeleted={() => fetchPatientData()}
-                          onEdit={() => navigate(`/PrescripcionInteligente/patients/${patientCode}/prescription/new?edit=${prescription.id}`)}
+                          onEdit={() => navigate(routes.editPrescription(patientCode!, prescription.id))}
                           onRenewOnly={() => handleRenewOnly(prescription.id)}
-                          onRenewAndEdit={() => navigate(`/PrescripcionInteligente/patients/${patientCode}/prescription/new?renew=${prescription.id}`)}
+                          onRenewAndEdit={() => navigate(routes.renewPrescription(patientCode!, prescription.id))}
                           canDelete={canDelete}
                         />
                       </div>
@@ -1000,7 +1001,7 @@ export default function PatientDetail() {
                                 prescriptionId={prescription.id}
                                 prescriptionDate={prescription.issue_date}
                                 onDeleted={() => fetchPatientData()}
-                                onEdit={() => navigate(`/PrescripcionInteligente/patients/${patientCode}/prescription/new?edit=${prescription.id}`)}
+                                onEdit={() => navigate(routes.editPrescription(patientCode!, prescription.id))}
                                 canDelete={canDelete}
                               />
                             </div>
@@ -1027,7 +1028,7 @@ export default function PatientDetail() {
             <Pill className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="font-semibold mb-2">Sin prescripciones</h3>
             <p className="text-muted-foreground mb-4">Este paciente no tiene recetas</p>
-            <Button onClick={() => navigate(`/PrescripcionInteligente/patients/${patientCode}/prescription/new`)}>
+            <Button onClick={() => navigate(routes.newPrescription(patientCode!))}>
               <Plus className="h-4 w-4 mr-2" /> Agregar Primera Receta
             </Button>
           </CardContent>

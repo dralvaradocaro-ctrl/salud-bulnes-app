@@ -44,6 +44,8 @@ import { supabase } from '@/medispense/integrations/supabase/client';
 import { useAuth } from '@/medispense/contexts/AuthContext';
 import { useToast } from '@/medispense/hooks/use-toast';
 import { getDefaultSchedule } from '@/medispense/lib/medication-schedules';
+import { extractSpecificIndication, extractCustomPresentation, extractTabletsPerDose } from '@/medispense/lib/aiDescription';
+import { routes } from '@/medispense/lib/routes';
 import { cn } from '@/medispense/lib/utils';
 import { RiskWarnings } from '@/medispense/components/prescription/RiskWarnings';
 import { PresentationSelector } from '@/medispense/components/prescription/PresentationSelector';
@@ -153,6 +155,79 @@ const createEmptyGroup = (index: number): PrescriptionGroup => ({
   notes: '',
 });
 
+interface PrescriptionItemRow {
+  medication_id: string | null;
+  medication_name: string;
+  prescribed_dose: number;
+  prescribed_unit: string;
+  frequency: string;
+  duration_days: number | null;
+  fractionation: string | null;
+  schedule: unknown;
+  ai_description: string | null;
+  is_sos?: boolean | null;
+  sos_reason?: string | null;
+}
+
+const mapPrescriptionItemFromRow = (
+  item: PrescriptionItemRow,
+  medsData: Medication[] | null | undefined,
+  tempIdPrefix: 'edit' | 'renew',
+  idx: number
+): PrescriptionItemInput => {
+  const matchingMed = medsData?.find(m => m.id === item.medication_id) || null;
+  const isInsulin = isInsulinMedication(item.medication_name);
+  const isWeekly = isWeeklyFrequency(item.frequency);
+
+  let insulinAm: number | null = null;
+  let insulinPm: number | null = null;
+  const weeklyDays = emptyWeeklyDays();
+
+  if (item.fractionation) {
+    const parts = item.fractionation.split('-').map(Number);
+    if (isInsulin && parts.length === 2) {
+      insulinAm = parts[0];
+      insulinPm = parts[1];
+    } else if (isWeekly && parts.length === 7) {
+      DAY_LABELS.forEach((d, i) => {
+        weeklyDays[d] = parts[i] || 0;
+      });
+    }
+  }
+
+  const schedule = (item.schedule as string[]) || [];
+  const tabletsPerDose = extractTabletsPerDose(item.ai_description);
+  const customPresentation = extractCustomPresentation(item.ai_description);
+
+  return {
+    tempId: `${tempIdPrefix}-${Date.now()}-${idx}`,
+    medication_id: item.medication_id,
+    medication_name: item.medication_name,
+    prescribed_dose: item.prescribed_dose,
+    prescribed_unit: item.prescribed_unit,
+    frequency: item.frequency,
+    duration_days: item.duration_days,
+    fractionation: item.fractionation,
+    schedule,
+    scheduleReason: null,
+    isInsulin,
+    insulinAm,
+    insulinPm,
+    isWeekly,
+    weeklyDays,
+    tabletsPerDose,
+    arsenalDoseValue: matchingMed?.dose_value || null,
+    arsenalDoseUnit: matchingMed?.dose_unit || null,
+    arsenalPresentation: matchingMed?.presentation || null,
+    specificIndication: extractSpecificIndication(item.ai_description),
+    dosesBySchedule: null,
+    useCustomPresentation: !!customPresentation,
+    customPresentation: customPresentation || '',
+    isSos: item.is_sos ?? false,
+    sosReason: item.sos_reason ?? null,
+  };
+};
+
 export default function NewPrescription() {
   const { patientCode } = useParams<{ patientCode: string }>();
   const [searchParams] = useSearchParams();
@@ -216,63 +291,9 @@ export default function NewPrescription() {
         const expiryDate = new Date(prescriptionData.expiry_date + 'T12:00:00');
         const expiryDays = Math.round((expiryDate.getTime() - issueDate.getTime()) / (1000 * 60 * 60 * 24));
 
-        const loadedItems: PrescriptionItemInput[] = (itemsData || []).map((item, idx) => {
-          const matchingMed = medsData?.find(m => m.id === item.medication_id) || null;
-          const isInsulin = isInsulinMedication(item.medication_name);
-          const isWeekly = isWeeklyFrequency(item.frequency);
-          
-          let insulinAm: number | null = null;
-          let insulinPm: number | null = null;
-          let weeklyDays = emptyWeeklyDays();
-
-          if (item.fractionation) {
-            const parts = item.fractionation.split('-').map(Number);
-            if (isInsulin && parts.length === 2) {
-              insulinAm = parts[0];
-              insulinPm = parts[1];
-            } else if (isWeekly && parts.length === 7) {
-              DAY_LABELS.forEach((d, i) => {
-                weeklyDays[d] = parts[i] || 0;
-              });
-            }
-          }
-
-          const schedule = (item.schedule as string[]) || [];
-          const tabletMatch = item.ai_description?.match(/(½|¼|¾|\d+½|\d+(?:\.\d+)?)\s*(?:comprimido|cápsula|tableta|comp)/i);
-          const tabletsPerDose = tabletMatch ? parseFloat(tabletMatch[1].replace('½', '.5').replace('¼', '.25').replace('¾', '.75')) : 1;
-
-          // Detect custom presentation from ai_description
-          const presMatch = item.ai_description?.match(/Presentación:\s*(.+?)(?:\s*\||$)/);
-          const hasCustomPresentation = !!presMatch;
-
-          return {
-            tempId: `edit-${Date.now()}-${idx}`,
-            medication_id: item.medication_id,
-            medication_name: item.medication_name,
-            prescribed_dose: item.prescribed_dose,
-            prescribed_unit: item.prescribed_unit,
-            frequency: item.frequency,
-            duration_days: item.duration_days,
-            fractionation: item.fractionation,
-            schedule,
-            scheduleReason: null,
-            isInsulin,
-            insulinAm,
-            insulinPm,
-            isWeekly,
-            weeklyDays,
-            tabletsPerDose,
-            arsenalDoseValue: matchingMed?.dose_value || null,
-            arsenalDoseUnit: matchingMed?.dose_unit || null,
-            arsenalPresentation: matchingMed?.presentation || null,
-            specificIndication: null,
-            dosesBySchedule: null,
-            useCustomPresentation: hasCustomPresentation,
-            customPresentation: presMatch ? presMatch[1].trim() : '',
-            isSos: false,
-            sosReason: null,
-          };
-        });
+        const loadedItems: PrescriptionItemInput[] = (itemsData || []).map((item, idx) =>
+          mapPrescriptionItemFromRow(item, medsData, 'edit', idx)
+        );
 
         setGroups([{
           id: `group-edit-${editPrescriptionId}`,
@@ -295,62 +316,9 @@ export default function NewPrescription() {
         .eq('is_annulled', false);
 
       if (itemsData && itemsData.length > 0) {
-        const loadedItems: PrescriptionItemInput[] = itemsData.map((item, idx) => {
-          const matchingMed = medsData?.find(m => m.id === item.medication_id) || null;
-          const isInsulin = isInsulinMedication(item.medication_name);
-          const isWeekly = isWeeklyFrequency(item.frequency);
-          
-          let insulinAm: number | null = null;
-          let insulinPm: number | null = null;
-          let weeklyDays = emptyWeeklyDays();
-
-          if (item.fractionation) {
-            const parts = item.fractionation.split('-').map(Number);
-            if (isInsulin && parts.length === 2) {
-              insulinAm = parts[0];
-              insulinPm = parts[1];
-            } else if (isWeekly && parts.length === 7) {
-              DAY_LABELS.forEach((d, i) => {
-                weeklyDays[d] = parts[i] || 0;
-              });
-            }
-          }
-
-          const schedule = (item.schedule as string[]) || [];
-          const tabletMatch = item.ai_description?.match(/(½|¼|¾|\d+½|\d+(?:\.\d+)?)\s*(?:comprimido|cápsula|tableta|comp)/i);
-          const tabletsPerDose = tabletMatch ? parseFloat(tabletMatch[1].replace('½', '.5').replace('¼', '.25').replace('¾', '.75')) : 1;
-
-          const presMatch = item.ai_description?.match(/Presentación:\s*(.+?)(?:\s*\||$)/);
-          const hasCustomPresentation = !!presMatch;
-
-          return {
-            tempId: `renew-${Date.now()}-${idx}`,
-            medication_id: item.medication_id,
-            medication_name: item.medication_name,
-            prescribed_dose: item.prescribed_dose,
-            prescribed_unit: item.prescribed_unit,
-            frequency: item.frequency,
-            duration_days: item.duration_days,
-            fractionation: item.fractionation,
-            schedule,
-            scheduleReason: null,
-            isInsulin,
-            insulinAm,
-            insulinPm,
-            isWeekly,
-            weeklyDays,
-            tabletsPerDose,
-            arsenalDoseValue: matchingMed?.dose_value || null,
-            arsenalDoseUnit: matchingMed?.dose_unit || null,
-            arsenalPresentation: matchingMed?.presentation || null,
-            specificIndication: null,
-            dosesBySchedule: null,
-            useCustomPresentation: hasCustomPresentation,
-            customPresentation: presMatch ? presMatch[1].trim() : '',
-            isSos: false,
-            sosReason: null,
-          };
-        });
+        const loadedItems: PrescriptionItemInput[] = itemsData.map((item, idx) =>
+          mapPrescriptionItemFromRow(item, medsData, 'renew', idx)
+        );
 
         setGroups([{
           id: `group-renew-${renewPrescriptionId}`,
@@ -421,11 +389,20 @@ export default function NewPrescription() {
 
     try {
       const { parsePrescriptionWithGemini } = await import('@/medispense/lib/geminiParse');
+      const ARSENAL_LIMIT = 150;
+      const arsenalForAI = medications.slice(0, ARSENAL_LIMIT);
+      if (medications.length > ARSENAL_LIMIT) {
+        toast({
+          title: 'Arsenal grande',
+          description: `Se enviaron a la IA solo los primeros ${ARSENAL_LIMIT} de ${medications.length} medicamentos. Si no encuentra el que buscás, agregalo manualmente.`,
+        });
+      }
+
       let data: { medications: any[] };
       try {
         data = await parsePrescriptionWithGemini(
           aiText,
-          medications.slice(0, 150).map(m => ({
+          arsenalForAI.map(m => ({
             id: m.id,
             name: m.name,
             dose_value: m.dose_value,
@@ -435,7 +412,16 @@ export default function NewPrescription() {
           }))
         );
       } catch (e: any) {
-        toast({ title: 'Error', description: e.message || 'No se pudo procesar el texto', variant: 'destructive' });
+        const raw = typeof e?.message === 'string' ? e.message : 'No se pudo procesar el texto';
+        let description = raw;
+        if (raw.includes('429') || /quota|rate/i.test(raw)) {
+          description = 'Cuota de Gemini agotada. Esperá unos segundos o revisá tu plan en https://ai.google.dev.';
+        } else if (raw.includes('404')) {
+          description = 'El modelo de Gemini configurado no está disponible. Avisá al equipo técnico.';
+        } else if (/network|fetch|failed to fetch/i.test(raw)) {
+          description = 'Error de red al contactar Gemini. Verificá tu conexión y reintentá.';
+        }
+        toast({ title: 'Error de IA', description, variant: 'destructive' });
         return;
       }
 
@@ -510,11 +496,14 @@ export default function NewPrescription() {
           description: `Se agregaron ${newItems.length} medicamento(s) a ${activeGroup.label}.` 
         });
       } else {
-        toast({ title: 'Sin resultados', description: 'No se encontraron medicamentos en el texto.', variant: 'destructive' });
+        toast({
+          title: 'Sin medicamentos detectados',
+          description: 'La IA procesó el texto pero no identificó medicamentos. Probá reformular o agregar manualmente.',
+        });
       }
     } catch (error) {
       console.error('Error parsing with AI:', error);
-      toast({ title: 'Error', description: 'Error de conexión. Intenta de nuevo.', variant: 'destructive' });
+      toast({ title: 'Error inesperado', description: 'Falló el procesamiento. Mirá la consola para detalles.', variant: 'destructive' });
     } finally {
       setParsingAi(false);
     }
@@ -662,6 +651,10 @@ export default function NewPrescription() {
   };
 
   const totalItems = groups.reduce((sum, g) => sum + g.items.length, 0);
+
+  const hasIncompleteWeekly = groups.some(g =>
+    g.items.some(it => it.isWeekly && Object.values(it.weeklyDays).filter(v => v > 0).length === 0)
+  );
 
   const normalizeMedName = (name: string): string => {
     return name.toLowerCase().replace(/\s*\d+[\.,]?\d*\s*(mg|mcg|ml|ui|g|%)\s*/gi, '').trim();
@@ -848,7 +841,7 @@ export default function NewPrescription() {
           ? 'Receta actualizada exitosamente'
           : `${nonEmptyGroups.length === 1 ? 'Receta creada' : `${nonEmptyGroups.length} recetas creadas`} exitosamente` 
       });
-      navigate(`/PrescripcionInteligente/patients/${patientCode}`);
+      navigate(routes.patient(patientCode!));
     } catch (error) {
       console.error('Error saving prescription:', error);
       toast({ title: 'Error', description: 'No se pudo guardar', variant: 'destructive' });
@@ -872,7 +865,7 @@ export default function NewPrescription() {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/PrescripcionInteligente/dashboard')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(routes.dashboard())}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -888,7 +881,7 @@ export default function NewPrescription() {
       {/* Header */}
       <div className="sticky top-16 z-40 -mx-8 px-8 py-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/PrescripcionInteligente/patients/${patientCode}`)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(routes.patient(patientCode!))}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
@@ -896,7 +889,7 @@ export default function NewPrescription() {
             <p className="text-muted-foreground">Paciente: {patient.full_name}</p>
           </div>
         </div>
-        <Button onClick={handleSave} disabled={saving || totalItems === 0}>
+        <Button onClick={handleSave} disabled={saving || totalItems === 0 || hasIncompleteWeekly}>
           {saving ? 'Guardando...' : isEditMode 
             ? 'Actualizar Receta'
             : groups.filter(g => g.items.length > 0).length > 1 
@@ -1284,9 +1277,15 @@ export default function NewPrescription() {
                         )}
 
                         {/* WEEKLY: Day selector */}
-                        {item.isWeekly && (
-                          <div className="p-3 rounded-lg bg-primary/10 border border-primary/30 space-y-2">
-                            <Label className="text-xs flex items-center gap-1 text-primary">
+                        {item.isWeekly && (() => {
+                          const weeklyTotalDays = Object.values(item.weeklyDays).filter(v => v > 0).length;
+                          const weeklyMissing = weeklyTotalDays === 0;
+                          return (
+                          <div className={cn(
+                            "p-3 rounded-lg border space-y-2",
+                            weeklyMissing ? "bg-destructive/10 border-destructive/40" : "bg-primary/10 border-primary/30"
+                          )}>
+                            <Label className={cn("text-xs flex items-center gap-1", weeklyMissing ? "text-destructive" : "text-primary")}>
                               <AlertCircle className="h-3 w-3" />
                               Seleccionar días y dosis *
                             </Label>
@@ -1331,8 +1330,14 @@ export default function NewPrescription() {
                             <p className="text-xs text-muted-foreground">
                               Total semanal: {formatTablets(Object.values(item.weeklyDays).reduce((a, b) => a + b, 0))} {item.isInsulin ? 'UI' : 'comp.'}
                             </p>
+                            {weeklyMissing && (
+                              <p className="text-xs text-destructive font-medium">
+                                Marcá al menos un día para guardar.
+                              </p>
+                            )}
                           </div>
-                        )}
+                          );
+                        })()}
 
                         {/* SOS / A demanda */}
                         <div className="flex items-center gap-3 pt-1">

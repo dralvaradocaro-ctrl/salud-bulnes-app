@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/med
 import { useToast } from '@/medispense/hooks/use-toast';
 import { Stethoscope, Pill, Heart, Shield } from 'lucide-react';
 import { z } from 'zod';
+import { routes } from '@/medispense/lib/routes';
 
 const emailSchema = z.string().min(1, 'Usuario requerido');
 const passwordSchema = z.string().min(4, 'La contraseña debe tener al menos 4 caracteres');
@@ -30,7 +31,7 @@ export default function Auth() {
   }
 
   if (user) {
-    return <Navigate to="/PrescripcionInteligente/dashboard" replace />;
+    return <Navigate to={routes.dashboard()} replace />;
   }
 
   const handleLogin = async (e: React.FormEvent) => {

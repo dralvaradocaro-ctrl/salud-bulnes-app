@@ -43,7 +43,7 @@ interface MedicationFromDB {
   presentation: string;
 }
 
-const GEMINI_MODEL = 'gemini-2.0-flash-exp';
+const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const SCHEDULES_PROMPT = `

@@ -11,8 +11,9 @@ import {
   DropdownMenuTrigger,
 } from '@/medispense/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/medispense/components/ui/avatar';
-import { Stethoscope, LogOut, User, Bell, Settings, BookOpen, Shield } from 'lucide-react';
+import { Stethoscope, LogOut, User, Settings, BookOpen, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { routes } from '@/medispense/lib/routes';
 
 export function Header() {
   const { user, signOut } = useAuth();
@@ -30,7 +31,7 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
       <div className="container flex h-16 items-center justify-between">
-        <Link to="/PrescripcionInteligente/dashboard" className="flex items-center gap-2">
+        <Link to={routes.dashboard()} className="flex items-center gap-2">
           <Stethoscope className="h-8 w-8 text-primary" />
           <span className="text-xl font-bold text-foreground">MediPlan AI</span>
           {roleLabel && (
@@ -43,25 +44,18 @@ export function Header() {
         <div className="flex items-center gap-2">
           {isAdmin && (
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/PrescripcionInteligente/admin/users">
+              <Link to={routes.adminUsers()}>
                 <Shield className="h-4 w-4 mr-1" />
                 <span className="hidden sm:inline">Usuarios</span>
               </Link>
             </Button>
           )}
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/PrescripcionInteligente/education">
+            <Link to={routes.education()}>
               <BookOpen className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">Educación</span>
             </Link>
           </Button>
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground flex items-center justify-center">
-              3
-            </span>
-          </Button>
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">

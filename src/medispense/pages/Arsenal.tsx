@@ -32,6 +32,7 @@ import {
 import { Label } from '@/medispense/components/ui/label';
 import { useToast } from '@/medispense/hooks/use-toast';
 import { supabase } from '@/medispense/integrations/supabase/client';
+import { routes } from '@/medispense/lib/routes';
 
 interface Medication {
   id: string;
@@ -230,7 +231,7 @@ export default function Arsenal() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/PrescripcionInteligente/dashboard')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(routes.dashboard())}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>

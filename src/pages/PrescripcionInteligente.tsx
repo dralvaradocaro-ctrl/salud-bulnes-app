@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ArrowLeft } from 'lucide-react';
 import { TooltipProvider } from '@/medispense/components/ui/tooltip';
 import { Toaster } from '@/medispense/components/ui/toaster';
-import { Toaster as Sonner } from '@/medispense/components/ui/sonner';
 import { AuthProvider } from '@/medispense/contexts/AuthContext';
 import { ProtectedRoute } from '@/medispense/components/layout/ProtectedRoute';
 import Index from '@/medispense/pages/Index';
@@ -29,7 +28,7 @@ const queryClient = new QueryClient();
 function BackToSaludBulnesBar() {
   const navigate = useNavigate();
   return (
-    <div className="sticky top-0 z-[9999] flex w-full items-center border-b border-slate-200 bg-slate-900 px-4 py-1.5 text-white">
+    <div className="flex w-full items-center border-b border-slate-200 bg-slate-900 px-4 py-1.5 text-white">
       <button
         type="button"
         onClick={() => navigate('/')}
@@ -53,7 +52,6 @@ export default function PrescripcionInteligente() {
         <AuthProvider>
           <TooltipProvider>
             <Toaster />
-            <Sonner />
             <BackToSaludBulnesBar />
             <Routes>
               <Route index element={<Index />} />

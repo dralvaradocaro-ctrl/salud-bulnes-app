@@ -12,6 +12,7 @@ import { supabase } from '@/medispense/integrations/supabase/client';
 import { useAuth } from '@/medispense/contexts/AuthContext';
 import { Alert, AlertDescription } from '@/medispense/components/ui/alert';
 import { DIAGNOSIS_OPTIONS } from '@/medispense/lib/diagnosis-options';
+import { routes } from '@/medispense/lib/routes';
 
 // Validate patient code format: 2 letters + 2 digits + hyphen + 1 alphanumeric
 const PATIENT_CODE_REGEX = /^[A-Za-z]{2}\d{2}-[A-Za-z0-9]$/;
@@ -115,13 +116,13 @@ export default function NewPatient() {
     }
     
     toast({ title: 'Paciente creado', description: `Código de paciente: ${patientCode}` });
-    navigate(`/PrescripcionInteligente/patients/${patientCode}`);
+    navigate(routes.patient(patientCode));
   };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/PrescripcionInteligente/dashboard')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(routes.dashboard())}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
@@ -243,7 +244,7 @@ export default function NewPatient() {
                     ))
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      No hay páginas educativas creadas. <a href="/education" className="text-primary underline">Crear una</a>
+                      No hay páginas educativas creadas. <a href={routes.education()} className="text-primary underline">Crear una</a>
                     </p>
                   )}
                 </div>
@@ -251,7 +252,7 @@ export default function NewPatient() {
             </div>
 
             <div className="flex gap-4 pt-4">
-              <Button type="button" variant="outline" onClick={() => navigate('/PrescripcionInteligente/dashboard')}>
+              <Button type="button" variant="outline" onClick={() => navigate(routes.dashboard())}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={isSubmitting || !isValidCode} className="flex-1">

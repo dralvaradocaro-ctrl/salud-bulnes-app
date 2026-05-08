@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/medispense/contexts/AuthContext';
 import { Stethoscope } from 'lucide-react';
+import { routes } from '@/medispense/lib/routes';
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -17,10 +18,10 @@ const Index = () => {
   }
 
   if (user) {
-    return <Navigate to="/PrescripcionInteligente/dashboard" replace />;
+    return <Navigate to={routes.dashboard()} replace />;
   }
 
-  return <Navigate to="/PrescripcionInteligente/auth" replace />;
+  return <Navigate to={routes.auth()} replace />;
 };
 
 export default Index;

@@ -2,6 +2,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/medispense/contexts/AuthContext';
 import { Header } from './Header';
 import { Stethoscope } from 'lucide-react';
+import { routes } from '@/medispense/lib/routes';
 
 export function ProtectedRoute() {
   const { user, loading } = useAuth();
@@ -18,7 +19,7 @@ export function ProtectedRoute() {
   }
 
   if (!user) {
-    return <Navigate to="/PrescripcionInteligente/auth" replace />;
+    return <Navigate to={routes.auth()} replace />;
   }
 
   return (

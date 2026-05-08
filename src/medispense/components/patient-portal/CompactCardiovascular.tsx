@@ -40,51 +40,55 @@ export function CompactCardiovascular({
   const status = calculateFollowUpStatus(nextControlDate);
   const lastProf = CV_PROFESSIONAL_LABELS[(lastControlProfessional as CVProfessional)] || lastControlProfessional;
   const nextProf = CV_PROFESSIONAL_LABELS[(nextControlProfessional as CVProfessional)] || nextControlProfessional;
+  const riskBadgeClass = `${CV_RISK_COLORS[risk]} border-transparent hover:opacity-90`;
+  const statusBadgeClass = `${CV_STATUS_COLORS[status]} border-transparent hover:opacity-90`;
 
   return (
     <div id="cv-section">
-      <Card className="border-border/80">
-        <CardContent className="space-y-3 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <HeartPulse className="h-4 w-4 text-primary shrink-0" />
-                <p className="text-sm font-semibold">Control Cardiovascular (PSCV)</p>
-              </div>
-              <p className="text-xs text-muted-foreground">Resumen clínico del seguimiento cardiovascular.</p>
+      <Card className="border-border/70 bg-background/60 shadow-none">
+        <CardContent className="space-y-2 p-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-2">
+              <HeartPulse className="h-4 w-4 shrink-0 text-primary" />
+              <p className="truncate text-sm font-semibold">Control cardiovascular</p>
+              <Badge className={`${riskBadgeClass} hidden sm:inline-flex`}>{CV_RISK_LABELS[risk]}</Badge>
             </div>
-            <Badge className={CV_RISK_COLORS[risk]}>{CV_RISK_LABELS[risk]}</Badge>
+            <div className="flex items-center gap-1.5">
+              <Badge className={`${riskBadgeClass} sm:hidden`}>
+                {CV_RISK_LABELS[risk]}
+              </Badge>
+              <Badge className={statusBadgeClass}>
+                {CV_STATUS_LABELS[status]}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0"
+                onClick={() => setExpanded(!expanded)}
+                aria-label={expanded ? 'Ocultar detalle cardiovascular' : 'Ver detalle cardiovascular'}
+              >
+                {expanded ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div className="rounded-lg border bg-accent/15 px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Último control</p>
-              <p className="mt-1 text-sm font-medium">{formatDateES(lastControlDate)}</p>
-              <p className="text-xs text-muted-foreground">{lastProf}</p>
-            </div>
-            <div className="rounded-lg border bg-accent/15 px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Próximo control</p>
-              <p className="mt-1 text-sm font-medium">{formatDateES(nextControlDate)}</p>
-              <p className="text-xs text-muted-foreground">{nextProf}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-2">
-            <Badge className={CV_STATUS_COLORS[status]} variant="secondary">
-              {CV_STATUS_LABELS[status]}
-            </Badge>
-            <Button variant="outline" size="sm" className="h-8 gap-1" onClick={() => setExpanded(!expanded)}>
-              {expanded ? 'Ocultar detalle' : 'Ver detalle'}
-              {expanded ? (
-                <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-              )}
-            </Button>
+          <div className="grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+            <p className="truncate text-muted-foreground">
+              Último: <span className="font-medium text-foreground">{formatDateES(lastControlDate)}</span>
+              {lastProf ? <span> · {lastProf}</span> : null}
+            </p>
+            <p className="truncate text-muted-foreground">
+              Próximo: <span className="font-medium text-foreground">{formatDateES(nextControlDate)}</span>
+              {nextProf ? <span> · {nextProf}</span> : null}
+            </p>
           </div>
 
           {expanded && (
-            <div className="rounded-lg border bg-card px-3 py-3 text-sm">
+            <div className="rounded-md border bg-card px-3 py-2 text-sm">
               <div className="space-y-2">
                 <p>
                   Su último control fue con <strong>{lastProf}</strong> el <strong>{formatDateES(lastControlDate)}</strong>.

@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/medispense/components/ui/dialog';
 import { ArrowLeft, Plus, BookOpen, QrCode, Printer, Pencil, Trash2, Video, FileText, Wand2 } from 'lucide-react';
+import { routes } from '@/medispense/lib/routes';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '@/medispense/integrations/supabase/client';
 import { useAuth } from '@/medispense/contexts/AuthContext';
@@ -128,7 +129,7 @@ export default function Education() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/PrescripcionInteligente/dashboard')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(routes.dashboard())}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>

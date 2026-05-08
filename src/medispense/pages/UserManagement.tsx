@@ -12,6 +12,7 @@ import { supabase } from '@/medispense/integrations/supabase/client';
 import { useUserRole } from '@/medispense/hooks/useUserRole';
 import { useToast } from '@/medispense/hooks/use-toast';
 import { logAudit } from '@/medispense/lib/audit';
+import { routes } from '@/medispense/lib/routes';
 
 interface UserProfile {
   user_id: string;
@@ -124,7 +125,7 @@ export default function UserManagement() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/PrescripcionInteligente/dashboard')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(routes.dashboard())}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
