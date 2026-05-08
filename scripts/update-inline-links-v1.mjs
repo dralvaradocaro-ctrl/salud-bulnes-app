@@ -135,15 +135,18 @@ for (const [topicId, patches] of Object.entries(byTopic)) {
     // Agregar/mergear links
     block.links = { ...(block.links || {}), ...patch.links };
 
-    // Actualizar items
+    // Actualizar items — normaliza bullet y espacios para matching robusto
     if (patch.itemPatches && (block.items || block.details)) {
       const field = block.items ? 'items' : 'details';
+      const norm = (s) => (typeof s === 'string' ? s.replace(/^[•·]\s*/, '').trim().normalize('NFC') : '');
       block[field] = block[field].map(item => {
-        const newText = patch.itemPatches[item] ?? patch.itemPatches[item?.trim?.()];
-        if (newText !== undefined) {
-          console.log(`  [${patch.blockId}] "${item.substring(0,60)}" →`);
-          console.log(`               "${newText.substring(0,60)}"`);
-          return newText;
+        const normalizedItem = norm(item);
+        const match = Object.entries(patch.itemPatches)
+          .find(([key]) => norm(key) === normalizedItem);
+        if (match) {
+          console.log(`  [${patch.blockId}] "${String(item).substring(0,60)}" →`);
+          console.log(`               "${match[1].substring(0,60)}"`);
+          return match[1];
         }
         return item;
       });
