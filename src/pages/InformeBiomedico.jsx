@@ -488,13 +488,15 @@ export default function InformeBiomedico() {
             margin: 0 !important;
             padding: 0 !important;
             overflow: visible !important;
+            background: #fff !important;
           }
           .ib-print-page {
             width: 210mm !important;
             max-width: 210mm !important;
             min-height: 297mm !important;
             margin: 0 !important;
-          padding: 28mm 30mm 25mm !important;
+            padding: 28mm 30mm 25mm !important;
+            background: #fff !important;
           }
           .ib-print-header-logo {
             display: block !important;
@@ -504,10 +506,15 @@ export default function InformeBiomedico() {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
+          /* Forzar blanco en TODA la cadena de ancestros (Layout, root, body) */
+          html, body, #root,
+          body > div, body > div > div, body > div > div > div {
+            background: #fff !important;
+            background-color: #fff !important;
+          }
           body {
             margin: 0 !important;
             padding: 0 !important;
-            background: #fff !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
