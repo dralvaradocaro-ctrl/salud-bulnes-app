@@ -1,5 +1,6 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ArrowLeft } from 'lucide-react';
 import { TooltipProvider } from '@/medispense/components/ui/tooltip';
 import { Toaster } from '@/medispense/components/ui/toaster';
 import { Toaster as Sonner } from '@/medispense/components/ui/sonner';
@@ -25,6 +26,21 @@ import '@/medispense/medispense-scoped.css';
 // QueryClient propio para aislar de la app principal
 const queryClient = new QueryClient();
 
+function BackToSaludBulnesButton() {
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      onClick={() => navigate('/')}
+      className="fixed top-3 left-3 z-50 flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-md ring-1 ring-slate-200 backdrop-blur-sm transition-all hover:bg-white hover:text-blue-700 hover:shadow-lg"
+      aria-label="Volver a Salud Bulnes"
+    >
+      <ArrowLeft className="h-3.5 w-3.5" />
+      <span>Volver a Salud Bulnes</span>
+    </button>
+  );
+}
+
 export default function PrescripcionInteligente() {
   return (
     <div className="medispense-root">
@@ -33,6 +49,7 @@ export default function PrescripcionInteligente() {
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <BackToSaludBulnesButton />
             <Routes>
               <Route index element={<Index />} />
               <Route path="auth" element={<Auth />} />
