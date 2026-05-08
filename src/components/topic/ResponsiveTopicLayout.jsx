@@ -12,12 +12,16 @@ import {
 import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils/hiddenContent';
 import MermaidDiagram from './MermaidDiagram';
 
-// Renders text with inline clickable links for patterns defined in block.links
-// block.links: { "pattern text": "topicId" }
+// Renders text with inline clickable links for patterns defined in block.links.
+// block.links value can be:
+//   string                       → topicId (tooltip = pattern)
+//   { topicId, label }           → topicId with custom tooltip label
 function renderWithLinks(text, links) {
   if (!links || !text || Object.keys(links).length === 0) return text;
   let segments = [text];
-  for (const [pattern, topicId] of Object.entries(links)) {
+  for (const [pattern, entry] of Object.entries(links)) {
+    const topicId = typeof entry === 'string' ? entry : entry.topicId;
+    const label   = typeof entry === 'string' ? pattern : (entry.label || pattern);
     const next = [];
     for (const seg of segments) {
       if (typeof seg !== 'string') { next.push(seg); continue; }
@@ -25,7 +29,7 @@ function renderWithLinks(text, links) {
       if (parts.length === 1) { next.push(seg); continue; }
       parts.forEach((part, i) => {
         if (part) next.push(part);
-        if (i < parts.length - 1) next.push({ pattern, topicId });
+        if (i < parts.length - 1) next.push({ pattern, topicId, label });
       });
     }
     segments = next;
@@ -33,14 +37,19 @@ function renderWithLinks(text, links) {
   return segments.map((seg, i) => {
     if (typeof seg === 'string') return seg;
     return (
-      <Link
-        key={i}
-        to={createPageUrl(`TopicDetail?id=${seg.topicId}`)}
-        onClick={e => e.stopPropagation()}
-        className="font-semibold text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-800 transition-colors"
-      >
-        {seg.pattern}
-      </Link>
+      <span key={i} className="group relative inline-block">
+        <Link
+          to={createPageUrl(`TopicDetail?id=${seg.topicId}`)}
+          onClick={e => e.stopPropagation()}
+          className="font-semibold text-blue-600 underline decoration-dotted underline-offset-2 transition-colors hover:text-blue-800"
+        >
+          {seg.pattern}
+        </Link>
+        <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+          {seg.label}
+          <span className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+        </span>
+      </span>
     );
   });
 }
