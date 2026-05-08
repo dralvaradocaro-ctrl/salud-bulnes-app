@@ -65,9 +65,11 @@ export default function Category() {
   const visibleTools = tools.filter(tool => !isHiddenClinicalTool(tool));
 
   const hasPolicinico = topics.some(t => t.subcategory === 'Policlínico') ||
-    category?.name?.toLowerCase().includes('policlin');
+    category?.slug?.includes('policlin') ||
+    category?.name?.toLowerCase().includes('policl');
   const hasHospitalizados = topics.some(t => t.subcategory === 'Hospitalizados') ||
-    category?.name?.toLowerCase().includes('hospitalizad');
+    category?.slug?.includes('hospitaliz') ||
+    category?.name?.toLowerCase().includes('hospitaliz');
 
   const { data: templates = [] } = useQuery({
     queryKey: ['templates', categoryId],
