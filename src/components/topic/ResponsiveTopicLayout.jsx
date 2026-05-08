@@ -581,6 +581,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                     return groups.map((group, idx) => {
                       if (group.type === 'spacer') return <div key={idx} className="h-1" />;
                       if (group.type === 'separator') {
+                        stepNum = 0;
                         const labelText = group.text.replace(/^[━═─\s]+|[━═─\s]+$/g, '').trim();
                         return (
                           <div key={idx} className={`rounded-lg px-3 py-1.5 ${colorConfig.badge}`}>
