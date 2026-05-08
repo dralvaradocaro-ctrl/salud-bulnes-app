@@ -758,12 +758,31 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                     </li>
                   );
                 }
+                // Sub-items: lines beginning with `~ ` after a newline are rendered
+                // as indented secondary text below the main item.
+                const lines = displayText.split('\n');
+                const mainText  = lines.filter(l => !l.trim().startsWith('~')).join(' ').trim();
+                const subItems  = lines.filter(l => l.trim().startsWith('~')).map(l => l.trim().slice(1).trim());
                 return (
-                  <li key={i} className="flex items-start gap-3 rounded-xl px-4 py-2.5 transition-colors hover:bg-white/60">
-                    <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${cp.dot}`} />
-                    <span className="text-sm leading-relaxed text-slate-800">
-                      {renderWithLinks(displayText, block.links)}
-                    </span>
+                  <li key={i} className="rounded-xl px-4 py-2.5 transition-colors hover:bg-white/60">
+                    <div className="flex items-start gap-3">
+                      <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${cp.dot}`} />
+                      <span className="text-sm leading-relaxed text-slate-800">
+                        {renderWithLinks(mainText, block.links)}
+                      </span>
+                    </div>
+                    {subItems.length > 0 && (
+                      <ul className="mt-1.5 space-y-1 pl-7">
+                        {subItems.map((sub, si) => (
+                          <li key={si} className="flex items-start gap-2">
+                            <span className="mt-1.5 h-1 w-2 shrink-0 rounded-full bg-slate-300" />
+                            <span className="text-xs leading-relaxed text-slate-600">
+                              {renderWithLinks(sub, block.links)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 );
               })}
@@ -1010,31 +1029,42 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     tele_flujogramas: 'Flujogramas',
   };
 
+  // Protocol header blocks are pinned above the tab switcher (visible across all tabs)
+  const pinnedHeaderBlocks = safeBlocks.filter(b => b.type === 'protocol_header');
+
   const visibleBlocks = hasTabs
-    ? safeBlocks.filter(b => !b.tab || b.tab === activeTab)
-    : safeBlocks;
+    ? safeBlocks.filter(b => b.type !== 'protocol_header' && (!b.tab || b.tab === activeTab))
+    : safeBlocks.filter(b => b.type !== 'protocol_header');
 
   const mainBlocks = visibleBlocks.filter(b => !b.layout_position || b.layout_position === 'main' || b.layout_position === 'full');
   const sidebarBlocks = visibleBlocks.filter(b => b.layout_position === 'sidebar');
 
   // GES mode: split blocks into groups
   // criteria (Criterios de Inclusión GES) is hidden in GES mode
-  // Order: protocol_header → flowchart/algorithm → other content (text, alert…) → checklist
+  // protocol_header is pinned above tabs (rendered separately)
+  // Order: flowchart/algorithm → other content (text, alert…) → checklist
   const gesProtocolBlocks = (() => {
-    const filtered   = safeBlocks.filter(b => b.type !== 'mermaid' && b.type !== 'criteria');
-    const headers    = filtered.filter(b => b.type === 'protocol_header');
+    const filtered   = safeBlocks.filter(b =>
+      b.type !== 'mermaid' && b.type !== 'criteria' && b.type !== 'protocol_header'
+    );
     const flows      = filtered.filter(b => b.type === 'flowchart' || b.type === 'algorithm');
     const checklists = filtered.filter(b => b.type === 'checklist');
     const middle     = filtered.filter(b =>
-      b.type !== 'protocol_header' && b.type !== 'flowchart' &&
-      b.type !== 'algorithm'       && b.type !== 'checklist'
+      b.type !== 'flowchart' && b.type !== 'algorithm' && b.type !== 'checklist'
     );
-    return [...headers, ...flows, ...middle, ...checklists];
+    return [...flows, ...middle, ...checklists];
   })();
   const gesMermaidBlocks = safeBlocks.filter(b => b.type === 'mermaid');
 
   return (
     <div className="space-y-5">
+
+      {/* ── Pinned protocol header (above all tabs) ── */}
+      {pinnedHeaderBlocks.length > 0 && (
+        <div className="space-y-5">
+          {pinnedHeaderBlocks.map(renderBlock).filter(Boolean)}
+        </div>
+      )}
 
       {/* ── Local Protocol 3-tab mode (GES topic + protocolo local HCSFB) ── */}
       {isLocalProtocolMode && (
