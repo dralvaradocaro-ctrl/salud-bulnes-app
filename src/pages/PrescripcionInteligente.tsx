@@ -18,40 +18,41 @@ import EducationView from '@/medispense/pages/EducationView';
 import UserManagement from '@/medispense/pages/UserManagement';
 import NotFound from '@/medispense/pages/NotFound';
 
-// NOTA: NO importar @/medispense/index.css aquí — sobrescribe todas las
-// variables CSS globales del proyecto y rompe el design system de salud-bulnes.
-// Como ambos proyectos usan shadcn, los componentes funcionan igual con el
-// tema de salud-bulnes.
+// CSS scopeado: las variables CSS de medispense se aplican SOLO dentro
+// del wrapper .medispense-root, sin romper el design system de salud-bulnes.
+import '@/medispense/medispense-scoped.css';
 
 // QueryClient propio para aislar de la app principal
 const queryClient = new QueryClient();
 
 export default function PrescripcionInteligente() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            <Route index element={<Index />} />
-            <Route path="auth" element={<Auth />} />
-            {/* Public routes — no auth required */}
-            <Route path="portal/:patientCode" element={<PatientPortal />} />
-            <Route path="educacion/:pageId" element={<EducationView />} />
-            <Route element={<ProtectedRoute />}>
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="patients/new" element={<NewPatient />} />
-              <Route path="patients/:patientCode/prescription/new" element={<NewPrescription />} />
-              <Route path="patients/:patientCode" element={<PatientDetail />} />
-              <Route path="arsenal" element={<Arsenal />} />
-              <Route path="education" element={<Education />} />
-              <Route path="admin/users" element={<UserManagement />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <div className="medispense-root">
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              <Route index element={<Index />} />
+              <Route path="auth" element={<Auth />} />
+              {/* Public routes — no auth required */}
+              <Route path="portal/:patientCode" element={<PatientPortal />} />
+              <Route path="educacion/:pageId" element={<EducationView />} />
+              <Route element={<ProtectedRoute />}>
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="patients/new" element={<NewPatient />} />
+                <Route path="patients/:patientCode/prescription/new" element={<NewPrescription />} />
+                <Route path="patients/:patientCode" element={<PatientDetail />} />
+                <Route path="arsenal" element={<Arsenal />} />
+                <Route path="education" element={<Education />} />
+                <Route path="admin/users" element={<UserManagement />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </div>
   );
 }
