@@ -1,0 +1,1 @@
+ALTER TABLE public.prescription_items ADD COLUMN is_annulled boolean NOT NULL DEFAULT false;

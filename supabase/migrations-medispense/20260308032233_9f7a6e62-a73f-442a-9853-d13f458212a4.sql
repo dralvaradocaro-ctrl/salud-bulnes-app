@@ -1,0 +1,1 @@
+ALTER TABLE public.patients ADD COLUMN IF NOT EXISTS is_cardiovascular_program boolean DEFAULT true;
