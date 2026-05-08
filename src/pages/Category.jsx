@@ -433,6 +433,9 @@ export default function Category() {
                                     {(topic.tipo_contenido || []).includes('contenido_medico') && (
                                       <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">Contenido Médico</Badge>
                                     )}
+                                    {(topic.tipo_contenido || []).includes('tema_complementario') && (
+                                      <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">Tema Complementario</Badge>
+                                    )}
                                     {(topic.tipo_contenido || []).includes('herramienta_clinica') && (
                                       <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">Herramienta</Badge>
                                     )}
