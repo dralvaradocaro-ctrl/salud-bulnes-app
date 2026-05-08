@@ -9,11 +9,14 @@ import {
   Eye,
   FileText,
   FlaskConical,
+  HeartHandshake,
   HeartPulse,
+  Pill,
   Ribbon,
   ShieldPlus,
   SmilePlus,
   Stethoscope,
+  Syringe,
   Users,
   Wind,
 } from 'lucide-react';
@@ -162,6 +165,9 @@ const TOPIC_SPECIFIC_VISUALS = [
   { keywords: ['parto', 'gestante', 'ovario', 'cervicouterino'], icon: Users, color: 'fuchsia' },
   { keywords: ['agresion sexual', 'vih', 'sida'], icon: ShieldPlus, color: 'violet' },
   { keywords: ['artritis', 'lupus', 'esclerosis multiple'], icon: ShieldPlus, color: 'sky' },
+  { keywords: ['sedacion paliativa', 'paliativ', 'urgencias en cuidados'], icon: HeartHandshake, color: 'rose' },
+  { keywords: ['dolor oncologico', 'manejo del dolor', 'analgesia'], icon: Pill, color: 'rose' },
+  { keywords: ['via subcutanea', 'hipodermoclisis'], icon: Syringe, color: 'rose' },
 ];
 
 function getTopicText(topic = {}) {
