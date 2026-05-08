@@ -127,3 +127,24 @@
 .medispense-root .shadow-medical {
   box-shadow: 0 4px 20px -4px hsl(210 70% 45% / 0.25);
 }
+
+/* Centra los .container de Tailwind dentro de medispense
+ * (la config de Tailwind de salud-bulnes no tiene center: true,
+ *  pero el header y dashboard de medispense lo asumen). */
+.medispense-root .container {
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+/* Limita el ancho de las páginas internas para que no queden estiradas
+ * en pantallas muy anchas */
+.medispense-root main,
+.medispense-root [data-medispense-content] {
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}

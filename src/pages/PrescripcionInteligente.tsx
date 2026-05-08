@@ -26,18 +26,23 @@ import '@/medispense/medispense-scoped.css';
 // QueryClient propio para aislar de la app principal
 const queryClient = new QueryClient();
 
-function BackToSaludBulnesButton() {
+function BackToSaludBulnesBar() {
   const navigate = useNavigate();
   return (
-    <button
-      type="button"
-      onClick={() => navigate('/')}
-      className="fixed top-3 left-3 z-50 flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-md ring-1 ring-slate-200 backdrop-blur-sm transition-all hover:bg-white hover:text-blue-700 hover:shadow-lg"
-      aria-label="Volver a Salud Bulnes"
-    >
-      <ArrowLeft className="h-3.5 w-3.5" />
-      <span>Volver a Salud Bulnes</span>
-    </button>
+    <div className="sticky top-0 z-[9999] flex w-full items-center border-b border-slate-200 bg-slate-900 px-4 py-1.5 text-white">
+      <button
+        type="button"
+        onClick={() => navigate('/')}
+        className="flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white transition-all hover:bg-white/20"
+        aria-label="Volver a Salud Bulnes"
+      >
+        <ArrowLeft className="h-3 w-3" />
+        <span>Volver a Salud Bulnes</span>
+      </button>
+      <span className="ml-3 text-[10px] uppercase tracking-wider text-white/60">
+        Sub-aplicación · Prescripción Inteligente
+      </span>
+    </div>
   );
 }
 
@@ -49,7 +54,7 @@ export default function PrescripcionInteligente() {
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <BackToSaludBulnesButton />
+            <BackToSaludBulnesBar />
             <Routes>
               <Route index element={<Index />} />
               <Route path="auth" element={<Auth />} />
