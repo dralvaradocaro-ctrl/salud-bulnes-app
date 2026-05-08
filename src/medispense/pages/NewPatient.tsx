@@ -115,7 +115,7 @@ export default function NewPatient() {
     }
     
     toast({ title: 'Paciente creado', description: `Código de paciente: ${patientCode}` });
-    navigate(`/patients/${patientCode}`);
+    navigate(`/PrescripcionInteligente/patients/${patientCode}`);
   };
 
   return (

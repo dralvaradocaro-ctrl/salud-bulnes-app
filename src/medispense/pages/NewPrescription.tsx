@@ -848,7 +848,7 @@ export default function NewPrescription() {
           ? 'Receta actualizada exitosamente'
           : `${nonEmptyGroups.length === 1 ? 'Receta creada' : `${nonEmptyGroups.length} recetas creadas`} exitosamente` 
       });
-      navigate(`/patients/${patientCode}`);
+      navigate(`/PrescripcionInteligente/patients/${patientCode}`);
     } catch (error) {
       console.error('Error saving prescription:', error);
       toast({ title: 'Error', description: 'No se pudo guardar', variant: 'destructive' });
@@ -888,7 +888,7 @@ export default function NewPrescription() {
       {/* Header */}
       <div className="sticky top-16 z-40 -mx-8 px-8 py-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/patients/${patientCode}`)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/PrescripcionInteligente/patients/${patientCode}`)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>

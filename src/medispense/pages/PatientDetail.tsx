@@ -499,7 +499,7 @@ export default function PatientDetail() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <Button size="sm" onClick={() => navigate(`/patients/${patientCode}/prescription/new`)}>
+          <Button size="sm" onClick={() => navigate(`/PrescripcionInteligente/patients/${patientCode}/prescription/new`)}>
             <Plus className="h-4 w-4 mr-2" /> Nueva Receta
           </Button>
         </div>
@@ -912,9 +912,9 @@ export default function PatientDetail() {
                           prescriptionId={prescription.id}
                           prescriptionDate={prescription.issue_date}
                           onDeleted={() => fetchPatientData()}
-                          onEdit={() => navigate(`/patients/${patientCode}/prescription/new?edit=${prescription.id}`)}
+                          onEdit={() => navigate(`/PrescripcionInteligente/patients/${patientCode}/prescription/new?edit=${prescription.id}`)}
                           onRenewOnly={() => handleRenewOnly(prescription.id)}
-                          onRenewAndEdit={() => navigate(`/patients/${patientCode}/prescription/new?renew=${prescription.id}`)}
+                          onRenewAndEdit={() => navigate(`/PrescripcionInteligente/patients/${patientCode}/prescription/new?renew=${prescription.id}`)}
                           canDelete={canDelete}
                         />
                       </div>
@@ -1000,7 +1000,7 @@ export default function PatientDetail() {
                                 prescriptionId={prescription.id}
                                 prescriptionDate={prescription.issue_date}
                                 onDeleted={() => fetchPatientData()}
-                                onEdit={() => navigate(`/patients/${patientCode}/prescription/new?edit=${prescription.id}`)}
+                                onEdit={() => navigate(`/PrescripcionInteligente/patients/${patientCode}/prescription/new?edit=${prescription.id}`)}
                                 canDelete={canDelete}
                               />
                             </div>
@@ -1027,7 +1027,7 @@ export default function PatientDetail() {
             <Pill className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="font-semibold mb-2">Sin prescripciones</h3>
             <p className="text-muted-foreground mb-4">Este paciente no tiene recetas</p>
-            <Button onClick={() => navigate(`/patients/${patientCode}/prescription/new`)}>
+            <Button onClick={() => navigate(`/PrescripcionInteligente/patients/${patientCode}/prescription/new`)}>
               <Plus className="h-4 w-4 mr-2" /> Agregar Primera Receta
             </Button>
           </CardContent>
