@@ -65,6 +65,7 @@ import ProtocoloInsulina from './pages/ProtocoloInsulina';
 import FormularioGES from './pages/FormularioGES';
 import SolicitudExamenes from './pages/SolicitudExamenes';
 import InformeBiomedico from './pages/InformeBiomedico';
+import PrescripcionInteligente from './pages/PrescripcionInteligente';
 import __Layout from './Layout.jsx';
 
 export const PAGES = {
@@ -86,6 +87,7 @@ export const PAGES = {
     "FormularioGES": FormularioGES,
     "SolicitudExamenes": SolicitudExamenes,
     "InformeBiomedico": InformeBiomedico,
+    "PrescripcionInteligente": PrescripcionInteligente,
 }
 
 export const pagesConfig = {
