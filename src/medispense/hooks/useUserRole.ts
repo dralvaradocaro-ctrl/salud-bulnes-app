@@ -1,0 +1,35 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/medispense/integrations/supabase/client';
+import { useAuth } from '@/medispense/contexts/AuthContext';
+
+export type AppRole = 'admin' | 'nurse';
+
+export function useUserRole() {
+  const { user } = useAuth();
+  const [role, setRole] = useState<AppRole | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setRole(null);
+      setLoading(false);
+      return;
+    }
+
+    supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single()
+      .then(({ data }) => {
+        setRole((data?.role as AppRole) ?? null);
+        setLoading(false);
+      });
+  }, [user]);
+
+  const isAdmin = role === 'admin';
+  const isNurse = role === 'nurse';
+  const canDelete = isAdmin;
+
+  return { role, loading, isAdmin, isNurse, canDelete };
+}

@@ -52,17 +52,22 @@ const AuthenticatedApp = () => {
           <MainPage />
         </LayoutWrapper>
       } />
-      {Object.entries(Pages).map(([path, Page]) => (
-        <Route
-          key={path}
-          path={`/${path}`}
-          element={
-            <LayoutWrapper currentPageName={path}>
-              <Page />
-            </LayoutWrapper>
-          }
-        />
-      ))}
+      {Object.entries(Pages).map(([path, Page]) => {
+        // PrescripcionInteligente monta una sub-app con sus propias rutas
+        // anidadas (medispense), por lo que necesita wildcard
+        const routePath = path === 'PrescripcionInteligente' ? `/${path}/*` : `/${path}`;
+        return (
+          <Route
+            key={path}
+            path={routePath}
+            element={
+              <LayoutWrapper currentPageName={path}>
+                <Page />
+              </LayoutWrapper>
+            }
+          />
+        );
+      })}
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

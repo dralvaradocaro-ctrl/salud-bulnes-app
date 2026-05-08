@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* MediPlan AI - Clinical Blue Design System */
+
+@layer base {
+  :root {
+    /* Clinical Blue Theme */
+    --background: 210 33% 98%;
+    --foreground: 210 50% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 50% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 50% 10%;
+
+    /* Primary - Medical Blue */
+    --primary: 210 70% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Light Blue */
+    --secondary: 210 40% 94%;
+    --secondary-foreground: 210 50% 20%;
+
+    --muted: 210 30% 96%;
+    --muted-foreground: 210 20% 45%;
+
+    --accent: 210 60% 90%;
+    --accent-foreground: 210 70% 35%;
+
+    /* Semantic colors for prescription status */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 30% 88%;
+    --input: 210 30% 88%;
+    --ring: 210 70% 45%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar */
+    --sidebar-background: 210 50% 15%;
+    --sidebar-foreground: 210 20% 95%;
+    --sidebar-primary: 210 70% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 25%;
+    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-border: 210 40% 25%;
+    --sidebar-ring: 210 70% 55%;
+
+    /* Timeline colors */
+    --timeline-now: 0 72% 51%;
+    --timeline-upcoming: 142 70% 45%;
+    --timeline-current: 38 92% 50%;
+    --timeline-past: 210 20% 70%;
+  }
+
+  .dark {
+    --background: 210 50% 8%;
+    --foreground: 210 20% 95%;
+
+    --card: 210 50% 12%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 210 50% 12%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 210 70% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 20%;
+    --secondary-foreground: 210 20% 95%;
+
+    --muted: 210 40% 18%;
+    --muted-foreground: 210 20% 60%;
+
+    --accent: 210 50% 25%;
+    --accent-foreground: 210 20% 95%;
+
+    --success: 142 70% 40%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 38 92% 45%;
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 40% 22%;
+    --input: 210 40% 22%;
+    --ring: 210 70% 55%;
+
+    --sidebar-background: 210 50% 6%;
+    --sidebar-foreground: 210 20% 95%;
+    --sidebar-primary: 210 70% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 15%;
+    --sidebar-accent-foreground: 210 20% 95%;
+    --sidebar-border: 210 40% 15%;
+    --sidebar-ring: 210 70% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .gradient-medical {
+    background: linear-gradient(135deg, hsl(210, 70%, 45%) 0%, hsl(210, 80%, 35%) 100%);
+  }
+
+  .shadow-medical {
+    box-shadow: 0 4px 20px -4px hsl(210 70% 45% / 0.25);
+  }
+}
