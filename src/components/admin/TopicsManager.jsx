@@ -113,7 +113,7 @@ export default function TopicsManager() {
                         )}
                         <div className="flex flex-wrap gap-2">
                           {topic.has_local_protocol && (
-                            <Badge className="bg-green-100 text-green-700">Protocolo local</Badge>
+                            <Badge className="bg-green-100 text-green-700">Protocolo Local</Badge>
                           )}
                           {topic.subcategory && (
                             <Badge variant="outline">{topic.subcategory}</Badge>

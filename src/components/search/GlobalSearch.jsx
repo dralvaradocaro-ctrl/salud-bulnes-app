@@ -307,7 +307,7 @@ function ResultRow({ item, aiReason, onClose, onNavigate }) {
       </div>
       {item.has_local_protocol && (
         <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full flex-shrink-0">
-          Protocolo local
+          Protocolo Local
         </span>
       )}
       <ArrowRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
