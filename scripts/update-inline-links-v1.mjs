@@ -32,7 +32,17 @@ const TOPIC_IDS = {
 const PATCHES = [
 
   // ── HCSFB 165 Respuesta Rápida ────────────────────────────────────────────
-  // rrmq-v3-traslado: "contención física" → GCL 1.9
+  // rrmq-v3-niveles: ya dice "HCSFB 159" y "GCL 1.9" — solo agregar links
+  {
+    topicId: TOPIC_IDS.rrmq,
+    blockId: 'rrmq-v3-niveles',
+    links: {
+      'HCSFB 159': TOPIC_IDS.agitacion,
+      'GCL 1.9':   TOPIC_IDS.contencion,
+    },
+  },
+
+  // rrmq-v3-traslado: actualizar ítem + links (• ya fue eliminado en script anterior)
   {
     topicId: TOPIC_IDS.rrmq,
     blockId: 'rrmq-v3-traslado',
@@ -40,13 +50,12 @@ const PATCHES = [
       'Contención Física (GCL 1.9)': TOPIC_IDS.contencion,
     },
     itemPatches: {
-      '• Necesidad de contención física prolongada (> 8 horas)':
+      'Necesidad de contención física prolongada (> 8 horas)':
         'Necesidad de Contención Física (GCL 1.9) prolongada (> 8 horas)',
     },
   },
 
   // ── GCL 1.9 Contención Física ─────────────────────────────────────────────
-  // conten-v3-indicaciones: "Agitación" → HCSFB 159
   {
     topicId: TOPIC_IDS.contencion,
     blockId: 'conten-v3-indicaciones',
@@ -60,47 +69,36 @@ const PATCHES = [
   },
 
   // ── HCSFB 160 Prevención Autolesiones ────────────────────────────────────
-  // auto-manejo: VIA 3 menciona manejo farmacológico + contención → links a HCSFB 159 y GCL 1.9
   {
     topicId: 'c0aecd59-f807-4c2e-af91-408d5f5928b3',
     blockId: 'auto-manejo',
     links: {
-      'Agitación Psicomotora (HCSFB 159)': TOPIC_IDS.agitacion,
-      'Contención Física (GCL 1.9)':        TOPIC_IDS.contencion,
-      'Intento Suicida (GCL 1.10)':          TOPIC_IDS.intentoSuic,
+      'Intento Suicida (GCL 1.10)': TOPIC_IDS.intentoSuic,
+      'GCL 1.10':                   TOPIC_IDS.intentoSuic,
     },
     itemPatches: {
       'Médico puede indicar manejo farmacológico o contención según lo protocolizado':
-        'Médico puede indicar manejo farmacológico — Agitación Psicomotora (HCSFB 159) — o Contención Física (GCL 1.9) según criterio clínico',
+        'Médico puede indicar manejo farmacológico o contención física según criterio clínico',
       'Mantener hospitalizado hasta cese de ideación suicida aguda':
-        'Mantener hospitalizado hasta cese de ideación suicida — ver Intento Suicida (GCL 1.10)',
+        'Hospitalización y seguimiento según GCL 1.10 hasta cese de ideación suicida aguda',
     },
   },
 
   // ── GCL 1.10 Intento Suicida ─────────────────────────────────────────────
-  // intsuic-v4-derivacion: "agitación refractaria" → HCSFB 159
-  // intsuic-v4-alta: hospitalización → HCSFB 166 Criterios SM
   {
     topicId: TOPIC_IDS.intentoSuic,
     blockId: 'intsuic-v4-derivacion',
     links: {
       'Agitación Psicomotora (HCSFB 159)': TOPIC_IDS.agitacion,
+      'HCSFB 166':                          TOPIC_IDS.criteriosSM,
     },
     itemPatches: {
       'Agitación refractaria a manejo con recursos disponibles en HCSFB':
         'Agitación Psicomotora (HCSFB 159) refractaria a manejo con recursos disponibles en HCSFB',
     },
-  },
-  {
-    topicId: TOPIC_IDS.intentoSuic,
-    blockId: 'intsuic-v4-alta',
-    links: {
-      'Criterios de Salud Mental (HCSFB 166)': TOPIC_IDS.criteriosSM,
-    },
-    itemPatches: {
-      'Compensación del episodio + hora de control psiquiátrico asignada (PROSAM u otro)':
-        'Compensación del episodio + hora de control psiquiátrico asignada — ver Criterios de Salud Mental (HCSFB 166)',
-    },
+    appendItems: [
+      'Para criterios de hospitalización, derivación y egreso en Salud Mental: ver HCSFB 166',
+    ],
   },
 ];
 
@@ -151,8 +149,19 @@ for (const [topicId, patches] of Object.entries(byTopic)) {
       });
     }
 
+    // Agregar ítems al final
+    if (patch.appendItems) {
+      const field = block.items ? 'items' : block.details ? 'details' : null;
+      if (field) {
+        block[field] = [...block[field], ...patch.appendItems];
+        patch.appendItems.forEach(item =>
+          console.log(`  [${patch.blockId}] + "${item.substring(0,80)}"`)
+        );
+      }
+    }
+
     // Mostrar links añadidos
-    console.log(`  [${patch.blockId}] links: ${JSON.stringify(patch.links)}`);
+    if (patch.links) console.log(`  [${patch.blockId}] links: ${JSON.stringify(patch.links)}`);
 
     blocks = [...blocks.slice(0, blockIdx), block, ...blocks.slice(blockIdx + 1)];
     changed = true;
