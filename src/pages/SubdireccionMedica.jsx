@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LogOut, FileText, Settings2, Users, CalendarDays, Clock, Mic, Gavel, MoreHorizontal } from 'lucide-react';
 import AgendaSemanal from '@/components/sdm/AgendaSemanal';
 import ProgramAssignments from '@/components/sdm/ProgramAssignments';
+import Cronograma from '@/components/sdm/Cronograma';
 
 function Placeholder({ icon: Icon, title, description }) {
   return (
@@ -72,7 +73,7 @@ export default function SubdireccionMedica() {
             <Tabs defaultValue="agenda_semanal" className="space-y-4">
               <TabsList className="flex flex-wrap h-auto">
                 <TabsTrigger value="agenda_semanal" className="gap-1.5"><CalendarDays className="h-4 w-4" />Agenda Semanal</TabsTrigger>
-                <TabsTrigger value="agenda_diaria" className="gap-1.5"><Clock className="h-4 w-4" />Agenda Diaria</TabsTrigger>
+                <TabsTrigger value="agenda_diaria" className="gap-1.5"><Clock className="h-4 w-4" />Cronograma</TabsTrigger>
                 <TabsTrigger value="bloqueos_reuniones" className="gap-1.5">Bloqueos: Reuniones</TabsTrigger>
                 <TabsTrigger value="bloqueos_radio" className="gap-1.5"><Mic className="h-4 w-4" />Radio</TabsTrigger>
                 <TabsTrigger value="bloqueos_judiciales" className="gap-1.5"><Gavel className="h-4 w-4" />Judiciales</TabsTrigger>
@@ -82,7 +83,7 @@ export default function SubdireccionMedica() {
               <TabsContent value="agenda_semanal">
                 <AgendaSemanal />
               </TabsContent>
-              <TabsContent value="agenda_diaria"><Placeholder icon={Clock} title="Agenda Diaria" /></TabsContent>
+              <TabsContent value="agenda_diaria"><Cronograma /></TabsContent>
               <TabsContent value="bloqueos_reuniones"><Placeholder icon={CalendarDays} title="Bloqueos por reuniones" /></TabsContent>
               <TabsContent value="bloqueos_radio"><Placeholder icon={Mic} title="Bloqueos por visitas a la radio" /></TabsContent>
               <TabsContent value="bloqueos_judiciales"><Placeholder icon={Gavel} title="Bloqueos por situaciones judiciales" /></TabsContent>

@@ -57,9 +57,12 @@ export default function ProgramAssignments() {
     return m;
   }, [assignments]);
 
-  const subroganteBy = useMemo(() => {
+  const subrogantesBy = useMemo(() => {
     const m = {};
-    assignments.filter(x => x.role_type === 'subrogante').forEach(x => m[x.block_template_id] = x);
+    assignments.filter(x => x.role_type === 'subrogante').forEach(x => {
+      (m[x.block_template_id] = m[x.block_template_id] || []).push(x);
+    });
+    Object.values(m).forEach(arr => arr.sort((a, b) => (a.priority || 1) - (b.priority || 1)));
     return m;
   }, [assignments]);
 
@@ -73,30 +76,44 @@ export default function ProgramAssignments() {
     );
   }, [blocks, filter]);
 
-  async function assign(blockId, roleType, doctorId) {
-    setSavingFor(`${blockId}:${roleType}`);
-    // Borrar asignación previa de esta combinación block+role
-    await supabase
-      .from('sdm_program_assignments')
+  async function setTitular(blockId, doctorId) {
+    setSavingFor(`${blockId}:titular`);
+    await supabase.from('sdm_program_assignments')
       .delete()
       .eq('block_template_id', blockId)
-      .eq('role_type', roleType);
-
+      .eq('role_type', 'titular');
     if (doctorId && doctorId !== '__none__') {
-      const { error } = await supabase
-        .from('sdm_program_assignments')
-        .insert({ block_template_id: blockId, doctor_id: doctorId, role_type: roleType });
-      if (error) {
-        alert('Error: ' + error.message);
-        setSavingFor(null);
-        return;
-      }
+      const { error } = await supabase.from('sdm_program_assignments')
+        .insert({ block_template_id: blockId, doctor_id: doctorId, role_type: 'titular', priority: 1 });
+      if (error) { alert('Error: ' + error.message); setSavingFor(null); return; }
     }
-
-    // refrescar
     const { data } = await supabase.from('sdm_program_assignments').select('*');
     setAssignments(data || []);
     setSavingFor(null);
+  }
+
+  async function addSubrogante(blockId, doctorId) {
+    if (!doctorId || doctorId === '__none__') return;
+    setSavingFor(`${blockId}:add_sub`);
+    const existing = subrogantesBy[blockId] || [];
+    if (existing.some(s => s.doctor_id === doctorId)) {
+      alert('Ese médico ya es subrogante de este bloque.');
+      setSavingFor(null);
+      return;
+    }
+    const nextPriority = existing.length ? Math.max(...existing.map(s => s.priority || 1)) + 1 : 1;
+    const { error } = await supabase.from('sdm_program_assignments')
+      .insert({ block_template_id: blockId, doctor_id: doctorId, role_type: 'subrogante', priority: nextPriority });
+    if (error) { alert('Error: ' + error.message); setSavingFor(null); return; }
+    const { data } = await supabase.from('sdm_program_assignments').select('*');
+    setAssignments(data || []);
+    setSavingFor(null);
+  }
+
+  async function removeSubrogante(assignmentId) {
+    await supabase.from('sdm_program_assignments').delete().eq('id', assignmentId);
+    const { data } = await supabase.from('sdm_program_assignments').select('*');
+    setAssignments(data || []);
   }
 
   if (loading) return <div className="p-6 text-slate-500">Cargando…</div>;
@@ -126,18 +143,18 @@ export default function ProgramAssignments() {
                 <th className="px-3 py-2">Programa</th>
                 <th className="px-3 py-2">Cat.</th>
                 <th className="px-3 py-2">Horario</th>
-                <th className="px-3 py-2 w-56">Titular</th>
-                <th className="px-3 py-2 w-56">Subrogante</th>
+                <th className="px-3 py-2 w-48">Titular</th>
+                <th className="px-3 py-2 w-72">Subrogantes (orden de prioridad)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map(b => {
                 const t = titularBy[b.id]?.doctor_id || '';
-                const s = subroganteBy[b.id]?.doctor_id || '';
+                const subs = subrogantesBy[b.id] || [];
                 const savingT = savingFor === `${b.id}:titular`;
-                const savingS = savingFor === `${b.id}:subrogante`;
+                const savingAdd = savingFor === `${b.id}:add_sub`;
                 return (
-                  <tr key={b.id} className="hover:bg-slate-50/50">
+                  <tr key={b.id} className="hover:bg-slate-50/50 align-top">
                     <td className="px-3 py-2">
                       <div className="font-medium text-slate-800">{b.name}</div>
                       <div className="text-[11px] text-slate-500 font-mono">{b.id}</div>
@@ -152,26 +169,33 @@ export default function ProgramAssignments() {
                       {b.is_monthly && <Badge variant="outline" className="ml-1 text-[10px]">mensual</Badge>}
                     </td>
                     <td className="px-3 py-2">
-                      <div className="flex items-center gap-1">
-                        <Select value={t} onValueChange={v => assign(b.id, 'titular', v)} disabled={savingT}>
-                          <SelectTrigger className={`h-8 ${!t && 'border-amber-300 bg-amber-50'}`}>
-                            <SelectValue placeholder={savingT ? 'Guardando…' : 'Sin asignar'} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">— Sin asignar —</SelectItem>
-                            {doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      <Select value={s} onValueChange={v => assign(b.id, 'subrogante', v)} disabled={savingS}>
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder={savingS ? 'Guardando…' : 'Sin asignar'} />
+                      <Select value={t} onValueChange={v => setTitular(b.id, v)} disabled={savingT}>
+                        <SelectTrigger className={`h-8 ${!t && 'border-amber-300 bg-amber-50'}`}>
+                          <SelectValue placeholder={savingT ? 'Guardando…' : 'Sin asignar'} />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none__">— Sin asignar —</SelectItem>
                           {doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-3 py-2 space-y-1">
+                      {subs.map((s, idx) => (
+                        <div key={s.id} className="flex items-center gap-1.5">
+                          <Badge variant="outline" className="text-[10px] w-5 justify-center">{idx + 1}</Badge>
+                          <span className="text-sm flex-1">{doctors.find(d => d.id === s.doctor_id)?.display_name || s.doctor_id}</span>
+                          <button onClick={() => removeSubrogante(s.id)} className="text-red-500 hover:text-red-700">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                      <Select value="" onValueChange={v => addSubrogante(b.id, v)} disabled={savingAdd}>
+                        <SelectTrigger className="h-7 text-xs border-dashed">
+                          <SelectValue placeholder={savingAdd ? 'Guardando…' : '+ Agregar subrogante'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {doctors.filter(d => !subs.some(s => s.doctor_id === d.id) && d.id !== t)
+                            .map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </td>

@@ -72,11 +72,20 @@ export function generateAgenda({
     (acc[a.date] = acc[a.date] || []).push(a);
     return acc;
   }, {});
-  const titularByBlock = {}, subroganteByBlock = {};
+  // Múltiples subrogantes ordenados por priority (cascada de fallback)
+  const titularByBlock = {}, subrogantesByBlock = {};
   programAssignments.forEach(p => {
     if (p.role_type === 'titular') titularByBlock[p.block_template_id] = p.doctor_id;
-    if (p.role_type === 'subrogante') subroganteByBlock[p.block_template_id] = p.doctor_id;
+    if (p.role_type === 'subrogante') {
+      (subrogantesByBlock[p.block_template_id] = subrogantesByBlock[p.block_template_id] || [])
+        .push({ doctor_id: p.doctor_id, priority: p.priority || 1 });
+    }
   });
+  // Ordenar subrogantes por priority
+  Object.values(subrogantesByBlock).forEach(arr => arr.sort((a, b) => a.priority - b.priority));
+
+  // ID del subdirector (regla operativa: puede acumular bloqueos)
+  const SUBDIRECTOR_ID = 'alvarado';
 
   // Día anterior al lunes (para postturno del lunes — mira el viernes de la semana pasada)
   const prevDayDate = new Date(days[0].iso);
@@ -109,20 +118,31 @@ export function generateAgenda({
     const bloqueos = [];
     const dayKey = dayKeyForDate(d.date);
 
+    // Resolver médico por bloque con cascada T → S₁ → S₂ → S₃ ...
+    // Excluye médicos en postturno o ausentes (preferir disponibles)
+    const resolveDoctor = (blockId) => {
+      const t = titularByBlock[blockId];
+      const subs = subrogantesByBlock[blockId] || [];
+      const candidates = [t, ...subs.map(s => s.doctor_id)].filter(Boolean);
+      // Primero intentar uno disponible
+      const ausIds = new Set(absencesByDate[d.date]?.map(a => a.doctor_id) || []);
+      const available = candidates.find(id => !ausIds.has(id));
+      return available || candidates[0] || null;
+    };
+
     for (const bt of blockTemplates) {
       // semanal regular
       const slots = bt.weekday_pattern?.[dayKey];
       if (slots && slots.length) {
         slots.forEach(slot => {
-          const titular = titularByBlock[bt.id] || null;
-          const subro = subroganteByBlock[bt.id] || null;
+          const docId = resolveDoctor(bt.id);
           bloqueos.push({
             block_id: bt.id,
             name: bt.name,
             from: slot.from,
             to: slot.to,
-            doctor_id: titular || subro || null,
-            unassigned: !titular && !subro,
+            doctor_id: docId,
+            unassigned: !docId,
             category: bt.category,
             source: 'template',
           });
@@ -130,15 +150,14 @@ export function generateAgenda({
       }
       // mensual
       if (bt.is_monthly && isMonthlyMatch(d.date, bt.monthly_rule)) {
-        const titular = titularByBlock[bt.id] || null;
-        const subro = subroganteByBlock[bt.id] || null;
+        const docId = resolveDoctor(bt.id);
         bloqueos.push({
           block_id: bt.id,
           name: bt.name,
           from: bt.monthly_rule?.from || null,
           to: bt.monthly_rule?.to || null,
-          doctor_id: titular || subro || null,
-          unassigned: !titular && !subro,
+          doctor_id: docId,
+          unassigned: !docId,
           category: bt.category,
           source: 'monthly',
         });
@@ -176,6 +195,16 @@ export function generateAgenda({
       })
       .map(doc => ({ doctor_id: doc.id }));
 
+    // Policlínico full-day: default BELTRÁN si está disponible
+    const POLI_FULLDAY_DEFAULT = 'beltran';
+    const beltranAusente = ausIds.has(POLI_FULLDAY_DEFAULT) || postIds.has(POLI_FULLDAY_DEFAULT);
+    const poliFullDay = beltranAusente ? null : POLI_FULLDAY_DEFAULT;
+
+    // Refuerzo PM: lun-jue 11-13, viernes 12-13 (jornada acortada)
+    const isViernes = d.day === 'vie';
+    const refPmFrom = isViernes ? '12:00' : '11:00';
+    const refPmTo   = '13:00';
+
     return {
       day: d.day,
       label: d.label,
@@ -190,11 +219,27 @@ export function generateAgenda({
       ausencias,
       bloqueos,
       visita,
-      policlinico_pm: refuerzos.pm || null, // por defecto refuerzo PM
-      poli_am: refuerzos.am || null,        // por defecto refuerzo AM
+      // POLICLÍNICO column: refuerzo AM hace policlínico AM 8-10
+      policlinico: refuerzos.am
+        ? { doctor_id: refuerzos.am, from: '08:00', to: '10:00', label: 'Poli AM' }
+        : null,
+      // POLI 8 AM column: médico full-day (default BELTRÁN) + refuerzo PM
+      poli_8am: {
+        full_day: poliFullDay
+          ? { doctor_id: poliFullDay, from: '08:00', to: isViernes ? '16:00' : '17:00', label: 'Full día' }
+          : null,
+        ref_pm: refuerzos.pm
+          ? { doctor_id: refuerzos.pm, from: refPmFrom, to: refPmTo, label: 'Ref PM' }
+          : null,
+      },
+      jornada_fin: isViernes ? '16:00' : '17:00',
     };
   });
 }
+
+const SUBDIRECTOR_ID = 'alvarado';
+const JORNADA_INICIO = '08:00';
+const JORNADA_FIN = '17:00';
 
 export function validateAgenda(agenda, doctors = []) {
   const warnings = [];
@@ -215,19 +260,25 @@ export function validateAgenda(agenda, doctors = []) {
     if (!day.refuerzos.am) warnings.push(`${day.label}: falta refuerzo AM`);
     if (!day.refuerzos.pm) warnings.push(`${day.label}: falta refuerzo PM`);
     // Superposición horaria mismo médico en bloqueos
+    // EXCEPCIÓN: subdirector puede acumular dentro de su jornada
     const slots = day.bloqueos.filter(b => b.doctor_id && b.from && b.to);
     for (let i = 0; i < slots.length; i++) {
       for (let j = i + 1; j < slots.length; j++) {
         if (slots[i].doctor_id === slots[j].doctor_id &&
             slots[i].from < slots[j].to && slots[j].from < slots[i].to) {
-          errors.push(`${day.label}: ${doctorName(slots[i].doctor_id)} con superposición ${slots[i].name} vs ${slots[j].name}`);
+          if (slots[i].doctor_id === SUBDIRECTOR_ID) continue; // exento
+          errors.push(`${day.label}: ${doctorName(slots[i].doctor_id)} con superposición "${slots[i].name}" vs "${slots[j].name}"`);
         }
       }
     }
-    // Posturno asignado a bloqueo
+    // Posturno asignado a bloqueo (warning, no error)
     const postIds = new Set(day.posturno.map(t => t.doctor_id));
     day.bloqueos.filter(b => b.doctor_id && postIds.has(b.doctor_id)).forEach(b => {
       warnings.push(`${day.label}: ${doctorName(b.doctor_id)} en posturno asignado a "${b.name}"`);
+    });
+    // Bloqueos fuera de jornada laboral 8-17 (warning)
+    day.bloqueos.filter(b => b.from && (b.from < JORNADA_INICIO || b.to > JORNADA_FIN)).forEach(b => {
+      warnings.push(`${day.label}: "${b.name}" fuera de jornada laboral (${b.from}–${b.to})`);
     });
   });
   return { warnings, errors };
