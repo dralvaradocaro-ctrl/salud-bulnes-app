@@ -62,6 +62,7 @@ export function generateAgenda({
   absences = [],               // [{doctor_id, date, type, duration_hours}]
   oneoffBlocks = [],           // [{date, doctor_id, time_from, time_to, description, category}]
   manualReinforcements = {},   // { '2026-05-04': { am: 'doctor_id', pm: 'doctor_id' } }
+  manualPoli8am = {},          // { '2026-05-04': 'doctor_id' } — override del médico full-day
 }) {
   const days = weekDates(weekStart);
   const doctorById = Object.fromEntries(doctors.map(d => [d.id, d]));
@@ -200,10 +201,12 @@ export function generateAgenda({
       })
       .map(doc => ({ doctor_id: doc.id }));
 
-    // Policlínico full-day: default BELTRÁN si está disponible
+    // Policlínico full-day: override manual > BELTRÁN si está disponible > null (editable)
     const POLI_FULLDAY_DEFAULT = 'beltran';
-    const beltranAusente = ausIds.has(POLI_FULLDAY_DEFAULT) || postIds.has(POLI_FULLDAY_DEFAULT);
-    const poliFullDay = beltranAusente ? null : POLI_FULLDAY_DEFAULT;
+    const beltranAusente = ausIds.has(POLI_FULLDAY_DEFAULT) || postIds.has(POLI_FULLDAY_DEFAULT) || turnoIds.has(POLI_FULLDAY_DEFAULT);
+    const poliFullDayOverride = manualPoli8am[d.date];
+    const poliFullDay = poliFullDayOverride || (beltranAusente ? null : POLI_FULLDAY_DEFAULT);
+    const poliFullDayEditable = beltranAusente && !poliFullDayOverride;
 
     // Refuerzo PM: lun-jue 11-13, viernes 12-13 (jornada acortada)
     const isViernes = d.day === 'vie';
@@ -231,8 +234,9 @@ export function generateAgenda({
       // POLI 8 AM column: médico full-day (default BELTRÁN) + refuerzo PM
       poli_8am: {
         full_day: poliFullDay
-          ? { doctor_id: poliFullDay, from: '08:00', to: isViernes ? '16:00' : '17:00', label: 'Full día' }
+          ? { doctor_id: poliFullDay, from: '08:00', to: isViernes ? '16:00' : '17:00', label: 'Full día', isOverride: !!poliFullDayOverride, isDefault: poliFullDay === POLI_FULLDAY_DEFAULT }
           : null,
+        full_day_editable: poliFullDayEditable,
         ref_pm: refuerzos.pm
           ? { doctor_id: refuerzos.pm, from: refPmFrom, to: refPmTo, label: 'Ref PM' }
           : null,
@@ -245,6 +249,127 @@ export function generateAgenda({
 const SUBDIRECTOR_ID = 'alvarado';
 const JORNADA_INICIO = '08:00';
 const JORNADA_FIN = '17:00';
+
+/**
+ * Bloques JERÁRQUICOS: el rol no se puede ceder. El médico asignado queda
+ * EXCLUIDO del pool de refuerzos del día. (Subdirección, asistencia a tribunales)
+ */
+export const HIERARCHICAL_BLOCK_IDS = new Set([
+  'subdireccion_medica',
+  'citacion_tribunales',
+]);
+
+/**
+ * Devuelve, para un médico en un día dado, su compromiso nominal (si existe):
+ *   { hasNominal, hierarchical, blockId, blockName, blockIndex }
+ * Si tiene varios bloques, devuelve el primero (basta para el filtro).
+ */
+export function getNominalCommitment(doctorId, dayBloqueos = []) {
+  for (let i = 0; i < dayBloqueos.length; i++) {
+    const b = dayBloqueos[i];
+    if (b.doctor_id !== doctorId) continue;
+    return {
+      hasNominal: true,
+      hierarchical: HIERARCHICAL_BLOCK_IDS.has(b.block_id),
+      blockId: b.block_id,
+      blockName: b.name,
+      blockIndex: i,
+    };
+  }
+  return { hasNominal: false, hierarchical: false };
+}
+
+/**
+ * Resuelve el primer subrogante DISPONIBLE para reemplazar a `excludeDoctorId`
+ * en un bloque, considerando turno/posturno/ausencia del día.
+ */
+export function findReplacementForBlock({ blockId, excludeDoctorId, day, programAssignments }) {
+  const titular = programAssignments.find(p => p.block_template_id === blockId && p.role_type === 'titular')?.doctor_id;
+  const subs = programAssignments
+    .filter(p => p.block_template_id === blockId && p.role_type === 'subrogante')
+    .sort((a, b) => (a.priority || 1) - (b.priority || 1))
+    .map(p => p.doctor_id);
+  const turnoIds = new Set(day.turnos.map(t => t.doctor_id));
+  const postIds = new Set(day.posturno.map(t => t.doctor_id));
+  const ausIds = new Set(day.ausencias.map(a => a.doctor_id));
+  const candidates = [titular, ...subs].filter(Boolean);
+  return candidates.find(id =>
+    id !== excludeDoctorId &&
+    !turnoIds.has(id) && !postIds.has(id) && !ausIds.has(id)
+  ) || null;
+}
+
+/**
+ * Calcula varianza simple de un array (para medir homogeneidad de carga).
+ */
+function variance(arr) {
+  if (arr.length === 0) return 0;
+  const m = arr.reduce((a, b) => a + b, 0) / arr.length;
+  return arr.reduce((s, x) => s + (x - m) ** 2, 0) / arr.length;
+}
+
+/**
+ * Equilibra la carga de bloqueos entre días: mueve bloques de días sobrecargados
+ * a días con menos carga, respetando weekday_pattern del template (si está
+ * presente) y sin pisar turno/posturno/ausencia. Bloques mensuales y oneoff
+ * NO se mueven. Retorna { agenda, moves }.
+ */
+export function balanceLoad({ agenda, blockTemplates }) {
+  const tplById = Object.fromEntries(blockTemplates.map(t => [t.id, t]));
+  const newAgenda = agenda.map(d => ({ ...d, bloqueos: d.bloqueos.slice() }));
+  const moves = [];
+
+  const isFree = (day, doctorId, fromTime, toTime) => {
+    const turnoIds = new Set(day.turnos.map(t => t.doctor_id));
+    const postIds = new Set(day.posturno.map(t => t.doctor_id));
+    const ausIds = new Set(day.ausencias.map(a => a.doctor_id));
+    if (turnoIds.has(doctorId) || postIds.has(doctorId) || ausIds.has(doctorId)) return false;
+    if (doctorId === SUBDIRECTOR_ID) return true;
+    return !day.bloqueos.some(b => b.doctor_id === doctorId &&
+      b.from && b.to && b.from < toTime && fromTime < b.to);
+  };
+
+  // Hasta N pasadas o hasta que no haya mejora.
+  for (let pass = 0; pass < 10; pass++) {
+    const counts = newAgenda.map(d => d.bloqueos.length);
+    const v0 = variance(counts);
+    if (v0 < 0.5) break;
+
+    // Ordenar días de mayor a menor carga
+    const idxByLoad = newAgenda.map((_, i) => i).sort((a, b) => counts[b] - counts[a]);
+    const heavy = idxByLoad[0];
+    const light = idxByLoad[idxByLoad.length - 1];
+    if (counts[heavy] - counts[light] <= 1) break;
+
+    // Buscar un bloque movible en heavy → light
+    const heavyDay = newAgenda[heavy];
+    const lightDay = newAgenda[light];
+    let moved = false;
+    for (let i = 0; i < heavyDay.bloqueos.length; i++) {
+      const blk = heavyDay.bloqueos[i];
+      const tpl = tplById[blk.block_id];
+      // No mover: monthly, oneoff, jerárquico, sin horario, o template con weekday_pattern fijo distinto al destino
+      if (!tpl || tpl.is_monthly || blk.source === 'oneoff' || blk.source === 'monthly') continue;
+      if (HIERARCHICAL_BLOCK_IDS.has(blk.block_id)) continue;
+      if (!blk.from || !blk.to) continue;
+      // Si el template tiene slot fijo en el día destino, OK; si NO lo tiene, igual permitimos
+      // mover (es flexibilidad operativa). Mantener simple.
+      if (!isFree(lightDay, blk.doctor_id, blk.from, blk.to)) continue;
+      // Probar que mejore varianza
+      const c2 = counts.slice();
+      c2[heavy]--; c2[light]++;
+      if (variance(c2) >= v0) continue;
+      // Mover
+      lightDay.bloqueos.push({ ...blk, source: 'balanced' });
+      heavyDay.bloqueos.splice(i, 1);
+      moves.push({ from: heavyDay.date, to: lightDay.date, block: blk.name, doctor: blk.doctor_id });
+      moved = true;
+      break;
+    }
+    if (!moved) break;
+  }
+  return { agenda: newAgenda, moves };
+}
 
 /**
  * Para cada bloque cuyo médico asignado preliminar NO es el titular original,
@@ -349,6 +474,10 @@ export function sortReinforcements({ weeks, doctors, existingReinforcements = {}
     const weekKey = w.weekStart;
     result[weekKey] = result[weekKey] || {};
 
+    // PM ya asignados en esta semana (manuales o de pasadas previas) — para evitar 2 PM/semana
+    const pmThisWeek = new Set();
+    Object.values(result[weekKey]).forEach(s => { if (s?.pm) pmThisWeek.add(s.pm); });
+
     for (const day of w.days) {
       result[weekKey][day.date] = result[weekKey][day.date] || {};
 
@@ -376,9 +505,11 @@ export function sortReinforcements({ weeks, doctors, existingReinforcements = {}
         carga[chosen.id]++;
       }
 
-      // PM (excluir el AM elegido para evitar mismo médico todo el día)
+      // PM (excluir AM del día y a quien YA tenga PM esta semana)
       const amChosen = result[weekKey][day.date].am;
-      const pmEligible = eligible.filter(d => d.id !== amChosen);
+      let pmEligible = eligible.filter(d => d.id !== amChosen && !pmThisWeek.has(d.id));
+      // Si nadie quedó libre (semana muy ajustada), permitir repetir
+      if (pmEligible.length === 0) pmEligible = eligible.filter(d => d.id !== amChosen);
       if (!result[weekKey][day.date].pm && pmEligible.length > 0) {
         const sorted = pmEligible.slice().sort((a, b) => {
           // Para viernes PM, priorizar quienes menos viernes PM han hecho
@@ -391,6 +522,7 @@ export function sortReinforcements({ weeks, doctors, existingReinforcements = {}
         const chosen = sorted[0];
         result[weekKey][day.date].pm = chosen.id;
         carga[chosen.id]++;
+        pmThisWeek.add(chosen.id);
         if (isVie) cargaViernesPM[chosen.id]++;
       }
     }
@@ -439,5 +571,15 @@ export function validateAgenda(agenda, doctors = []) {
       warnings.push(`${day.label}: "${b.name}" fuera de jornada laboral (${b.from}–${b.to})`);
     });
   });
+
+  // Warning crítico: nadie debería hacer ≥2 refuerzos PM en una misma semana
+  const pmCount = {};
+  agenda.forEach(day => {
+    if (day.refuerzos?.pm) pmCount[day.refuerzos.pm] = (pmCount[day.refuerzos.pm] || 0) + 1;
+  });
+  Object.entries(pmCount).forEach(([docId, n]) => {
+    if (n >= 2) warnings.push(`${doctorName(docId)} tiene ${n} refuerzos PM esta semana — redistribuir (los PM son los más sensibles)`);
+  });
+
   return { warnings, errors };
 }

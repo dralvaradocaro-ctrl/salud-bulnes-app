@@ -4,10 +4,12 @@ import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, FileText, Settings2, Users, CalendarDays, Clock, Mic, Gavel, MoreHorizontal } from 'lucide-react';
+import { LogOut, FileText, Settings2, Users, CalendarDays, Clock, Mic, Gavel, MoreHorizontal, BarChart3 } from 'lucide-react';
 import AgendaSemanal from '@/components/sdm/AgendaSemanal';
 import ProgramAssignments from '@/components/sdm/ProgramAssignments';
 import Cronograma from '@/components/sdm/Cronograma';
+import MeetingBlocks from '@/components/sdm/MeetingBlocks';
+import Distribucion from '@/components/sdm/Distribucion';
 
 function Placeholder({ icon: Icon, title, description }) {
   return (
@@ -31,7 +33,8 @@ export default function SubdireccionMedica() {
 
   useEffect(() => {
     if (!localStorage.getItem('admin_logged_in')) {
-      navigate(createPageUrl('AdminLogin'));
+      const next = window.location.pathname + window.location.search;
+      navigate(createPageUrl('AdminLogin') + `?next=${encodeURIComponent(next)}`);
     } else {
       setAuthChecked(true);
     }
@@ -58,10 +61,11 @@ export default function SubdireccionMedica() {
         </div>
 
         <Tabs defaultValue="consola" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3 max-w-2xl">
+          <TabsList className="grid w-full grid-cols-4 max-w-3xl">
             <TabsTrigger value="documentos" className="gap-1.5"><FileText className="h-4 w-4" />Documentos</TabsTrigger>
             <TabsTrigger value="consola" className="gap-1.5"><Settings2 className="h-4 w-4" />Consola Gestión</TabsTrigger>
             <TabsTrigger value="pacientes" className="gap-1.5"><Users className="h-4 w-4" />Pacientes</TabsTrigger>
+            <TabsTrigger value="distribucion" className="gap-1.5"><BarChart3 className="h-4 w-4" />Distribución</TabsTrigger>
           </TabsList>
 
           <TabsContent value="documentos">
@@ -74,7 +78,7 @@ export default function SubdireccionMedica() {
               <TabsList className="flex flex-wrap h-auto">
                 <TabsTrigger value="agenda_semanal" className="gap-1.5"><CalendarDays className="h-4 w-4" />Agenda Semanal</TabsTrigger>
                 <TabsTrigger value="agenda_diaria" className="gap-1.5"><Clock className="h-4 w-4" />Cronograma</TabsTrigger>
-                <TabsTrigger value="bloqueos_reuniones" className="gap-1.5">Bloqueos: Reuniones</TabsTrigger>
+                <TabsTrigger value="bloqueos_reuniones" className="gap-1.5">Bloqueos: Otras causas</TabsTrigger>
                 <TabsTrigger value="bloqueos_radio" className="gap-1.5"><Mic className="h-4 w-4" />Radio</TabsTrigger>
                 <TabsTrigger value="bloqueos_judiciales" className="gap-1.5"><Gavel className="h-4 w-4" />Judiciales</TabsTrigger>
                 <TabsTrigger value="asignaciones" className="gap-1.5"><Users className="h-4 w-4" />Asignaciones</TabsTrigger>
@@ -84,7 +88,7 @@ export default function SubdireccionMedica() {
                 <AgendaSemanal />
               </TabsContent>
               <TabsContent value="agenda_diaria"><Cronograma /></TabsContent>
-              <TabsContent value="bloqueos_reuniones"><Placeholder icon={CalendarDays} title="Bloqueos por reuniones" /></TabsContent>
+              <TabsContent value="bloqueos_reuniones"><MeetingBlocks /></TabsContent>
               <TabsContent value="bloqueos_radio"><Placeholder icon={Mic} title="Bloqueos por visitas a la radio" /></TabsContent>
               <TabsContent value="bloqueos_judiciales"><Placeholder icon={Gavel} title="Bloqueos por situaciones judiciales" /></TabsContent>
               <TabsContent value="asignaciones"><ProgramAssignments /></TabsContent>
@@ -94,6 +98,10 @@ export default function SubdireccionMedica() {
 
           <TabsContent value="pacientes">
             <Placeholder icon={Users} title="Gestión de pacientes de Subdirección Médica" />
+          </TabsContent>
+
+          <TabsContent value="distribucion">
+            <Distribucion />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,8 @@ import { toast } from 'sonner';
 
 export default function AdminLogin() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const nextPath = new URLSearchParams(location.search).get('next');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -23,7 +25,7 @@ export default function AdminLogin() {
       if (username === 'falvaradoc' && password === '12345') {
         localStorage.setItem('admin_logged_in', 'true');
         toast.success('Acceso autorizado');
-        navigate(createPageUrl('AdminDashboard'));
+        navigate(nextPath || createPageUrl('AdminDashboard'));
       } else {
         toast.error('Usuario o contraseña incorrectos');
         setIsLoading(false);
