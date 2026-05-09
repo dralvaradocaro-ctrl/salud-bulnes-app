@@ -371,7 +371,7 @@ export default function TopicDetail() {
 
   // For GES topics with existing content_blocks: prepend clinical block if not already present
   const hasClinicalBlock = topic.content_blocks?.some(b => b.type === 'clinical');
-  const enhancedBlocks = isGesTopic && hasContentBlocks && !hasClinicalBlock
+  const enhancedBlocks = isGesTopic && hasContentBlocks && !hasClinicalBlock && !topic.has_local_protocol
     ? [buildGesClinicalBlock(topic), ...(topic.content_blocks || [])]
     : (topic.content_blocks || []);
 
@@ -635,7 +635,7 @@ export default function TopicDetail() {
         {renderSpecialContent(topic)}
 
         {/* Clinical Orientation block — for GES topics using ClinicalInfo (no content_blocks) */}
-        {isGesTopic && !hasContentBlocks && hasClinicalInfo && (
+        {isGesTopic && !hasContentBlocks && hasClinicalInfo && !topic.has_local_protocol && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -649,7 +649,7 @@ export default function TopicDetail() {
         )}
 
         {/* Clinical Information */}
-        {!isSriTopic && !hasSpecialContent && hasClinicalInfo && (
+        {!isSriTopic && !hasSpecialContent && hasClinicalInfo && !topic.has_local_protocol && (
           <div className="mb-10">
             <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
               <FileText className="h-5 w-5 text-blue-600" />
