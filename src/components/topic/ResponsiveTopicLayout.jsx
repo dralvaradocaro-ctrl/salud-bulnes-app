@@ -327,6 +327,65 @@ function ImageGalleryBlock({ block }) {
   );
 }
 
+function TableBlock({ block }) {
+  const headers = block.headers || [];
+  const rows = block.rows || [];
+  const colorMap = {
+    blue: 'border-blue-200 bg-blue-50',
+    green: 'border-emerald-200 bg-emerald-50',
+    amber: 'border-amber-200 bg-amber-50',
+    red: 'border-red-200 bg-red-50',
+    purple: 'border-violet-200 bg-violet-50',
+  };
+  const headerBg = colorMap[block.color] || 'border-slate-200 bg-slate-50';
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {block.title && (
+        <div className={`border-b ${headerBg} px-5 py-3.5`}>
+          <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-700">
+            {block.title}
+          </h3>
+          {block.description && (
+            <p className="mt-0.5 text-xs text-slate-500">{block.description}</p>
+          )}
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-50">
+            <tr>
+              {headers.map((h, i) => (
+                <th
+                  key={i}
+                  className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-600"
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 bg-white">
+            {rows.map((row, ri) => (
+              <tr key={ri} className="hover:bg-slate-50">
+                {row.map((cell, ci) => (
+                  <td key={ci} className="px-4 py-2.5 align-top text-slate-700">
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {block.source && (
+        <p className="border-t border-slate-100 px-5 py-2 text-[11px] text-slate-400">
+          Fuente: {block.source}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ScoreCalculatorBlock({ block }) {
   const items = block.items || [];
   const thresholds = block.thresholds || [];
@@ -515,6 +574,9 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
 
       case 'image_gallery':
         return <ImageGalleryBlock key={block.id} block={block} />;
+
+      case 'table':
+        return <TableBlock key={block.id} block={block} />;
 
       case 'text':
         return (
@@ -1013,6 +1075,51 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     hipo_derivacion: 'Derivación',
     hipo_flujogramas: 'Flujogramas',
     hipo_cotejo: 'Pauta de Cotejo',
+    triage_protocolo: 'Protocolo',
+    triage_categorias: 'Niveles ESI',
+    triage_casos: 'Casos especiales',
+    triage_flujogramas: 'Flujogramas',
+    aisl_protocolo: 'Protocolo',
+    aisl_tipos: 'Tipos de aislamiento',
+    aisl_tabla: 'Tabla por agente',
+    aisl_flujogramas: 'Flujogramas',
+    vigea_protocolo: 'Protocolo',
+    vigea_definiciones: 'Definiciones',
+    vigea_reporte: 'Reporte',
+    solex_protocolo: 'Protocolo',
+    solex_requisitos: 'Requisitos',
+    solex_preparacion: 'Preparación',
+    solex_flujogramas: 'Flujogramas',
+    deriv_protocolo: 'Protocolo',
+    deriv_equipo: 'Equipo',
+    deriv_procedimiento: 'Procedimiento',
+    deriv_flujogramas: 'Flujogramas',
+    dominga_protocolo: 'Protocolo',
+    dominga_equipo: 'Equipo',
+    dominga_acompan: 'Acompañamiento',
+    dominga_documentos: 'Documentos y permisos',
+    dominga_seguimiento: 'Seguimiento',
+    trato_protocolo: 'Protocolo',
+    trato_estandares: 'Estándares',
+    trato_telefono: 'Telefónico',
+    trato_flujogramas: 'Flujogramas',
+    preferente_protocolo: 'Protocolo',
+    preferente_sujetos: 'Sujetos',
+    preferente_areas: 'Áreas',
+    preferente_flujogramas: 'Flujogramas',
+    ingreso_protocolo: 'Protocolo',
+    ingreso_equipo: 'Equipo',
+    ingreso_proceso: 'Proceso',
+    ingreso_traslado: 'Traslado',
+    ingreso_flujogramas: 'Flujogramas',
+    agit_protocolo: 'Protocolo',
+    agit_evaluacion: 'Evaluación RASS',
+    agit_farmacos: 'Fármacos',
+    agit_flujogramas: 'Flujogramas',
+    apt_protocolo: 'Protocolo y equipo',
+    apt_moviles: 'Móviles',
+    apt_procedimiento: 'Procedimiento',
+    apt_documentacion: 'Documentación',
     intsuic_protocolo: 'Protocolo',
     intsuic_derivacion: 'Derivación',
     intsuic_flujogramas: 'Flujogramas',

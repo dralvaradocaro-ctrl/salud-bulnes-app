@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Fondo redondeado con gradiente azul (salud) → verde (gestión) -->
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e6fce"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" ry="14" fill="url(#bg)"/>
+  <!-- Cruz médica blanca centrada -->
+  <rect x="27" y="14" width="10" height="36" rx="2.5" fill="#ffffff"/>
+  <rect x="14" y="27" width="36" height="10" rx="2.5" fill="#ffffff"/>
+  <!-- Pulso/checkmark sutil sobre la cruz horizontal: línea verde indicando actividad/control -->
+  <path d="M 17 32 L 22 32 L 25 27 L 30 37 L 33 32 L 47 32"
+        fill="none" stroke="#10b981" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+</svg>
