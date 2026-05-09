@@ -66,15 +66,31 @@ export default function ProgramAssignments() {
     return m;
   }, [assignments]);
 
+  // Un bloque "tiene horario regular" si su weekday_pattern no está vacío,
+  // o es mensual (reunión periódica). Estos van primero, destacados.
+  const tieneHorarioRegular = (b) => {
+    if (b.is_monthly) return true;
+    const wp = b.weekday_pattern || {};
+    return Object.values(wp).some(slots => Array.isArray(slots) && slots.length > 0);
+  };
+
   const filtered = useMemo(() => {
     const f = filter.trim().toLowerCase();
-    if (!f) return blocks;
-    return blocks.filter(b =>
+    const matched = !f ? blocks : blocks.filter(b =>
       b.name.toLowerCase().includes(f) ||
       b.id.includes(f) ||
       (b.category || '').includes(f)
     );
+    // Ordenar: regulares primero (por nombre), luego incidentales (por nombre)
+    return matched.slice().sort((a, b) => {
+      const ra = tieneHorarioRegular(a) ? 0 : 1;
+      const rb = tieneHorarioRegular(b) ? 0 : 1;
+      if (ra !== rb) return ra - rb;
+      return a.name.localeCompare(b.name);
+    });
   }, [blocks, filter]);
+
+  const regularesCount = useMemo(() => filtered.filter(tieneHorarioRegular).length, [filtered]);
 
   async function setTitular(blockId, doctorId) {
     setSavingFor(`${blockId}:titular`);
@@ -148,16 +164,39 @@ export default function ProgramAssignments() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map(b => {
+              {filtered.map((b, idx) => {
                 const t = titularBy[b.id]?.doctor_id || '';
                 const subs = subrogantesBy[b.id] || [];
                 const savingT = savingFor === `${b.id}:titular`;
                 const savingAdd = savingFor === `${b.id}:add_sub`;
+                const regular = tieneHorarioRegular(b);
+                // Separador entre regulares e incidentales
+                const isFirstIncidental = !regular && idx > 0 && tieneHorarioRegular(filtered[idx - 1]);
                 return (
-                  <tr key={b.id} className="hover:bg-slate-50/50 align-top">
+                  <React.Fragment key={b.id}>
+                    {isFirstIncidental && (
+                      <tr className="bg-slate-100">
+                        <td colSpan={5} className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                          Gestiones incidentales · sin bloqueo semanal regular
+                        </td>
+                      </tr>
+                    )}
+                    {idx === 0 && regular && (
+                      <tr className="bg-emerald-50">
+                        <td colSpan={5} className="px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-emerald-700">
+                          Programas con bloqueo habitual ({regularesCount})
+                        </td>
+                      </tr>
+                    )}
+                  <tr className={`hover:bg-slate-50/50 align-top ${regular ? '' : 'opacity-90'}`}>
                     <td className="px-3 py-2">
-                      <div className="font-medium text-slate-800">{b.name}</div>
-                      <div className="text-[11px] text-slate-500 font-mono">{b.id}</div>
+                      <div className="flex items-center gap-2">
+                        {regular && <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" title="Bloqueo regular"></span>}
+                        <div>
+                          <div className="font-medium text-slate-800">{b.name}</div>
+                          <div className="text-[11px] text-slate-500 font-mono">{b.id}</div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       <Badge className={CAT_COLOR[b.category] || 'bg-slate-100 text-slate-700'}>
@@ -200,6 +239,7 @@ export default function ProgramAssignments() {
                       </Select>
                     </td>
                   </tr>
+                  </React.Fragment>
                 );
               })}
             </tbody>
