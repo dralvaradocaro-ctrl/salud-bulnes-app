@@ -246,6 +246,159 @@ const SUBDIRECTOR_ID = 'alvarado';
 const JORNADA_INICIO = '08:00';
 const JORNADA_FIN = '17:00';
 
+/**
+ * Para cada bloque cuyo médico asignado preliminar NO es el titular original,
+ * intenta moverlo a otro día de la semana donde el titular SÍ esté disponible.
+ * Devuelve nuevo array de agenda + lista de moves aplicados.
+ *
+ * No mueve bloques mensuales (se respeta su día específico) ni bloques
+ * que ya están con titular asignado.
+ *
+ * Ejemplo: Alvarado titular de Gestión PSCV (miércoles habitual). Si miércoles
+ * está en posturno → se intenta mover a lunes/martes/jueves/viernes donde
+ * Alvarado esté libre.
+ */
+export function optimizeForTitulars({ agenda, blockTemplates, programAssignments }) {
+  const titularByBlock = {};
+  programAssignments.filter(p => p.role_type === 'titular')
+    .forEach(p => titularByBlock[p.block_template_id] = p.doctor_id);
+  const tplById = Object.fromEntries(blockTemplates.map(t => [t.id, t]));
+
+  // Clone agenda
+  const newAgenda = agenda.map(d => ({ ...d, bloqueos: d.bloqueos.slice() }));
+  const moves = [];
+
+  // Función: ¿está el médico libre en este día? (no en turno/posturno/ausencia y sin bloqueo solapado)
+  const isFree = (day, doctorId, fromTime, toTime) => {
+    const turnoIds = new Set(day.turnos.map(t => t.doctor_id));
+    const postIds = new Set(day.posturno.map(t => t.doctor_id));
+    const ausIds = new Set(day.ausencias.map(a => a.doctor_id));
+    if (turnoIds.has(doctorId) || postIds.has(doctorId) || ausIds.has(doctorId)) return false;
+    // No tiene otro bloqueo en el mismo horario (excepto subdirector)
+    if (doctorId === 'alvarado') return true; // subdirector exento
+    return !day.bloqueos.some(b => b.doctor_id === doctorId &&
+      b.from && b.to && b.from < toTime && fromTime < b.to);
+  };
+
+  for (let dayIdx = 0; dayIdx < newAgenda.length; dayIdx++) {
+    const day = newAgenda[dayIdx];
+    for (let blkIdx = 0; blkIdx < day.bloqueos.length; blkIdx++) {
+      const blk = day.bloqueos[blkIdx];
+      const titular = titularByBlock[blk.block_id];
+      const tpl = tplById[blk.block_id];
+      // Skip: sin titular conocido, ya asignado al titular, mensual, o sin horario
+      if (!titular || blk.doctor_id === titular || tpl?.is_monthly || !blk.from || !blk.to) continue;
+      // ¿El titular está disponible este día mismo? Sí → reasignar acá
+      if (isFree(day, titular, blk.from, blk.to)) {
+        moves.push({ from: day.date, to: day.date, block: blk.name, doctor: titular });
+        day.bloqueos[blkIdx] = { ...blk, doctor_id: titular, unassigned: false };
+        continue;
+      }
+      // Buscar otro día donde el titular esté libre
+      const otherDay = newAgenda.find((d, i) => i !== dayIdx && isFree(d, titular, blk.from, blk.to));
+      if (otherDay) {
+        moves.push({ from: day.date, to: otherDay.date, block: blk.name, doctor: titular });
+        // Mover el bloque
+        otherDay.bloqueos.push({ ...blk, doctor_id: titular, unassigned: false, source: 'optimized' });
+        day.bloqueos.splice(blkIdx, 1);
+        blkIdx--;
+      }
+    }
+  }
+  return { agenda: newAgenda, moves };
+}
+
+/**
+ * Sortea refuerzos AM y PM equilibrando carga entre médicos elegibles
+ * para una secuencia de semanas (típicamente 1 mes = 4-5 semanas).
+ *
+ * Reglas:
+ *  - Excluye médicos en turno/posturno/ausencia ese día
+ *  - Excluye al subdirector (alvarado, ocupado en SDM) y al poli full-day (beltran)
+ *  - Excluye a quien is_reinforcement_eligible=false
+ *  - Prioriza médicos con MENOS refuerzos asignados hasta el momento (load balancing)
+ *  - Trata el viernes PM como slot "premium" (a nadie le gusta) — distribución más estricta
+ *
+ * @param weeks: array de { weekStart, days: [{date, day, turnos, posturno, ausencias}] }
+ * @param doctors: catálogo de médicos
+ * @param existingReinforcements: { weekStart: { date: { am, pm } } } — respeta los ya asignados manualmente
+ * @returns { weekStart: { date: { am, pm } } }
+ */
+export function sortReinforcements({ weeks, doctors, existingReinforcements = {} }) {
+  const SUBDIRECTOR = 'alvarado';
+  const POLI_FULLDAY = 'beltran';
+  const carga = {};
+  const cargaViernesPM = {};
+  doctors.forEach(d => { carga[d.id] = 0; cargaViernesPM[d.id] = 0; });
+
+  // Pre-contar carga de los existentes (manual asignados)
+  Object.values(existingReinforcements).forEach(weekData => {
+    Object.entries(weekData || {}).forEach(([date, slots]) => {
+      const isVie = new Date(date).getDay() === 5;
+      if (slots?.am) carga[slots.am] = (carga[slots.am] || 0) + 1;
+      if (slots?.pm) {
+        carga[slots.pm] = (carga[slots.pm] || 0) + 1;
+        if (isVie) cargaViernesPM[slots.pm] = (cargaViernesPM[slots.pm] || 0) + 1;
+      }
+    });
+  });
+
+  const result = JSON.parse(JSON.stringify(existingReinforcements));
+
+  for (const w of weeks) {
+    const weekKey = w.weekStart;
+    result[weekKey] = result[weekKey] || {};
+
+    for (const day of w.days) {
+      result[weekKey][day.date] = result[weekKey][day.date] || {};
+
+      const turnoIds = new Set((day.turnos || []).map(t => t.doctor_id));
+      const postIds = new Set((day.posturno || []).map(t => t.doctor_id));
+      const ausIds = new Set((day.ausencias || []).map(a => a.doctor_id));
+
+      const eligible = doctors.filter(d =>
+        d.is_reinforcement_eligible !== false &&
+        d.active !== false &&
+        d.id !== SUBDIRECTOR &&
+        d.id !== POLI_FULLDAY &&
+        !turnoIds.has(d.id) &&
+        !postIds.has(d.id) &&
+        !ausIds.has(d.id)
+      );
+
+      const isVie = day.day === 'vie';
+
+      // AM
+      if (!result[weekKey][day.date].am && eligible.length > 0) {
+        const sorted = eligible.slice().sort((a, b) => carga[a.id] - carga[b.id]);
+        const chosen = sorted[0];
+        result[weekKey][day.date].am = chosen.id;
+        carga[chosen.id]++;
+      }
+
+      // PM (excluir el AM elegido para evitar mismo médico todo el día)
+      const amChosen = result[weekKey][day.date].am;
+      const pmEligible = eligible.filter(d => d.id !== amChosen);
+      if (!result[weekKey][day.date].pm && pmEligible.length > 0) {
+        const sorted = pmEligible.slice().sort((a, b) => {
+          // Para viernes PM, priorizar quienes menos viernes PM han hecho
+          if (isVie) {
+            const dv = cargaViernesPM[a.id] - cargaViernesPM[b.id];
+            if (dv !== 0) return dv;
+          }
+          return carga[a.id] - carga[b.id];
+        });
+        const chosen = sorted[0];
+        result[weekKey][day.date].pm = chosen.id;
+        carga[chosen.id]++;
+        if (isVie) cargaViernesPM[chosen.id]++;
+      }
+    }
+  }
+
+  return result;
+}
+
 export function validateAgenda(agenda, doctors = []) {
   const warnings = [];
   const errors = [];

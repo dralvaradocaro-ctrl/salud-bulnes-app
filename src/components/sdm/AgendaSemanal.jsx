@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ChevronLeft, ChevronRight, RefreshCw, Save, Printer, Plus, Trash2, Edit3 } from 'lucide-react';
-import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, weekDates } from './lib/generateAgenda';
+import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, weekDates, sortReinforcements, optimizeForTitulars } from './lib/generateAgenda';
+import { Shuffle, Wand2 } from 'lucide-react';
 import CellEditor from './CellEditor';
 
 const ABSENCE_TYPES = ['FL', 'P', 'A', 'DT', 'LM', 'CAP', 'PAS', 'OTRO'];
@@ -146,8 +147,88 @@ export default function AgendaSemanal() {
     setBloqueosOverrides({});
   }
 
+  async function sortearRefuerzosMes() {
+    if (!confirm('Sorteará refuerzos AM/PM para las próximas 4 semanas, balanceando carga (especialmente viernes PM). ¿Continuar?')) return;
+    // Generar 4 semanas a partir del lunes actual
+    const semanas = [];
+    for (let i = 0; i < 4; i++) {
+      const m = new Date(monday);
+      m.setDate(monday.getDate() + i * 7);
+      const ws = fmtDate(m);
+      const we = fmtDate(new Date(m.getTime() + 4 * 86400000));
+      const [{ data: cal }, { data: abs }, { data: existAg }] = await Promise.all([
+        supabase.from('sdm_shift_calendar').select('*').gte('date', fmtDate(new Date(m.getTime() - 86400000))).lte('date', we),
+        supabase.from('sdm_absences').select('*').gte('date', ws).lte('date', we),
+        supabase.from('sdm_weekly_agendas').select('data').eq('week_start', ws).maybeSingle(),
+      ]);
+      const generated = generateAgenda({
+        weekStart: m, doctors, rotation,
+        shiftCalendar: cal || [],
+        blockTemplates, programAssignments,
+        absences: abs || [],
+        oneoffBlocks: [],
+        manualReinforcements: existAg.data?.data?.reinforcements || {},
+      });
+      semanas.push({
+        weekStart: ws,
+        days: generated,
+        existingReinforcements: existAg.data?.data?.reinforcements || {},
+      });
+    }
+    // Construir map existing acumulado
+    const existing = {};
+    semanas.forEach(s => existing[s.weekStart] = s.existingReinforcements);
+    const sorteado = sortReinforcements({
+      weeks: semanas.map(s => ({ weekStart: s.weekStart, days: s.days })),
+      doctors,
+      existingReinforcements: existing,
+    });
+    // Guardar en cada semana afectada
+    let saved = 0;
+    for (const s of semanas) {
+      const newReinf = sorteado[s.weekStart];
+      const payload = {
+        week_start: s.weekStart,
+        data: { reinforcements: newReinf, generated_at: new Date().toISOString() },
+        status: 'preliminar',
+        updated_at: new Date().toISOString(),
+      };
+      const { data: existing } = await supabase.from('sdm_weekly_agendas').select('id, data').eq('week_start', s.weekStart).maybeSingle();
+      if (existing) {
+        await supabase.from('sdm_weekly_agendas').update({
+          data: { ...(existing.data || {}), reinforcements: newReinf, updated_at: new Date().toISOString() },
+        }).eq('id', existing.id);
+      } else {
+        await supabase.from('sdm_weekly_agendas').insert(payload);
+      }
+      if (s.weekStart === weekStart) setReinforcements(newReinf);
+      saved++;
+    }
+    alert(`Sorteado refuerzos en ${saved} semanas. Carga balanceada por médicos disponibles.`);
+  }
+
   function onCellSave(date, nuevosBloqueos) {
     setBloqueosOverrides(prev => ({ ...prev, [date]: nuevosBloqueos }));
+  }
+
+  function optimizarTitulares() {
+    if (!confirm('Reasignará bloques al médico TITULAR cuando esté disponible (mueve a otro día si hace falta). ¿Continuar?')) return;
+    const { agenda: optimized, moves } = optimizeForTitulars({
+      agenda, blockTemplates, programAssignments,
+    });
+    const overrides = {};
+    optimized.forEach(d => { overrides[d.date] = d.bloqueos; });
+    setBloqueosOverrides(overrides);
+    if (moves.length === 0) {
+      alert('No hubo cambios — los titulares ya están donde corresponde o no hay día disponible alternativo.');
+    } else {
+      const summary = moves.slice(0, 10).map(m =>
+        m.from === m.to
+          ? `• ${m.block}: ${m.doctor} (${m.from})`
+          : `• ${m.block}: movido ${m.from} → ${m.to} (${m.doctor})`
+      ).join('\n');
+      alert(`Optimizadas ${moves.length} asignaciones:\n\n${summary}${moves.length > 10 ? `\n…y ${moves.length - 10} más` : ''}`);
+    }
   }
 
   if (loading) return <div className="p-6 text-slate-500">Cargando catálogos...</div>;
@@ -177,6 +258,8 @@ export default function AgendaSemanal() {
         <Button variant="outline" size="sm" onClick={() => shiftWeek(7)}><ChevronRight className="h-4 w-4" /></Button>
         <Button variant="outline" size="sm" onClick={() => setMonday(getMondayOfWeek(new Date()))}>Hoy</Button>
         <div className="flex-1" />
+        <Button variant="outline" onClick={sortearRefuerzosMes} className="gap-1.5" title="Sortea refuerzos AM/PM para próximas 4 semanas, balanceando carga"><Shuffle className="h-4 w-4" /> Sortear refuerzos</Button>
+        <Button variant="outline" onClick={optimizarTitulares} className="gap-1.5" title="Reasigna bloques al titular si está disponible otro día"><Wand2 className="h-4 w-4" /> Optimizar titulares</Button>
         <Button variant="outline" onClick={regenerarPreliminar} className="gap-1.5" title="Descarta ediciones y vuelve al template"><RefreshCw className="h-4 w-4" /> Regenerar</Button>
         <Button onClick={saveAgenda} className="gap-1.5"><Save className="h-4 w-4" /> Guardar</Button>
         <Button variant="outline" onClick={() => window.print()} className="gap-1.5"><Printer className="h-4 w-4" /> Imprimir</Button>
