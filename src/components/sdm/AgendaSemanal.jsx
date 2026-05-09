@@ -238,14 +238,25 @@ export default function AgendaSemanal() {
                 <td className="px-2 py-2 font-bold text-slate-800">{day.label}<div className="text-[10px] font-normal text-slate-500">{day.date}<br/>T{day.turnoNumber ?? '–'}</div></td>
                 <td className="px-2 py-2">{day.turnos.map((t, i) => <div key={i}>{doctorName(t.doctor_id)}{t.replaced && <span className="text-amber-600"> (←{doctorName(t.original_doctor_id)})</span>}</div>)}</td>
                 <td className="px-2 py-2 space-y-1">
-                  <Select value={day.refuerzos.am || ''} onValueChange={v => updateReinforcement(day.date, 'am', v)}>
-                    <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="AM…" /></SelectTrigger>
-                    <SelectContent>{doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <Select value={day.refuerzos.pm || ''} onValueChange={v => updateReinforcement(day.date, 'pm', v)}>
-                    <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="PM…" /></SelectTrigger>
-                    <SelectContent>{doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}</SelectContent>
-                  </Select>
+                  {(() => {
+                    const turnoIds = new Set(day.turnos.map(t => t.doctor_id));
+                    const postIds = new Set(day.posturno.map(t => t.doctor_id));
+                    const ausIds = new Set(day.ausencias.map(a => a.doctor_id));
+                    const eligible = doctors.filter(doc =>
+                      !turnoIds.has(doc.id) && !postIds.has(doc.id) && !ausIds.has(doc.id));
+                    return (
+                      <>
+                        <Select value={day.refuerzos.am || ''} onValueChange={v => updateReinforcement(day.date, 'am', v)}>
+                          <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="AM…" /></SelectTrigger>
+                          <SelectContent>{eligible.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}</SelectContent>
+                        </Select>
+                        <Select value={day.refuerzos.pm || ''} onValueChange={v => updateReinforcement(day.date, 'pm', v)}>
+                          <SelectTrigger className="h-7 text-[11px]"><SelectValue placeholder="PM…" /></SelectTrigger>
+                          <SelectContent>{eligible.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </>
+                    );
+                  })()}
                 </td>
                 <td className="px-2 py-2 text-slate-600">{day.posturno.map((t, i) => <div key={i}>{doctorName(t.doctor_id)}</div>)}</td>
                 <td className="px-2 py-2">{day.ausencias.map((a, i) => <div key={i} className="text-red-700">{doctorName(a.doctor_id)} ({a.type})</div>)}</td>

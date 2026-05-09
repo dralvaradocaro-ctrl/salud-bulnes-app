@@ -87,9 +87,9 @@ export function generateAgenda({
   // ID del subdirector (regla operativa: puede acumular bloqueos)
   const SUBDIRECTOR_ID = 'alvarado';
 
-  // Día anterior al lunes (para postturno del lunes — mira el viernes de la semana pasada)
+  // Día calendario anterior al lunes (para posturno del lunes = turno del DOMINGO)
   const prevDayDate = new Date(days[0].iso);
-  prevDayDate.setDate(prevDayDate.getDate() - 3); // viernes
+  prevDayDate.setDate(prevDayDate.getDate() - 1); // domingo
   const prevDayKey = fmtDate(prevDayDate);
 
   return days.map((d, idx) => {
@@ -118,15 +118,20 @@ export function generateAgenda({
     const bloqueos = [];
     const dayKey = dayKeyForDate(d.date);
 
+    // Árbol de razonamiento: TURNOS → POSTURNO → AUSENCIAS → resto.
     // Resolver médico por bloque con cascada T → S₁ → S₂ → S₃ ...
-    // Excluye médicos en postturno o ausentes (preferir disponibles)
+    // Excluye médicos en turno, posturno o ausentes.
+    const turnoIds_inner = new Set(turnos.map(t => t.doctor_id));
+    const postIds_inner = new Set(posturno.map(t => t.doctor_id));
+    const ausIds_inner = new Set((absencesByDate[d.date] || []).map(a => a.doctor_id));
     const resolveDoctor = (blockId) => {
       const t = titularByBlock[blockId];
       const subs = subrogantesByBlock[blockId] || [];
       const candidates = [t, ...subs.map(s => s.doctor_id)].filter(Boolean);
-      // Primero intentar uno disponible
-      const ausIds = new Set(absencesByDate[d.date]?.map(a => a.doctor_id) || []);
-      const available = candidates.find(id => !ausIds.has(id));
+      // Primero intentar uno disponible (no en turno/posturno/ausencia)
+      const available = candidates.find(id =>
+        !ausIds_inner.has(id) && !turnoIds_inner.has(id) && !postIds_inner.has(id));
+      // Si nadie disponible, devolver el primero (mejor que nada, marcará error)
       return available || candidates[0] || null;
     };
 
