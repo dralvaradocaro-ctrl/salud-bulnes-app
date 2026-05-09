@@ -66,6 +66,7 @@ import FormularioGES from './pages/FormularioGES';
 import SolicitudExamenes from './pages/SolicitudExamenes';
 import InformeBiomedico from './pages/InformeBiomedico';
 import PrescripcionInteligente from './pages/PrescripcionInteligente';
+import SubdireccionMedica from './pages/SubdireccionMedica';
 import __Layout from './Layout.jsx';
 
 export const PAGES = {
@@ -88,6 +89,7 @@ export const PAGES = {
     "SolicitudExamenes": SolicitudExamenes,
     "InformeBiomedico": InformeBiomedico,
     "PrescripcionInteligente": PrescripcionInteligente,
+    "SubdireccionMedica": SubdireccionMedica,
 }
 
 export const pagesConfig = {
