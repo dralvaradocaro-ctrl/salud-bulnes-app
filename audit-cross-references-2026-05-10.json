@@ -1,0 +1,537 @@
+{
+  "generatedAt": "2026-05-10T02:33:10.442Z",
+  "totalTopics": 153,
+  "brokenLinks": [],
+  "suggestions": [
+    {
+      "from_topic_id": "b5020c15-94b1-4885-a177-f145682c8ff0",
+      "from_name": "Atención en Policlínico TACO (Terapia Anticoagulante Oral)",
+      "to_topic_id": "696efcff77924d3a78533dcb",
+      "to_name": "Asma bronquial moderada y grave en personas menores de 15 años",
+      "label": "Asma bronquial",
+      "mode": "related",
+      "keyword": "asma",
+      "snippet": "…derivar hchm: 4–6 unidades plasma fresco + vitamina k 10 mg iv…"
+    },
+    {
+      "from_topic_id": "58b11a9e-eb80-4af3-9eb7-7fa1f86631e2",
+      "from_name": "Atención en Telemedicina para Patologías GES — Flujo Operativo HCSFB",
+      "to_topic_id": "105de3f0-3055-4cb4-a124-f4b46bcfb945",
+      "to_name": "Epilepsia en personas desde 1 año y menores de 15 años",
+      "label": "Epilepsia",
+      "mode": "related",
+      "keyword": "epilepsia",
+      "snippet": "…orreo ~ neurologia (parkinson/epilepsia): debe estar presente un faci…"
+    },
+    {
+      "from_topic_id": "58b11a9e-eb80-4af3-9eb7-7fa1f86631e2",
+      "from_name": "Atención en Telemedicina para Patologías GES — Flujo Operativo HCSFB",
+      "to_topic_id": "696ea74c245ef362de4f433a",
+      "to_name": "Hipertensión arterial primaria o esencial en personas de 15 años y más",
+      "label": "Hipertensión",
+      "mode": "related",
+      "keyword": "hipertensi",
+      "snippet": "…tia epoc → no genera garantia hipertension arterial → no genera garant…"
+    },
+    {
+      "from_topic_id": "58b11a9e-eb80-4af3-9eb7-7fa1f86631e2",
+      "from_name": "Atención en Telemedicina para Patologías GES — Flujo Operativo HCSFB",
+      "to_topic_id": "696efcff77924d3a78533dd6",
+      "to_name": "Infarto agudo del miocardio",
+      "label": "Infarto Agudo",
+      "mode": "related",
+      "keyword": "iam",
+      "snippet": "…cina monitorea respuestas diariamente en teleprocesos / hospita…"
+    },
+    {
+      "from_topic_id": "58b11a9e-eb80-4af3-9eb7-7fa1f86631e2",
+      "from_name": "Atención en Telemedicina para Patologías GES — Flujo Operativo HCSFB",
+      "to_topic_id": "699752d342f5df7fd650edad",
+      "to_name": "Flujo de ACV No Agudo en Policlínico",
+      "label": "ACV",
+      "mode": "related",
+      "keyword": "acv",
+      "snippet": "…rocesos) → no genera garantia acv / accidente cerebrovascular →…"
+    },
+    {
+      "from_topic_id": "58b11a9e-eb80-4af3-9eb7-7fa1f86631e2",
+      "from_name": "Atención en Telemedicina para Patologías GES — Flujo Operativo HCSFB",
+      "to_topic_id": "696efcff77924d3a78533dcb",
+      "to_name": "Asma bronquial moderada y grave en personas menores de 15 años",
+      "label": "Asma bronquial",
+      "mode": "related",
+      "keyword": "asma",
+      "snippet": "…eleprocesos — asincronico ━━━ asma ≥15 anos → no genera garantia…"
+    },
+    {
+      "from_topic_id": "2dc4e979-9547-4b81-9471-145e4ed3f55d",
+      "from_name": "Categorización de la Atención en el Servicio de Urgencias",
+      "to_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+      "to_name": "Sedación Paliativa",
+      "label": "Sedación Paliativa",
+      "mode": "related",
+      "keyword": "sedaci",
+      "snippet": "…ng) procedimientos complejos (sedacion, sutura, curaciones avanzad…"
+    },
+    {
+      "from_topic_id": "2dc4e979-9547-4b81-9471-145e4ed3f55d",
+      "from_name": "Categorización de la Atención en el Servicio de Urgencias",
+      "to_topic_id": "696efcff77924d3a78533dcb",
+      "to_name": "Asma bronquial moderada y grave en personas menores de 15 años",
+      "label": "Asma bronquial",
+      "mode": "related",
+      "keyword": "asma",
+      "snippet": "…n sri; util en broncoespasmo, asma severa, status epileptico ref…"
+    },
+    {
+      "from_topic_id": "7ad0926a-76f3-4f1d-8bb0-c44e686549cc",
+      "from_name": "Contención Farmacológica en Pacientes con Agitación Psicomotora — Hospitalizados",
+      "to_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+      "to_name": "Sedación Paliativa",
+      "label": "Sedación Paliativa",
+      "mode": "related",
+      "keyword": "sedaci",
+      "snippet": "…do ━━━ 0 alerta y calmado ━━━ sedacion ━━━ -1 somnoliento: contact…"
+    },
+    {
+      "from_topic_id": "7ad0926a-76f3-4f1d-8bb0-c44e686549cc",
+      "from_name": "Contención Farmacológica en Pacientes con Agitación Psicomotora — Hospitalizados",
+      "to_topic_id": "a9f7cc11-b828-4ac9-a235-fe91fc8a1c31",
+      "to_name": "Infección respiratoria aguda (IRA) de manejo ambulatorio en personas menores de 5 años",
+      "label": "Infección respiratoria aguda",
+      "mode": "related",
+      "keyword": "ira ",
+      "snippet": "…inmediato +3 muy agitado: retira tubos o cateteres, agresivo +2…"
+    },
+    {
+      "from_topic_id": "13e6128f-882a-4a19-8e18-47cbf13203eb",
+      "from_name": "Contención Farmacológica y No Farmacológica en Agitación Psicomotora",
+      "to_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+      "to_name": "Sedación Paliativa",
+      "label": "Sedación Paliativa",
+      "mode": "related",
+      "keyword": "sedaci",
+      "snippet": "…e puede despertar — riesgo de sedacion excesiva bars 2: dormido, r…"
+    },
+    {
+      "from_topic_id": "d63788dd-54f5-4cc7-8af4-4bf2af1dc7f0",
+      "from_name": "Criterios y Requisitos de Derivación a Cardiología",
+      "to_topic_id": "696ea74c245ef362de4f433a",
+      "to_name": "Hipertensión arterial primaria o esencial en personas de 15 años y más",
+      "label": "Hipertensión",
+      "mode": "related",
+      "keyword": "hipertensi",
+      "snippet": "…ue se descompensa sospecha de hipertension pulmonar (disnea con spo₂ n…"
+    },
+    {
+      "from_topic_id": "d63788dd-54f5-4cc7-8af4-4bf2af1dc7f0",
+      "from_name": "Criterios y Requisitos de Derivación a Cardiología",
+      "to_topic_id": "696efcff77924d3a78533dd6",
+      "to_name": "Infarto agudo del miocardio",
+      "label": "Infarto Agudo",
+      "mode": "related",
+      "keyword": "iam",
+      "snippet": "…on reciente manejada ambulatoriamente sospecha de miocardiopati…"
+    },
+    {
+      "from_topic_id": "5285fd58-39ea-4faa-9139-e38f2c1faab3",
+      "from_name": "Derivación de Pacientes HCSFB a Hospital Herminda Martín u otros centros",
+      "to_topic_id": "696efcff77924d3a78533dd6",
+      "to_name": "Infarto agudo del miocardio",
+      "label": "Infarto Agudo",
+      "mode": "related",
+      "keyword": "iam",
+      "snippet": "…eptor (urgencias hchm, hlh si iamest) e indica motivos 4. elabo…"
+    },
+    {
+      "from_topic_id": "699752d342f5df7fd650edaf",
+      "from_name": "Manejo de Cuerpo Extraño en Urgencias",
+      "to_topic_id": "696efcff77924d3a78533dcb",
+      "to_name": "Asma bronquial moderada y grave en personas menores de 15 años",
+      "label": "Asma bronquial",
+      "mode": "related",
+      "keyword": "asma",
+      "snippet": "…n sri; util en broncoespasmo, asma severa, status epileptico ref…"
+    },
+    {
+      "from_topic_id": "64dfc162-38ac-40c9-8cff-2e898bd40988",
+      "from_name": "Manejo de Pacientes con Intento Suicida en Urgencias",
+      "to_topic_id": "696efcff77924d3a78533dcb",
+      "to_name": "Asma bronquial moderada y grave en personas menores de 15 años",
+      "label": "Asma bronquial",
+      "mode": "related",
+      "keyword": "asma",
+      "snippet": "…n sri; util en broncoespasmo, asma severa, status epileptico ref…"
+    },
+    {
+      "from_topic_id": "66086cdd-cd73-46ca-87da-245fdb2f4e32",
+      "from_name": "Manejo del Dolor Agudo Post-Operatorio",
+      "to_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+      "to_name": "Sedación Paliativa",
+      "label": "Sedación Paliativa",
+      "mode": "related",
+      "keyword": "sedaci",
+      "snippet": "…isma escala de severidad ═══ sedacion — escala de ramsay (monitor…"
+    },
+    {
+      "from_topic_id": "66086cdd-cd73-46ca-87da-245fdb2f4e32",
+      "from_name": "Manejo del Dolor Agudo Post-Operatorio",
+      "to_topic_id": "105de3f0-3055-4cb4-a124-f4b46bcfb945",
+      "to_name": "Epilepsia en personas desde 1 año y menores de 15 años",
+      "label": "Epilepsia",
+      "mode": "related",
+      "keyword": "epilepsia",
+      "snippet": "…quirurgico ⚠️ no usar en ir o epilepsia (metabolito activo normeperid…"
+    },
+    {
+      "from_topic_id": "b05b625c-73d9-4413-98e1-15b246f90381",
+      "from_name": "Manejo del Traumatismo Craneoencefálico del Adulto en Urgencias",
+      "to_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+      "to_name": "Sedación Paliativa",
+      "label": "Sedación Paliativa",
+      "mode": "related",
+      "keyword": "sedaci",
+      "snippet": "…raslado o agitacion que exige sedacion con riesgo respiratorio. ox…"
+    },
+    {
+      "from_topic_id": "b05b625c-73d9-4413-98e1-15b246f90381",
+      "from_name": "Manejo del Traumatismo Craneoencefálico del Adulto en Urgencias",
+      "to_topic_id": "105de3f0-3055-4cb4-a124-f4b46bcfb945",
+      "to_name": "Epilepsia en personas desde 1 año y menores de 15 años",
+      "label": "Epilepsia",
+      "mode": "related",
+      "keyword": "epilepsia",
+      "snippet": "…raneo. edad mayor de 65 anos. epilepsia. anticoagulacion oral o coagu…"
+    },
+    {
+      "from_topic_id": "b05b625c-73d9-4413-98e1-15b246f90381",
+      "from_name": "Manejo del Traumatismo Craneoencefálico del Adulto en Urgencias",
+      "to_topic_id": "696efcff77924d3a78533dcb",
+      "to_name": "Asma bronquial moderada y grave en personas menores de 15 años",
+      "label": "Asma bronquial",
+      "mode": "related",
+      "keyword": "asma",
+      "snippet": "…n sri; util en broncoespasmo, asma severa, status epileptico ref…"
+    },
+    {
+      "from_topic_id": "a0066cf0-0129-4221-a5c2-3be66804fdf0",
+      "from_name": "Manejo Farmacológico del Dolor Oncológico",
+      "to_topic_id": "105de3f0-3055-4cb4-a124-f4b46bcfb945",
+      "to_name": "Epilepsia en personas desde 1 año y menores de 15 años",
+      "label": "Epilepsia",
+      "mode": "related",
+      "keyword": "epilepsia",
+      "snippet": "…omp lib prolongada 400 mg (pm epilepsia) duloxetina 30–60 mg/dia, neu…"
+    },
+    {
+      "from_topic_id": "a0066cf0-0129-4221-a5c2-3be66804fdf0",
+      "from_name": "Manejo Farmacológico del Dolor Oncológico",
+      "to_topic_id": "696ea74c245ef362de4f433a",
+      "to_name": "Hipertensión arterial primaria o esencial en personas de 15 años y más",
+      "label": "Hipertensión",
+      "mode": "related",
+      "keyword": "hipertensi",
+      "snippet": "…sion nerviosa, edema tumoral, hipertension endocraneal ━━━ dexametason…"
+    },
+    {
+      "from_topic_id": "a0b9543b-2ba2-4d90-9933-3b63f74d62cc",
+      "from_name": "Osteosarcoma en personas de 15 años y más",
+      "to_topic_id": "696efcff77924d3a78533dd6",
+      "to_name": "Infarto agudo del miocardio",
+      "label": "Infarto Agudo",
+      "mode": "related",
+      "keyword": "iam",
+      "snippet": "…ctura patologica en hueso previamente anormal pauta de cotejo…"
+    },
+    {
+      "from_topic_id": "c97b6632-904c-4e9c-ba80-defb5b1199d9",
+      "from_name": "Prevención de Caídas en Pacientes Hospitalizados",
+      "to_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+      "to_name": "Sedación Paliativa",
+      "label": "Sedación Paliativa",
+      "mode": "related",
+      "keyword": "sedaci",
+      "snippet": "…del puntaje ━━━ paciente bajo sedacion o anestesia uso de medicame…"
+    },
+    {
+      "from_topic_id": "c97b6632-904c-4e9c-ba80-defb5b1199d9",
+      "from_name": "Prevención de Caídas en Pacientes Hospitalizados",
+      "to_topic_id": "696ea74c245ef362de4f433a",
+      "to_name": "Hipertensión arterial primaria o esencial en personas de 15 años y más",
+      "label": "Hipertensión",
+      "mode": "related",
+      "keyword": "hipertensi",
+      "snippet": "…s o hipnoticos diureticos antihipertensivos (excluyendo diureticos) an…"
+    },
+    {
+      "from_topic_id": "c97b6632-904c-4e9c-ba80-defb5b1199d9",
+      "from_name": "Prevención de Caídas en Pacientes Hospitalizados",
+      "to_topic_id": "696efcff77924d3a78533dd6",
+      "to_name": "Infarto agudo del miocardio",
+      "label": "Infarto Agudo",
+      "mode": "related",
+      "keyword": "iam",
+      "snippet": "…ar al ingreso y reevaluar diariamente — puntaje igual o mayor a…"
+    },
+    {
+      "from_topic_id": "2e04569c-ec5b-4323-a284-3658d0b377ea",
+      "from_name": "Proceso de Transporte de Pacientes",
+      "to_topic_id": "696efee3e40fc675b3e7bc69",
+      "to_name": "Secuencia Rápida de Intubación (SRI)",
+      "label": "Secuencia Rápida de Intubación (SRI)",
+      "mode": "related",
+      "keyword": "intubaci",
+      "snippet": "…tivos supragloticos drogas de intubacion: fentanilo, lidocaina, etom…"
+    },
+    {
+      "from_topic_id": "69a1bec61fdbeb827c9a3f10",
+      "from_name": "Protocolo de Aislamiento de Pacientes - Hospital Bulnes",
+      "to_topic_id": "696efcff77924d3a78533dd6",
+      "to_name": "Infarto agudo del miocardio",
+      "label": "Infarto Agudo",
+      "mode": "related",
+      "keyword": "iam",
+      "snippet": "…s debe ser realizada obligatoriamente con agua y jabon. el arra…"
+    },
+    {
+      "from_topic_id": "ea66f700-760b-479b-8299-eef151e98754",
+      "from_name": "Protocolo de Transfusión de Hemoderivados",
+      "to_topic_id": "a9f7cc11-b828-4ac9-a235-fe91fc8a1c31",
+      "to_name": "Infección respiratoria aguda (IRA) de manejo ambulatorio en personas menores de 5 años",
+      "label": "Infección respiratoria aguda",
+      "mode": "related",
+      "keyword": "ira ",
+      "snippet": "…n\"] c --> d[\"enfermera retira componente<br/>con formulario…"
+    },
+    {
+      "from_topic_id": "a0ba85e5-04db-4d3d-9232-041c4a55410b",
+      "from_name": "Protocolo de Trombolisis — Infarto con SDST (IAMEST)",
+      "to_topic_id": "699752d342f5df7fd650edad",
+      "to_name": "Flujo de ACV No Agudo en Policlínico",
+      "label": "ACV",
+      "mode": "related",
+      "keyword": "acv",
+      "snippet": "…nes absolutas antecedente de acv hemorragico o acv de origen d…"
+    },
+    {
+      "from_topic_id": "34f0aac7-eee5-4df4-8bf4-a94d0eef1424",
+      "from_name": "Reanimación Cardiopulmonar Avanzada en Adultos",
+      "to_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+      "to_name": "Sedación Paliativa",
+      "label": "Sedación Paliativa",
+      "mode": "related",
+      "keyword": "sedaci",
+      "snippet": "…da<br/>100-200 j bifasico con sedacion si no retrasa\"] c -->|n…"
+    },
+    {
+      "from_topic_id": "34f0aac7-eee5-4df4-8bf4-a94d0eef1424",
+      "from_name": "Reanimación Cardiopulmonar Avanzada en Adultos",
+      "to_topic_id": "a9f7cc11-b828-4ac9-a235-fe91fc8a1c31",
+      "to_name": "Infección respiratoria aguda (IRA) de manejo ambulatorio en personas menores de 5 años",
+      "label": "Infección respiratoria aguda",
+      "mode": "related",
+      "keyword": "ira ",
+      "snippet": "…respuesta a estimulos, no respira o solo jadea/boquea, pulso car…"
+    },
+    {
+      "from_topic_id": "226277b1-759b-4172-8478-720f0f45e15b",
+      "from_name": "Reanimación Cardiopulmonar Pediátrica",
+      "to_topic_id": "696efcff77924d3a78533dd6",
+      "to_name": "Infarto agudo del miocardio",
+      "label": "Infarto Agudo",
+      "mode": "related",
+      "keyword": "iam",
+      "snippet": "…didad → lactante: 4 cm o 1/3 diametro anteroposterior; nino: 5…"
+    },
+    {
+      "from_topic_id": "226277b1-759b-4172-8478-720f0f45e15b",
+      "from_name": "Reanimación Cardiopulmonar Pediátrica",
+      "to_topic_id": "a9f7cc11-b828-4ac9-a235-fe91fc8a1c31",
+      "to_name": "Infección respiratoria aguda (IRA) de manejo ambulatorio en personas menores de 5 años",
+      "label": "Infección respiratoria aguda",
+      "mode": "related",
+      "keyword": "ira ",
+      "snippet": "…clinico: no responde, no respira normalmente o solo jadea/boque…"
+    },
+    {
+      "from_topic_id": "696efee3e40fc675b3e7bc69",
+      "from_name": "Secuencia Rápida de Intubación (SRI)",
+      "to_topic_id": "696efcff77924d3a78533dcb",
+      "to_name": "Asma bronquial moderada y grave en personas menores de 15 años",
+      "label": "Asma bronquial",
+      "mode": "related",
+      "keyword": "asma",
+      "snippet": "…n sri; util en broncoespasmo, asma severa, status epileptico ref…"
+    },
+    {
+      "from_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+      "from_name": "Sedación Paliativa",
+      "to_topic_id": "696efcff77924d3a78533dd6",
+      "to_name": "Infarto agudo del miocardio",
+      "label": "Infarto Agudo",
+      "mode": "related",
+      "keyword": "iam",
+      "snippet": "…ratura, secreciones, fr, fc, diametro pupilar mantener cuidados…"
+    },
+    {
+      "from_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+      "from_name": "Sedación Paliativa",
+      "to_topic_id": "696efcff77924d3a78533dcb",
+      "to_name": "Asma bronquial moderada y grave en personas menores de 15 años",
+      "label": "Asma bronquial",
+      "mode": "related",
+      "keyword": "asma",
+      "snippet": "…enos 2 h para concentracion plasmatica maxima dosis total primer…"
+    },
+    {
+      "from_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+      "from_name": "Sedación Paliativa",
+      "to_topic_id": "a9f7cc11-b828-4ac9-a235-fe91fc8a1c31",
+      "to_name": "Infección respiratoria aguda (IRA) de manejo ambulatorio en personas menores de 5 años",
+      "label": "Infección respiratoria aguda",
+      "mode": "related",
+      "keyword": "ira ",
+      "snippet": "…de forma transitoria ~ se retira en plazo determinado para reev…"
+    },
+    {
+      "from_topic_id": "2162fa20-a0b9-46b8-8735-9c511d96a9c4",
+      "from_name": "Sistema de Alerta — Código Azul HCSFB",
+      "to_topic_id": "696efcff77924d3a78533dd6",
+      "to_name": "Infarto agudo del miocardio",
+      "label": "Infarto Agudo",
+      "mode": "related",
+      "keyword": "iam",
+      "snippet": "…5–6 cm en adultos · 1/3 del diametro toracico en ninos ✅ retro…"
+    },
+    {
+      "from_topic_id": "0da21555-a8f1-4054-b474-3237ce439644",
+      "from_name": "Solicitud de Exámenes e Indicaciones en Procedimientos Imagenológicos",
+      "to_topic_id": "a9f7cc11-b828-4ac9-a235-fe91fc8a1c31",
+      "to_name": "Infección respiratoria aguda (IRA) de manejo ambulatorio en personas menores de 5 años",
+      "label": "Infección respiratoria aguda",
+      "mode": "related",
+      "keyword": "ira ",
+      "snippet": "…7. derivacion: ambulatorio retira cd o copia digital, urgencia y…"
+    },
+    {
+      "from_topic_id": "ffbdfb89-2e6d-429c-be7a-dc6b0dda8504",
+      "from_name": "Trastornos del potasio",
+      "to_topic_id": "696efcff77924d3a78533dd6",
+      "to_name": "Infarto agudo del miocardio",
+      "label": "Infarto Agudo",
+      "mode": "related",
+      "keyword": "iam",
+      "snippet": "…· eplerenona - amiloride · triamtereno - cotrimoxazol · hepari…"
+    },
+    {
+      "from_topic_id": "ffbdfb89-2e6d-429c-be7a-dc6b0dda8504",
+      "from_name": "Trastornos del potasio",
+      "to_topic_id": "696efcff77924d3a78533dcb",
+      "to_name": "Asma bronquial moderada y grave en personas menores de 15 años",
+      "label": "Asma bronquial",
+      "mode": "related",
+      "keyword": "asma",
+      "snippet": "…el ecg paso 2 — reducir k⁺ plasmatico (shift intracelular) ~ins…"
+    },
+    {
+      "from_topic_id": "ffbdfb89-2e6d-429c-be7a-dc6b0dda8504",
+      "from_name": "Trastornos del potasio",
+      "to_topic_id": "a9f7cc11-b828-4ac9-a235-fe91fc8a1c31",
+      "to_name": "Infección respiratoria aguda (IRA) de manejo ambulatorio en personas menores de 5 años",
+      "label": "Infección respiratoria aguda",
+      "mode": "related",
+      "keyword": "ira ",
+      "snippet": "…ol · betabloqueadores - erc o ira · hipoaldosteronismo causas de…"
+    },
+    {
+      "from_topic_id": "0e3b7497-b79c-470a-a320-e2f542568c29",
+      "from_name": "Tumores primarios del sistema nervioso central en personas de 15 años y más",
+      "to_topic_id": "699752d342f5df7fd650edad",
+      "to_name": "Flujo de ACV No Agudo en Policlínico",
+      "label": "ACV",
+      "mode": "related",
+      "keyword": "acv",
+      "snippet": "…o| f[\"estudio diferencial<br/>acv / infeccion\"]:::aps c -->…"
+    },
+    {
+      "from_topic_id": "42433bad-b9c7-4462-94b9-2bb5280813a3",
+      "from_name": "Urgencia odontológica ambulatoria",
+      "to_topic_id": "696efcff77924d3a78533dcb",
+      "to_name": "Asma bronquial moderada y grave en personas menores de 15 años",
+      "label": "Asma bronquial",
+      "mode": "related",
+      "keyword": "asma",
+      "snippet": "…n sri; util en broncoespasmo, asma severa, status epileptico ref…"
+    },
+    {
+      "from_topic_id": "6346cd35-61c7-45e6-807b-daeaa2461b7e",
+      "from_name": "Urgencias en Cuidados Paliativos",
+      "to_topic_id": "696ea74c245ef362de4f433a",
+      "to_name": "Hipertensión arterial primaria o esencial en personas de 15 años y más",
+      "label": "Hipertensión",
+      "mode": "related",
+      "keyword": "hipertensi",
+      "snippet": "…ad. puede evolucionar a coma. hipertension endocraneal (hic) ━━━ sign…"
+    },
+    {
+      "from_topic_id": "6346cd35-61c7-45e6-807b-daeaa2461b7e",
+      "from_name": "Urgencias en Cuidados Paliativos",
+      "to_topic_id": "696efcff77924d3a78533dd6",
+      "to_name": "Infarto agudo del miocardio",
+      "label": "Infarto Agudo",
+      "mode": "related",
+      "keyword": "iam",
+      "snippet": "…lar — descartar hipoglicemia tiamina 100 mg ev (hcsfb sol inyec…"
+    },
+    {
+      "from_topic_id": "6346cd35-61c7-45e6-807b-daeaa2461b7e",
+      "from_name": "Urgencias en Cuidados Paliativos",
+      "to_topic_id": "a9f7cc11-b828-4ac9-a235-fe91fc8a1c31",
+      "to_name": "Infección respiratoria aguda (IRA) de manejo ambulatorio en personas menores de 5 años",
+      "label": "Infección respiratoria aguda",
+      "mode": "related",
+      "keyword": "ira ",
+      "snippet": "…— la propia hemorragia disminuira el nivel de conciencia comunic…"
+    },
+    {
+      "from_topic_id": "eb702967-32fa-4aef-8246-742195d078e8",
+      "from_name": "Uso Adecuado de Hipnóticos en Pacientes Hospitalizados",
+      "to_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+      "to_name": "Sedación Paliativa",
+      "label": "Sedación Paliativa",
+      "mode": "related",
+      "keyword": "sedaci",
+      "snippet": "…aluacion de efectos adversos (sedacion diurna, caidas, dependencia…"
+    },
+    {
+      "from_topic_id": "ef1502b6-2c86-455a-8f38-e90e355e7d9e",
+      "from_name": "Uso de Clotiazepam Comprimidos para el Manejo de Ansiedad",
+      "to_topic_id": "a9f7cc11-b828-4ac9-a235-fe91fc8a1c31",
+      "to_name": "Infección respiratoria aguda (IRA) de manejo ambulatorio en personas menores de 5 años",
+      "label": "Infección respiratoria aguda",
+      "mode": "related",
+      "keyword": "ira ",
+      "snippet": "…nitivo — el clotiazepam se retira en 2–4 semanas seguimiento y p…"
+    },
+    {
+      "from_topic_id": "ae688959-8eaf-4efc-b554-472fdf7c1c14",
+      "from_name": "Vía Subcutánea en Cuidados Paliativos",
+      "to_topic_id": "696efcff77924d3a78533dd6",
+      "to_name": "Infarto agudo del miocardio",
+      "label": "Infarto Agudo",
+      "mode": "related",
+      "keyword": "iam",
+      "snippet": "…ncion de la via observar diariamente: enrojecimiento, induraci…"
+    },
+    {
+      "from_topic_id": "ae688959-8eaf-4efc-b554-472fdf7c1c14",
+      "from_name": "Vía Subcutánea en Cuidados Paliativos",
+      "to_topic_id": "696efcff77924d3a78533dcb",
+      "to_name": "Asma bronquial moderada y grave en personas menores de 15 años",
+      "label": "Asma bronquial",
+      "mode": "related",
+      "keyword": "asma",
+      "snippet": "…hepatico; alcanzan niveles plasmaticos en 15–30 minutos. defini…"
+    }
+  ]
+}

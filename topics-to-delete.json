@@ -1,0 +1,13 @@
+[
+  { "id": "696ea74c245ef362de4f433c", "reason": "Vacío — ACV Secuelado (hospitalizados)" },
+  { "id": "699752d342f5df7fd650edb1", "reason": "Vacío — Flujograma de Imagenología (hospitalizados)" },
+  { "id": "696ea74c245ef362de4f433d", "reason": "Vacío — Hiperkalemia (hospitalizados)" },
+  { "id": "696ea74c245ef362de4f433b", "reason": "Vacío — Neumonía Adquirida en la Comunidad (hospitalizados)" },
+  { "id": "699752d342f5df7fd650edb0", "reason": "Vacío — Códigos CIE-10 Vigentes en Atenciones Cardiovasculares (policlínico)" },
+  { "id": "699752d342f5df7fd650edad", "reason": "Vacío — Flujo de ACV No Agudo en Policlínico" },
+  { "id": "699752f342f5df7fd650edbc", "reason": "Vacío — Guía de Atenciones de Policlínico HCSF Bulnes" },
+  { "id": "696efee3e40fc675b3e7bc6c", "reason": "Vacío — Bombas de Fin de Vida (urgencias)" },
+  { "id": "696efee3e40fc675b3e7bc6b", "reason": "Vacío — Bombas de Sedoanalgesia (urgencias)" },
+  { "id": "696efee3e40fc675b3e7bc6a", "reason": "Vacío — Bombas de Traslado (urgencias)" },
+  { "id": "699752d342f5df7fd650edaf", "reason": "Vacío — Manejo de Cuerpo Extraño en Urgencias" }
+]

@@ -1,0 +1,146 @@
+[
+  {
+    "from_topic_id": "497a8ff3-6423-4261-b832-21f370f9cec9",
+    "to_topic_id": "696efcff77924d3a78533dcb",
+    "label": "Asma bronquial moderada y grave en personas menores de 15 años",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "696efcff77924d3a78533dd5",
+    "to_topic_id": "699752d342f5df7fd650edad",
+    "label": "Flujo de ACV No Agudo en Policlínico",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "3a6e79f1-9214-48f7-acdf-5b740de89486",
+    "to_topic_id": "105de3f0-3055-4cb4-a124-f4b46bcfb945",
+    "label": "Epilepsia en personas desde 1 año y menores de 15 años",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "4da81a6d-68b3-4223-b78e-0d4eae135371",
+    "to_topic_id": "b53e5123-b5ba-445c-aa84-d9a25d45d0ea",
+    "label": "Tratamiento farmacológico tras alta hospitalaria por cirrosis hepática",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "67174ceb-c58d-40a4-b517-5fe0c224944b",
+    "to_topic_id": "b53e5123-b5ba-445c-aa84-d9a25d45d0ea",
+    "label": "Tratamiento farmacológico tras alta hospitalaria por cirrosis hepática",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "696ea74c245ef362de4f4338",
+    "to_topic_id": "cda1e4f0-3773-4f1a-ba33-f68bde078471",
+    "label": "Alivio del dolor y cuidados paliativos por cáncer",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "a0066cf0-0129-4221-a5c2-3be66804fdf0",
+    "to_topic_id": "cda1e4f0-3773-4f1a-ba33-f68bde078471",
+    "label": "Alivio del dolor y cuidados paliativos por cáncer",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "a0066cf0-0129-4221-a5c2-3be66804fdf0",
+    "to_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+    "label": "Sedación Paliativa",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "699c9dc2dcb6d77b0c587d8d",
+    "to_topic_id": "696ea74c245ef362de4f4339",
+    "label": "Diabetes mellitus tipo 2",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "699c9dc2dcb6d77b0c587d8d",
+    "to_topic_id": "696ea74c245ef362de4f433a",
+    "label": "Hipertensión arterial primaria o esencial en personas de 15 años y más",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "699c9dc2dcb6d77b0c587d8d",
+    "to_topic_id": "696efcff77924d3a78533dd6",
+    "label": "Infarto agudo del miocardio",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "699c9dc2dcb6d77b0c587d8d",
+    "to_topic_id": "699752d342f5df7fd650edad",
+    "label": "Flujo de ACV No Agudo en Policlínico",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "a0ba85e5-04db-4d3d-9232-041c4a55410b",
+    "to_topic_id": "696efcff77924d3a78533dd6",
+    "label": "Infarto agudo del miocardio",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "34f0aac7-eee5-4df4-8bf4-a94d0eef1424",
+    "to_topic_id": "696efee3e40fc675b3e7bc69",
+    "label": "Secuencia Rápida de Intubación (SRI)",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "34f0aac7-eee5-4df4-8bf4-a94d0eef1424",
+    "to_topic_id": "696efcff77924d3a78533dd6",
+    "label": "Infarto agudo del miocardio",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "b05b625c-73d9-4413-98e1-15b246f90381",
+    "to_topic_id": "696efee3e40fc675b3e7bc69",
+    "label": "Secuencia Rápida de Intubación (SRI)",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "b5020c15-94b1-4885-a177-f145682c8ff0",
+    "to_topic_id": "696efcff77924d3a78533dd6",
+    "label": "Infarto agudo del miocardio",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "696ea74c245ef362de4f4337",
+    "to_topic_id": "390a2aa6-4b7b-4b4f-8247-192dc6f0d202",
+    "label": "Diabetes mellitus tipo 1",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+    "to_topic_id": "cda1e4f0-3773-4f1a-ba33-f68bde078471",
+    "label": "Alivio del dolor y cuidados paliativos por cáncer",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "ae688959-8eaf-4efc-b554-472fdf7c1c14",
+    "to_topic_id": "cda1e4f0-3773-4f1a-ba33-f68bde078471",
+    "label": "Alivio del dolor y cuidados paliativos por cáncer",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "6346cd35-61c7-45e6-807b-daeaa2461b7e",
+    "to_topic_id": "cda1e4f0-3773-4f1a-ba33-f68bde078471",
+    "label": "Alivio del dolor y cuidados paliativos por cáncer",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "6346cd35-61c7-45e6-807b-daeaa2461b7e",
+    "to_topic_id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+    "label": "Sedación Paliativa",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "6346cd35-61c7-45e6-807b-daeaa2461b7e",
+    "to_topic_id": "696ea74c245ef362de4f4338",
+    "label": "Enfermedad de Alzheimer y otras demencias",
+    "mode": "related"
+  },
+  {
+    "from_topic_id": "b53e5123-b5ba-445c-aa84-d9a25d45d0ea",
+    "to_topic_id": "696ea74c245ef362de4f433a",
+    "label": "Hipertensión arterial primaria o esencial en personas de 15 años y más",
+    "mode": "related"
+  }
+]

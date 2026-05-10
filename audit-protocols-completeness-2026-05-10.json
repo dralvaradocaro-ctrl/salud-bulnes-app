@@ -1,0 +1,5739 @@
+{
+  "generatedAt": "2026-05-10T02:08:41.050Z",
+  "total": 153,
+  "histogram": [
+    {
+      "from": 0,
+      "to": 20,
+      "count": 42
+    },
+    {
+      "from": 20,
+      "to": 40,
+      "count": 0
+    },
+    {
+      "from": 40,
+      "to": 60,
+      "count": 73
+    },
+    {
+      "from": 60,
+      "to": 80,
+      "count": 29
+    },
+    {
+      "from": 80,
+      "to": 100,
+      "count": 9
+    }
+  ],
+  "priority": [
+    {
+      "id": "10be03e3-2c1d-4f25-9e07-8e1371fa1776",
+      "name": "Analgesia del parto",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "5a26f24f-6a38-4193-8926-29b4cf7ca159",
+      "name": "Ayudas técnicas para personas de 65 años y más",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efee3e40fc675b3e7bc6c",
+      "name": "Bombas de Fin de Vida",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "696efee3e40fc675b3e7bc6b",
+      "name": "Bombas de Sedoanalgesia",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "696efee3e40fc675b3e7bc6a",
+      "name": "Bombas de Traslado",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "844c1fad-b7ec-4851-8823-f76ae8bf65f3",
+      "name": "Cáncer de testículo en personas de 15 años y más",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "69701c61dce79987fb053199",
+      "name": "Código Lila - Violencia Sexual",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "d530e1fb-0ffb-4487-895c-09bfa8bac6ab",
+      "name": "Displasia broncopulmonar del prematuro",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "35a03702-b127-41f4-b3de-dfa96a74786c",
+      "name": "Disrafias espinales",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "699752d342f5df7fd650edad",
+      "name": "Flujo de ACV No Agudo en Policlínico",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "69990b8c1bcf3a7a5102e71c",
+      "name": "Glibenclamida",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "ab0e1f9e-379a-464d-93f5-7724419635bd",
+      "name": "Gran quemado",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "8ba20a9a-0628-40e7-9eb2-a1abb4783f41",
+      "name": "Hemorragia subaracnoidea secundaria a ruptura de uno o más aneurismas cerebrales",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696ea74c245ef362de4f433d",
+      "name": "Hiperkalemia",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "9fd3d00f-d4aa-4d4e-9e28-deaae62268b4",
+      "name": "Hipoacusia neurosensorial bilateral del prematuro",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "69701c61dce79987fb05319b",
+      "name": "Ley Dominga - Duelo Perinatal",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "696ea74c245ef362de4f433b",
+      "name": "Neumonía Adquirida en la Comunidad",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "17c9f700-a1b9-4aca-8dc6-21786ce2179b",
+      "name": "Neumonía adquirida en la comunidad de manejo ambulatorio en personas de 65 años y más",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "69701c61dce79987fb05319a",
+      "name": "Pérdida Reproductiva",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "c7751d89-6b7e-43c7-b3af-6c82117e876b",
+      "name": "Politraumatizado grave",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "a308bee9-38ca-468d-8f80-52ba6529b3b6",
+      "name": "Retinopatía del prematuro",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "001724e6-edb3-42c0-bbc2-0daaa8c2ce07",
+      "name": "Salud oral integral de la persona gestante",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "de3cef2f-71d6-422b-a5d3-d7bd93fb31f0",
+      "name": "Salud oral integral de personas de 60 años",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "20a4748e-561d-4dcb-9fc4-6d11d140a33e",
+      "name": "Salud oral integral para niños y niñas de 6 años",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "bf3251e2-454f-40a4-953d-12aaf8f78f3b",
+      "name": "Síndrome de la inmunodeficiencia adquirida (VIH/SIDA)",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "60e28bd9-2323-42ba-8a37-8feb8699c843",
+      "name": "Tratamiento de la hiperplasia benigna de la próstata en personas sintomáticas",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "1e3f43fe-667c-49ec-be5c-09734208af5b",
+      "name": "Tratamiento hospitalario para personas menores de 15 años con depresión grave refractaria o psicótica con riesgo suicida",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "8a8b2ac1-6701-4062-afd6-44ab78fd49fa",
+      "name": "Trauma ocular grave",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "61c373f2-a035-42b2-877e-c4e2de60049f",
+      "name": "Traumatismo cráneo encefálico moderado o grave",
+      "score": 0,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "699752d342f5df7fd650edb1",
+      "name": "Flujograma de Imagenología para Pacientes Hospitalizados - Servicio Ñuble",
+      "score": 1,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 1
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "699752f342f5df7fd650edbc",
+      "name": "Guía de Atenciones de Policlínico HCSF Bulnes",
+      "score": 1,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 1
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "699b852031a1223efb78b00a",
+      "name": "Proceso de Tamizaje y Estratificación Inicial del Riesgo Nutricional en Pacientes Hospitalizados",
+      "score": 1,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 1
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "699752d342f5df7fd650edae",
+      "name": "Suplementación en Lactantes Durante el Primer Año de Vida",
+      "score": 1,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 1
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "bfd0f008-5246-42cd-b612-ffb6417bf483",
+      "name": "Cesación del consumo de tabaco en personas de 25 años y más",
+      "score": 9,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "699752d342f5df7fd650edb0",
+      "name": "Códigos CIE-10 Vigentes en Atenciones Cardiovasculares",
+      "score": 9,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "a9f7cc11-b828-4ac9-a235-fe91fc8a1c31",
+      "name": "Infección respiratoria aguda (IRA) de manejo ambulatorio en personas menores de 5 años",
+      "score": 9,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "699752d342f5df7fd650edaf",
+      "name": "Manejo de Cuerpo Extraño en Urgencias",
+      "score": 9,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "696efee3e40fc675b3e7bc69",
+      "name": "Secuencia Rápida de Intubación (SRI)",
+      "score": 9,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "bf0ce027-7bfb-4b91-842e-4dcdbbc3cfb9",
+      "name": "Síndrome de dificultad respiratoria en el recién nacido",
+      "score": 9,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "42433bad-b9c7-4462-94b9-2bb5280813a3",
+      "name": "Urgencia odontológica ambulatoria",
+      "score": 9,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "69701c61dce79987fb05319c",
+      "name": "Síndrome Hipertensivo del Embarazo (SHE)",
+      "score": 10,
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 10,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    }
+  ],
+  "all": [
+    {
+      "id": "696ea74c245ef362de4f433c",
+      "name": "ACV Secuelado",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "10be03e3-2c1d-4f25-9e07-8e1371fa1776",
+      "name": "Analgesia del parto",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "5a26f24f-6a38-4193-8926-29b4cf7ca159",
+      "name": "Ayudas técnicas para personas de 65 años y más",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efee3e40fc675b3e7bc6c",
+      "name": "Bombas de Fin de Vida",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "696efee3e40fc675b3e7bc6b",
+      "name": "Bombas de Sedoanalgesia",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "696efee3e40fc675b3e7bc6a",
+      "name": "Bombas de Traslado",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "844c1fad-b7ec-4851-8823-f76ae8bf65f3",
+      "name": "Cáncer de testículo en personas de 15 años y más",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "69701c61dce79987fb053199",
+      "name": "Código Lila - Violencia Sexual",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "d530e1fb-0ffb-4487-895c-09bfa8bac6ab",
+      "name": "Displasia broncopulmonar del prematuro",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "35a03702-b127-41f4-b3de-dfa96a74786c",
+      "name": "Disrafias espinales",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "699752d342f5df7fd650edad",
+      "name": "Flujo de ACV No Agudo en Policlínico",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "69990b8c1bcf3a7a5102e71c",
+      "name": "Glibenclamida",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "ab0e1f9e-379a-464d-93f5-7724419635bd",
+      "name": "Gran quemado",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "8ba20a9a-0628-40e7-9eb2-a1abb4783f41",
+      "name": "Hemorragia subaracnoidea secundaria a ruptura de uno o más aneurismas cerebrales",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696ea74c245ef362de4f433d",
+      "name": "Hiperkalemia",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "9fd3d00f-d4aa-4d4e-9e28-deaae62268b4",
+      "name": "Hipoacusia neurosensorial bilateral del prematuro",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "69701c61dce79987fb05319b",
+      "name": "Ley Dominga - Duelo Perinatal",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "696ea74c245ef362de4f433b",
+      "name": "Neumonía Adquirida en la Comunidad",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "17c9f700-a1b9-4aca-8dc6-21786ce2179b",
+      "name": "Neumonía adquirida en la comunidad de manejo ambulatorio en personas de 65 años y más",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "69701c61dce79987fb05319a",
+      "name": "Pérdida Reproductiva",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "c7751d89-6b7e-43c7-b3af-6c82117e876b",
+      "name": "Politraumatizado grave",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "a308bee9-38ca-468d-8f80-52ba6529b3b6",
+      "name": "Retinopatía del prematuro",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "001724e6-edb3-42c0-bbc2-0daaa8c2ce07",
+      "name": "Salud oral integral de la persona gestante",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "de3cef2f-71d6-422b-a5d3-d7bd93fb31f0",
+      "name": "Salud oral integral de personas de 60 años",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "20a4748e-561d-4dcb-9fc4-6d11d140a33e",
+      "name": "Salud oral integral para niños y niñas de 6 años",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "bf3251e2-454f-40a4-953d-12aaf8f78f3b",
+      "name": "Síndrome de la inmunodeficiencia adquirida (VIH/SIDA)",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "60e28bd9-2323-42ba-8a37-8feb8699c843",
+      "name": "Tratamiento de la hiperplasia benigna de la próstata en personas sintomáticas",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "1e3f43fe-667c-49ec-be5c-09734208af5b",
+      "name": "Tratamiento hospitalario para personas menores de 15 años con depresión grave refractaria o psicótica con riesgo suicida",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "8a8b2ac1-6701-4062-afd6-44ab78fd49fa",
+      "name": "Trauma ocular grave",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "61c373f2-a035-42b2-877e-c4e2de60049f",
+      "name": "Traumatismo cráneo encefálico moderado o grave",
+      "score": 0,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "699752d342f5df7fd650edb1",
+      "name": "Flujograma de Imagenología para Pacientes Hospitalizados - Servicio Ñuble",
+      "score": 1,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 1
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "699752f342f5df7fd650edbc",
+      "name": "Guía de Atenciones de Policlínico HCSF Bulnes",
+      "score": 1,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 1
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "699b852031a1223efb78b00a",
+      "name": "Proceso de Tamizaje y Estratificación Inicial del Riesgo Nutricional en Pacientes Hospitalizados",
+      "score": 1,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 1
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "699752d342f5df7fd650edae",
+      "name": "Suplementación en Lactantes Durante el Primer Año de Vida",
+      "score": 1,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 1
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "bfd0f008-5246-42cd-b612-ffb6417bf483",
+      "name": "Cesación del consumo de tabaco en personas de 25 años y más",
+      "score": 9,
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 1,
+      "types": [
+        "text"
+      ],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "699752d342f5df7fd650edb0",
+      "name": "Códigos CIE-10 Vigentes en Atenciones Cardiovasculares",
+      "score": 9,
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 1,
+      "types": [
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "a9f7cc11-b828-4ac9-a235-fe91fc8a1c31",
+      "name": "Infección respiratoria aguda (IRA) de manejo ambulatorio en personas menores de 5 años",
+      "score": 9,
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 1,
+      "types": [
+        "text"
+      ],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "699752d342f5df7fd650edaf",
+      "name": "Manejo de Cuerpo Extraño en Urgencias",
+      "score": 9,
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 1,
+      "types": [
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "696efee3e40fc675b3e7bc69",
+      "name": "Secuencia Rápida de Intubación (SRI)",
+      "score": 9,
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 1,
+      "types": [
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "bf0ce027-7bfb-4b91-842e-4dcdbbc3cfb9",
+      "name": "Síndrome de dificultad respiratoria en el recién nacido",
+      "score": 9,
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 1,
+      "types": [
+        "text"
+      ],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "42433bad-b9c7-4462-94b9-2bb5280813a3",
+      "name": "Urgencia odontológica ambulatoria",
+      "score": 9,
+      "breakdown": {
+        "cantidad": 3,
+        "diversidad": 3,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 4
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 1,
+      "types": [
+        "text"
+      ],
+      "has_local_protocol": false,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "69701c61dce79987fb05319c",
+      "name": "Síndrome Hipertensivo del Embarazo (SHE)",
+      "score": 10,
+      "breakdown": {
+        "cantidad": 0,
+        "diversidad": 0,
+        "flujograma": 0,
+        "medicamentos": 10,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 0
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "flujograma",
+        "checklist",
+        "organizados",
+        "referencias",
+        "largo"
+      ],
+      "blockCount": 0,
+      "types": [],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "699c9dc2dcb6d77b0c587d8d",
+      "name": "Norma de Manejo Cardiovascular HCSFB Bulnes 2023",
+      "score": 50,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 5,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 11,
+      "types": [
+        "text",
+        "flowchart",
+        "alert"
+      ],
+      "has_local_protocol": false,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "69a1bec61fdbeb827c9a3f10",
+      "name": "Protocolo de Aislamiento de Pacientes - Hospital Bulnes",
+      "score": 50,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 5,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos",
+        "checklist",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 12,
+      "types": [
+        "text",
+        "flowchart",
+        "alert"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "40389e49-9062-4fe4-830c-6fc7ff69bccf",
+      "name": "Fisura labiopalatina",
+      "score": 51,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 9
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "d4d5f0b5-c80f-47d0-87a2-2b821d6643ac",
+      "name": "Vicios de refracción en personas de 65 años y más",
+      "score": 51,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 9
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "403033ae-7f8d-4d50-842c-22df45a881eb",
+      "name": "Artritis idiopática juvenil",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efcff77924d3a78533dd2",
+      "name": "Cáncer cervicouterino en personas de 15 años y más",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 9
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "b670e7b4-8b9c-46e6-91c8-3290999e1712",
+      "name": "Cáncer colorrectal en personas de 15 años y más",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 9
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efcff77924d3a78533dd1",
+      "name": "Cáncer de mama en personas de 15 años y más",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "cf979499-4e1d-422b-a32c-018f26bb2b93",
+      "name": "Cáncer de ovario epitelial",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 9
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "ad4d27ee-fcf5-4a47-8000-5bb4823970e0",
+      "name": "Cáncer de próstata en personas de 15 años y más",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "44b72db1-6886-422b-b75b-9b5d6976bed6",
+      "name": "Cáncer de tiroides en personas de 15 años y más",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 9
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efcff77924d3a78533dd3",
+      "name": "Cáncer gástrico",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "0de56f1e-1904-45b4-a74e-51e9d5a0691b",
+      "name": "Cáncer renal en personas de 15 años y más",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 9
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "f3bab9dd-74e1-4820-b6c6-b34a65c87146",
+      "name": "Cáncer vesical en personas de 15 años y más",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 9
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "2b610547-f2bd-43c5-87ad-e6efc78d1e62",
+      "name": "Desprendimiento de retina regmatógeno no traumático",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "621eace6-3e44-48ff-b43a-12ab248095a9",
+      "name": "Estrabismo en personas menores de 9 años",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "146af38c-7db0-4fc4-a8d4-5f4033fd1b86",
+      "name": "Linfomas en personas de 15 años y más",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "2d31e828-cf69-4a64-8274-6e706b2bf74a",
+      "name": "Prevención secundaria enfermedad renal crónica terminal",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "dc917bbe-bbff-4a36-89f3-895c41628b2f",
+      "name": "Trastornos de generación del impulso y conducción en personas de 15 años y más, que requieren marcapasos",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "89f5d99d-1d44-43f2-b1a1-a6f228035602",
+      "name": "Tratamiento quirúrgico de lesiones crónicas de la válvula aórtica en personas de 15 años y más",
+      "score": 52,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "adfbd7d1-2956-466b-add3-facdd6ef3f01",
+      "name": "Artritis reumatoidea",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efcff77924d3a78533dd5",
+      "name": "Ataque cerebrovascular isquémico en personas de 15 años y más",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "de922ca2-9101-47df-9e4a-ccefabcc2657",
+      "name": "Atención integral de salud en agresión sexual aguda",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "accbebd9-cd1a-4414-8efd-43a205591d2f",
+      "name": "Cáncer de pulmón en personas de 15 años y más",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "14e327a1-6444-4bf0-b989-e16484b7af01",
+      "name": "Cáncer en personas menores de 15 años",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "04dd5a0e-c1ad-4b7f-a9e5-ec26d7748c87",
+      "name": "Cardiopatías congénitas operables",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efcff77924d3a78533dcf",
+      "name": "Colecistectomía preventiva del cáncer de vesícula en personas de 35 a 49 años",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "dd0b1b9f-0848-48ab-9e9f-82aaef29e772",
+      "name": "Consumo perjudicial o dependencia de riesgo bajo a moderado de alcohol y drogas en personas menores de 20 años",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efcff77924d3a78533dca",
+      "name": "Depresión en personas de 15 años y más",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "077e850d-cded-4863-aa08-113e7d59aab0",
+      "name": "Displasia luxante de caderas",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "16fa6559-f50b-4c99-89f7-33b1e82e6183",
+      "name": "Endoprótesis total de cadera en personas de 65 años y más con artrosis de cadera con limitación funcional severa",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "32cec82e-412a-4d75-89fc-f0f6e3bc252d",
+      "name": "Enfermedad de Parkinson",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efcff77924d3a78533dcc",
+      "name": "Enfermedad pulmonar obstructiva crónica de tratamiento ambulatorio",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efcff77924d3a78533dd4",
+      "name": "Enfermedad renal crónica etapa 4 y 5",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "ef881e41-0fd1-47c9-aab9-0d0292a2a485",
+      "name": "Esclerosis múltiple remitente recurrente",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "ec705134-c8cf-4c83-86f3-7dce68dcf20a",
+      "name": "Esquizofrenia",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "734b76cc-c348-4156-b6a4-044b22f72476",
+      "name": "Fibrosis quística",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "7c0496c9-7cd2-4d08-8ae3-81a0f01c590a",
+      "name": "Hemofilia",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696ea74c245ef362de4f433a",
+      "name": "Hipertensión arterial primaria o esencial en personas de 15 años y más",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "23e4223d-7d08-4c8f-8cce-34840f8d0fca",
+      "name": "Hipoacusia bilateral en personas de 65 años y más que requieren uso de audífono",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "1f8b7f23-acd8-4758-a8f6-cee6d23b9537",
+      "name": "Hipoacusia moderada, severa y profunda en personas menores de 4 años",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efcff77924d3a78533dd6",
+      "name": "Infarto agudo del miocardio",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "b44e610d-1a6e-49fc-8518-07eca7932a49",
+      "name": "Leucemia en personas de 15 años y más",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "92f86d68-fcb0-408c-8236-3e93c9ad00bc",
+      "name": "Lupus eritematoso sistémico",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "50aa8ef3-daac-415d-b028-c599240078c5",
+      "name": "Mieloma múltiple en personas de 15 años y más",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "a0b9543b-2ba2-4d90-9933-3b63f74d62cc",
+      "name": "Osteosarcoma en personas de 15 años y más",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "5a93339d-f5e8-499a-896a-edee30086b1c",
+      "name": "Rehabilitación SARS-CoV-2",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696ea74c245ef362de4f4337",
+      "name": "Retinopatía diabética",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "2162fa20-a0b9-46b8-8735-9c511d96a9c4",
+      "name": "Sistema de Alerta — Código Azul HCSFB",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "e816b3ce-91f8-4659-8586-a7c551125239",
+      "name": "Trastorno bipolar en personas de 15 años y más",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "ad54ffbe-d515-4619-a151-eb3c8b444423",
+      "name": "Tratamiento de erradicación del Helicobacter pylori",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efcff77924d3a78533dcd",
+      "name": "Tratamiento médico en personas de 55 años y más con artrosis de cadera y/o rodilla, leve o moderada",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efcff77924d3a78533dd0",
+      "name": "Tratamiento quirúrgico de cataratas",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "0d625400-8943-465b-a784-5ba7257ee429",
+      "name": "Tratamiento quirúrgico de escoliosis en personas menores de 25 años",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "aa072279-9dbe-4704-b0aa-099292715a51",
+      "name": "Tratamiento quirúrgico de hernia del núcleo pulposo lumbar",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "41e275d6-1057-4075-a9ef-f6305a895bca",
+      "name": "Tratamiento quirúrgico de lesiones crónicas de las válvulas mitral y tricúspide en personas de 15 años y más",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "0e3b7497-b79c-470a-a320-e2f542568c29",
+      "name": "Tumores primarios del sistema nervioso central en personas de 15 años y más",
+      "score": 53,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "d63788dd-54f5-4cc7-8af4-4bf2af1dc7f0",
+      "name": "Criterios y Requisitos de Derivación a Cardiología",
+      "score": 55,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 5,
+        "flujograma": 0,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "flujograma",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 20,
+      "types": [
+        "criteria",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "e52c1f28-8969-4546-91cf-1d26c97a1396",
+      "name": "Vigilancia de Eventos Adversos y Eventos Centinela",
+      "score": 57,
+      "breakdown": {
+        "cantidad": 8,
+        "diversidad": 5,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 3,
+      "types": [
+        "flowchart",
+        "criteria"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "cda1e4f0-3773-4f1a-ba33-f68bde078471",
+      "name": "Alivio del dolor y cuidados paliativos por cáncer",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist",
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "497a8ff3-6423-4261-b832-21f370f9cec9",
+      "name": "Asma bronquial en personas de 15 años y más",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist",
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efcff77924d3a78533dcb",
+      "name": "Asma bronquial moderada y grave en personas menores de 15 años",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist",
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "390a2aa6-4b7b-4b4f-8247-192dc6f0d202",
+      "name": "Diabetes mellitus tipo 1",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist",
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696ea74c245ef362de4f4339",
+      "name": "Diabetes mellitus tipo 2",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist",
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "3a6e79f1-9214-48f7-acdf-5b740de89486",
+      "name": "Epilepsia en personas de 15 años y más",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist",
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "105de3f0-3055-4cb4-a124-f4b46bcfb945",
+      "name": "Epilepsia en personas desde 1 año y menores de 15 años",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist",
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "4da81a6d-68b3-4223-b78e-0d4eae135371",
+      "name": "Hepatitis crónica por virus hepatitis B",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist",
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "67174ceb-c58d-40a4-b517-5fe0c224944b",
+      "name": "Hepatitis crónica por virus hepatitis C",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist",
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "5bb27846-3bb2-4833-a8f5-1774118b88d7",
+      "name": "Infiltración de Rodilla con Corticoides — Programa Gonartrosis",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 15,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 6,
+      "types": [
+        "criteria",
+        "flowchart",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "a0c7a7ce-e81e-4735-ae8e-409229771997",
+      "name": "Prevención de parto prematuro",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist",
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "ea66f700-760b-479b-8299-eef151e98754",
+      "name": "Protocolo de Transfusión de Hemoderivados",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 8,
+        "diversidad": 5,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 3,
+      "types": [
+        "criteria",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "ffbdfb89-2e6d-429c-be7a-dc6b0dda8504",
+      "name": "Trastornos del potasio",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 5,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 0,
+        "organizados": 8,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos",
+        "checklist",
+        "referencias"
+      ],
+      "blockCount": 11,
+      "types": [
+        "algorithm",
+        "text",
+        "mermaid",
+        "alert"
+      ],
+      "has_local_protocol": false,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "b53e5123-b5ba-445c-aa84-d9a25d45d0ea",
+      "name": "Tratamiento farmacológico tras alta hospitalaria por cirrosis hepática",
+      "score": 58,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 0,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "organizados",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "protocol_header",
+        "mermaid",
+        "criteria",
+        "checklist",
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "286e18f1-7d84-4e43-a90a-a15923f4d14c",
+      "name": "Programa de Optimización del Uso de Antibióticos (PROA)",
+      "score": 60,
+      "breakdown": {
+        "cantidad": 8,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 3,
+      "types": [
+        "criteria",
+        "mermaid",
+        "flowchart"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "96614403-6b85-4823-aa0e-746b0ec51451",
+      "name": "Trato Usuario — Atención humanizada y respetuosa",
+      "score": 62,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "36266c10-4f07-497f-8f86-06ea96650423",
+      "name": "Atención Preferente — Ley 21.168",
+      "score": 63,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "c97b6632-904c-4e9c-ba80-defb5b1199d9",
+      "name": "Prevención de Caídas en Pacientes Hospitalizados",
+      "score": 63,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "23e96a67-0f39-4bfe-91e0-88d63d04c3ae",
+      "name": "Prevención y Manejo de Errores de Medicación",
+      "score": 63,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "criteria",
+        "flowchart",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "0da21555-a8f1-4054-b474-3237ce439644",
+      "name": "Solicitud de Exámenes e Indicaciones en Procedimientos Imagenológicos",
+      "score": 63,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 4,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "58b11a9e-eb80-4af3-9eb7-7fa1f86631e2",
+      "name": "Atención en Telemedicina para Patologías GES — Flujo Operativo HCSFB",
+      "score": 65,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "5285fd58-39ea-4faa-9139-e38f2c1faab3",
+      "name": "Derivación de Pacientes HCSFB a Hospital Herminda Martín u otros centros",
+      "score": 65,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "9467573d-0e25-4118-9c60-eaefa96bc5a9",
+      "name": "Ingreso, Recepción y Traslado de Pacientes en Servicios de Hospitalización",
+      "score": 65,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "66086cdd-cd73-46ca-87da-245fdb2f4e32",
+      "name": "Manejo del Dolor Agudo Post-Operatorio",
+      "score": 65,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "ef1502b6-2c86-455a-8f38-e90e355e7d9e",
+      "name": "Uso de Clotiazepam Comprimidos para el Manejo de Ansiedad",
+      "score": 65,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "criteria",
+        "flowchart",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "e422f9db-7326-4400-a905-fbf8b60f05a1",
+      "name": "Ley Dominga — Acompañamiento del duelo gestacional y perinatal",
+      "score": 68,
+      "breakdown": {
+        "cantidad": 18,
+        "diversidad": 5,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 7,
+      "types": [
+        "flowchart",
+        "criteria"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "da8d14ee-463c-48d0-9460-509bbc422cd7",
+      "name": "Prevención y Manejo de Lesiones por Presión",
+      "score": 68,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 5,
+      "types": [
+        "flowchart",
+        "text",
+        "criteria",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "df8dbe5d-59a0-4447-80a7-3af37319e325",
+      "name": "Toracocentesis en Adultos en Servicios Clínicos",
+      "score": 68,
+      "breakdown": {
+        "cantidad": 15,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 6,
+      "types": [
+        "criteria",
+        "flowchart",
+        "mermaid",
+        "image_gallery"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "eb702967-32fa-4aef-8246-742195d078e8",
+      "name": "Uso Adecuado de Hipnóticos en Pacientes Hospitalizados",
+      "score": 68,
+      "breakdown": {
+        "cantidad": 15,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 6,
+      "types": [
+        "criteria",
+        "flowchart",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "1b52d348-1a5f-4cff-836e-10472eef1324",
+      "name": "Diagnóstico y Manejo de Disyunción Acromioclavicular",
+      "score": 70,
+      "breakdown": {
+        "cantidad": 18,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 7,
+      "types": [
+        "criteria",
+        "flowchart",
+        "image_gallery",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "2e04569c-ec5b-4323-a284-3658d0b377ea",
+      "name": "Proceso de Transporte de Pacientes",
+      "score": 70,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 5,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 11,
+      "types": [
+        "flowchart",
+        "criteria",
+        "table"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "870238a5-3f41-4e46-ba26-a88396d85cb3",
+      "name": "Aislamiento de Pacientes — Precauciones según vía de transmisión",
+      "score": 73,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 8,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid",
+        "table"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "b5020c15-94b1-4885-a177-f145682c8ff0",
+      "name": "Atención en Policlínico TACO (Terapia Anticoagulante Oral)",
+      "score": 73,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 11,
+      "types": [
+        "criteria",
+        "flowchart",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "c0aecd59-f807-4c2e-af91-408d5f5928b3",
+      "name": "Prevención de Autolesiones y Conducta Suicida en Policlínico",
+      "score": 73,
+      "breakdown": {
+        "cantidad": 10,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 10,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos"
+      ],
+      "blockCount": 4,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid",
+        "reference"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "2dc4e979-9547-4b81-9471-145e4ed3f55d",
+      "name": "Categorización de la Atención en el Servicio de Urgencias",
+      "score": 74,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 9,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 8,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid",
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "a0066cf0-0129-4221-a5c2-3be66804fdf0",
+      "name": "Manejo Farmacológico del Dolor Oncológico",
+      "score": 74,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 9,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 18,
+      "types": [
+        "protocol_header",
+        "text",
+        "criteria",
+        "flowchart",
+        "mermaid"
+      ],
+      "has_local_protocol": false,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "d934a55e-3f5c-4ed6-8de5-4f94a52e6caa",
+      "name": "Sedación Paliativa",
+      "score": 74,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 9,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 26,
+      "types": [
+        "protocol_header",
+        "text",
+        "criteria",
+        "alert",
+        "flowchart",
+        "mermaid"
+      ],
+      "has_local_protocol": false,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "6346cd35-61c7-45e6-807b-daeaa2461b7e",
+      "name": "Urgencias en Cuidados Paliativos",
+      "score": 74,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 9,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 25,
+      "types": [
+        "protocol_header",
+        "text",
+        "criteria",
+        "flowchart",
+        "alert",
+        "mermaid"
+      ],
+      "has_local_protocol": false,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "ae688959-8eaf-4efc-b554-472fdf7c1c14",
+      "name": "Vía Subcutánea en Cuidados Paliativos",
+      "score": 74,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 9,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos",
+        "referencias"
+      ],
+      "blockCount": 20,
+      "types": [
+        "protocol_header",
+        "text",
+        "criteria",
+        "alert",
+        "flowchart",
+        "mermaid"
+      ],
+      "has_local_protocol": false,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "099cba54-aec4-4d2b-9760-64b5302fe77e",
+      "name": "Activación y Respuesta Rápida para Pacientes Hospitalizados con Diagnóstico Psiquiátrico",
+      "score": 75,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 10,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos"
+      ],
+      "blockCount": 5,
+      "types": [
+        "criteria",
+        "flowchart",
+        "mermaid",
+        "reference"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "fa57bf50-f39c-4438-af5e-bfa33be36fce",
+      "name": "Criterios de Ingreso, Derivación y Egreso de Pacientes con Diagnóstico de Salud Mental",
+      "score": 75,
+      "breakdown": {
+        "cantidad": 15,
+        "diversidad": 5,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 10,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos"
+      ],
+      "blockCount": 6,
+      "types": [
+        "score_calculator",
+        "criteria",
+        "mermaid",
+        "reference"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "9e0b3406-9055-43a4-8a75-bf6d290bceb4",
+      "name": "Procedimiento de Contención Física en Paciente Hospitalizado",
+      "score": 75,
+      "breakdown": {
+        "cantidad": 13,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 10,
+        "largo": 10
+      },
+      "missing": [
+        "cantidad",
+        "diversidad",
+        "medicamentos"
+      ],
+      "blockCount": 5,
+      "types": [
+        "criteria",
+        "flowchart",
+        "mermaid",
+        "reference"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "13e6128f-882a-4a19-8e18-47cbf13203eb",
+      "name": "Contención Farmacológica y No Farmacológica en Agitación Psicomotora",
+      "score": 79,
+      "breakdown": {
+        "cantidad": 18,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 9,
+        "referencias": 10,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos"
+      ],
+      "blockCount": 7,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid",
+        "reference"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "7ad0926a-76f3-4f1d-8bb0-c44e686549cc",
+      "name": "Contención Farmacológica en Pacientes con Agitación Psicomotora — Hospitalizados",
+      "score": 83,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 8,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 10,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos"
+      ],
+      "blockCount": 8,
+      "types": [
+        "flowchart",
+        "criteria",
+        "mermaid",
+        "reference"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "64dfc162-38ac-40c9-8cff-2e898bd40988",
+      "name": "Manejo de Pacientes con Intento Suicida en Urgencias",
+      "score": 84,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 9,
+        "referencias": 10,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos"
+      ],
+      "blockCount": 8,
+      "types": [
+        "criteria",
+        "score_calculator",
+        "flowchart",
+        "mermaid",
+        "reference",
+        "text"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "696ea74c245ef362de4f4338",
+      "name": "Enfermedad de Alzheimer y otras demencias",
+      "score": 85,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 10,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos"
+      ],
+      "blockCount": 14,
+      "types": [
+        "criteria",
+        "mermaid",
+        "flowchart",
+        "reference",
+        "protocol_header",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "696efcff77924d3a78533dce",
+      "name": "Hipotiroidismo en personas de 15 años y más",
+      "score": 85,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 10,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos"
+      ],
+      "blockCount": 10,
+      "types": [
+        "flowchart",
+        "criteria",
+        "reference",
+        "mermaid",
+        "protocol_header",
+        "checklist"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": "GES"
+    },
+    {
+      "id": "699c845c6050f253dd81526f",
+      "name": "Protocolo de Tamizaje y Estratificación del Riesgo Nutricional",
+      "score": 85,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 0,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 10,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "medicamentos"
+      ],
+      "blockCount": 11,
+      "types": [
+        "reference",
+        "text",
+        "flowchart",
+        "criteria",
+        "alert",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "a0ba85e5-04db-4d3d-9232-041c4a55410b",
+      "name": "Protocolo de Trombolisis — Infarto con SDST (IAMEST)",
+      "score": 85,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 10,
+        "flujograma": 15,
+        "medicamentos": 10,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "diversidad",
+        "referencias"
+      ],
+      "blockCount": 13,
+      "types": [
+        "criteria",
+        "flowchart",
+        "dose_calculator",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "b05b625c-73d9-4413-98e1-15b246f90381",
+      "name": "Manejo del Traumatismo Craneoencefálico del Adulto en Urgencias",
+      "score": 87,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 13,
+        "flujograma": 15,
+        "medicamentos": 10,
+        "checklist": 10,
+        "organizados": 9,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "referencias"
+      ],
+      "blockCount": 14,
+      "types": [
+        "text",
+        "flowchart",
+        "criteria",
+        "dose_calculator",
+        "mermaid"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "34f0aac7-eee5-4df4-8bf4-a94d0eef1424",
+      "name": "Reanimación Cardiopulmonar Avanzada en Adultos",
+      "score": 88,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 13,
+        "flujograma": 15,
+        "medicamentos": 10,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "referencias"
+      ],
+      "blockCount": 22,
+      "types": [
+        "criteria",
+        "text",
+        "flowchart",
+        "mermaid",
+        "dose_calculator",
+        "alert"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    },
+    {
+      "id": "226277b1-759b-4172-8478-720f0f45e15b",
+      "name": "Reanimación Cardiopulmonar Pediátrica",
+      "score": 88,
+      "breakdown": {
+        "cantidad": 20,
+        "diversidad": 13,
+        "flujograma": 15,
+        "medicamentos": 10,
+        "checklist": 10,
+        "organizados": 10,
+        "referencias": 0,
+        "largo": 10
+      },
+      "missing": [
+        "referencias"
+      ],
+      "blockCount": 22,
+      "types": [
+        "text",
+        "flowchart",
+        "criteria",
+        "dose_calculator",
+        "mermaid",
+        "alert"
+      ],
+      "has_local_protocol": true,
+      "clasificacion_ges": null
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "generatedAt": "2026-05-10T02:06:28.501Z",
+  "totalTopics": 154,
+  "empty": [
+    {
+      "id": "5b46e6df-bafb-4ca4-b769-accfb28a87b2",
+      "name": "Nuevo Tema (Borrador)",
+      "category_id": "696ea6ff245ef362de4f431c",
+      "created_at": "2026-04-18T16:13:48.914088+00:00"
+    }
+  ],
+  "almostEmpty": [
+    {
+      "id": "699752d342f5df7fd650edb0",
+      "name": "Códigos CIE-10 Vigentes en Atenciones Cardiovasculares",
+      "blockCount": 1,
+      "blockTypes": [
+        "text"
+      ]
+    },
+    {
+      "id": "696efee3e40fc675b3e7bc69",
+      "name": "Secuencia Rápida de Intubación (SRI)",
+      "blockCount": 1,
+      "blockTypes": [
+        "text"
+      ]
+    },
+    {
+      "id": "699752d342f5df7fd650edaf",
+      "name": "Manejo de Cuerpo Extraño en Urgencias",
+      "blockCount": 1,
+      "blockTypes": [
+        "text"
+      ]
+    },
+    {
+      "id": "a9f7cc11-b828-4ac9-a235-fe91fc8a1c31",
+      "name": "Infección respiratoria aguda (IRA) de manejo ambulatorio en personas menores de 5 años",
+      "blockCount": 1,
+      "blockTypes": [
+        "text"
+      ]
+    },
+    {
+      "id": "bf0ce027-7bfb-4b91-842e-4dcdbbc3cfb9",
+      "name": "Síndrome de dificultad respiratoria en el recién nacido",
+      "blockCount": 1,
+      "blockTypes": [
+        "text"
+      ]
+    },
+    {
+      "id": "42433bad-b9c7-4462-94b9-2bb5280813a3",
+      "name": "Urgencia odontológica ambulatoria",
+      "blockCount": 1,
+      "blockTypes": [
+        "text"
+      ]
+    },
+    {
+      "id": "bfd0f008-5246-42cd-b612-ffb6417bf483",
+      "name": "Cesación del consumo de tabaco en personas de 25 años y más",
+      "blockCount": 1,
+      "blockTypes": [
+        "text"
+      ]
+    }
+  ],
+  "duplicateNameGroups": [],
+  "contentSuspectPairs": [
+    {
+      "similarity": 0.934,
+      "a": {
+        "id": "a9f7cc11-b828-4ac9-a235-fe91fc8a1c31",
+        "name": "Infección respiratoria aguda (IRA) de manejo ambulatorio en personas menores de 5 años"
+      },
+      "b": {
+        "id": "bf0ce027-7bfb-4b91-842e-4dcdbbc3cfb9",
+        "name": "Síndrome de dificultad respiratoria en el recién nacido"
+      }
+    }
+  ]
+}
