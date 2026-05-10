@@ -29,6 +29,7 @@ export default function SRICalculator() {
     fentanilo: (w * 1.5).toFixed(0), // 1-2 mcg/kg, promedio 1.5
     midazolam: (w * 0.05).toFixed(1), // 0.05-0.1 mg/kg
     etomidato: (w * 0.3).toFixed(1), // 0.2-0.4 mg/kg
+    ketamina: (w * 1.5).toFixed(0), // 1-2 mg/kg IV (SSÑ-2026)
     succinilcolina: (w * 1.5).toFixed(0), // 1-1.5 mg/kg
     rocuronio: (w * 1).toFixed(0) // 1-1.2 mg/kg
   };
@@ -95,17 +96,21 @@ export default function SRICalculator() {
         w > 0 ? `💉 ETOMIDATO: ${doses.etomidato} mg (${(doses.etomidato/2).toFixed(1)} ml)` : 'Ingresar peso del paciente',
         '⚠️ Paciente inestable: Preferir etomidato',
         'Menor efecto cardiovascular',
-        'Inicio de acción: 30-60 seg'
+        'Inicio de acción: 30-60 seg',
+        w > 0 ? `🆕 Alternativa SSÑ-2026 — KETAMINA: ${doses.ketamina} mg (${(doses.ketamina/500).toFixed(2)} ml de amp 500 mg/ml) — preferir en broncoespasmo / asma severa / shock` : '🆕 Alternativa SSÑ-2026 — KETAMINA 1-2 mg/kg IV (amp 500 mg/ml)'
       ] : [
         w > 0 ? `💉 Midazolam: ${doses.midazolam} mg (${doses.midazolam} ml)` : 'Ingresar peso del paciente',
         'O considerar Propofol 1-2 mg/kg si estable',
         'O Etomidato si compromiso hemodinámico',
+        w > 0 ? `🆕 Alternativa SSÑ-2026 — KETAMINA: ${doses.ketamina} mg IV (1-2 mg/kg) — útil en broncoespasmo, asma severa o status epiléptico refractario` : '🆕 Alternativa SSÑ-2026 — KETAMINA 1-2 mg/kg IV',
         'Administrar en bolo rápido'
       ],
       medications: hemodynamicInstability ? [
-        { name: 'Etomidato', dose: doses.etomidato, unit: 'mg', indication: '0.2-0.4 mg/kg' }
+        { name: 'Etomidato', dose: doses.etomidato, unit: 'mg', indication: '0.2-0.4 mg/kg' },
+        { name: 'Ketamina 🆕 SSÑ-2026', dose: doses.ketamina, unit: 'mg', indication: '1-2 mg/kg (broncoespasmo / shock)' }
       ] : [
-        { name: 'Midazolam', dose: doses.midazolam, unit: 'mg', indication: '0.05-0.1 mg/kg' }
+        { name: 'Midazolam', dose: doses.midazolam, unit: 'mg', indication: '0.05-0.1 mg/kg' },
+        { name: 'Ketamina 🆕 SSÑ-2026', dose: doses.ketamina, unit: 'mg', indication: '1-2 mg/kg (asma / status / agitación)' }
       ],
       color: 'bg-amber-100 border-amber-300'
     },

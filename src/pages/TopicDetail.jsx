@@ -9,7 +9,6 @@ import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import FlowTimeline from '@/components/topic/FlowTimeline';
 import GESGuarantee from '@/components/topic/GESGuarantee';
-import ClinicalInfo from '@/components/topic/ClinicalInfo';
 import SRICalculator from '@/components/calculators/SRICalculator';
 import NRS2002Calculator from '@/components/calculators/NRS2002Calculator';
 import ProtocolHeader from '@/components/topic/ProtocolHeader';
@@ -19,11 +18,13 @@ import PolicinicTable from '@/components/topic/PolicinicTable';
 import FlowDiagram from '@/components/topic/FlowDiagram';
 import PolicinicGuide from '@/components/topic/PolicinicGuide';
 import ResponsiveTopicLayout from '@/components/topic/ResponsiveTopicLayout';
+import SSN2026Notice from '@/components/topic/SSN2026Notice';
 import GESStructuredFallback from '@/components/topic/GESStructuredFallback';
 import { getTopicVisual } from '@/lib/topicVisuals';
 import { hasGuaranteeContent, extractGuaranteeStages } from '@/lib/guarantees';
 import { getProtocolValidityStatus } from '@/lib/protocolUtils';
-import { getGesTopicMeta, buildGesClinicalBlock } from '@/lib/ges';
+import { getGesTopicMeta } from '@/lib/ges';
+import { getTopicProtocolStatus } from '@/lib/topicStatus';
 import ReactMarkdown from 'react-markdown';
 import {
   ChevronLeft,
@@ -369,11 +370,7 @@ export default function TopicDetail() {
   const isGesTopic = topic.clasificacion_ges === 'GES';
   const { area: gesArea, theme: gesTheme } = isGesTopic ? getGesTopicMeta(topic.name) : { area: null, theme: null };
 
-  // For GES topics with existing content_blocks: prepend clinical block if not already present
-  const hasClinicalBlock = topic.content_blocks?.some(b => b.type === 'clinical');
-  const enhancedBlocks = isGesTopic && hasContentBlocks && !hasClinicalBlock && !topic.has_local_protocol
-    ? [buildGesClinicalBlock(topic), ...(topic.content_blocks || [])]
-    : (topic.content_blocks || []);
+  const enhancedBlocks = topic.content_blocks || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
@@ -436,9 +433,15 @@ export default function TopicDetail() {
                         <div className="mb-3 flex flex-wrap gap-2">
                           {topic.order && <Badge className={`border ${gesTheme.softBadge}`}>GES N.°{topic.order}</Badge>}
                           {gesArea && <Badge className={`border ${gesTheme.softBadge}`}>{gesArea}</Badge>}
-                          <Badge className={`border ${gesTheme.softBadge}`}>
-                            {topic.has_local_protocol ? 'Con protocolo local' : 'Sin protocolo local'}
-                          </Badge>
+                          {(() => {
+                            const s = getTopicProtocolStatus(topic);
+                            const label = s === 'local'
+                              ? 'Con protocolo local'
+                              : s === 'checklist'
+                                ? 'Pauta de cotejo'
+                                : 'Sin protocolo local';
+                            return <Badge className={`border ${gesTheme.softBadge}`}>{label}</Badge>;
+                          })()}
                         </div>
                         {topic.description && (
                           <h2 className="text-xl font-bold leading-snug tracking-tight text-white md:text-2xl">
@@ -516,12 +519,26 @@ export default function TopicDetail() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-3 mb-4">
-                    {topic.has_local_protocol && (
-                      <Badge className="bg-green-100 text-green-700 border-green-200 flex items-center gap-1 px-3 py-1.5">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Protocolo local establecido
-                      </Badge>
-                    )}
+                    {(() => {
+                      const s = getTopicProtocolStatus(topic);
+                      if (s === 'local') {
+                        return (
+                          <Badge className="bg-green-100 text-green-700 border-green-200 flex items-center gap-1 px-3 py-1.5">
+                            <CheckCircle2 className="h-4 w-4" />
+                            Protocolo local establecido
+                          </Badge>
+                        );
+                      }
+                      if (s === 'checklist') {
+                        return (
+                          <Badge className="bg-amber-100 text-amber-800 border-amber-200 flex items-center gap-1 px-3 py-1.5">
+                            <CheckCircle2 className="h-4 w-4" />
+                            Pauta de cotejo
+                          </Badge>
+                        );
+                      }
+                      return null;
+                    })()}
                     {(() => {
                       const vs = getProtocolValidityStatus(topic.protocol_validity);
                       if (!vs) return null;
@@ -587,6 +604,9 @@ export default function TopicDetail() {
           </motion.div>
         )}
 
+        {/* SSÑ-2026 yellow notice — auto-dismiss for protocols with new arsenal additions */}
+        <SSN2026Notice topicId={topic.id} />
+
         {/* New Content Blocks System - If content_blocks exists */}
         {hasContentBlocks && (
           <motion.div
@@ -634,30 +654,8 @@ export default function TopicDetail() {
         {/* Special Rendering for Specific Topics */}
         {renderSpecialContent(topic)}
 
-        {/* Clinical Orientation block — for GES topics using ClinicalInfo (no content_blocks) */}
-        {isGesTopic && !hasContentBlocks && hasClinicalInfo && !topic.has_local_protocol && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
-          >
-            <ResponsiveTopicLayout
-              blocks={[buildGesClinicalBlock(topic)]}
-              layoutMode="single"
-            />
-          </motion.div>
-        )}
-
-        {/* Clinical Information */}
-        {!isSriTopic && !hasSpecialContent && hasClinicalInfo && !topic.has_local_protocol && (
-          <div className="mb-10">
-            <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600" />
-              Información Clínica
-            </h2>
-            <ClinicalInfo topic={topic} />
-          </div>
-        )}
+        {/* Clinical Information block removed: deprecated format (Resumen Clínico /
+            Orientación Diagnóstica / Estudios Complementarios / Tratamiento Inicial). */}
 
         {/* Flow Timeline */}
         {!isSriTopic && flowSteps.length > 0 && (

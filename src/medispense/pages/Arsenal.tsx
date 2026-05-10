@@ -57,7 +57,11 @@ const GLOSSARY: Record<string, string> = {
   'AD y CP': 'Alivio del Dolor y Cuidados Paliativos',
   'SOS': 'Según necesidad',
   'BIC': 'Bomba de infusión continua',
+  'SSÑ-2026': 'Arsenal Básico Servicio de Salud Ñuble (Res. Ex. N°5754, dic-2025) — disponible en todos los HCSF, complementa el arsenal local',
 };
+
+const SSN2026_TAG = '[SSÑ-2026]';
+const isSSN2026 = (restrictions: string | null) => !!restrictions && restrictions.includes(SSN2026_TAG);
 
 const highlightGlossary = (text: string) => {
   if (!text) return null;
@@ -363,10 +367,22 @@ export default function Arsenal() {
                 {med.category && (
                   <Badge className="bg-primary/10 text-primary hover:bg-primary/20">{med.category}</Badge>
                 )}
+                {isSSN2026(med.restrictions) && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge className="bg-amber-100 text-amber-900 border border-amber-300 hover:bg-amber-200 cursor-help">
+                        🆕 SSÑ-2026
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs max-w-xs">{GLOSSARY['SSÑ-2026']}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
               {med.restrictions && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  {highlightGlossary(med.restrictions)}
+                  {highlightGlossary(med.restrictions.replace(SSN2026_TAG, '').trim())}
                 </p>
               )}
             </CardContent>

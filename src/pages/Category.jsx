@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { isHiddenClinicalTool } from '@/components/utils/hiddenContent';
 import { getProtocolValidityStatus } from '@/lib/protocolUtils';
+import { getTopicProtocolStatus } from '@/lib/topicStatus';
 import {
   Tooltip,
   TooltipContent,
@@ -79,7 +80,9 @@ export default function Category() {
   });
 
   const matchesTopicFilter = (topic) => {
-    if (activeTopicFilter === 'local') return !!topic.has_local_protocol;
+    if (activeTopicFilter === 'local') return getTopicProtocolStatus(topic) === 'local';
+    if (activeTopicFilter === 'checklist') return getTopicProtocolStatus(topic) === 'checklist';
+    if (activeTopicFilter === 'none') return getTopicProtocolStatus(topic) === 'none';
     if (activeTopicFilter === 'ges') return topic.clasificacion_ges === 'GES';
     return true;
   };
@@ -202,10 +205,19 @@ export default function Category() {
     return indexA - indexB;
   });
 
+  const localCount = topics.filter(t => getTopicProtocolStatus(t) === 'local').length;
+  const checklistCount = topics.filter(t => getTopicProtocolStatus(t) === 'checklist').length;
+  const noneCount = topics.filter(t => getTopicProtocolStatus(t) === 'none').length;
+  const gesCount = topics.filter(t => t.clasificacion_ges === 'GES').length;
+  const isGesCategory = (category?.name || '').toLowerCase().includes('ges');
+
   const topicFilterOptions = [
     { value: 'all', count: topics.length, label: `Todos (${topics.length})` },
-    { value: 'local', count: topics.filter(topic => topic.has_local_protocol).length, label: `Protocolo local (${topics.filter(topic => topic.has_local_protocol).length})` },
-    { value: 'ges', count: topics.filter(topic => topic.clasificacion_ges === 'GES').length, label: `GES (${topics.filter(topic => topic.clasificacion_ges === 'GES').length})` },
+    { value: 'local', count: localCount, label: `Con protocolo local (${localCount})` },
+    // 'Pauta de cotejo' aplica solo a la categoría GES
+    ...(isGesCategory ? [{ value: 'checklist', count: checklistCount, label: `Solo pauta de cotejo (${checklistCount})` }] : []),
+    { value: 'none', count: noneCount, label: `Sin protocolo${isGesCategory ? ' ni pauta' : ''} (${noneCount})` },
+    ...(isGesCategory ? [] : [{ value: 'ges', count: gesCount, label: `GES (${gesCount})` }]),
   ];
   const meaningfulTopicFilterOptions = topicFilterOptions.filter((option) =>
     option.value === 'all' || (option.count > 0 && option.count < topics.length)
@@ -455,6 +467,12 @@ export default function Category() {
                                       <Badge className="bg-green-100 text-green-700 border-green-300 flex items-center gap-1 text-xs font-semibold">
                                         <CheckCircle2 className="h-3 w-3" />
                                         Protocolo Local
+                                      </Badge>
+                                    )}
+                                    {getTopicProtocolStatus(topic) === 'checklist' && (
+                                      <Badge className="bg-amber-100 text-amber-800 border-amber-300 flex items-center gap-1 text-xs font-semibold">
+                                        <ClipboardList className="h-3 w-3" />
+                                        Pauta de cotejo
                                       </Badge>
                                     )}
                                     {(() => {

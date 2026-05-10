@@ -3,7 +3,8 @@ import { Badge } from '@/components/ui/badge';
 import ResponsiveTopicLayout from '@/components/topic/ResponsiveTopicLayout';
 import { buildGesFallbackBlocks, getGesTopicMeta } from '@/lib/ges';
 import { extractGuaranteeStages } from '@/lib/guarantees';
-import { CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle, ClipboardList } from 'lucide-react';
+import { getTopicProtocolStatus } from '@/lib/topicStatus';
 
 const ONCOLOGY_FALLBACK_STAGES = [
   {
@@ -65,6 +66,13 @@ export default function GESStructuredFallback({ topic }) {
     : isOncology
       ? ONCOLOGY_FALLBACK_STAGES
       : [];
+  const protocolStatus = getTopicProtocolStatus(topic);
+  const headerBadgeLabel =
+    protocolStatus === 'local'
+      ? 'Con protocolo local'
+      : protocolStatus === 'checklist'
+        ? 'Pauta de cotejo'
+        : 'Sin protocolo local';
 
   return (
     <div className="space-y-6">
@@ -85,9 +93,7 @@ export default function GESStructuredFallback({ topic }) {
             <div className="mb-3 flex flex-wrap gap-2">
               <Badge className={`border ${theme.softBadge}`}>{gesLabel}</Badge>
               <Badge className={`border ${theme.softBadge}`}>{area}</Badge>
-              <Badge className={`border ${theme.softBadge}`}>
-                {topic.has_local_protocol ? 'Con protocolo local' : 'Sin protocolo local'}
-              </Badge>
+              <Badge className={`border ${theme.softBadge}`}>{headerBadgeLabel}</Badge>
             </div>
             {topic.description && (
               <h2 className="text-xl font-bold leading-snug tracking-tight text-white md:text-2xl">
@@ -155,12 +161,21 @@ export default function GESStructuredFallback({ topic }) {
               Acceso · Calidad · Protección financiera: también garantizados en todas las prestaciones GES.
             </p>
           </div>
-          {topic.has_local_protocol && (
+          {protocolStatus === 'local' && (
             <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-white/80" />
                 <p className="text-xs font-semibold text-white">Protocolo local activo</p>
                 <p className="text-xs text-white/70">— Esta vista actúa como apoyo visual complementario al protocolo institucional.</p>
+              </div>
+            </div>
+          )}
+          {protocolStatus === 'checklist' && (
+            <div className="rounded-2xl border border-amber-200/40 bg-amber-400/15 p-3 backdrop-blur-sm">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4 text-white/90" />
+                <p className="text-xs font-semibold text-white">Pauta de cotejo disponible</p>
+                <p className="text-xs text-white/70">— Sin protocolo local desarrollado; usar la pauta como referencia operativa.</p>
               </div>
             </div>
           )}

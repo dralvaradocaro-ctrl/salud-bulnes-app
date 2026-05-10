@@ -1075,6 +1075,12 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     hipo_derivacion: 'Derivación',
     hipo_flujogramas: 'Flujogramas',
     hipo_cotejo: 'Pauta de Cotejo',
+    // HCSFB 162 — Pérdida Reproductiva
+    pr_protocolo: 'Protocolo',
+    pr_definiciones: 'Definiciones',
+    pr_farmacos: 'Fármacos',
+    pr_flujogramas: 'Flujogramas',
+    pr_post: 'Post-evento',
     triage_protocolo: 'Protocolo',
     triage_categorias: 'Niveles ESI',
     triage_casos: 'Casos especiales',

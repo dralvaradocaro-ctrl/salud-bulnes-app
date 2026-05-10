@@ -453,6 +453,104 @@ const DEFAULT_MEDS = [
       { label: 'Comp Forte (TMP 160 mg + SMT 800 mg)', type: 'solid', mgPerUnit: 160, via: 'VO', unitLabel: 'comp', perDose: true },
     ],
   },
+
+  // ── Anticonvulsivantes — Arsenal SSÑ-2026 ────────────────────────────
+  {
+    id: 'oxcarbazepina',
+    name: 'Oxcarbazepina',
+    category: 'Anticonvulsivante',
+    doseMin: 8, doseMax: 10,
+    unit: 'mg/kg/día (inicio)',
+    frequency: 'c/12 h (dividir)',
+    maxSingleDose: null,
+    maxDailyDosePerKg: 60,
+    maxDailyDoseMg: 1800,
+    minAge: '> 6 años (mono); > 2 años (adyuvante)',
+    route: 'VO',
+    notes: '🆕 SSÑ-2026: incorporada al arsenal básico HCSF (Res. Ex. N°5754). PM Epilepsia. Titulación gradual cada 5–7 días. Vigilar hiponatremia.',
+    inArsenal: true,
+    ssn2026: true,
+    hospitalPresentations: [
+      { label: 'Susp oral 60 mg/mL', type: 'liquid', concMg: 60, via: 'VO', unitLabel: 'mL' },
+      { label: 'Comp 300 mg', type: 'solid', mgPerUnit: 300, via: 'VO', unitLabel: 'comp' },
+    ],
+  },
+  {
+    id: 'lacosamida',
+    name: 'Lacosamida',
+    category: 'Anticonvulsivante',
+    doseMin: 1, doseMax: 2,
+    unit: 'mg/kg/día (inicio)',
+    frequency: 'c/12 h (dividir)',
+    maxSingleDose: null,
+    maxDailyDosePerKg: 12,
+    maxDailyDoseMg: 400,
+    minAge: '> 4 años',
+    route: 'VO',
+    notes: '🆕 SSÑ-2026: incorporada al arsenal básico HCSF (Res. Ex. N°5754). PM Epilepsia. Adyuvante en crisis focales. Titulación semanal.',
+    inArsenal: true,
+    ssn2026: true,
+    hospitalPresentations: [
+      { label: 'Comp 100 mg', type: 'solid', mgPerUnit: 100, via: 'VO', unitLabel: 'comp' },
+    ],
+  },
+  {
+    id: 'clobazam',
+    name: 'Clobazam',
+    category: 'Anticonvulsivante / Benzodiacepina',
+    doseMin: 0.1, doseMax: 0.5,
+    unit: 'mg/kg/día (inicio)',
+    frequency: 'c/12–24 h',
+    maxSingleDose: null,
+    maxDailyDosePerKg: 1,
+    maxDailyDoseMg: 40,
+    minAge: '> 2 años',
+    route: 'VO',
+    notes: '🆕 SSÑ-2026: incorporada al arsenal básico HCSF (Res. Ex. N°5754). PM Epilepsia. Adyuvante en crisis refractarias / Lennox-Gastaut.',
+    inArsenal: true,
+    ssn2026: true,
+    hospitalPresentations: [
+      { label: 'Comp 10 mg', type: 'solid', mgPerUnit: 10, via: 'VO', unitLabel: 'comp' },
+    ],
+  },
+  {
+    id: 'vigabatrina',
+    name: 'Vigabatrina',
+    category: 'Anticonvulsivante',
+    doseMin: 40, doseMax: 50,
+    unit: 'mg/kg/día (inicio)',
+    frequency: 'c/12 h (dividir)',
+    maxSingleDose: null,
+    maxDailyDosePerKg: 150,
+    maxDailyDoseMg: 3000,
+    minAge: '> 1 mes (espasmos infantiles)',
+    route: 'VO',
+    notes: '🆕 SSÑ-2026: incorporada al arsenal básico HCSF (Res. Ex. N°5754). PM Epilepsia. 1ª línea espasmos infantiles (West). Riesgo de toxicidad retinal — control oftalmológico.',
+    inArsenal: true,
+    ssn2026: true,
+    hospitalPresentations: [
+      { label: 'Comp 500 mg', type: 'solid', mgPerUnit: 500, via: 'VO', unitLabel: 'comp' },
+    ],
+  },
+  {
+    id: 'ketamina',
+    name: 'Ketamina',
+    category: 'Anestésico / Sedoanalgesia',
+    doseMin: 1, doseMax: 2,
+    unit: 'mg/kg/dosis (IV inducción)',
+    frequency: 'Bolo único',
+    maxSingleDose: 200,
+    maxDailyDosePerKg: null,
+    maxDailyDoseMg: null,
+    minAge: null,
+    route: 'EV / IM',
+    notes: '🆕 SSÑ-2026: incorporada al arsenal básico HCSF (Res. Ex. N°5754). SRI, dolor refractario, sedoanalgesia para procedimientos, agitación severa, crisis asmática severa. IM 4–5 mg/kg.',
+    inArsenal: true,
+    ssn2026: true,
+    hospitalPresentations: [
+      { label: 'Sol iny 500 mg/mL', type: 'liquid', concMg: 500, via: 'EV/IM', unitLabel: 'mL' },
+    ],
+  },
 ];
 
 const CATEGORIES = [...new Set(DEFAULT_MEDS.map(m => m.category))];
@@ -480,11 +578,19 @@ function HospitalDose({ med, doseMg }) {
 
   return (
     <div className="rounded-xl border border-teal-200 bg-teal-50 p-3 space-y-2">
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 flex-wrap">
         <FlaskConical className="h-3.5 w-3.5 text-teal-600" />
         <p className="text-[10px] font-bold uppercase tracking-wide text-teal-700">
           Presentaciones en arsenal HCSF Bulnes
         </p>
+        {med.ssn2026 && (
+          <span
+            className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300"
+            title="Arsenal Básico Servicio de Salud Ñuble (Res. Ex. N°5754, dic-2025) — disponible en todos los HCSF"
+          >
+            🆕 SSÑ-2026
+          </span>
+        )}
       </div>
       <div className="space-y-1">
         {med.hospitalPresentations.map((pres, i) => {
