@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -942,6 +942,18 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
   const hasTabs = tabValues.length > 0;
   const [activeTab, setActiveTab] = useState(hasTabs ? tabValues[0] : null);
 
+  // Sub-tabs (un nivel de anidación dentro de la pestaña activa)
+  const blocksInActiveTab = hasTabs ? safeBlocks.filter(b => b.tab === activeTab) : [];
+  const subtabValues = [...new Set(blocksInActiveTab.map(b => b.subtab).filter(Boolean))];
+  const hasSubtabs = subtabValues.length > 0;
+  const [activeSubtab, setActiveSubtab] = useState(null);
+  // Reset subtab al primero al cambiar de tab
+  useEffect(() => {
+    if (hasSubtabs) setActiveSubtab(subtabValues[0]);
+    else setActiveSubtab(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, hasSubtabs, subtabValues.join('|')]);
+
   // Auto-tab: when topic has mermaid blocks alongside other content (GES or local protocols)
   const hasProtocolHeader = safeBlocks.some(b => b.type === 'protocol_header');
   const hasMermaid = safeBlocks.some(b => b.type === 'mermaid');
@@ -1081,6 +1093,9 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     pr_farmacos: 'Fármacos',
     pr_flujogramas: 'Flujogramas',
     pr_post: 'Post-evento',
+    pr_protocolo_triage: 'Triage',
+    pr_protocolo_aborto: 'Tipos de aborto',
+    pr_protocolo_otras: 'Otras pérdidas',
     triage_protocolo: 'Protocolo',
     triage_categorias: 'Niveles ESI',
     triage_casos: 'Casos especiales',
@@ -1160,8 +1175,17 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     ? safeBlocks.filter(b => b.type !== 'protocol_header' && (!b.tab || b.tab === activeTab))
     : safeBlocks.filter(b => b.type !== 'protocol_header');
 
-  const mainBlocks = visibleBlocks.filter(b => !b.layout_position || b.layout_position === 'main' || b.layout_position === 'full');
-  const sidebarBlocks = visibleBlocks.filter(b => b.layout_position === 'sidebar');
+  // Si la pestaña activa tiene subtabs:
+  //   - bloques con subtab → solo si coincide con activeSubtab
+  //   - bloques sin subtab → siempre visibles (rol "introducción común")
+  const visibleAfterSubtab = hasSubtabs
+    ? visibleBlocks.filter(b => !b.subtab || b.subtab === activeSubtab)
+    : visibleBlocks;
+
+  const mainBlocks = visibleAfterSubtab.filter(b => !b.layout_position || b.layout_position === 'main' || b.layout_position === 'full');
+  const sidebarBlocks = visibleAfterSubtab.filter(b => b.layout_position === 'sidebar');
+  const commonMainBlocks = hasSubtabs ? mainBlocks.filter(b => !b.subtab) : [];
+  const subMainBlocks    = hasSubtabs ? mainBlocks.filter(b => b.subtab) : mainBlocks;
 
   // GES mode: split blocks into groups
   // criteria (Criterios de Inclusión GES) is hidden in GES mode
@@ -1310,9 +1334,40 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
       {/* ── Normal blocks (non-GES, non-local-protocol mode) ── */}
       {!isGESMode && !isLocalProtocolMode && (
         <>
-          <div className="space-y-5">
-            {mainBlocks.map(renderBlock).filter(Boolean)}
-          </div>
+          {hasSubtabs ? (
+            <>
+              {commonMainBlocks.length > 0 && (
+                <div className="space-y-5">
+                  {commonMainBlocks.map(renderBlock).filter(Boolean)}
+                </div>
+              )}
+              {/* Sub-tab bar */}
+              <div className="border-b border-slate-200">
+                <div className="flex flex-wrap gap-1.5 pb-2">
+                  {subtabValues.map(st => (
+                    <button
+                      key={st}
+                      onClick={() => setActiveSubtab(st)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        activeSubtab === st
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {TAB_LABELS[st] || st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-5">
+                {subMainBlocks.map(renderBlock).filter(Boolean)}
+              </div>
+            </>
+          ) : (
+            <div className="space-y-5">
+              {mainBlocks.map(renderBlock).filter(Boolean)}
+            </div>
+          )}
           {sidebarBlocks.length > 0 && (
             <div className={sidebarBlocks.length > 1 ? 'grid gap-5 sm:grid-cols-2' : ''}>
               {sidebarBlocks.map(renderBlock).filter(Boolean)}

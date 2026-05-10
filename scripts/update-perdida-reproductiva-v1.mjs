@@ -39,9 +39,10 @@ const blocks = [
     id: 'pr-objetivo',
     type: 'text',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_triage',
     color: 'rose',
     order: 1,
-    title: '1. Objetivo y alcance',
+    title: 'Objetivo y alcance',
     content: `### Objetivo general
 Asegurar medidas concretas que permitan atención humanizada y estandarizada de usuarias y usuarios que se enfrenten a proceso de pérdida reproductiva en HCSF Bulnes.
 
@@ -63,9 +64,10 @@ Mujeres en edad fértil pertenecientes a la **microrred Hospital Comunitario de 
     id: 'pr-recepcion',
     type: 'flowchart',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_triage',
     color: 'blue',
     order: 2,
-    title: '2. Manejo inicial común — Síntomas/Amenaza de aborto',
+    title: 'Manejo inicial común — Síntomas/Amenaza de aborto',
     description: 'Recepción y evaluación inicial de toda paciente que consulta por sospecha de pérdida reproductiva.',
     details: [
       'Recepción de usuaria, motivo de consulta y control de signos vitales — TENS.',
@@ -83,9 +85,10 @@ Mujeres en edad fértil pertenecientes a la **microrred Hospital Comunitario de 
     id: 'pr-sintomas-precoz',
     type: 'criteria',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_aborto',
     color: 'amber',
     order: 3,
-    title: '3. Síntomas de aborto precoz (<12+6 semanas)',
+    title: 'Síntomas de aborto precoz (<12+6 semanas)',
     items: [
       '━━━ Hospitalización en HCSFB ━━━',
       'Reposo en cama.',
@@ -111,9 +114,10 @@ Mujeres en edad fértil pertenecientes a la **microrred Hospital Comunitario de 
     id: 'pr-sintomas-tardio',
     type: 'criteria',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_aborto',
     color: 'amber',
     order: 4,
-    title: '4. Síntomas de aborto tardío (≥13 semanas)',
+    title: 'Síntomas de aborto tardío (≥13 semanas)',
     items: [
       'Manejar como metrorragia de II trimestre.',
       'Médico de Turno presenta caso a Ginecólogo/a de turno HHM.',
@@ -132,9 +136,10 @@ Mujeres en edad fértil pertenecientes a la **microrred Hospital Comunitario de 
     id: 'pr-aborto-inevitable',
     type: 'criteria',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_aborto',
     color: 'red',
     order: 5,
-    title: '5. Aborto inevitable',
+    title: 'Aborto inevitable',
     items: [
       '━━━ Criterios diagnósticos ━━━',
       'Modificaciones cervicales (cuello uterino).',
@@ -154,9 +159,10 @@ Mujeres en edad fértil pertenecientes a la **microrred Hospital Comunitario de 
     id: 'pr-aborto-evolucion',
     type: 'criteria',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_aborto',
     color: 'orange',
     order: 6,
-    title: '6. Aborto en evolución',
+    title: 'Aborto en evolución',
     items: [
       'Diagnóstico: clínico (metrorragia + modificaciones cervicales + dolor cólico intenso, ± restos palpables).',
       '',
@@ -185,9 +191,10 @@ Mujeres en edad fértil pertenecientes a la **microrred Hospital Comunitario de 
     id: 'pr-aborto-incompleto',
     type: 'criteria',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_aborto',
     color: 'red',
     order: 7,
-    title: '7. Aborto incompleto',
+    title: 'Aborto incompleto',
     items: [
       '━━━ Diagnóstico ━━━',
       'Evidencia o historia de expulsión de restos ovulares.',
@@ -213,9 +220,10 @@ Mujeres en edad fértil pertenecientes a la **microrred Hospital Comunitario de 
     id: 'pr-aborto-completo',
     type: 'criteria',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_aborto',
     color: 'emerald',
     order: 8,
-    title: '8. Aborto completo',
+    title: 'Aborto completo',
     items: [
       '━━━ Diagnóstico ━━━',
       'Embarazo intrauterino confirmado previo.',
@@ -241,9 +249,10 @@ Mujeres en edad fértil pertenecientes a la **microrred Hospital Comunitario de 
     id: 'pr-aborto-retenido',
     type: 'criteria',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_aborto',
     color: 'purple',
     order: 9,
-    title: '9. Aborto retenido',
+    title: 'Aborto retenido',
     items: [
       '━━━ Diagnóstico ecográfico ━━━',
       'Embrión con LCN >7 mm sin LCF.',
@@ -274,9 +283,10 @@ Mujeres en edad fértil pertenecientes a la **microrred Hospital Comunitario de 
     id: 'pr-ectopico',
     type: 'criteria',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_otras',
     color: 'red',
     order: 10,
-    title: '10. Embarazo ectópico (EE)',
+    title: 'Embarazo ectópico (EE)',
     items: [
       '━━━ Diagnóstico ━━━',
       'Clínico + ecográfico ± curva de β-hCG.',
@@ -306,9 +316,10 @@ Mujeres en edad fértil pertenecientes a la **microrred Hospital Comunitario de 
     id: 'pr-molar',
     type: 'criteria',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_otras',
     color: 'red',
     order: 11,
-    title: '11. Embarazo molar',
+    title: 'Embarazo molar',
     items: [
       '━━━ Diagnóstico ━━━',
       'Sospecha clínica con altura uterina mayor a edad gestacional.',
@@ -328,9 +339,10 @@ Mujeres en edad fértil pertenecientes a la **microrred Hospital Comunitario de 
     id: 'pr-perdida-2trim',
     type: 'criteria',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_otras',
     color: 'red',
     order: 12,
-    title: '12. Pérdida reproductiva II trimestre (13–22 semanas)',
+    title: 'Pérdida reproductiva II trimestre (13–22 semanas)',
     items: [
       '━━━ Diagnóstico ━━━',
       'Clínico, imagenológico.',
@@ -348,9 +360,10 @@ Mujeres en edad fértil pertenecientes a la **microrred Hospital Comunitario de 
     id: 'pr-mfiu',
     type: 'criteria',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_otras',
     color: 'red',
     order: 13,
-    title: '13. Muerte fetal intrauterina (MFIU) >22 semanas',
+    title: 'Muerte fetal intrauterina (MFIU) >22 semanas',
     items: [
       '━━━ Diagnóstico ━━━',
       'Clínico: historia de desaparición de movimientos fetales, LCF ausentes al sonógrafo.',
@@ -375,9 +388,10 @@ Mujeres en edad fértil pertenecientes a la **microrred Hospital Comunitario de 
     id: 'pr-muerte-neonatal',
     type: 'criteria',
     tab: 'pr_protocolo',
+    subtab: 'pr_protocolo_otras',
     color: 'red',
     order: 14,
-    title: '14. Muerte neonatal precoz',
+    title: 'Muerte neonatal precoz',
     items: [
       'Definición: muerte de neonato ocurrida en los primeros 7 días de vida.',
       'Diagnóstico: clínico.',
@@ -765,9 +779,13 @@ console.log(`\n═════════════════════�
 console.log(`  HCSFB 162 — Pérdida Reproductiva — ${APPLY ? '⚡ APPLY' : '🔍 DRY-RUN'}`);
 console.log(`═══════════════════════════════════════════════════════\n`);
 
-const dist = blocks.reduce((acc, b) => { acc[b.tab] = (acc[b.tab] || 0) + 1; return acc; }, {});
+const dist = blocks.reduce((acc, b) => {
+  const k = b.subtab ? `${b.tab} › ${b.subtab}` : b.tab;
+  acc[k] = (acc[k] || 0) + 1;
+  return acc;
+}, {});
 console.log('Distribución por pestaña:');
-Object.entries(dist).forEach(([t, n]) => console.log(`  ${t.padEnd(20)}  ${n} bloque(s)`));
+Object.entries(dist).forEach(([t, n]) => console.log(`  ${t.padEnd(40)}  ${n} bloque(s)`));
 console.log(`\nTotal bloques: ${blocks.length}`);
 console.log(`Autores: ${protocol_authors.length}`);
 
