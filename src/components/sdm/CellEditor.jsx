@@ -48,16 +48,19 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
     { _key: `vnew-${Date.now()}`, name: '', specialty: '' },
   ]);
 
-  // Validaciones por bloqueo: horario inválido y solapamiento mismo médico
-  const itemErrors = useMemo(() => {
+  // Validaciones por bloqueo:
+  //   - itemErrors (bloquean guardar): rango horario inválido (desde >= hasta)
+  //   - itemWarnings (no bloquean): solapamiento mismo médico — informativo,
+  //     porque a veces SDM/jefatura tiene legítimamente bloques superpuestos.
+  const { itemErrors, itemWarnings } = useMemo(() => {
     const errs = {};
+    const warns = {};
     const activos = items.filter(it => it.name && it.name.trim() && !it.suspended);
     activos.forEach(it => {
       if (it.from && it.to && it.from >= it.to) {
         errs[it._key] = 'Desde debe ser anterior a Hasta';
       }
     });
-    // Solapamientos mismo doctor
     for (let i = 0; i < activos.length; i++) {
       const a = activos[i];
       if (!a.doctor_id || !a.from || !a.to || a.from >= a.to) continue;
@@ -66,12 +69,12 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
         if (b.doctor_id !== a.doctor_id || !b.from || !b.to || b.from >= b.to) continue;
         if (a.from < b.to && b.from < a.to) {
           const other = b.name?.slice(0, 30) || 'otro bloqueo';
-          errs[a._key] = errs[a._key] || `Solapa con "${other}"`;
-          errs[b._key] = errs[b._key] || `Solapa con "${(a.name || '').slice(0, 30)}"`;
+          warns[a._key] = warns[a._key] || `Solapa con "${other}"`;
+          warns[b._key] = warns[b._key] || `Solapa con "${(a.name || '').slice(0, 30)}"`;
         }
       }
     }
-    return errs;
+    return { itemErrors: errs, itemWarnings: warns };
   }, [items]);
 
   const hasErrors = Object.keys(itemErrors).length > 0;
@@ -129,7 +132,7 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
               <p className="text-sm text-slate-500 text-center py-4">Sin bloqueos. Clickeá "+ Agregar" para crear uno.</p>
             )}
             {items.map(it => (
-              <div key={it._key} className={`flex flex-col gap-1 p-2 border rounded-lg ${it.suspended ? 'border-slate-300 bg-slate-50 opacity-70' : itemErrors[it._key] ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}>
+              <div key={it._key} className={`flex flex-col gap-1 p-2 border rounded-lg ${it.suspended ? 'border-slate-300 bg-slate-50 opacity-70' : itemErrors[it._key] ? 'border-red-400 bg-red-50' : itemWarnings[it._key] ? 'border-amber-300 bg-amber-50/40' : 'border-slate-200'}`}>
                 <div className="flex items-start gap-2">
                 <div className={`flex-1 grid grid-cols-12 gap-2 ${it.suspended ? 'line-through decoration-slate-400' : ''}`}>
                   <div className="col-span-5">
@@ -192,6 +195,12 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
                   <div className="flex items-center gap-1.5 text-[11px] text-red-700 px-1">
                     <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                     <span>{itemErrors[it._key]}</span>
+                  </div>
+                )}
+                {!itemErrors[it._key] && itemWarnings[it._key] && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-amber-700 px-1">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    <span>{itemWarnings[it._key]} (se permite guardar)</span>
                   </div>
                 )}
               </div>

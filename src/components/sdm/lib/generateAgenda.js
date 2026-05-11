@@ -140,7 +140,7 @@ export function generateAgenda({
       };
     }
 
-    const refuerzos = manualReinforcements[d.date] || {};
+    const rawRefuerzos = manualReinforcements[d.date] || {};
 
     // Bloqueos del día: del template (weekday_pattern) + monthly que aplica + oneoff
     const bloqueos = [];
@@ -161,6 +161,15 @@ export function generateAgenda({
     const poliFullDay = poliFullDayOverride || (beltranBusy ? null : POLI_FULLDAY_DEFAULT);
     const poliFullDayEditable = beltranBusy && !poliFullDayOverride;
     const poliIds = new Set(poliFullDay ? [poliFullDay] : []);
+
+    // Saneamiento de refuerzos guardados: si el médico quedó en turno/posturno/ausencia/poli-fullday,
+    // se anula automáticamente (evita arrastrar refuerzos obsoletos tras cambios de rotación).
+    const refuerzoInvalido = id =>
+      id && (turnoIds_inner.has(id) || postIds_inner.has(id) || ausIds_inner.has(id) || poliIds.has(id));
+    const refuerzos = {
+      am: refuerzoInvalido(rawRefuerzos.am) ? null : (rawRefuerzos.am || null),
+      pm: refuerzoInvalido(rawRefuerzos.pm) ? null : (rawRefuerzos.pm || null),
+    };
 
     const resolveDoctor = (blockId) => {
       const t = titularByBlock[blockId];
@@ -584,6 +593,31 @@ export function sortReinforcements({ weeks, doctors, existingReinforcements = {}
     const weekKey = w.weekStart;
     result[weekKey] = result[weekKey] || {};
 
+    // Saneamiento previo: descartar refuerzos guardados que pisen turno/posturno/ausencia,
+    // así sortReinforcements los re-asigna en vez de preservar entradas obsoletas.
+    for (const day of w.days) {
+      const slot = result[weekKey][day.date];
+      if (!slot) continue;
+      const turnoIds = new Set((day.turnos || []).map(t => t.doctor_id));
+      const postIds = new Set((day.posturno || []).map(t => t.doctor_id));
+      const ausIds = new Set((day.ausencias || []).map(a => a.doctor_id));
+      const invalido = id => id && (
+        turnoIds.has(id) || postIds.has(id) || ausIds.has(id) ||
+        id === SUBDIRECTOR || id === POLI_FULLDAY
+      );
+      if (invalido(slot.am)) {
+        carga[slot.am] = Math.max(0, (carga[slot.am] || 0) - 1);
+        slot.am = null;
+      }
+      if (invalido(slot.pm)) {
+        carga[slot.pm] = Math.max(0, (carga[slot.pm] || 0) - 1);
+        if (new Date(day.date).getDay() === 5) {
+          cargaViernesPM[slot.pm] = Math.max(0, (cargaViernesPM[slot.pm] || 0) - 1);
+        }
+        slot.pm = null;
+      }
+    }
+
     // PM ya asignados en esta semana (manuales o de pasadas previas) — para evitar 2 PM/semana
     const pmThisWeek = new Set();
     Object.values(result[weekKey]).forEach(s => { if (s?.pm) pmThisWeek.add(s.pm); });
@@ -683,6 +717,21 @@ export function validateAgenda(agenda, doctors = []) {
     day.bloqueos.filter(b => !b.suspended && b.doctor_id && postIds.has(b.doctor_id)).forEach(b => {
       warnings.push({ date: day.date, label: day.label, kind: 'posturno_assigned', blockId: b.block_id, doctorId: b.doctor_id,
         message: `${day.label}: ${doctorName(b.doctor_id)} en posturno asignado a "${b.name}"` });
+    });
+    // Refuerzo en conflicto con turno/posturno/ausencia (error)
+    const turnoIdsDay = new Set(day.turnos.map(t => t.doctor_id));
+    const ausIdsDay = new Set(day.ausencias.map(a => a.doctor_id));
+    ['am', 'pm'].forEach(slot => {
+      const rid = day.refuerzos?.[slot];
+      if (!rid) return;
+      let motivo = null;
+      if (turnoIdsDay.has(rid)) motivo = 'turno';
+      else if (postIds.has(rid)) motivo = 'posturno';
+      else if (ausIdsDay.has(rid)) motivo = 'ausencia';
+      if (motivo) {
+        errors.push({ date: day.date, label: day.label, kind: `refuerzo_${motivo}`, doctorId: rid,
+          message: `${day.label}: ${doctorName(rid)} no puede ser refuerzo ${slot.toUpperCase()} (está en ${motivo})` });
+      }
     });
     // Bloqueos fuera de jornada (warning)
     day.bloqueos.filter(b => !b.suspended && b.from && (b.from < JORNADA_INICIO || b.to > JORNADA_FIN)).forEach(b => {
