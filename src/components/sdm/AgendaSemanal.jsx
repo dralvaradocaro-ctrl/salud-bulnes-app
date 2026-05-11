@@ -144,11 +144,9 @@ export default function AgendaSemanal() {
       manualReinforcements: reinforcements,
       manualPoli8am: poli8amOverrides,
       visitaOverrides,
+      bloqueosOverrides,
     });
-    // Aplicar overrides por día (edición manual desde CellEditor)
-    return generated.map(d => bloqueosOverrides[d.date]
-      ? { ...d, bloqueos: bloqueosOverrides[d.date] }
-      : d);
+    return generated;
   }, [loading, monday, doctors, rotation, shiftCalendar, blockTemplates, programAssignments, absences, oneoffBlocks, reinforcements, bloqueosOverrides, poli8amOverrides, visitaOverrides]);
 
   const validation = useMemo(() => validateAgenda(agenda, doctors), [agenda, doctors]);
@@ -790,28 +788,40 @@ export default function AgendaSemanal() {
                           d.active !== false && !visitaIds.has(d.id) &&
                           !turnoIds.has(d.id) && !postIds.has(d.id) && !ausIds.has(d.id)
                         );
-                        const removeManual = (docId) => setVisitaOverrides(prev => {
-                          const cur = prev[day.date] || {};
-                          const add = (cur.add || []).filter(x => x !== docId);
-                          const next = { ...cur, add };
-                          if (!add.length && !(cur.remove?.length)) {
+                        const cleanupEmpty = (prev, next) => {
+                          if (!(next.add?.length) && !(next.remove?.length)) {
                             const { [day.date]: _, ...rest } = prev;
                             return rest;
                           }
                           return { ...prev, [day.date]: next };
+                        };
+                        const removeManual = (docId) => setVisitaOverrides(prev => {
+                          const cur = prev[day.date] || {};
+                          const next = { ...cur, add: (cur.add || []).filter(x => x !== docId) };
+                          return cleanupEmpty(prev, next);
                         });
                         const addManual = (docId) => setVisitaOverrides(prev => {
                           const cur = prev[day.date] || {};
                           const add = [...(cur.add || []), docId];
-                          return { ...prev, [day.date]: { ...cur, add } };
+                          // si estaba en remove, sacarlo de ahí
+                          const remove = (cur.remove || []).filter(x => x !== docId);
+                          return { ...prev, [day.date]: { ...cur, add, remove } };
+                        });
+                        const hideAuto = (docId) => setVisitaOverrides(prev => {
+                          const cur = prev[day.date] || {};
+                          const remove = [...new Set([...(cur.remove || []), docId])];
+                          const next = { ...cur, remove };
+                          return cleanupEmpty(prev, next);
                         });
                         return (
                           <>
                             {day.visita.slice(0, 8).map((v, i) => (
-                              <div key={i} className={v.manual ? 'flex items-center gap-1' : ''}>
-                                {doctorName(v.doctor_id)}
-                                {v.capacity != null && <span className="ml-1 text-slate-500">({v.capacity})</span>}
-                                {v.manual && (
+                              <div key={i} className="flex items-center gap-1 group/v">
+                                <span>
+                                  {doctorName(v.doctor_id)}
+                                  {v.capacity != null && <span className="ml-1 text-slate-500">({v.capacity})</span>}
+                                </span>
+                                {v.manual ? (
                                   <>
                                     <span className="text-[9px] bg-amber-100 text-amber-800 px-1 rounded sdm-print-hide">manual</span>
                                     <button
@@ -820,6 +830,12 @@ export default function AgendaSemanal() {
                                       title="Quitar excepción manual"
                                     >×</button>
                                   </>
+                                ) : (
+                                  <button
+                                    onClick={() => hideAuto(v.doctor_id)}
+                                    className="sdm-print-hide text-slate-300 hover:text-red-600 text-[11px] leading-none opacity-0 group-hover/v:opacity-100"
+                                    title="Eliminar de la visita de este día"
+                                  >×</button>
                                 )}
                               </div>
                             ))}

@@ -73,6 +73,7 @@ export function generateAgenda({
   manualReinforcements = {},   // { '2026-05-04': { am: 'doctor_id', pm: 'doctor_id' } }
   manualPoli8am = {},          // { '2026-05-04': 'doctor_id' } — override del médico full-day
   visitaOverrides = {},        // { '2026-05-04': { add: ['doc_id'], remove: ['doc_id'] } } — excepciones manuales en visita
+  bloqueosOverrides = {},      // { '2026-05-04': [bloqueo, ...] } — bloqueos editados manualmente (drag-drop / CellEditor)
 }) {
   const days = weekDates(weekStart);
   const doctorById = Object.fromEntries(doctors.map(d => [d.id, d]));
@@ -144,7 +145,7 @@ export function generateAgenda({
     const rawRefuerzos = manualReinforcements[d.date] || {};
 
     // Bloqueos del día: del template (weekday_pattern) + monthly que aplica + oneoff
-    const bloqueos = [];
+    let bloqueos = [];
     const dayKey = dayKeyForDate(d.date);
 
     // Árbol de razonamiento: TURNOS → POSTURNO → AUSENCIAS → POLI FULL-DAY → resto.
@@ -280,6 +281,14 @@ export function generateAgenda({
       }
     }
 
+    // Reemplazo manual de bloqueos (drag-drop / CellEditor): si el día tiene override,
+    // se usa ese array completo en lugar del calculado por template. Aplica ANTES de
+    // computar visita para que las reglas de exclusión (Selector, bloqueo matinal pesado)
+    // funcionen sobre los bloqueos editados, no los del template.
+    if (bloqueosOverrides[d.date]) {
+      bloqueos = bloqueosOverrides[d.date];
+    }
+
     // VISITA: médicos disponibles para visita matinal MQ
     // Excluir: turno, postturno, ausencias, refuerzos, médico de Poli full-day.
     // Urgenciólogos SÍ aparecen siempre con su cupo fijo.
@@ -312,10 +321,18 @@ export function generateAgenda({
       return /selector/.test(id) || /selector/.test(name);
     };
     const selectorDemandaIds = new Set(bloqueos.filter(isSelectorBlock).map(b => b.doctor_id));
+    // Regla operativa: bloqueo que parte 08:00 y dura >2h (termina >10:00) ocupa la mañana clínica
+    // → el médico no entra a visita por defecto (puede agregarse manualmente como excepción).
+    const morningHeavyIds = new Set(
+      bloqueos
+        .filter(b => !b.suspended && !b.sdm_internal && b.doctor_id && b.from === '08:00' && b.to && b.to > '10:00')
+        .map(b => b.doctor_id)
+    );
     const visita = doctors
       .filter(doc => doc.active !== false)
       .filter(doc => !turnoIds.has(doc.id) && !postIds.has(doc.id) && !ausIds.has(doc.id) && !refIds.has(doc.id) && !poliIds.has(doc.id))
       .filter(doc => !selectorDemandaIds.has(doc.id))
+      .filter(doc => !morningHeavyIds.has(doc.id))
       .filter(doc => {
         if (doc.is_urgentologist) return true;
         const morningBlocks = bloqueos.filter(b => b.doctor_id === doc.id && overlapsVisitWindow(b));
