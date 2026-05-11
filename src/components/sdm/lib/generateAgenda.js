@@ -72,6 +72,7 @@ export function generateAgenda({
   oneoffBlocks = [],           // [{date, doctor_id, time_from, time_to, description, category}]
   manualReinforcements = {},   // { '2026-05-04': { am: 'doctor_id', pm: 'doctor_id' } }
   manualPoli8am = {},          // { '2026-05-04': 'doctor_id' } — override del médico full-day
+  visitaOverrides = {},        // { '2026-05-04': { add: ['doc_id'], remove: ['doc_id'] } } — excepciones manuales en visita
 }) {
   const days = weekDates(weekStart);
   const doctorById = Object.fromEntries(doctors.map(d => [d.id, d]));
@@ -302,9 +303,18 @@ export function generateAgenda({
     // Las reuniones internas SDM no se cuentan (son administrativas, no clínicas).
     const overlapsVisitWindow = (b) =>
       !b.suspended && !b.sdm_internal && b.from && b.to && b.from < '11:00' && b.to > '08:00';
+    // Selector de Demanda: por convención operativa, quien lo cubre NO entra en visita por defecto.
+    // Match por id canónico o por nombre (robusto ante variantes de seed).
+    const selectorDemandaIds = new Set(
+      bloqueos
+        .filter(b => !b.suspended && b.doctor_id &&
+          (b.block_id === 'selector_demanda' || /selector.*demanda/i.test(b.name || '')))
+        .map(b => b.doctor_id)
+    );
     const visita = doctors
       .filter(doc => doc.active !== false)
       .filter(doc => !turnoIds.has(doc.id) && !postIds.has(doc.id) && !ausIds.has(doc.id) && !refIds.has(doc.id) && !poliIds.has(doc.id))
+      .filter(doc => !selectorDemandaIds.has(doc.id))
       .filter(doc => {
         if (doc.is_urgentologist) return true;
         const morningBlocks = bloqueos.filter(b => b.doctor_id === doc.id && overlapsVisitWindow(b));
@@ -322,6 +332,21 @@ export function generateAgenda({
         }
         return { doctor_id: doc.id, capacity };
       });
+
+    // Aplicar overrides manuales de visita (excepciones: subdirector / selector de demanda agregados a mano)
+    const visitaOv = visitaOverrides[d.date] || {};
+    const removeSet = new Set(visitaOv.remove || []);
+    let visitaFinal = visita.filter(v => !removeSet.has(v.doctor_id));
+    (visitaOv.add || []).forEach(docId => {
+      if (visitaFinal.some(v => v.doctor_id === docId)) return;
+      // hard-stops siguen aplicando incluso en override manual
+      if (turnoIds.has(docId) || postIds.has(docId) || ausIds.has(docId)) return;
+      const doc = doctorById[docId];
+      if (!doc || doc.active === false) return;
+      let cap = capacityByDoctor[docId] ?? null;
+      if (cap == null && doc.is_urgentologist) cap = 3;
+      visitaFinal.push({ doctor_id: docId, capacity: cap, manual: true });
+    });
 
     // (poliFullDay ya se calculó arriba — antes de bloqueos/visita — para usarlo en exclusiones)
 
@@ -343,7 +368,7 @@ export function generateAgenda({
       posturno,
       ausencias,
       bloqueos,
-      visita,
+      visita: visitaFinal,
       // POLICLÍNICO column: refuerzo AM hace policlínico AM 8-10
       policlinico: refuerzos.am
         ? { doctor_id: refuerzos.am, from: '08:00', to: '10:00', label: 'Poli AM' }

@@ -52,6 +52,7 @@ export default function AgendaSemanal() {
   const [showDismissed, setShowDismissed] = useState(false);   // mostrar las descartadas con opción de restaurar
   const [dragOverDate, setDragOverDate] = useState(null);      // celda BLOQUEOS resaltada durante drag
   const [poli8amOverrides, setPoli8amOverrides] = useState({}); // { '2026-05-04': 'doctor_id' }
+  const [visitaOverrides, setVisitaOverrides] = useState({});   // { '2026-05-04': { add: [...], remove: [...] } }
   const [savedData, setSavedData] = useState(null); // data guardada de sdm_weekly_agendas
   const [isDirty, setIsDirty] = useState(false);
   const initialLoadDone = useRef(false);
@@ -93,12 +94,14 @@ export default function AgendaSemanal() {
         setReinforcements(ag.data.data.reinforcements || {});
         setBloqueosOverrides(ag.data.data.bloqueosOverrides || {});
         setPoli8amOverrides(ag.data.data.poli8amOverrides || {});
+        setVisitaOverrides(ag.data.data.visitaOverrides || {});
         setDismissedErrors(Array.isArray(ag.data.data.dismissedErrors) ? ag.data.data.dismissedErrors : []);
       } else {
         setSavedData(null);
         setReinforcements({});
         setBloqueosOverrides({});
         setPoli8amOverrides({});
+        setVisitaOverrides({});
         setDismissedErrors([]);
       }
       setSavedAgendaId(ag.data?.id || null);
@@ -112,7 +115,7 @@ export default function AgendaSemanal() {
   // Dirty flag: cualquier override del usuario después del load inicial → isDirty=true
   useEffect(() => {
     if (initialLoadDone.current) setIsDirty(true);
-  }, [bloqueosOverrides, reinforcements, poli8amOverrides, dismissedErrors]);
+  }, [bloqueosOverrides, reinforcements, poli8amOverrides, visitaOverrides, dismissedErrors]);
 
   // beforeunload: avisar antes de cerrar/recargar pestaña si hay cambios sin guardar
   useEffect(() => {
@@ -140,12 +143,13 @@ export default function AgendaSemanal() {
       programAssignments, absences, oneoffBlocks,
       manualReinforcements: reinforcements,
       manualPoli8am: poli8amOverrides,
+      visitaOverrides,
     });
     // Aplicar overrides por día (edición manual desde CellEditor)
     return generated.map(d => bloqueosOverrides[d.date]
       ? { ...d, bloqueos: bloqueosOverrides[d.date] }
       : d);
-  }, [loading, monday, doctors, rotation, shiftCalendar, blockTemplates, programAssignments, absences, oneoffBlocks, reinforcements, bloqueosOverrides, poli8amOverrides]);
+  }, [loading, monday, doctors, rotation, shiftCalendar, blockTemplates, programAssignments, absences, oneoffBlocks, reinforcements, bloqueosOverrides, poli8amOverrides, visitaOverrides]);
 
   const validation = useMemo(() => validateAgenda(agenda, doctors), [agenda, doctors]);
   const errorKey = (e) => {
@@ -192,7 +196,7 @@ export default function AgendaSemanal() {
     const payload = {
       week_start: weekStart,
       data: {
-        agenda, reinforcements, bloqueosOverrides, poli8amOverrides, dismissedErrors,
+        agenda, reinforcements, bloqueosOverrides, poli8amOverrides, visitaOverrides, dismissedErrors,
         has_errors: visibleErrors.length > 0,
         generated_at: new Date().toISOString(),
       },
@@ -670,6 +674,9 @@ export default function AgendaSemanal() {
                       .forEach(b => { if (!nominalDocs.has(b.doctor_id)) nominalDocs.set(b.doctor_id, b.name); });
                     const eligible = doctors.filter(doc =>
                       !turnoIds.has(doc.id) && !postIds.has(doc.id) && !ausIds.has(doc.id) && !hierarchicalDocs.has(doc.id));
+                    // AM/PM mutuamente excluyentes: el médico ya elegido en un slot no aparece en el otro.
+                    const eligibleAM = eligible.filter(d => d.id !== day.refuerzos.pm);
+                    const eligiblePM = eligible.filter(d => d.id !== day.refuerzos.am);
                     const renderItem = d => (
                       <SelectItem key={d.id} value={d.id} className={nominalDocs.has(d.id) ? 'text-amber-700' : ''}>
                         {d.display_name}
@@ -682,14 +689,14 @@ export default function AgendaSemanal() {
                           <span className="text-[9px] font-bold text-slate-500 w-5">AM</span>
                           <Select value={day.refuerzos.am || ''} onValueChange={v => updateReinforcement(day.date, 'am', v)}>
                             <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-28"><SelectValue placeholder="—" /></SelectTrigger>
-                            <SelectContent>{eligible.map(renderItem)}</SelectContent>
+                            <SelectContent>{eligibleAM.map(renderItem)}</SelectContent>
                           </Select>
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="text-[9px] font-bold text-slate-500 w-5">PM</span>
                           <Select value={day.refuerzos.pm || ''} onValueChange={v => updateReinforcement(day.date, 'pm', v)}>
                             <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-28"><SelectValue placeholder="—" /></SelectTrigger>
-                            <SelectContent>{eligible.map(renderItem)}</SelectContent>
+                            <SelectContent>{eligiblePM.map(renderItem)}</SelectContent>
                           </Select>
                         </div>
                       </>
@@ -774,12 +781,63 @@ export default function AgendaSemanal() {
                 <td className="px-2 py-2 text-[11px]">
                   {day.is_holiday
                     ? <span className="text-slate-300 italic">–</span>
-                    : day.visita.slice(0, 8).map((v, i) => (
-                        <div key={i}>
-                          {doctorName(v.doctor_id)}
-                          {v.capacity != null && <span className="ml-1 text-slate-500">({v.capacity})</span>}
-                        </div>
-                      ))
+                    : (() => {
+                        const turnoIds = new Set(day.turnos.map(t => t.doctor_id));
+                        const postIds = new Set(day.posturno.map(t => t.doctor_id));
+                        const ausIds = new Set(day.ausencias.map(a => a.doctor_id));
+                        const visitaIds = new Set(day.visita.map(v => v.doctor_id));
+                        const addibles = doctors.filter(d =>
+                          d.active !== false && !visitaIds.has(d.id) &&
+                          !turnoIds.has(d.id) && !postIds.has(d.id) && !ausIds.has(d.id)
+                        );
+                        const removeManual = (docId) => setVisitaOverrides(prev => {
+                          const cur = prev[day.date] || {};
+                          const add = (cur.add || []).filter(x => x !== docId);
+                          const next = { ...cur, add };
+                          if (!add.length && !(cur.remove?.length)) {
+                            const { [day.date]: _, ...rest } = prev;
+                            return rest;
+                          }
+                          return { ...prev, [day.date]: next };
+                        });
+                        const addManual = (docId) => setVisitaOverrides(prev => {
+                          const cur = prev[day.date] || {};
+                          const add = [...(cur.add || []), docId];
+                          return { ...prev, [day.date]: { ...cur, add } };
+                        });
+                        return (
+                          <>
+                            {day.visita.slice(0, 8).map((v, i) => (
+                              <div key={i} className={v.manual ? 'flex items-center gap-1' : ''}>
+                                {doctorName(v.doctor_id)}
+                                {v.capacity != null && <span className="ml-1 text-slate-500">({v.capacity})</span>}
+                                {v.manual && (
+                                  <>
+                                    <span className="text-[9px] bg-amber-100 text-amber-800 px-1 rounded sdm-print-hide">manual</span>
+                                    <button
+                                      onClick={() => removeManual(v.doctor_id)}
+                                      className="sdm-print-hide text-red-500 hover:text-red-700 text-[11px] leading-none"
+                                      title="Quitar excepción manual"
+                                    >×</button>
+                                  </>
+                                )}
+                              </div>
+                            ))}
+                            {addibles.length > 0 && (
+                              <div className="sdm-print-hide mt-1">
+                                <Select value="" onValueChange={v => v && addManual(v)}>
+                                  <SelectTrigger className="h-5 text-[9px] px-1 py-0 w-28 border-dashed border-slate-300 text-slate-500">
+                                    <SelectValue placeholder="+ Agregar" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {addibles.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()
                   }
                 </td>
                 <td className="px-2 py-2 text-[11px]">
