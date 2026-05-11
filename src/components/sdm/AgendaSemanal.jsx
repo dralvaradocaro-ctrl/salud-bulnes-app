@@ -683,19 +683,24 @@ export default function AgendaSemanal() {
                     );
                     return (
                       <>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 sdm-print-hide">
                           <span className="text-[9px] font-bold text-slate-500 w-5">AM</span>
                           <Select value={day.refuerzos.am || ''} onValueChange={v => updateReinforcement(day.date, 'am', v)}>
                             <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-28"><SelectValue placeholder="—" /></SelectTrigger>
                             <SelectContent>{eligibleAM.map(renderItem)}</SelectContent>
                           </Select>
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 sdm-print-hide">
                           <span className="text-[9px] font-bold text-slate-500 w-5">PM</span>
                           <Select value={day.refuerzos.pm || ''} onValueChange={v => updateReinforcement(day.date, 'pm', v)}>
                             <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-28"><SelectValue placeholder="—" /></SelectTrigger>
                             <SelectContent>{eligiblePM.map(renderItem)}</SelectContent>
                           </Select>
+                        </div>
+                        {/* Versión print: solo texto */}
+                        <div className="sdm-print-only">
+                          <div><span className="font-bold mr-1">AM</span>{day.refuerzos.am ? doctorName(day.refuerzos.am) : '—'}</div>
+                          <div><span className="font-bold mr-1">PM</span>{day.refuerzos.pm ? doctorName(day.refuerzos.pm) : '—'}</div>
                         </div>
                       </>
                     );
@@ -763,17 +768,17 @@ export default function AgendaSemanal() {
                                 <span className="ml-1 text-[9px] bg-slate-200 text-slate-700 border border-slate-400 px-1 rounded no-underline" title={b.suspended_reason || 'Bloqueo suspendido / diferido'}>diferido</span>
                               )}
                               {!b.suspended && b.auto_assigned && (
-                                <span className="ml-1 text-[9px] bg-blue-100 text-blue-800 px-1 rounded" title="Asignado automáticamente porque titular y subrogantes no están disponibles — revisar y formalizar.">auto</span>
+                                <span className="ml-1 text-[9px] bg-blue-100 text-blue-800 px-1 rounded sdm-print-hide" title="Asignado automáticamente porque titular y subrogantes no están disponibles — revisar y formalizar.">auto</span>
                               )}
                               {!b.suspended && b.reassigned && (
-                                <span className="ml-1 text-[9px] bg-amber-100 text-amber-800 px-1 rounded" title={`Originalmente: ${doctorName(b.originalDoctor)}`}>reasig</span>
+                                <span className="ml-1 text-[9px] bg-amber-100 text-amber-800 px-1 rounded sdm-print-hide" title={`Originalmente: ${doctorName(b.originalDoctor)}`}>reasig</span>
                               )}
                             </div>
                           );
                         })
                       }
                     </div>
-                    <Edit3 className="h-3 w-3 text-slate-300 group-hover:text-blue-500 mt-1 flex-shrink-0" />
+                    <Edit3 className="h-3 w-3 text-slate-300 group-hover:text-blue-500 mt-1 flex-shrink-0 sdm-print-hide" />
                   </div>
                 </td>
                 <td className="px-2 py-2 text-[11px]">
