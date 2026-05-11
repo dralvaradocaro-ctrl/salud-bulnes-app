@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, XCircle, MinusCircle, AlertTriangle } from 'lucide-react';
 import { generateAgenda, getMondayOfWeek, fmtDate, weekDates, isMonthlyMatch } from './lib/generateAgenda';
-import { BLOCK_SPECS, BLOCK_SPEC_ORDER } from './lib/blockSpec';
+import { BLOCK_SPECS, BLOCK_SPEC_ORDER, isDailyBlock } from './lib/blockSpec';
 
 export default function RevisarBloqueosSemanales() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -149,7 +149,15 @@ export default function RevisarBloqueosSemanales() {
                   const name = bt?.name || id;
                   const isMonthly = !!spec.monthly;
                   const isManual = !!spec.manual;
+                  const daily = bt ? isDailyBlock(bt) : false;
                   const actual = countByBlock[id] || 0;
+                  const nHolidays = holidayDates.length;
+                  // Texto del esperado (puede ser rango)
+                  const expectedText = isMonthly ? '1/mes'
+                    : isManual ? '—'
+                    : typeof spec.expected_count_min === 'number' ? `${spec.expected_count_min}-${spec.expected_count_max}`
+                    : daily ? `${5 - nHolidays}${nHolidays > 0 ? ` (5−${nHolidays})` : ''}`
+                    : (spec.expected_count ?? '—');
                   let estado, estadoLabel, estadoColor;
                   if (isManual) {
                     estado = <MinusCircle className="h-4 w-4 text-slate-400" />;
@@ -170,12 +178,38 @@ export default function RevisarBloqueosSemanales() {
                       estadoLabel = 'No aplica esta semana';
                       estadoColor = 'text-slate-400';
                     }
+                  } else if (daily) {
+                    const expectedAdjusted = 5 - nHolidays;
+                    if (actual >= expectedAdjusted) {
+                      estado = <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
+                      estadoLabel = nHolidays > 0 ? 'OK (feriado contemplado)' : 'OK';
+                      estadoColor = 'text-emerald-700';
+                    } else {
+                      estado = <XCircle className="h-4 w-4 text-red-600" />;
+                      estadoLabel = 'Faltan instancias';
+                      estadoColor = 'text-red-700';
+                    }
+                  } else if (typeof spec.expected_count_min === 'number') {
+                    if (actual >= spec.expected_count_min && (!spec.expected_count_max || actual <= spec.expected_count_max)) {
+                      estado = <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
+                      estadoLabel = 'OK';
+                      estadoColor = 'text-emerald-700';
+                    } else if (actual < spec.expected_count_min) {
+                      const motivoFeriado = nHolidays > 0 && (spec.expected_count_min - actual) <= nHolidays;
+                      estado = <AlertTriangle className={`h-4 w-4 ${motivoFeriado ? 'text-amber-600' : 'text-red-600'}`} />;
+                      estadoLabel = motivoFeriado ? 'Falta por feriado' : 'Faltan instancias';
+                      estadoColor = motivoFeriado ? 'text-amber-700' : 'text-red-700';
+                    } else {
+                      estado = <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
+                      estadoLabel = 'OK';
+                      estadoColor = 'text-emerald-700';
+                    }
                   } else if (typeof spec.expected_count === 'number' && spec.expected_count >= 1) {
                     if (actual >= spec.expected_count) {
                       estado = <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
                       estadoLabel = 'OK';
                       estadoColor = 'text-emerald-700';
-                    } else if (holidayDates.length > 0 && (spec.expected_count - actual) <= holidayDates.length) {
+                    } else if (nHolidays > 0 && (spec.expected_count - actual) <= nHolidays) {
                       estado = <AlertTriangle className="h-4 w-4 text-amber-600" />;
                       estadoLabel = 'Falta por feriado';
                       estadoColor = 'text-amber-700';
@@ -195,9 +229,7 @@ export default function RevisarBloqueosSemanales() {
                       <td className="px-3 py-2 font-medium">{name}</td>
                       <td className="px-3 py-2 text-slate-600">{spec.weekly_hours}</td>
                       <td className="px-3 py-2 text-slate-600">{spec.expected_schedule}</td>
-                      <td className="px-3 py-2 text-center font-mono">
-                        {isMonthly ? '1/mes' : isManual ? '—' : spec.expected_count}
-                      </td>
+                      <td className="px-3 py-2 text-center font-mono">{expectedText}</td>
                       <td className="px-3 py-2 text-center font-mono">{actual}</td>
                       <td className="px-3 py-2 text-center">
                         <div className="flex items-center justify-center gap-1.5">

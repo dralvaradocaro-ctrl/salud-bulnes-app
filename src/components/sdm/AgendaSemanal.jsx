@@ -53,6 +53,7 @@ export default function AgendaSemanal() {
   const [dragOverDate, setDragOverDate] = useState(null);      // celda BLOQUEOS resaltada durante drag
   const [poli8amOverrides, setPoli8amOverrides] = useState({}); // { '2026-05-04': 'doctor_id' }
   const [visitaOverrides, setVisitaOverrides] = useState({});   // { '2026-05-04': { add: [...], remove: [...] } }
+  const [expandedAddDay, setExpandedAddDay] = useState(null);   // fecha del día con el form (+) expandido
   const [savedData, setSavedData] = useState(null); // data guardada de sdm_weekly_agendas
   const [isDirty, setIsDirty] = useState(false);
   const initialLoadDone = useRef(false);
@@ -405,6 +406,24 @@ export default function AgendaSemanal() {
     }
 
     toast.error("Acción IA no reconocida: " + opt.action);
+  }
+
+  // Agregar bloqueo manual rápido desde el form (+) inline.
+  function addBlockInline(date, blk) {
+    const day = agenda.find(d => d.date === date);
+    if (!day) return;
+    const current = bloqueosOverrides[date] ?? day.bloqueos;
+    const newBlock = {
+      block_id: `oneoff-inline-${Date.now()}`,
+      name: blk.name.trim(),
+      from: blk.from,
+      to: blk.to,
+      doctor_id: blk.doctor_id || null,
+      unassigned: !blk.doctor_id,
+      category: 'otro',
+      source: 'manual',
+    };
+    setBloqueosOverrides(prev => ({ ...prev, [date]: [...current, newBlock] }));
   }
 
   // Drag-and-drop de bloqueos entre días
@@ -813,6 +832,24 @@ export default function AgendaSemanal() {
                           );
                         })
                       }
+                      {/* Botón (+) inline para agregar un bloqueo rápido sin abrir el modal */}
+                      {!day.is_holiday && (
+                        <div className="sdm-print-hide mt-1.5" onClick={(e) => e.stopPropagation()}>
+                          {expandedAddDay === day.date ? (
+                            <QuickAddBlockForm
+                              doctors={doctors}
+                              onSave={(blk) => { addBlockInline(day.date, blk); setExpandedAddDay(null); }}
+                              onCancel={() => setExpandedAddDay(null)}
+                            />
+                          ) : (
+                            <button
+                              onClick={() => setExpandedAddDay(day.date)}
+                              className="text-[10px] text-slate-400 hover:text-blue-600 hover:underline"
+                              title="Agregar un bloqueo manual para este día"
+                            >+ Agregar bloqueo</button>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <Edit3 className="h-3 w-3 text-slate-300 group-hover:text-blue-500 mt-1 flex-shrink-0 sdm-print-hide" />
                   </div>
@@ -1000,6 +1037,60 @@ export default function AgendaSemanal() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/**
+ * Form inline expandible para agregar un bloqueo rápido a un día sin abrir CellEditor.
+ * Renderiza una fila compacta: nombre + desde + hasta + médico + ✓ + ×.
+ */
+function QuickAddBlockForm({ doctors, onSave, onCancel }) {
+  const [name, setName] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [doctorId, setDoctorId] = useState('');
+  const valid = name.trim() && from && to && from < to;
+  const save = () => {
+    if (!valid) return;
+    onSave({ name: name.trim(), from, to, doctor_id: doctorId || null });
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-1 rounded border border-blue-300 bg-blue-50/40 px-1.5 py-1">
+      <Input
+        value={name}
+        onChange={e => setName(e.target.value)}
+        placeholder="Programa"
+        className="h-6 text-[10px] px-1.5 py-0 w-28"
+        autoFocus
+      />
+      <Input
+        type="time"
+        value={from}
+        onChange={e => setFrom(e.target.value)}
+        className="h-6 text-[10px] px-1 py-0 w-20"
+      />
+      <Input
+        type="time"
+        value={to}
+        onChange={e => setTo(e.target.value)}
+        className="h-6 text-[10px] px-1 py-0 w-20"
+      />
+      <Select value={doctorId} onValueChange={setDoctorId}>
+        <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-24"><SelectValue placeholder="Médico" /></SelectTrigger>
+        <SelectContent>{doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}</SelectContent>
+      </Select>
+      <button
+        onClick={save}
+        disabled={!valid}
+        className={`text-[12px] leading-none px-1.5 py-0.5 rounded ${valid ? 'text-emerald-700 hover:bg-emerald-100' : 'text-slate-300 cursor-not-allowed'}`}
+        title="Guardar bloqueo"
+      >✓</button>
+      <button
+        onClick={onCancel}
+        className="text-[12px] leading-none px-1.5 py-0.5 rounded text-red-600 hover:bg-red-100"
+        title="Cancelar"
+      >×</button>
     </div>
   );
 }

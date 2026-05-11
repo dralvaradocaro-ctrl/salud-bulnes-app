@@ -18,11 +18,11 @@ export const BLOCK_SPECS = {
   gestion_ges:        { weekly_hours: '6 hrs',           expected_schedule: '14:00–17:00 x 2',        expected_count: 2,   monthly: false },
   gestion_pscv:       { weekly_hours: '3 hrs (miércoles)', expected_schedule: '14:00–17:00 x 1',      expected_count: 1,   monthly: false },
   gestion_acv:        { weekly_hours: '1.5 hrs sem x medio', expected_schedule: '12:00–13:30 x 0.5',  expected_count: 0.5, monthly: false, notes: 'Semana por medio' },
-  gestion_mq:         { weekly_hours: '2 hrs',           expected_schedule: '14:00–16:00 x 2',        expected_count: 2,   monthly: false },
+  gestion_mq:         { weekly_hours: '3 hrs',           expected_schedule: '14:00–17:00 x 1',        expected_count: 1,   monthly: false },
   gestion_urgencias:  { weekly_hours: '2 hrs',           expected_schedule: '14:00–16:00 x 1',        expected_count: 1,   monthly: false },
   gestion_iaas:       { weekly_hours: '1.5 hrs',         expected_schedule: '12:00–13:30 x 2',        expected_count: 2,   monthly: false },
   gestion_proa:       { weekly_hours: '1.5 hrs sem x medio', expected_schedule: '12:00–13:30 x 0.5',  expected_count: 0.5, monthly: false, notes: 'Semana por medio' },
-  visita_proa:        { weekly_hours: '3 hrs 20 min',    expected_schedule: '16:00–16:40 x 5',        expected_count: 5,   monthly: false },
+  visita_proa:        { weekly_hours: '3 hrs 20 min',    expected_schedule: '16:00–16:40 x 2-3',      expected_count_min: 2, expected_count_max: 3, monthly: false },
   dependencia_severa: { weekly_hours: '3 hrs',           expected_schedule: '14:00–17:00 x 1',        expected_count: 1,   monthly: false },
   gestion_dep_severa: { weekly_hours: '1.5 hrs',         expected_schedule: '12:00–13:30 x 1',        expected_count: 1,   monthly: false },
   chcc:               { weekly_hours: '3 hrs',           expected_schedule: '14:00–17:00 x 1',        expected_count: 1,   monthly: false },
@@ -42,6 +42,16 @@ export const BLOCK_SPECS = {
   citaciones_radio:     { weekly_hours: 'Revisar Excel radio', expected_schedule: '—', monthly: false, manual: true },
   comite_iaas:          { weekly_hours: '4/año (2.5 hrs)',     expected_schedule: '11:00–13:30',       monthly: false, manual: true },
 };
+
+/**
+ * Devuelve true si el blockTemplate corre los 5 días hábiles.
+ * Estos bloqueos NO se reubican cuando hay feriado: simplemente se hace 1 menos
+ * esa semana (silencio en validación).
+ */
+export function isDailyBlock(bt) {
+  const wp = bt?.weekday_pattern || {};
+  return ['lun','mar','mie','jue','vie'].every(d => Array.isArray(wp[d]) && wp[d].length > 0);
+}
 
 /** Orden de presentación canónico para la tabla de revisión (mismo orden del PDF). */
 export const BLOCK_SPEC_ORDER = [

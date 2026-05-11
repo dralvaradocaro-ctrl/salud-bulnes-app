@@ -2,7 +2,7 @@
  * Lógica pura de generación de agenda semanal SDM.
  * Toma catálogos + ausencias + bloqueos puntuales y devuelve la grilla 5×8.
  */
-import { BLOCK_SPECS } from './blockSpec';
+import { BLOCK_SPECS, isDailyBlock } from './blockSpec';
 
 const DAYS = ['lun', 'mar', 'mie', 'jue', 'vie'];
 const DAY_LABELS = { lun: 'LUNES', mar: 'MARTES', mie: 'MIÉRCOLES', jue: 'JUEVES', vie: 'VIERNES' };
@@ -469,6 +469,9 @@ function applyHolidayRelocation({ result, days, blockTemplates, programAssignmen
 
   for (const bt of blockTemplates) {
     if (bt.is_monthly) continue;
+    // Bloques diarios (corren los 5 días): NO se reubican. El día feriado simplemente
+    // queda sin instancia esa semana — comportamiento esperado, no es error.
+    if (isDailyBlock(bt)) continue;
     const slotsPerDay = bt.weekday_pattern || {};
     // Días esperados según template (que caigan en lun-vie con slot definido)
     const expectedDays = days.filter(d => Array.isArray(slotsPerDay[d.day]) && slotsPerDay[d.day].length > 0);
@@ -951,21 +954,53 @@ export function validateAgenda(agenda, doctors = [], blockTemplates = []) {
 
 function checkWeeklyCounts(countByBlock, blockTemplates, holidayDates) {
   const out = [];
+  const nHolidays = holidayDates.length;
   for (const bt of blockTemplates) {
     if (bt.is_monthly) continue;
     const spec = BLOCK_SPECS[bt.id];
-    if (!spec || spec.manual || typeof spec.expected_count !== 'number') continue;
-    if (spec.expected_count < 1) continue; // semana por medio: salteado por ahora
+    if (!spec || spec.manual) continue;
     const actual = countByBlock[bt.id] || 0;
-    if (actual < spec.expected_count) {
-      const motivoFeriado = holidayDates.length > 0 && (spec.expected_count - actual) <= holidayDates.length;
-      out.push({
-        kind: motivoFeriado ? 'weekly_count_short_unrelocatable' : 'weekly_count_short',
-        blockId: bt.id,
-        message: motivoFeriado
-          ? `"${bt.name}" esperado ${spec.expected_count}, actual ${actual} — no se pudo reubicar (no hubo día con titular/subrogante disponible)`
-          : `"${bt.name}" esperado ${spec.expected_count}, actual ${actual} — revisar (posible edición manual)`,
-      });
+
+    // Bloques diarios: esperan 5, descontando feriados. Solo warning si el déficit excede los feriados.
+    if (isDailyBlock(bt)) {
+      const expectedAdjusted = 5 - nHolidays;
+      if (actual < expectedAdjusted) {
+        out.push({
+          kind: 'weekly_count_short',
+          blockId: bt.id,
+          message: `"${bt.name}" esperado ${expectedAdjusted} (5 − ${nHolidays} feriado(s)), actual ${actual} — revisar`,
+        });
+      }
+      continue;
+    }
+
+    // Rango min/max (ej. Visita PROA 2-3)
+    if (typeof spec.expected_count_min === 'number') {
+      if (actual < spec.expected_count_min) {
+        const motivoFeriado = nHolidays > 0 && (spec.expected_count_min - actual) <= nHolidays;
+        out.push({
+          kind: motivoFeriado ? 'weekly_count_short_unrelocatable' : 'weekly_count_short',
+          blockId: bt.id,
+          message: motivoFeriado
+            ? `"${bt.name}" esperado ${spec.expected_count_min}-${spec.expected_count_max || '?'}, actual ${actual} — no se pudo reubicar (sin titular/subrogante disponible)`
+            : `"${bt.name}" esperado ${spec.expected_count_min}-${spec.expected_count_max || '?'}, actual ${actual} — revisar`,
+        });
+      }
+      continue;
+    }
+
+    // Conteo fijo (ej. ECICEP x2)
+    if (typeof spec.expected_count === 'number' && spec.expected_count >= 1) {
+      if (actual < spec.expected_count) {
+        const motivoFeriado = nHolidays > 0 && (spec.expected_count - actual) <= nHolidays;
+        out.push({
+          kind: motivoFeriado ? 'weekly_count_short_unrelocatable' : 'weekly_count_short',
+          blockId: bt.id,
+          message: motivoFeriado
+            ? `"${bt.name}" esperado ${spec.expected_count}, actual ${actual} — no se pudo reubicar (sin titular/subrogante disponible)`
+            : `"${bt.name}" esperado ${spec.expected_count}, actual ${actual} — revisar (posible edición manual)`,
+        });
+      }
     }
   }
   return out;
