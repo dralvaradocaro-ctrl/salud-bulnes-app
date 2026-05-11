@@ -243,10 +243,32 @@ export function generateAgenda({
         from: o.time_from,
         to: o.time_to,
         doctor_id: o.doctor_id,
-        unassigned: !o.doctor_id,
+        // Las reuniones internas SDM no requieren médico individual asignado
+        unassigned: o.category === 'sdm_interna' ? false : !o.doctor_id,
         category: o.category,
         source: 'oneoff',
+        sdm_internal: o.category === 'sdm_interna',
       }));
+
+    // Post-pass: Poli TACO toma por default al médico de Subdirección Médica del día,
+    // salvo que tenga otro bloqueo conflictivo en el horario de TACO.
+    const sdmBlock  = bloqueos.find(b => b.block_id === 'subdireccion_medica' && b.doctor_id);
+    const tacoBlock = bloqueos.find(b => b.block_id === 'poli_taco');
+    if (sdmBlock && tacoBlock && tacoBlock.from && tacoBlock.to && sdmBlock.doctor_id !== tacoBlock.doctor_id) {
+      const sdmId = sdmBlock.doctor_id;
+      const hasConflict = bloqueos.some(b =>
+        b !== sdmBlock && b !== tacoBlock && !b.suspended &&
+        b.doctor_id === sdmId && b.from && b.to &&
+        b.from < tacoBlock.to && b.to > tacoBlock.from
+      );
+      if (!hasConflict) {
+        tacoBlock.originalDoctor = tacoBlock.doctor_id;
+        tacoBlock.doctor_id = sdmId;
+        tacoBlock.unassigned = false;
+        tacoBlock.auto_assigned = false;
+        tacoBlock.reassigned = true;
+      }
+    }
 
     // VISITA: médicos disponibles para visita matinal MQ
     // Excluir: turno, postturno, ausencias, refuerzos, médico de Poli full-day.
@@ -266,22 +288,28 @@ export function generateAgenda({
         }
       }
     });
+    // "Bloqueo matinal real" = solapa con la franja de visita 08:00–11:00.
+    // Un bloqueo que empieza ≥11:00 NO afecta la capacidad de visita.
+    // Las reuniones internas SDM no se cuentan (son administrativas, no clínicas).
+    const overlapsVisitWindow = (b) =>
+      !b.suspended && !b.sdm_internal && b.from && b.to && b.from < '11:00' && b.to > '08:00';
     const visita = doctors
       .filter(doc => doc.active !== false)
       .filter(doc => !turnoIds.has(doc.id) && !postIds.has(doc.id) && !ausIds.has(doc.id) && !refIds.has(doc.id) && !poliIds.has(doc.id))
       .filter(doc => {
         if (doc.is_urgentologist) return true;
-        const morningBlocks = bloqueos.filter(b => !b.suspended && b.doctor_id === doc.id && b.from && b.from < '13:00');
+        const morningBlocks = bloqueos.filter(b => b.doctor_id === doc.id && overlapsVisitWindow(b));
         if (morningBlocks.length === 0) return true;
-        const fullMorning = morningBlocks.some(b => b.from <= '09:00' && b.to >= '13:00');
+        // Excluir de visita si el bloqueo cubre toda la franja matinal
+        const fullMorning = morningBlocks.some(b => b.from <= '08:30' && b.to >= '11:00');
         return !fullMorning;
       })
       .map(doc => {
         let capacity = capacityByDoctor[doc.id] ?? null;
         if (capacity == null && doc.is_urgentologist) capacity = 3;
         if (capacity == null) {
-          const hasMorningBlock = bloqueos.some(b => !b.suspended && b.doctor_id === doc.id && b.from && b.from < '13:00');
-          if (hasMorningBlock) capacity = 3;
+          const hasRealMorningBlock = bloqueos.some(b => b.doctor_id === doc.id && overlapsVisitWindow(b));
+          if (hasRealMorningBlock) capacity = 3;
         }
         return { doctor_id: doc.id, capacity };
       });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,11 @@ function Placeholder({ icon: Icon, title, description }) {
 export default function SubdireccionMedica() {
   const navigate = useNavigate();
   const [authChecked, setAuthChecked] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const topTab    = searchParams.get('tab') || 'consola';
+  const consoleTab = searchParams.get('subtab') || 'agenda_semanal';
+  const setTopTab    = (v) => setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('tab', v); return p; }, { replace: true });
+  const setConsoleTab = (v) => setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('subtab', v); return p; }, { replace: true });
 
   useEffect(() => {
     if (!localStorage.getItem('admin_logged_in')) {
@@ -60,7 +65,7 @@ export default function SubdireccionMedica() {
           </Button>
         </div>
 
-        <Tabs defaultValue="consola" className="space-y-4">
+        <Tabs value={topTab} onValueChange={setTopTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-4 max-w-3xl">
             <TabsTrigger value="documentos" className="gap-1.5"><FileText className="h-4 w-4" />Documentos</TabsTrigger>
             <TabsTrigger value="consola" className="gap-1.5"><Settings2 className="h-4 w-4" />Consola Gestión</TabsTrigger>
@@ -74,7 +79,7 @@ export default function SubdireccionMedica() {
           </TabsContent>
 
           <TabsContent value="consola">
-            <Tabs defaultValue="agenda_semanal" className="space-y-4">
+            <Tabs value={consoleTab} onValueChange={setConsoleTab} className="space-y-4">
               <TabsList className="flex flex-wrap h-auto">
                 <TabsTrigger value="agenda_semanal" className="gap-1.5"><CalendarDays className="h-4 w-4" />Agenda Semanal</TabsTrigger>
                 <TabsTrigger value="agenda_diaria" className="gap-1.5"><Clock className="h-4 w-4" />Cronograma</TabsTrigger>

@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import { sdmSupabase as supabase, explainSdmWriteError } from './lib/sdmSupabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +13,7 @@ import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, weekDates, so
 import AIFixModal from './AIFixModal';
 import { Shuffle, Wand2, Scale } from 'lucide-react';
 import CellEditor from './CellEditor';
+import SdmInternalMeetings from './SdmInternalMeetings';
 
 const ABSENCE_TYPES = ['FL', 'P', 'A', 'DT', 'LM', 'CAP', 'PAS', 'G', 'OTRO'];
 const ABSENCE_LABELS = {
@@ -19,7 +22,17 @@ const ABSENCE_LABELS = {
 };
 
 export default function AgendaSemanal() {
-  const [monday, setMonday] = useState(getMondayOfWeek(new Date()));
+  const [searchParams, setSearchParams] = useSearchParams();
+  const weekParam = searchParams.get('week');
+  const initialMonday = weekParam
+    ? getMondayOfWeek(new Date(weekParam + 'T12:00:00'))
+    : getMondayOfWeek(new Date());
+  const [monday, setMondayState] = useState(initialMonday);
+  // Wrapper que sincroniza con URL
+  const setMonday = (d) => {
+    setMondayState(d);
+    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('week', fmtDate(d)); return p; }, { replace: true });
+  };
   const [doctors, setDoctors] = useState([]);
   const [rotation, setRotation] = useState([]);
   const [shiftCalendar, setShiftCalendar] = useState([]);
@@ -40,6 +53,8 @@ export default function AgendaSemanal() {
   const [dragOverDate, setDragOverDate] = useState(null);      // celda BLOQUEOS resaltada durante drag
   const [poli8amOverrides, setPoli8amOverrides] = useState({}); // { '2026-05-04': 'doctor_id' }
   const [savedData, setSavedData] = useState(null); // data guardada de sdm_weekly_agendas
+  const [isDirty, setIsDirty] = useState(false);
+  const initialLoadDone = useRef(false);
 
   const weekStart = fmtDate(monday);
   const weekDays = useMemo(() => weekDates(monday), [monday]);
@@ -88,9 +103,34 @@ export default function AgendaSemanal() {
       }
       setSavedAgendaId(ag.data?.id || null);
       setLoading(false);
+      // Marcar fin de carga inicial — desde ahora cualquier cambio es "dirty"
+      setTimeout(() => { initialLoadDone.current = true; setIsDirty(false); }, 50);
     })();
-    return () => { alive = false; };
+    return () => { alive = false; initialLoadDone.current = false; };
   }, [weekStart, weekEnd]);
+
+  // Dirty flag: cualquier override del usuario después del load inicial → isDirty=true
+  useEffect(() => {
+    if (initialLoadDone.current) setIsDirty(true);
+  }, [bloqueosOverrides, reinforcements, poli8amOverrides, dismissedErrors]);
+
+  // beforeunload: avisar antes de cerrar/recargar pestaña si hay cambios sin guardar
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
+  const confirmIfDirty = (msg = 'Tenés cambios sin guardar en esta semana. ¿Continuar y descartarlos?') => {
+    if (!isDirty) return true;
+    return window.confirm(msg);
+  };
+
+  async function reloadOneoff() {
+    const { data } = await supabase.from('sdm_oneoff_blocks').select('*').eq('week_start', weekStart);
+    setOneoffBlocks(data || []);
+  }
 
   const agenda = useMemo(() => {
     if (loading) return [];
@@ -128,33 +168,48 @@ export default function AgendaSemanal() {
   const doctorName = id => doctors.find(d => d.id === id)?.display_name || id;
 
   function shiftWeek(deltaDays) {
+    if (!confirmIfDirty()) return;
     const d = new Date(monday);
     d.setDate(d.getDate() + deltaDays);
     setMonday(d);
   }
+  function goToWeek(dateStr) {
+    if (!confirmIfDirty()) return;
+    setMonday(getMondayOfWeek(new Date(dateStr + 'T12:00:00')));
+  }
 
   async function saveAgenda() {
+    // C3: bloquear si hay errores rojos no descartados
+    if (visibleErrors.length > 0) {
+      const proceed = window.confirm(
+        `Hay ${visibleErrors.length} error(es) sin resolver en la agenda:\n\n` +
+        visibleErrors.slice(0, 4).map(e => '• ' + e.message).join('\n') +
+        (visibleErrors.length > 4 ? `\n• … y ${visibleErrors.length - 4} más` : '') +
+        '\n\n¿Guardar de todos modos? (recomendado: corregir o descartar las alertas antes)'
+      );
+      if (!proceed) return;
+    }
     const payload = {
       week_start: weekStart,
       data: { agenda, reinforcements, bloqueosOverrides, poli8amOverrides, dismissedErrors, generated_at: new Date().toISOString() },
-      status: 'editada',
+      status: visibleErrors.length > 0 ? 'con_errores' : 'editada',
       updated_at: new Date().toISOString(),
     };
     if (savedAgendaId) {
       const { error } = await supabase.from('sdm_weekly_agendas').update(payload).eq('id', savedAgendaId);
-      if (error) alert('Error: ' + error.message);
-      else alert('Agenda actualizada.');
+      if (error) toast.error('Error al guardar: ' + (explainSdmWriteError(error) || error.message));
+      else { toast.success('Agenda actualizada'); setIsDirty(false); }
     } else {
       const { data, error } = await supabase.from('sdm_weekly_agendas').insert(payload).select('id').single();
-      if (error) alert('Error: ' + error.message);
-      else { setSavedAgendaId(data.id); alert('Agenda guardada.'); }
+      if (error) toast.error('Error al guardar: ' + (explainSdmWriteError(error) || error.message));
+      else { setSavedAgendaId(data.id); setIsDirty(false); toast.success('Agenda guardada'); }
     }
   }
 
   async function addAbsence() {
     if (!newAbs.doctor_id || !newAbs.date) return;
     const { error } = await supabase.from('sdm_absences').insert(newAbs);
-    if (error) { alert('Error: ' + error.message); return; }
+    if (error) { toast.error("Error: " + (explainSdmWriteError(error) || error.message)); return; }
     const { data } = await supabase.from('sdm_absences').select('*').gte('date', weekStart).lte('date', weekEnd);
     setAbsences(data || []);
     setShowAbsenceDialog(false);
@@ -183,27 +238,27 @@ export default function AgendaSemanal() {
       programAssignments,
     });
     if (!replacement) {
-      alert(`⚠ ${doctorName(doctorId)} tiene "${blk.name}" ese día pero no hay subrogante disponible. Revisá manualmente.`);
+      toast.warning(`⚠ ${doctorName(doctorId)} tiene "${blk.name}" ese día pero no hay subrogante disponible. Revisá manualmente.`);
       return;
     }
     const nuevos = day.bloqueos.slice();
     nuevos[blkIdx] = { ...blk, doctor_id: replacement, reassigned: true, originalDoctor: doctorId };
     setBloqueosOverrides(prev => ({ ...prev, [date]: nuevos }));
-    alert(`✓ "${blk.name}" reasignado a ${doctorName(replacement)} porque ${doctorName(doctorId)} pasa a refuerzo ${slot.toUpperCase()}.`);
+    toast.success(`✓ "${blk.name}" reasignado a ${doctorName(replacement)} porque ${doctorName(doctorId)} pasa a refuerzo ${slot.toUpperCase()}.`);
   }
 
   function equilibrarCarga() {
     if (!confirm('Moverá bloques de días sobrecargados a días con menos carga (respetando turnos/posturnos/ausencias). ¿Continuar?')) return;
     const { agenda: balanced, moves } = balanceLoad({ agenda, blockTemplates });
     if (moves.length === 0) {
-      alert('La carga ya está bien distribuida o no hay movimientos seguros disponibles.');
+      toast.info("La carga ya está bien distribuida o no hay movimientos seguros disponibles.");
       return;
     }
     const overrides = {};
     balanced.forEach(d => { overrides[d.date] = d.bloqueos; });
     setBloqueosOverrides(overrides);
-    const summary = moves.slice(0, 10).map(m => `• ${m.block}: ${m.from} → ${m.to}`).join('\n');
-    alert(`Movidos ${moves.length} bloques:\n\n${summary}${moves.length > 10 ? `\n…y ${moves.length - 10} más` : ''}`);
+    const summary = moves.slice(0, 5).map(m => `• ${m.block}: ${m.from} → ${m.to}`).join('\n');
+    toast.success(`Movidos ${moves.length} bloque(s)`, { description: summary });
   }
 
   function regenerarPreliminar() {
@@ -269,7 +324,7 @@ export default function AgendaSemanal() {
       if (s.weekStart === weekStart) setReinforcements(newReinf);
       saved++;
     }
-    alert(`Sorteado refuerzos en ${saved} semanas. Carga balanceada por médicos disponibles.`);
+    toast.success(`Sorteado refuerzos en  semanas.`);
   }
 
   async function onCellSave(date, payload) {
@@ -286,7 +341,7 @@ export default function AgendaSemanal() {
       const { error } = await supabase.from('sdm_shift_calendar')
         .update({ is_holiday, external_visitors })
         .eq('date', date);
-      if (error) { alert('Error al guardar feriado/visitantes: ' + error.message); return; }
+      if (error) { toast.error("Error: " + (explainSdmWriteError(error) || error.message)); return; }
       setShiftCalendar(prev => prev.map(c => c.date === date ? { ...c, is_holiday, external_visitors } : c));
     } else {
       console.warn(`No hay entrada en sdm_shift_calendar para ${date}; feriado/visitantes no persistidos.`);
@@ -319,7 +374,7 @@ export default function AgendaSemanal() {
 
     if (opt.action === 'swap' && opt.swap_with_day) {
       const targetDay = agenda.find(d => d.date === opt.swap_with_day);
-      if (!targetDay) { alert(`Día destino ${opt.swap_with_day} no encontrado en esta semana`); return; }
+      if (!targetDay) { toast.error(`Día destino  no está en esta semana`); return; }
       const original = currentBloqueos[idx];
       const sourceWithout = currentBloqueos.filter((_, i) => i !== idx);
       const targetCurrent = bloqueosOverrides[opt.swap_with_day] ?? targetDay.bloqueos;
@@ -332,7 +387,7 @@ export default function AgendaSemanal() {
       return;
     }
 
-    alert('Acción no reconocida o incompleta: ' + opt.action);
+    toast.error("Acción IA no reconocida: " + opt.action);
   }
 
   // Drag-and-drop de bloqueos entre días
@@ -364,14 +419,14 @@ export default function AgendaSemanal() {
     optimized.forEach(d => { overrides[d.date] = d.bloqueos; });
     setBloqueosOverrides(overrides);
     if (moves.length === 0) {
-      alert('No hubo cambios — los titulares ya están donde corresponde o no hay día disponible alternativo.');
+      toast.info("Sin cambios — titulares ya están donde corresponde.");
     } else {
       const summary = moves.slice(0, 10).map(m =>
         m.from === m.to
           ? `• ${m.block}: ${m.doctor} (${m.from})`
           : `• ${m.block}: movido ${m.from} → ${m.to} (${m.doctor})`
       ).join('\n');
-      alert(`Optimizadas ${moves.length} asignaciones:\n\n${summary}${moves.length > 10 ? `\n…y ${moves.length - 10} más` : ''}`);
+      toast.success(`Optimizadas ${moves.length} asignaciones`, { description: summary.split('\n').slice(0, 5).join('\n') });
     }
   }
 
@@ -409,17 +464,26 @@ export default function AgendaSemanal() {
       {/* Selector semana + acciones */}
       <div className="flex items-center gap-3 flex-wrap sdm-print-hide">
         <Button variant="outline" size="sm" onClick={() => shiftWeek(-7)}><ChevronLeft className="h-4 w-4" /></Button>
-        <div className="font-semibold text-slate-700">
+        <div className="font-semibold text-slate-700 flex items-center gap-2">
           Semana del {weekDays[0].date} al {weekDays[4].date}
+          {isDirty && (
+            <span title="Tenés cambios sin guardar" className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide bg-orange-100 text-orange-800 border border-orange-300 px-1.5 py-0.5 rounded">
+              <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" /> sin guardar
+            </span>
+          )}
         </div>
         <Button variant="outline" size="sm" onClick={() => shiftWeek(7)}><ChevronRight className="h-4 w-4" /></Button>
-        <Button variant="outline" size="sm" onClick={() => setMonday(getMondayOfWeek(new Date()))}>Hoy</Button>
+        <Button variant="outline" size="sm" onClick={() => { if (confirmIfDirty()) setMonday(getMondayOfWeek(new Date())); }}>Hoy</Button>
+        <Input type="date" className="h-8 w-36 text-xs" value={weekStart} onChange={(e) => e.target.value && goToWeek(e.target.value)} title="Ir a una semana específica" />
         <div className="flex-1" />
         <Button variant="outline" onClick={sortearRefuerzosMes} className="gap-1.5" title="Sortea refuerzos AM/PM para próximas 4 semanas, balanceando carga"><Shuffle className="h-4 w-4" /> Sortear refuerzos</Button>
         <Button variant="outline" onClick={optimizarTitulares} className="gap-1.5" title="Reasigna bloques al titular si está disponible otro día"><Wand2 className="h-4 w-4" /> Optimizar titulares</Button>
         <Button variant="outline" onClick={equilibrarCarga} className="gap-1.5" title="Distribuye los bloques de manera más homogénea entre los días"><Scale className="h-4 w-4" /> Equilibrar carga</Button>
         <Button variant="outline" onClick={regenerarPreliminar} className="gap-1.5" title="Descarta ediciones y vuelve al template"><RefreshCw className="h-4 w-4" /> Regenerar</Button>
-        <Button onClick={saveAgenda} className="gap-1.5"><Save className="h-4 w-4" /> Guardar</Button>
+        <Button onClick={saveAgenda} className="gap-1.5" title={visibleErrors.length > 0 ? `⚠ ${visibleErrors.length} error(es) sin resolver` : 'Guardar agenda'}>
+          <Save className="h-4 w-4" /> Guardar
+          {visibleErrors.length > 0 && <span className="ml-1 bg-white text-red-700 text-[10px] font-bold rounded-full px-1.5">{visibleErrors.length}</span>}
+        </Button>
         <Button variant="outline" onClick={() => window.print()} className="gap-1.5"><Printer className="h-4 w-4" /> Imprimir</Button>
       </div>
 
@@ -522,6 +586,9 @@ export default function AgendaSemanal() {
           </CardContent>
         </Card>
       )}
+
+      {/* Panel de reuniones internas SDM (no se imprimen en agenda final) */}
+      <SdmInternalMeetings monday={monday} onChanged={reloadOneoff} />
 
       {/* Panel de ausencias */}
       <Card className="sdm-print-hide">
@@ -647,30 +714,42 @@ export default function AgendaSemanal() {
                         <span className="inline-block rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide bg-slate-200 text-slate-700">FERIADO</span>
                       ) : day.bloqueos.length === 0 ? <span className="text-slate-400 italic">Sin bloqueos · click para agregar</span> :
                         day.bloqueos.slice().sort((x, y) => (x.from || '').localeCompare(y.from || '')).map((b, i) => {
-                          const colorClass = b.suspended
-                            ? 'text-slate-400 line-through opacity-70'
-                            : b.unassigned
-                              ? 'text-red-600 font-semibold'
-                              : b.auto_assigned
-                                ? 'text-blue-700'
-                                : b.reassigned
-                                  ? 'text-amber-700'
-                                  : 'text-slate-700';
+                          const colorClass = b.sdm_internal
+                            ? 'text-violet-700'
+                            : b.suspended
+                              ? 'text-slate-400 line-through opacity-70'
+                              : b.unassigned
+                                ? 'text-red-600 font-semibold'
+                                : b.auto_assigned
+                                  ? 'text-blue-700'
+                                  : b.reassigned
+                                    ? 'text-amber-700'
+                                    : 'text-slate-700';
+                          const extraClass = b.sdm_internal ? 'sdm-print-hide bg-violet-50 rounded px-1 -mx-0.5' : '';
                           return (
                             <div
                               key={i}
-                              draggable={!b.suspended}
+                              draggable={!b.suspended && !b.sdm_internal}
                               onDragStart={(e) => {
                                 e.stopPropagation();
                                 e.dataTransfer.effectAllowed = 'move';
                                 e.dataTransfer.setData('application/sdm-block', JSON.stringify({ fromDate: day.date, blockId: b.block_id }));
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className={`text-[11px] ${colorClass} ${!b.suspended ? 'cursor-grab active:cursor-grabbing rounded hover:bg-blue-100/40 px-0.5 -mx-0.5' : ''}`}
-                              title={!b.suspended ? 'Arrastrar a otro día para mover este bloqueo' : undefined}
+                              className={`text-[11px] ${colorClass} ${extraClass} ${!b.suspended && !b.sdm_internal ? 'cursor-grab active:cursor-grabbing rounded hover:bg-blue-100/40 px-0.5 -mx-0.5' : ''}`}
+                              title={b.sdm_internal ? 'Reunión interna SDM (no se imprime)' : !b.suspended ? 'Arrastrar a otro día para mover este bloqueo' : undefined}
                             >
                               {b.from && b.to ? `${b.from}–${b.to} ` : ''}
-                              {b.doctor_id ? doctorName(b.doctor_id) : (b.suspended ? '' : '⚠ SIN ASIGNAR')} <span className={b.suspended ? '' : 'text-slate-500'}>{b.name}</span>
+                              {b.sdm_internal ? (
+                                <>
+                                  <span className="inline-block text-[8px] font-bold uppercase tracking-wide bg-violet-200 text-violet-900 rounded px-1 mr-1">SDM</span>
+                                  <span>{b.name}</span>
+                                </>
+                              ) : (
+                                <>
+                                  {b.doctor_id ? doctorName(b.doctor_id) : (b.suspended ? '' : '⚠ SIN ASIGNAR')} <span className={b.suspended ? '' : 'text-slate-500'}>{b.name}</span>
+                                </>
+                              )}
                               {b.suspended && (
                                 <span className="ml-1 text-[9px] bg-slate-200 text-slate-700 border border-slate-400 px-1 rounded no-underline" title={b.suspended_reason || 'Bloqueo suspendido / diferido'}>diferido</span>
                               )}

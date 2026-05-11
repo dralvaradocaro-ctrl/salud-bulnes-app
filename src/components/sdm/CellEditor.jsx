@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Pause, Play } from 'lucide-react';
+import { Plus, Trash2, Pause, Play, AlertCircle } from 'lucide-react';
 
 /**
  * Modal para editar la celda BLOQUEOS de un día + propiedades del día:
@@ -47,7 +48,39 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
     { _key: `vnew-${Date.now()}`, name: '', specialty: '' },
   ]);
 
+  // Validaciones por bloqueo: horario inválido y solapamiento mismo médico
+  const itemErrors = useMemo(() => {
+    const errs = {};
+    const activos = items.filter(it => it.name && it.name.trim() && !it.suspended);
+    activos.forEach(it => {
+      if (it.from && it.to && it.from >= it.to) {
+        errs[it._key] = 'Desde debe ser anterior a Hasta';
+      }
+    });
+    // Solapamientos mismo doctor
+    for (let i = 0; i < activos.length; i++) {
+      const a = activos[i];
+      if (!a.doctor_id || !a.from || !a.to || a.from >= a.to) continue;
+      for (let j = i + 1; j < activos.length; j++) {
+        const b = activos[j];
+        if (b.doctor_id !== a.doctor_id || !b.from || !b.to || b.from >= b.to) continue;
+        if (a.from < b.to && b.from < a.to) {
+          const other = b.name?.slice(0, 30) || 'otro bloqueo';
+          errs[a._key] = errs[a._key] || `Solapa con "${other}"`;
+          errs[b._key] = errs[b._key] || `Solapa con "${(a.name || '').slice(0, 30)}"`;
+        }
+      }
+    }
+    return errs;
+  }, [items]);
+
+  const hasErrors = Object.keys(itemErrors).length > 0;
+
   const save = () => {
+    if (hasErrors) {
+      toast.error('Hay bloqueos con horarios inválidos o solapados. Corregilos antes de guardar.');
+      return;
+    }
     const cleanedBloqueos = items
       .filter(it => it.name && it.name.trim())
       .map(({ _key, ...rest }) => ({ ...rest, unassigned: !rest.doctor_id }));
@@ -96,7 +129,8 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
               <p className="text-sm text-slate-500 text-center py-4">Sin bloqueos. Clickeá "+ Agregar" para crear uno.</p>
             )}
             {items.map(it => (
-              <div key={it._key} className={`flex items-start gap-2 p-2 border rounded-lg ${it.suspended ? 'border-slate-300 bg-slate-50 opacity-70' : 'border-slate-200'}`}>
+              <div key={it._key} className={`flex flex-col gap-1 p-2 border rounded-lg ${it.suspended ? 'border-slate-300 bg-slate-50 opacity-70' : itemErrors[it._key] ? 'border-red-400 bg-red-50' : 'border-slate-200'}`}>
+                <div className="flex items-start gap-2">
                 <div className={`flex-1 grid grid-cols-12 gap-2 ${it.suspended ? 'line-through decoration-slate-400' : ''}`}>
                   <div className="col-span-5">
                     <label className="text-[10px] uppercase tracking-wide text-slate-500">Programa / Descripción</label>
@@ -153,6 +187,13 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
+                </div>
+                {itemErrors[it._key] && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-red-700 px-1">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    <span>{itemErrors[it._key]}</span>
+                  </div>
+                )}
               </div>
             ))}
             <Button variant="outline" size="sm" onClick={add} className="gap-1.5">
@@ -193,7 +234,9 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={save}>Guardar cambios</Button>
+          <Button onClick={save} disabled={hasErrors} title={hasErrors ? 'Corregí los bloqueos con error antes de guardar' : ''}>
+            Guardar cambios{hasErrors && ' (corregir errores)'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

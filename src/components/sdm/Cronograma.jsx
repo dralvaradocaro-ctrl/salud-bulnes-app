@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
+import { sdmSupabase as supabase, explainSdmWriteError } from './lib/sdmSupabase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -280,19 +280,21 @@ export default function Cronograma() {
                             {cellBlocks.map((b, i) => (
                               <div
                                 key={`${b.block_id}-${i}`}
-                                draggable={b._isStart}
-                                onDragStart={e => b._isStart && onDragStart(e, b, d.date)}
+                                draggable={b._isStart && !b.sdm_internal}
+                                onDragStart={e => b._isStart && !b.sdm_internal && onDragStart(e, b, d.date)}
                                 onClick={() => setEditingDay(agenda.find(a => a.date === d.date))}
-                                title={`${b.name} · ${b.from}–${b.to} · ${b.doctor_id ? doctorName(b.doctor_id) : 'Sin asignar'}`}
+                                title={b.sdm_internal ? `Reunión SDM · ${b.name} (no se imprime)` : `${b.name} · ${b.from}–${b.to} · ${b.doctor_id ? doctorName(b.doctor_id) : 'Sin asignar'}`}
                                 className={`flex-1 min-w-[80px] border-l-2 rounded px-1 py-0.5 cursor-move text-[10px] leading-tight ${
-                                  b.unassigned
-                                    ? 'border-red-500 bg-red-100 text-red-900'
-                                    : (CAT_COLORS[b.category] || CAT_COLORS.otro)
+                                  b.sdm_internal
+                                    ? 'border-violet-500 bg-violet-50 text-violet-900 sdm-print-hide'
+                                    : b.unassigned
+                                      ? 'border-red-500 bg-red-100 text-red-900'
+                                      : (CAT_COLORS[b.category] || CAT_COLORS.otro)
                                 } ${!b._isStart ? 'opacity-60' : ''} hover:ring-2 hover:ring-blue-400`}
                               >
                                 {b._isStart && (
                                   <>
-                                    <div className="font-semibold truncate">{b.doctor_id ? doctorName(b.doctor_id) : '⚠'}</div>
+                                    <div className="font-semibold truncate">{b.sdm_internal ? '🟣 SDM' : b.doctor_id ? doctorName(b.doctor_id) : '⚠'}</div>
                                     <div className="truncate text-[9px]">{b.name}</div>
                                   </>
                                 )}
