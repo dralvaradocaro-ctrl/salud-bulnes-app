@@ -191,8 +191,12 @@ export default function AgendaSemanal() {
     }
     const payload = {
       week_start: weekStart,
-      data: { agenda, reinforcements, bloqueosOverrides, poli8amOverrides, dismissedErrors, generated_at: new Date().toISOString() },
-      status: visibleErrors.length > 0 ? 'con_errores' : 'editada',
+      data: {
+        agenda, reinforcements, bloqueosOverrides, poli8amOverrides, dismissedErrors,
+        has_errors: visibleErrors.length > 0,
+        generated_at: new Date().toISOString(),
+      },
+      status: 'editada',
       updated_at: new Date().toISOString(),
     };
     if (savedAgendaId) {
