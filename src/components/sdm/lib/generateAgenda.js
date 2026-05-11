@@ -351,14 +351,32 @@ export function generateAgenda({
         return !fullMorning;
       })
       .map(doc => {
+        // Capacity dinámica según tiempo matinal disponible (08:00–11:00).
+        // Ciclo de visita: 30+30 min visitas + 30 min handoff = 90 min → 2 visitas
+        // Fórmula: floor((available - 30) / 60) + 1 (clampea en [0..3] en la franja matinal).
+        // - 180 min libre → 3 visitas (caso típico sin bloqueos matinales adicionales)
+        // -  90 min libre → 2 visitas (ej. 1.5h matinal ocupada)
+        // -  60 min libre → 1 visita
+        const toMin = (t) => parseInt(t.slice(0,2), 10) * 60 + parseInt(t.slice(3,5), 10);
+        const MORNING_START = 8 * 60, MORNING_END = 11 * 60;
         let capacity = capacityByDoctor[doc.id] ?? null;
         if (capacity == null && doc.is_urgentologist) capacity = 3;
         if (capacity == null) {
-          const hasRealMorningBlock = bloqueos.some(b => b.doctor_id === doc.id && overlapsVisitWindow(b));
-          if (hasRealMorningBlock) capacity = 3;
+          const morningBusy = bloqueos
+            .filter(b => b.doctor_id === doc.id && overlapsVisitWindow(b))
+            .reduce((sum, b) => {
+              const from = Math.max(toMin(b.from), MORNING_START);
+              const to = Math.min(toMin(b.to), MORNING_END);
+              return sum + Math.max(0, to - from);
+            }, 0);
+          if (morningBusy > 0) {
+            const available = (MORNING_END - MORNING_START) - morningBusy;
+            capacity = Math.max(0, Math.min(3, Math.floor((available - 30) / 60) + 1));
+          }
         }
         return { doctor_id: doc.id, capacity };
-      });
+      })
+      .filter(v => v.capacity !== 0); // si la franja matinal quedó sin ventana útil, no se cuenta
 
     // Aplicar overrides manuales de visita (excepciones: subdirector / selector de demanda agregados a mano)
     const visitaOv = visitaOverrides[d.date] || {};
