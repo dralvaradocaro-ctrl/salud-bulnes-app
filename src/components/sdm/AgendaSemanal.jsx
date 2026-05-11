@@ -35,6 +35,8 @@ export default function AgendaSemanal() {
   const [editingDay, setEditingDay] = useState(null);
   const [aiError, setAiError] = useState(null); // error que se está corrigiendo con IA
   const [bloqueosOverrides, setBloqueosOverrides] = useState({}); // { '2026-05-04': [bloqueo, ...] }
+  const [dismissedErrors, setDismissedErrors] = useState([]); // array de keys descartadas por el usuario
+  const [showDismissed, setShowDismissed] = useState(false);   // mostrar las descartadas con opción de restaurar
   const [poli8amOverrides, setPoli8amOverrides] = useState({}); // { '2026-05-04': 'doctor_id' }
   const [savedData, setSavedData] = useState(null); // data guardada de sdm_weekly_agendas
 
@@ -75,11 +77,13 @@ export default function AgendaSemanal() {
         setReinforcements(ag.data.data.reinforcements || {});
         setBloqueosOverrides(ag.data.data.bloqueosOverrides || {});
         setPoli8amOverrides(ag.data.data.poli8amOverrides || {});
+        setDismissedErrors(Array.isArray(ag.data.data.dismissedErrors) ? ag.data.data.dismissedErrors : []);
       } else {
         setSavedData(null);
         setReinforcements({});
         setBloqueosOverrides({});
         setPoli8amOverrides({});
+        setDismissedErrors([]);
       }
       setSavedAgendaId(ag.data?.id || null);
       setLoading(false);
@@ -103,6 +107,23 @@ export default function AgendaSemanal() {
   }, [loading, monday, doctors, rotation, shiftCalendar, blockTemplates, programAssignments, absences, oneoffBlocks, reinforcements, bloqueosOverrides, poli8amOverrides]);
 
   const validation = useMemo(() => validateAgenda(agenda, doctors), [agenda, doctors]);
+  const errorKey = (e) => {
+    if (!e) return '';
+    if (e.kind === 'overlap') {
+      const pair = [e.blockId, e.blockId2].filter(Boolean).sort().join('+');
+      return `${e.kind}:${e.date}:${e.doctorId || ''}:${pair}`;
+    }
+    return `${e.kind}:${e.date || ''}:${e.blockId || ''}:${e.doctorId || ''}`;
+  };
+  const dismissedSet = useMemo(() => new Set(dismissedErrors), [dismissedErrors]);
+  const visibleErrors = validation.errors.filter(e => !dismissedSet.has(errorKey(e)));
+  const visibleWarnings = validation.warnings.filter(w => !dismissedSet.has(errorKey(w)));
+  const hiddenIssues = [...validation.errors, ...validation.warnings].filter(e => dismissedSet.has(errorKey(e)));
+  const dismissError = (e) => {
+    const k = errorKey(e);
+    setDismissedErrors(prev => prev.includes(k) ? prev : [...prev, k]);
+  };
+  const restoreError = (k) => setDismissedErrors(prev => prev.filter(x => x !== k));
   const doctorName = id => doctors.find(d => d.id === id)?.display_name || id;
 
   function shiftWeek(deltaDays) {
@@ -114,7 +135,7 @@ export default function AgendaSemanal() {
   async function saveAgenda() {
     const payload = {
       week_start: weekStart,
-      data: { agenda, reinforcements, bloqueosOverrides, poli8amOverrides, generated_at: new Date().toISOString() },
+      data: { agenda, reinforcements, bloqueosOverrides, poli8amOverrides, dismissedErrors, generated_at: new Date().toISOString() },
       status: 'editada',
       updated_at: new Date().toISOString(),
     };
@@ -382,10 +403,10 @@ export default function AgendaSemanal() {
       </div>
 
       {/* Banners de validación — clickeables: abren el editor del día problemático */}
-      {(validation.errors.length > 0 || validation.warnings.length > 0) && (
-        <Card className={`sdm-print-hide ${validation.errors.length ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50'}`}>
+      {(visibleErrors.length > 0 || visibleWarnings.length > 0 || hiddenIssues.length > 0) && (
+        <Card className={`sdm-print-hide ${visibleErrors.length ? 'border-red-300 bg-red-50' : visibleWarnings.length ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
           <CardContent className="pt-4 text-sm space-y-1">
-            {validation.errors.map((e, i) => {
+            {visibleErrors.map((e, i) => {
               const targetDay = e.date ? agenda.find(d => d.date === e.date) : null;
               const isClickable = !!targetDay;
               const aiCapable = isClickable && ['unassigned', 'absent_assigned', 'overlap', 'auto_assigned'].includes(e.kind);
@@ -408,10 +429,17 @@ export default function AgendaSemanal() {
                       <Sparkles className="h-3 w-3" /> Sugerir IA
                     </button>
                   )}
+                  <button
+                    onClick={(ev) => { ev.stopPropagation(); dismissError(e); }}
+                    className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-1.5 py-0.5 rounded"
+                    title="Descartar alerta (compatible / falso positivo). Se persiste al guardar."
+                  >
+                    ✕ Descartar
+                  </button>
                 </div>
               );
             })}
-            {validation.warnings.map((w, i) => {
+            {visibleWarnings.map((w, i) => {
               const targetDay = w.date ? agenda.find(d => d.date === w.date) : null;
               const isClickable = !!targetDay;
               const aiCapable = isClickable && ['auto_assigned', 'posturno_assigned', 'outside_jornada'].includes(w.kind);
@@ -434,9 +462,42 @@ export default function AgendaSemanal() {
                       <Sparkles className="h-3 w-3" /> Sugerir IA
                     </button>
                   )}
+                  <button
+                    onClick={(ev) => { ev.stopPropagation(); dismissError(w); }}
+                    className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-1.5 py-0.5 rounded"
+                    title="Descartar alerta (compatible / falso positivo). Se persiste al guardar."
+                  >
+                    ✕ Descartar
+                  </button>
                 </div>
               );
             })}
+
+            {hiddenIssues.length > 0 && (
+              <div className="pt-2 mt-2 border-t border-slate-200">
+                <button
+                  onClick={() => setShowDismissed(s => !s)}
+                  className="text-[11px] text-slate-500 hover:text-slate-700 font-semibold"
+                >
+                  {showDismissed ? '▼' : '▶'} {hiddenIssues.length} alerta(s) descartada(s)
+                </button>
+                {showDismissed && (
+                  <div className="mt-1 space-y-0.5">
+                    {hiddenIssues.map((d, i) => (
+                      <div key={'d' + i} className="flex items-center gap-2 text-[11px] text-slate-500 line-through">
+                        <span className="flex-1">{d.message}</span>
+                        <button
+                          onClick={() => restoreError(errorKey(d))}
+                          className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-800 hover:bg-slate-100 px-1.5 py-0.5 rounded no-underline"
+                        >
+                          ↺ Restaurar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -645,7 +645,7 @@ export function validateAgenda(agenda, doctors = []) {
         if (slots[i].doctor_id === slots[j].doctor_id &&
             slots[i].from < slots[j].to && slots[j].from < slots[i].to) {
           if (slots[i].doctor_id === SUBDIRECTOR_ID) continue;
-          errors.push({ date: day.date, label: day.label, kind: 'overlap', blockId: slots[i].block_id, doctorId: slots[i].doctor_id,
+          errors.push({ date: day.date, label: day.label, kind: 'overlap', blockId: slots[i].block_id, blockId2: slots[j].block_id, doctorId: slots[i].doctor_id,
             message: `${day.label}: ${doctorName(slots[i].doctor_id)} con superposición "${slots[i].name}" vs "${slots[j].name}"` });
         }
       }
