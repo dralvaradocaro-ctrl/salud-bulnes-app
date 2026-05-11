@@ -289,6 +289,15 @@ export function generateAgenda({
       bloqueos = bloqueosOverrides[d.date];
     }
 
+    // Regla operativa viernes: jornada termina 16:00. Ningún bloqueo puede correr 16:00–17:00.
+    // - Si arranca >= 16:00 → se descarta del array (no debería existir).
+    // - Si arranca antes pero termina >16:00 → se trunca a 16:00.
+    if (d.day === 'vie') {
+      bloqueos = bloqueos
+        .filter(b => !b.from || b.from < '16:00')
+        .map(b => (b.to && b.to > '16:00') ? { ...b, to: '16:00', truncated_friday: true } : b);
+    }
+
     // VISITA: médicos disponibles para visita matinal MQ
     // Excluir: turno, postturno, ausencias, refuerzos, médico de Poli full-day.
     // Urgenciólogos SÍ aparecen siempre con su cupo fijo.

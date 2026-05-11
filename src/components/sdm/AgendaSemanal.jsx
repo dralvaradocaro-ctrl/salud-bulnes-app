@@ -169,6 +169,17 @@ export default function AgendaSemanal() {
   const restoreError = (k) => setDismissedErrors(prev => prev.filter(x => x !== k));
   const doctorName = id => doctors.find(d => d.id === id)?.display_name || id;
 
+  // Auto-prune: si el usuario corrigió el problema, la entrada queda obsoleta en dismissedErrors.
+  // Se eliminan las keys que ya no aparecen en validación activa.
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    const activeKeys = new Set([...validation.errors, ...validation.warnings].map(errorKey));
+    setDismissedErrors(prev => {
+      const next = prev.filter(k => activeKeys.has(k));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [validation]);
+
   function shiftWeek(deltaDays) {
     if (!confirmIfDirty()) return;
     const d = new Date(monday);
@@ -408,7 +419,32 @@ export default function AgendaSemanal() {
     const block = fromCurrent[idx];
     const fromNext = fromCurrent.filter((_, i) => i !== idx);
     const toCurrent = bloqueosOverrides[toDate] ?? toDay.bloqueos;
-    const moved = { ...block, source: 'moved', auto_assigned: false };
+    let moved = { ...block, source: 'moved', auto_assigned: false };
+
+    // Si el bloque tiene titular y está disponible en el día destino, ofrecer reasignar al titular.
+    const titular = programAssignments.find(p => p.block_template_id === blockId && p.role_type === 'titular')?.doctor_id;
+    if (titular && titular !== block.doctor_id) {
+      const turnoIds = new Set(toDay.turnos.map(t => t.doctor_id));
+      const postIds = new Set(toDay.posturno.map(t => t.doctor_id));
+      const ausIds = new Set(toDay.ausencias.map(a => a.doctor_id));
+      const titularDisponible = !turnoIds.has(titular) && !postIds.has(titular) && !ausIds.has(titular);
+      if (titularDisponible) {
+        const useTitular = window.confirm(
+          `El titular de "${block.name}" (${doctorName(titular)}) está disponible el ${toDate}.\n\n` +
+          `Aceptar → ${doctorName(titular)} lo hace (titular)\n` +
+          `Cancelar → ${doctorName(block.doctor_id)} lo sigue haciendo`
+        );
+        if (useTitular) {
+          moved = {
+            ...moved,
+            doctor_id: titular,
+            originalDoctor: block.doctor_id,
+            reassigned: true,
+          };
+        }
+      }
+    }
+
     setBloqueosOverrides(prev => ({
       ...prev,
       [fromDate]: fromNext,
