@@ -352,16 +352,15 @@ export function generateAgenda({
       })
       .map(doc => {
         // Capacity dinámica según tiempo matinal disponible (08:00–11:00).
-        // Ciclo de visita: 30+30 min visitas + 30 min handoff = 90 min → 2 visitas
-        // Fórmula: floor((available - 30) / 60) + 1 (clampea en [0..3] en la franja matinal).
-        // - 180 min libre → 3 visitas (caso típico sin bloqueos matinales adicionales)
-        // -  90 min libre → 2 visitas (ej. 1.5h matinal ocupada)
-        // -  60 min libre → 1 visita
+        // Cada visita dura 30 min y la primera tiene 30 min de handoff/entrega de info.
+        // Fórmula: floor(available / 30) - 1
+        // - 180 min libres → 5 visitas
+        // -  90 min libres → 2 visitas (ej. Sandoval con Gestión TM 09:30–11:00)
+        // -  60 min libres → 1 visita
+        // -  30 min libres → 0 (no aparece en visita)
         const toMin = (t) => parseInt(t.slice(0,2), 10) * 60 + parseInt(t.slice(3,5), 10);
         const MORNING_START = 8 * 60, MORNING_END = 11 * 60;
-        let capacity = capacityByDoctor[doc.id] ?? null;
-        if (capacity == null && doc.is_urgentologist) capacity = 3;
-        if (capacity == null) {
+        const computeCapacityFromBlocks = () => {
           const morningBusy = bloqueos
             .filter(b => b.doctor_id === doc.id && overlapsVisitWindow(b))
             .reduce((sum, b) => {
@@ -369,10 +368,12 @@ export function generateAgenda({
               const to = Math.min(toMin(b.to), MORNING_END);
               return sum + Math.max(0, to - from);
             }, 0);
-          if (morningBusy > 0) {
-            const available = (MORNING_END - MORNING_START) - morningBusy;
-            capacity = Math.max(0, Math.min(3, Math.floor((available - 30) / 60) + 1));
-          }
+          const available = (MORNING_END - MORNING_START) - morningBusy;
+          return Math.max(0, Math.floor(available / 30) - 1);
+        };
+        let capacity = capacityByDoctor[doc.id] ?? null;
+        if (capacity == null) {
+          capacity = doc.is_urgentologist ? 3 : computeCapacityFromBlocks();
         }
         return { doctor_id: doc.id, capacity };
       })
