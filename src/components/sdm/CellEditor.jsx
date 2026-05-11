@@ -1,52 +1,64 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, Pause, Play } from 'lucide-react';
 
 /**
- * Modal para editar la celda BLOQUEOS de un día.
- * Recibe `bloqueos` actuales y devuelve `onSave(nuevosBloqueos)`.
- * Cada bloqueo: { block_id, name, from, to, doctor_id, category, source }
+ * Modal para editar la celda BLOQUEOS de un día + propiedades del día:
+ *   - is_holiday
+ *   - external_visitors [{name, specialty}]
+ *
+ * Devuelve via onSave({ bloqueos, is_holiday, external_visitors }).
  */
 export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors, onSave }) {
   const [items, setItems] = useState([]);
+  const [isHoliday, setIsHoliday] = useState(false);
+  const [visitors, setVisitors] = useState([]);
 
   useEffect(() => {
-    if (open) setItems(bloqueos.map((b, i) => ({ ...b, _key: `${b.block_id}-${i}` })));
-  }, [open, bloqueos]);
+    if (open) {
+      setItems(bloqueos.map((b, i) => ({ ...b, _key: `${b.block_id}-${i}` })));
+      setIsHoliday(!!day?.is_holiday);
+      setVisitors(Array.isArray(day?.external_visitors) ? day.external_visitors.map((v, i) => ({ ...v, _key: `v-${i}` })) : []);
+    }
+  }, [open, bloqueos, day]);
 
-  const update = (key, field, value) => {
+  const update = (key, field, value) =>
     setItems(items.map(it => it._key === key ? { ...it, [field]: value } : it));
-  };
-
   const remove = (key) => setItems(items.filter(it => it._key !== key));
-
   const add = () => setItems([
     ...items,
     {
       _key: `new-${Date.now()}`,
       block_id: `oneoff-${Date.now()}`,
-      name: '',
-      from: '',
-      to: '',
-      doctor_id: null,
-      category: 'otro',
-      source: 'manual',
+      name: '', from: '', to: '', doctor_id: null,
+      category: 'otro', source: 'manual',
     },
   ]);
 
+  const updateVisitor = (key, field, value) =>
+    setVisitors(visitors.map(v => v._key === key ? { ...v, [field]: value } : v));
+  const removeVisitor = (key) => setVisitors(visitors.filter(v => v._key !== key));
+  const addVisitor = () => setVisitors([
+    ...visitors,
+    { _key: `vnew-${Date.now()}`, name: '', specialty: '' },
+  ]);
+
   const save = () => {
-    // Quitar _key antes de devolver
-    const cleaned = items
+    const cleanedBloqueos = items
       .filter(it => it.name && it.name.trim())
-      .map(({ _key, ...rest }) => ({
-        ...rest,
-        unassigned: !rest.doctor_id,
-      }));
-    onSave(cleaned);
+      .map(({ _key, ...rest }) => ({ ...rest, unassigned: !rest.doctor_id }));
+    const cleanedVisitors = visitors
+      .filter(v => v.name && v.name.trim())
+      .map(({ _key, ...rest }) => rest);
+    onSave({
+      bloqueos: cleanedBloqueos,
+      is_holiday: isHoliday,
+      external_visitors: cleanedVisitors,
+    });
     onOpenChange(false);
   };
 
@@ -54,74 +66,130 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Editar bloqueos · {day.label} {day.date}</DialogTitle>
+          <DialogTitle>Editar día · {day.label} {day.date}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-2 py-2">
-          {items.length === 0 && (
-            <p className="text-sm text-slate-500 text-center py-6">Sin bloqueos. Clickeá "+ Agregar" para crear uno.</p>
-          )}
-          {items.map(it => (
-            <div key={it._key} className="flex items-start gap-2 p-2 border border-slate-200 rounded-lg">
-              <div className="flex-1 grid grid-cols-12 gap-2">
-                <div className="col-span-5">
-                  <label className="text-[10px] uppercase tracking-wide text-slate-500">Programa / Descripción</label>
-                  <Input
-                    className="h-8"
-                    value={it.name || ''}
-                    onChange={e => update(it._key, 'name', e.target.value)}
-                    placeholder="ej. Reunión adicional"
-                  />
+        {/* Toggle FERIADO */}
+        <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
+          <input
+            type="checkbox"
+            id="holiday-toggle"
+            checked={isHoliday}
+            onChange={e => setIsHoliday(e.target.checked)}
+            className="h-4 w-4"
+          />
+          <label htmlFor="holiday-toggle" className="text-sm font-semibold text-amber-900 cursor-pointer">
+            Día feriado
+          </label>
+          <span className="text-[11px] text-amber-700">
+            (al activar: solo se muestran Turnos · Posturno · Ausencias; resto vacío)
+          </span>
+        </div>
+
+        {/* Bloqueos (oculto si feriado) */}
+        {!isHoliday && (
+          <div className="space-y-2 py-2">
+            <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500">Bloqueos del día</h4>
+            {items.length === 0 && (
+              <p className="text-sm text-slate-500 text-center py-4">Sin bloqueos. Clickeá "+ Agregar" para crear uno.</p>
+            )}
+            {items.map(it => (
+              <div key={it._key} className={`flex items-start gap-2 p-2 border rounded-lg ${it.suspended ? 'border-slate-300 bg-slate-50 opacity-70' : 'border-slate-200'}`}>
+                <div className={`flex-1 grid grid-cols-12 gap-2 ${it.suspended ? 'line-through decoration-slate-400' : ''}`}>
+                  <div className="col-span-5">
+                    <label className="text-[10px] uppercase tracking-wide text-slate-500">Programa / Descripción</label>
+                    <Input className="h-8" value={it.name || ''} onChange={e => update(it._key, 'name', e.target.value)} placeholder="ej. Reunión adicional" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] uppercase tracking-wide text-slate-500">Desde</label>
+                    <Input className="h-8" type="time" value={it.from || ''} onChange={e => update(it._key, 'from', e.target.value)} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] uppercase tracking-wide text-slate-500">Hasta</label>
+                    <Input className="h-8" type="time" value={it.to || ''} onChange={e => update(it._key, 'to', e.target.value)} />
+                  </div>
+                  <div className="col-span-3">
+                    <label className="text-[10px] uppercase tracking-wide text-slate-500">Médico</label>
+                    <Select value={it.doctor_id || ''} onValueChange={v => update(it._key, 'doctor_id', v === '__none__' ? null : v)}>
+                      <SelectTrigger className={`h-8 ${!it.doctor_id && !it.suspended && 'border-amber-300'}`}>
+                        <SelectValue placeholder="Sin asignar" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— Sin asignar —</SelectItem>
+                        {doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-12 flex gap-2 items-center flex-wrap">
+                    <Badge variant="outline" className="text-[10px]">
+                      {it.source === 'template' ? 'Del template' : it.source === 'monthly' ? 'Mensual' : it.source === 'oneoff' ? 'Puntual' : 'Manual'}
+                    </Badge>
+                    <Badge className="text-[10px] bg-slate-100 text-slate-700">{it.category || 'otro'}</Badge>
+                    {it.suspended && (
+                      <Badge className="text-[10px] bg-slate-200 text-slate-700 border border-slate-400">SUSPENDIDO</Badge>
+                    )}
+                    {it.suspended && (
+                      <Input
+                        className="h-6 text-[10px] w-48"
+                        value={it.suspended_reason || ''}
+                        onChange={e => update(it._key, 'suspended_reason', e.target.value)}
+                        placeholder="Motivo (ej. diferido a próxima semana)"
+                      />
+                    )}
+                  </div>
                 </div>
-                <div className="col-span-2">
-                  <label className="text-[10px] uppercase tracking-wide text-slate-500">Desde</label>
-                  <Input
-                    className="h-8"
-                    type="time"
-                    value={it.from || ''}
-                    onChange={e => update(it._key, 'from', e.target.value)}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-[10px] uppercase tracking-wide text-slate-500">Hasta</label>
-                  <Input
-                    className="h-8"
-                    type="time"
-                    value={it.to || ''}
-                    onChange={e => update(it._key, 'to', e.target.value)}
-                  />
-                </div>
-                <div className="col-span-3">
-                  <label className="text-[10px] uppercase tracking-wide text-slate-500">Médico</label>
-                  <Select value={it.doctor_id || ''} onValueChange={v => update(it._key, 'doctor_id', v === '__none__' ? null : v)}>
-                    <SelectTrigger className={`h-8 ${!it.doctor_id && 'border-amber-300'}`}>
-                      <SelectValue placeholder="Sin asignar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">— Sin asignar —</SelectItem>
-                      {doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="col-span-12 flex gap-2 items-center">
-                  <Badge variant="outline" className="text-[10px]">
-                    {it.source === 'template' ? 'Del template' : it.source === 'monthly' ? 'Mensual' : it.source === 'oneoff' ? 'Puntual' : 'Manual'}
-                  </Badge>
-                  <Badge className="text-[10px] bg-slate-100 text-slate-700">{it.category || 'otro'}</Badge>
+                <div className="flex flex-col gap-1">
+                  <Button
+                    variant="ghost" size="sm"
+                    onClick={() => update(it._key, 'suspended', !it.suspended)}
+                    className={it.suspended ? 'text-emerald-600 hover:bg-emerald-50' : 'text-slate-500 hover:bg-slate-100'}
+                    title={it.suspended ? 'Reanudar bloqueo' : 'Suspender bloqueo (diferir / no cubrir esta semana)'}
+                  >
+                    {it.suspended ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => remove(it._key)} className="text-red-600 hover:bg-red-50">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => remove(it._key)} className="text-red-600 hover:bg-red-50">
+            ))}
+            <Button variant="outline" size="sm" onClick={add} className="gap-1.5">
+              <Plus className="h-4 w-4" /> Agregar bloqueo
+            </Button>
+          </div>
+        )}
+
+        {/* Especialistas externos */}
+        <div className="space-y-2 pt-2 border-t border-slate-100">
+          <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500">Especialistas externos visitantes</h4>
+          {visitors.length === 0 && (
+            <p className="text-xs text-slate-400 italic">Sin visitantes. Ej: "Dra. Rissi · Pediatría", "Dr. Rubilar · Urgencia".</p>
+          )}
+          {visitors.map(v => (
+            <div key={v._key} className="flex items-center gap-2">
+              <Input
+                className="h-8 flex-1"
+                value={v.name || ''}
+                onChange={e => updateVisitor(v._key, 'name', e.target.value)}
+                placeholder="Nombre (ej. Dra. Rissi)"
+              />
+              <Input
+                className="h-8 flex-1"
+                value={v.specialty || ''}
+                onChange={e => updateVisitor(v._key, 'specialty', e.target.value)}
+                placeholder="Especialidad (ej. Pediatría)"
+              />
+              <Button variant="ghost" size="sm" onClick={() => removeVisitor(v._key)} className="text-red-600 hover:bg-red-50">
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           ))}
+          <Button variant="outline" size="sm" onClick={addVisitor} className="gap-1.5">
+            <Plus className="h-4 w-4" /> Agregar visitante externo
+          </Button>
         </div>
-
-        <Button variant="outline" size="sm" onClick={add} className="gap-1.5">
-          <Plus className="h-4 w-4" /> Agregar bloqueo
-        </Button>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>

@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, RefreshCw, Save, Printer, Plus, Trash2, Edit3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RefreshCw, Save, Printer, Plus, Trash2, Edit3, Sparkles } from 'lucide-react';
 import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, weekDates, sortReinforcements, optimizeForTitulars, balanceLoad, HIERARCHICAL_BLOCK_IDS, findReplacementForBlock } from './lib/generateAgenda';
+import AIFixModal from './AIFixModal';
 import { Shuffle, Wand2, Scale } from 'lucide-react';
 import CellEditor from './CellEditor';
 
-const ABSENCE_TYPES = ['FL', 'P', 'A', 'DT', 'LM', 'CAP', 'PAS', 'OTRO'];
+const ABSENCE_TYPES = ['FL', 'P', 'A', 'DT', 'LM', 'CAP', 'PAS', 'G', 'OTRO'];
 const ABSENCE_LABELS = {
   FL: 'Feriado Legal', P: 'Postnatal', A: 'Administrativo', DT: 'Devolución Tiempo',
   LM: 'Licencia Médica', CAP: 'Capacitación', PAS: 'Pasantía', OTRO: 'Otro'
@@ -32,6 +33,7 @@ export default function AgendaSemanal() {
   const [showAbsenceDialog, setShowAbsenceDialog] = useState(false);
   const [newAbs, setNewAbs] = useState({ doctor_id: '', date: '', type: 'A', notes: '' });
   const [editingDay, setEditingDay] = useState(null);
+  const [aiError, setAiError] = useState(null); // error que se está corrigiendo con IA
   const [bloqueosOverrides, setBloqueosOverrides] = useState({}); // { '2026-05-04': [bloqueo, ...] }
   const [poli8amOverrides, setPoli8amOverrides] = useState({}); // { '2026-05-04': 'doctor_id' }
   const [savedData, setSavedData] = useState(null); // data guardada de sdm_weekly_agendas
@@ -248,8 +250,67 @@ export default function AgendaSemanal() {
     alert(`Sorteado refuerzos en ${saved} semanas. Carga balanceada por médicos disponibles.`);
   }
 
-  function onCellSave(date, nuevosBloqueos) {
-    setBloqueosOverrides(prev => ({ ...prev, [date]: nuevosBloqueos }));
+  async function onCellSave(date, payload) {
+    // Compatibilidad: si payload es array (formato legacy), tratar como bloqueos puros.
+    if (Array.isArray(payload)) {
+      setBloqueosOverrides(prev => ({ ...prev, [date]: payload }));
+      return;
+    }
+    const { bloqueos, is_holiday, external_visitors } = payload;
+    setBloqueosOverrides(prev => ({ ...prev, [date]: bloqueos }));
+    // Persistir is_holiday y external_visitors en sdm_shift_calendar
+    const existing = shiftCalendar.find(c => c.date === date);
+    if (existing) {
+      const { error } = await supabase.from('sdm_shift_calendar')
+        .update({ is_holiday, external_visitors })
+        .eq('date', date);
+      if (error) { alert('Error al guardar feriado/visitantes: ' + error.message); return; }
+      setShiftCalendar(prev => prev.map(c => c.date === date ? { ...c, is_holiday, external_visitors } : c));
+    } else {
+      console.warn(`No hay entrada en sdm_shift_calendar para ${date}; feriado/visitantes no persistidos.`);
+    }
+  }
+
+  function applyAiOption(error, opt) {
+    if (!error || !opt) return;
+    const day = agenda.find(d => d.date === error.date);
+    if (!day) return;
+    const currentBloqueos = bloqueosOverrides[error.date] ?? day.bloqueos;
+    const idx = currentBloqueos.findIndex(b => b.block_id === error.blockId);
+    if (idx === -1 && opt.action !== 'suspend') return;
+
+    if (opt.action === 'assign' && opt.doctor_id) {
+      const nuevos = currentBloqueos.map((b, i) =>
+        i === idx ? { ...b, doctor_id: opt.doctor_id, unassigned: false, auto_assigned: false, ai_assigned: true } : b
+      );
+      setBloqueosOverrides(prev => ({ ...prev, [error.date]: nuevos }));
+      return;
+    }
+
+    if (opt.action === 'suspend') {
+      const nuevos = currentBloqueos.map((b, i) =>
+        i === idx ? { ...b, suspended: true, suspended_reason: opt.reasoning?.slice(0, 80) || 'Diferido por IA' } : b
+      );
+      setBloqueosOverrides(prev => ({ ...prev, [error.date]: nuevos }));
+      return;
+    }
+
+    if (opt.action === 'swap' && opt.swap_with_day) {
+      const targetDay = agenda.find(d => d.date === opt.swap_with_day);
+      if (!targetDay) { alert(`Día destino ${opt.swap_with_day} no encontrado en esta semana`); return; }
+      const original = currentBloqueos[idx];
+      const sourceWithout = currentBloqueos.filter((_, i) => i !== idx);
+      const targetCurrent = bloqueosOverrides[opt.swap_with_day] ?? targetDay.bloqueos;
+      const moved = { ...original, source: 'optimized', auto_assigned: false, ai_assigned: true };
+      setBloqueosOverrides(prev => ({
+        ...prev,
+        [error.date]: sourceWithout,
+        [opt.swap_with_day]: [...targetCurrent, moved],
+      }));
+      return;
+    }
+
+    alert('Acción no reconocida o incompleta: ' + opt.action);
   }
 
   function optimizarTitulares() {
@@ -320,12 +381,62 @@ export default function AgendaSemanal() {
         <Button variant="outline" onClick={() => window.print()} className="gap-1.5"><Printer className="h-4 w-4" /> Imprimir</Button>
       </div>
 
-      {/* Banners de validación */}
+      {/* Banners de validación — clickeables: abren el editor del día problemático */}
       {(validation.errors.length > 0 || validation.warnings.length > 0) && (
         <Card className={`sdm-print-hide ${validation.errors.length ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50'}`}>
           <CardContent className="pt-4 text-sm space-y-1">
-            {validation.errors.map((e, i) => <div key={'e' + i} className="text-red-800">⛔ {e}</div>)}
-            {validation.warnings.map((w, i) => <div key={'w' + i} className="text-amber-800">⚠️ {w}</div>)}
+            {validation.errors.map((e, i) => {
+              const targetDay = e.date ? agenda.find(d => d.date === e.date) : null;
+              const isClickable = !!targetDay;
+              const aiCapable = isClickable && ['unassigned', 'absent_assigned', 'overlap', 'auto_assigned'].includes(e.kind);
+              return (
+                <div key={'e' + i} className="flex items-center gap-2 text-red-800 px-1 -mx-1 hover:bg-red-100 rounded transition-colors">
+                  <span
+                    onClick={() => isClickable && setEditingDay(targetDay)}
+                    className={isClickable ? 'cursor-pointer flex-1' : 'flex-1'}
+                    title={isClickable ? 'Click para corregir en el editor del día' : undefined}
+                  >
+                    ⛔ {e.message}
+                    {isClickable && <span className="ml-2 text-[10px] uppercase tracking-wide text-red-500">corregir →</span>}
+                  </span>
+                  {aiCapable && (
+                    <button
+                      onClick={(ev) => { ev.stopPropagation(); setAiError(e); }}
+                      className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-violet-700 hover:text-violet-900 hover:bg-violet-100 px-1.5 py-0.5 rounded"
+                      title="Pedir sugerencia razonada a la IA"
+                    >
+                      <Sparkles className="h-3 w-3" /> Sugerir IA
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {validation.warnings.map((w, i) => {
+              const targetDay = w.date ? agenda.find(d => d.date === w.date) : null;
+              const isClickable = !!targetDay;
+              const aiCapable = isClickable && ['auto_assigned', 'posturno_assigned', 'outside_jornada'].includes(w.kind);
+              return (
+                <div key={'w' + i} className="flex items-center gap-2 text-amber-800 px-1 -mx-1 hover:bg-amber-100 rounded transition-colors">
+                  <span
+                    onClick={() => isClickable && setEditingDay(targetDay)}
+                    className={isClickable ? 'cursor-pointer flex-1' : 'flex-1'}
+                    title={isClickable ? 'Click para corregir en el editor del día' : undefined}
+                  >
+                    ⚠️ {w.message}
+                    {isClickable && <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-600">corregir →</span>}
+                  </span>
+                  {aiCapable && (
+                    <button
+                      onClick={(ev) => { ev.stopPropagation(); setAiError(w); }}
+                      className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-violet-700 hover:text-violet-900 hover:bg-violet-100 px-1.5 py-0.5 rounded"
+                      title="Pedir sugerencia razonada a la IA"
+                    >
+                      <Sparkles className="h-3 w-3" /> Sugerir IA
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}
@@ -377,10 +488,25 @@ export default function AgendaSemanal() {
           <tbody>
             {agenda.map(day => (
               <tr key={day.date} className="border-b border-slate-200 align-top hover:bg-slate-50">
-                <td className="px-2 py-2 font-bold text-slate-800">{day.label}<div className="text-[10px] font-normal text-slate-500">{day.date}<br/>T{day.turnoNumber ?? '–'}</div></td>
+                <td className="px-2 py-2 font-bold text-slate-800">
+                  {day.label}
+                  <div className="text-[10px] font-normal text-slate-500">{day.date}<br/>T{day.turnoNumber ?? '–'}</div>
+                  {day.is_holiday && (
+                    <div className="mt-1 inline-block rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-slate-200 text-slate-700">Feriado</div>
+                  )}
+                  {Array.isArray(day.external_visitors) && day.external_visitors.length > 0 && (
+                    <div className="mt-1 space-y-0.5">
+                      {day.external_visitors.map((v, i) => (
+                        <div key={i} className="text-[9px] font-normal text-blue-700 leading-tight">
+                          <span className="font-semibold">{v.name}</span>{v.specialty ? ` · ${v.specialty}` : ''}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </td>
                 <td className="px-2 py-2">{day.turnos.map((t, i) => <div key={i}>{doctorName(t.doctor_id)}{t.replaced && <span className="text-amber-600 sdm-print-hide"> (←{doctorName(t.original_doctor_id)})</span>}</div>)}</td>
                 <td className="px-2 py-2 space-y-1">
-                  {(() => {
+                  {day.is_holiday ? <span className="text-slate-300 italic text-[11px]">–</span> : (() => {
                     const turnoIds = new Set(day.turnos.map(t => t.doctor_id));
                     const postIds = new Set(day.posturno.map(t => t.doctor_id));
                     const ausIds = new Set(day.ausencias.map(a => a.doctor_id));
@@ -422,26 +548,60 @@ export default function AgendaSemanal() {
                 <td className="px-2 py-2 group cursor-pointer hover:bg-blue-50/50" onClick={() => setEditingDay(day)}>
                   <div className="flex items-start justify-between gap-1">
                     <div className="flex-1 space-y-0.5">
-                      {day.bloqueos.length === 0 ? <span className="text-slate-400 italic">Sin bloqueos · click para agregar</span> :
-                        day.bloqueos.slice().sort((x, y) => (x.from || '').localeCompare(y.from || '')).map((b, i) => (
-                          <div key={i} className={`text-[11px] ${b.unassigned ? 'text-red-600 font-semibold' : b.reassigned ? 'text-amber-700' : 'text-slate-700'}`}>
-                            {b.from && b.to ? `${b.from}–${b.to} ` : ''}
-                            {b.doctor_id ? doctorName(b.doctor_id) : '⚠ SIN ASIGNAR'} <span className="text-slate-500">{b.name}</span>
-                            {b.reassigned && <span className="ml-1 text-[9px] bg-amber-100 text-amber-800 px-1 rounded" title={`Originalmente: ${doctorName(b.originalDoctor)}`}>reasig</span>}
-                          </div>
-                        ))
+                      {day.is_holiday ? (
+                        <span className="inline-block rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide bg-slate-200 text-slate-700">FERIADO</span>
+                      ) : day.bloqueos.length === 0 ? <span className="text-slate-400 italic">Sin bloqueos · click para agregar</span> :
+                        day.bloqueos.slice().sort((x, y) => (x.from || '').localeCompare(y.from || '')).map((b, i) => {
+                          const colorClass = b.suspended
+                            ? 'text-slate-400 line-through opacity-70'
+                            : b.unassigned
+                              ? 'text-red-600 font-semibold'
+                              : b.auto_assigned
+                                ? 'text-blue-700'
+                                : b.reassigned
+                                  ? 'text-amber-700'
+                                  : 'text-slate-700';
+                          return (
+                            <div key={i} className={`text-[11px] ${colorClass}`}>
+                              {b.from && b.to ? `${b.from}–${b.to} ` : ''}
+                              {b.doctor_id ? doctorName(b.doctor_id) : (b.suspended ? '' : '⚠ SIN ASIGNAR')} <span className={b.suspended ? '' : 'text-slate-500'}>{b.name}</span>
+                              {b.suspended && (
+                                <span className="ml-1 text-[9px] bg-slate-200 text-slate-700 border border-slate-400 px-1 rounded no-underline" title={b.suspended_reason || 'Bloqueo suspendido / diferido'}>diferido</span>
+                              )}
+                              {!b.suspended && b.auto_assigned && (
+                                <span className="ml-1 text-[9px] bg-blue-100 text-blue-800 px-1 rounded" title="Asignado automáticamente porque titular y subrogantes no están disponibles — revisar y formalizar.">auto</span>
+                              )}
+                              {!b.suspended && b.reassigned && (
+                                <span className="ml-1 text-[9px] bg-amber-100 text-amber-800 px-1 rounded" title={`Originalmente: ${doctorName(b.originalDoctor)}`}>reasig</span>
+                              )}
+                            </div>
+                          );
+                        })
                       }
                     </div>
                     <Edit3 className="h-3 w-3 text-slate-300 group-hover:text-blue-500 mt-1 flex-shrink-0" />
                   </div>
                 </td>
-                <td className="px-2 py-2 text-[11px]">{day.visita.slice(0, 6).map((v, i) => <div key={i}>{doctorName(v.doctor_id)}</div>)}</td>
                 <td className="px-2 py-2 text-[11px]">
-                  {day.policlinico
-                    ? <div><span className="font-semibold">{doctorName(day.policlinico.doctor_id)}</span> <span className="text-slate-500">{day.policlinico.from}–{day.policlinico.to}</span></div>
-                    : <span className="text-slate-400 italic">Sin refuerzo AM</span>}
+                  {day.is_holiday
+                    ? <span className="text-slate-300 italic">–</span>
+                    : day.visita.slice(0, 8).map((v, i) => (
+                        <div key={i}>
+                          {doctorName(v.doctor_id)}
+                          {v.capacity != null && <span className="ml-1 text-slate-500">({v.capacity})</span>}
+                        </div>
+                      ))
+                  }
+                </td>
+                <td className="px-2 py-2 text-[11px]">
+                  {day.is_holiday
+                    ? <span className="text-slate-300 italic">–</span>
+                    : day.policlinico
+                      ? <div><span className="font-semibold">{doctorName(day.policlinico.doctor_id)}</span> <span className="text-slate-500">{day.policlinico.from}–{day.policlinico.to}</span></div>
+                      : <span className="text-slate-400 italic">Sin refuerzo AM</span>}
                 </td>
                 <td className="px-2 py-2 text-[11px] space-y-0.5">
+                  {day.is_holiday ? <span className="text-slate-300 italic">–</span> : <>
                   {day.poli_8am.full_day && (
                     <div className={day.poli_8am.full_day.isOverride ? 'text-amber-700' : ''}>
                       <span className="font-semibold">{doctorName(day.poli_8am.full_day.doctor_id)}</span>{' '}
@@ -473,6 +633,7 @@ export default function AgendaSemanal() {
                     <div><span className="font-semibold">{doctorName(day.poli_8am.ref_pm.doctor_id)}</span> <span className="text-slate-500">{day.poli_8am.ref_pm.from}–{day.poli_8am.ref_pm.to}</span></div>
                   )}
                   {!day.poli_8am.full_day && !day.poli_8am.ref_pm && !day.poli_8am.full_day_editable && <span className="text-slate-400 italic">–</span>}
+                  </>}
                 </td>
               </tr>
             ))}
@@ -489,6 +650,16 @@ export default function AgendaSemanal() {
         bloqueos={editingDay ? agenda.find(d => d.date === editingDay.date)?.bloqueos || [] : []}
         doctors={doctors}
         onSave={nuevos => onCellSave(editingDay.date, nuevos)}
+      />
+
+      {/* Modal IA — Sugerencias para corregir errores */}
+      <AIFixModal
+        open={!!aiError}
+        onOpenChange={open => { if (!open) setAiError(null); }}
+        error={aiError}
+        agenda={agenda}
+        doctors={doctors}
+        onApply={(opt) => applyAiOption(aiError, opt)}
       />
 
       {/* Dialog agregar ausencia */}
