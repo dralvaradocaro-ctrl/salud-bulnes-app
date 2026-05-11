@@ -1,6 +1,6 @@
 const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
@@ -12,6 +12,26 @@ import { Activity, Users, FileText, Sparkles, Calculator, Syringe, ArrowRight } 
 import { countedCalculators } from '@/components/calculators/catalog';
 
 export default function Home() {
+  // autoFocus solo en desktop — en móvil abre el teclado y molesta al volver al home
+  const [searchAutoFocus, setSearchAutoFocus] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
+      setSearchAutoFocus(true);
+    }
+  }, []);
+
+  // Menú desplegable "Ingresar"
+  const [ingresarOpen, setIngresarOpen] = useState(false);
+  const ingresarRef = useRef(null);
+  useEffect(() => {
+    if (!ingresarOpen) return;
+    const handler = (e) => {
+      if (ingresarRef.current && !ingresarRef.current.contains(e.target)) setIngresarOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [ingresarOpen]);
+
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ['categories'],
     queryFn: () => db.entities.Category.list('order'),
@@ -60,7 +80,7 @@ export default function Home() {
             transition={{ delay: 0.1 }}
             className="max-w-2xl mx-auto mb-12"
           >
-            <GlobalSearch autoFocus />
+            <GlobalSearch autoFocus={searchAutoFocus} />
           </motion.div>
 
           {/* Quick Stats */}
@@ -234,13 +254,34 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="text-center">
-          <Link
-            to={createPageUrl('AdminLogin')}
+        <div className="text-center relative" ref={ingresarRef}>
+          <button
+            type="button"
+            onClick={() => setIngresarOpen(o => !o)}
             className="inline-block text-xs text-slate-300 hover:text-blue-500 transition-colors"
           >
             Ingresar
-          </Link>
+          </button>
+          {ingresarOpen && (
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-10 min-w-[200px] rounded-lg border border-slate-200 bg-white shadow-lg overflow-hidden">
+              <Link
+                to={createPageUrl('AdminLogin') + '?next=' + encodeURIComponent(createPageUrl('AdminDashboard'))}
+                className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-left"
+                onClick={() => setIngresarOpen(false)}
+              >
+                <FileText className="inline h-4 w-4 mr-2 -mt-0.5 text-blue-600" />
+                Editor
+              </Link>
+              <Link
+                to={createPageUrl('AdminLogin') + '?next=' + encodeURIComponent(createPageUrl('SubdireccionMedica'))}
+                className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-left border-t border-slate-100"
+                onClick={() => setIngresarOpen(false)}
+              >
+                <Users className="inline h-4 w-4 mr-2 -mt-0.5 text-blue-600" />
+                Subdirección Médica
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>
