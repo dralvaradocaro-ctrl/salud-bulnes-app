@@ -304,13 +304,14 @@ export function generateAgenda({
     const overlapsVisitWindow = (b) =>
       !b.suspended && !b.sdm_internal && b.from && b.to && b.from < '11:00' && b.to > '08:00';
     // Selector de Demanda: por convención operativa, quien lo cubre NO entra en visita por defecto.
-    // Match por id canónico o por nombre (robusto ante variantes de seed).
-    const selectorDemandaIds = new Set(
-      bloqueos
-        .filter(b => !b.suspended && b.doctor_id &&
-          (b.block_id === 'selector_demanda' || /selector.*demanda/i.test(b.name || '')))
-        .map(b => b.doctor_id)
-    );
+    // Match robusto ante variantes de seed: id o nombre que contengan "selector".
+    const isSelectorBlock = (b) => {
+      if (b.suspended || !b.doctor_id) return false;
+      const id = (b.block_id || '').toLowerCase();
+      const name = (b.name || '').toLowerCase();
+      return /selector/.test(id) || /selector/.test(name);
+    };
+    const selectorDemandaIds = new Set(bloqueos.filter(isSelectorBlock).map(b => b.doctor_id));
     const visita = doctors
       .filter(doc => doc.active !== false)
       .filter(doc => !turnoIds.has(doc.id) && !postIds.has(doc.id) && !ausIds.has(doc.id) && !refIds.has(doc.id) && !poliIds.has(doc.id))
@@ -341,6 +342,7 @@ export function generateAgenda({
       if (visitaFinal.some(v => v.doctor_id === docId)) return;
       // hard-stops siguen aplicando incluso en override manual
       if (turnoIds.has(docId) || postIds.has(docId) || ausIds.has(docId)) return;
+      if (selectorDemandaIds.has(docId)) return;
       const doc = doctorById[docId];
       if (!doc || doc.active === false) return;
       let cap = capacityByDoctor[docId] ?? null;
