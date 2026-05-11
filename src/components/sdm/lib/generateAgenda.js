@@ -2,6 +2,7 @@
  * Lógica pura de generación de agenda semanal SDM.
  * Toma catálogos + ausencias + bloqueos puntuales y devuelve la grilla 5×8.
  */
+import { BLOCK_SPECS } from './blockSpec';
 
 const DAYS = ['lun', 'mar', 'mie', 'jue', 'vie'];
 const DAY_LABELS = { lun: 'LUNES', mar: 'MARTES', mie: 'MIÉRCOLES', jue: 'JUEVES', vie: 'VIERNES' };
@@ -50,7 +51,7 @@ function getDoctorsForTurno(turnoNumber, rotation, replacements = []) {
   });
 }
 
-function isMonthlyMatch(date, rule) {
+export function isMonthlyMatch(date, rule) {
   if (!rule) return false;
   const d = new Date(date);
   const dayKey = dayKeyForDate(date);
@@ -104,7 +105,7 @@ export function generateAgenda({
   prevDayDate.setDate(prevDayDate.getDate() - 1); // domingo
   const prevDayKey = fmtDate(prevDayDate);
 
-  return days.map((d, idx) => {
+  const result = days.map((d, idx) => {
     const cal = calByDate[d.date];
     const turnoNumber = cal ? cal.turno_number : null;
     const isHoliday = !!(cal && cal.is_holiday);
@@ -435,6 +436,102 @@ export function generateAgenda({
       external_visitors: externalVisitors,
     };
   });
+
+  // Post-pass: auto-reubicación de bloqueos SEMANALES (no monthly) cuyo día normal cayó en feriado.
+  // Se intenta agregar otra instancia en un día disponible de la misma semana.
+  // No aplica a is_monthly (esos solo generan warning en validateAgenda).
+  // No tocan días con bloqueosOverrides (el usuario ya gestionó manualmente esos).
+  applyHolidayRelocation({
+    result, days, blockTemplates, programAssignments, doctors,
+    bloqueosOverrides, calByDate, absencesByDate, rotation,
+  });
+  return result;
+}
+
+/**
+ * Para cada blockTemplate semanal (no monthly): si por feriado quedó con menos instancias
+ * que las esperadas según su weekday_pattern, intentar agregar la instancia faltante
+ * en otro día de la semana donde el titular/subrogante esté disponible.
+ */
+function applyHolidayRelocation({ result, days, blockTemplates, programAssignments, doctors, bloqueosOverrides, calByDate, absencesByDate, rotation }) {
+  const titularByBlock = {}, subrogantesByBlock = {};
+  programAssignments.forEach(p => {
+    if (p.role_type === 'titular') titularByBlock[p.block_template_id] = p.doctor_id;
+    if (p.role_type === 'subrogante') {
+      (subrogantesByBlock[p.block_template_id] = subrogantesByBlock[p.block_template_id] || [])
+        .push({ doctor_id: p.doctor_id, priority: p.priority || 1 });
+    }
+  });
+  Object.values(subrogantesByBlock).forEach(arr => arr.sort((a, b) => a.priority - b.priority));
+
+  const holidayDates = new Set(days.filter(d => calByDate[d.date]?.is_holiday).map(d => d.date));
+  if (holidayDates.size === 0) return;
+
+  for (const bt of blockTemplates) {
+    if (bt.is_monthly) continue;
+    const slotsPerDay = bt.weekday_pattern || {};
+    // Días esperados según template (que caigan en lun-vie con slot definido)
+    const expectedDays = days.filter(d => Array.isArray(slotsPerDay[d.day]) && slotsPerDay[d.day].length > 0);
+    // ¿Hay días esperados que cayeron en feriado?
+    const missedDays = expectedDays.filter(d => holidayDates.has(d.date));
+    if (missedDays.length === 0) continue;
+
+    for (const missed of missedDays) {
+      // Slot a relocar (toma el primero del día perdido)
+      const slot = slotsPerDay[missed.day][0];
+      // Candidatos: días no-feriado, sin override manual, sin ya tener el bloque
+      const candidateDays = result.filter(r =>
+        !r.is_holiday &&
+        !bloqueosOverrides[r.date] &&
+        !r.bloqueos.some(b => b.block_id === bt.id)
+      );
+      // Aplicar regla de viernes 16:00 al horario propuesto
+      let proposedFrom = slot.from, proposedTo = slot.to;
+      const fits = (day) => {
+        const isVie = day.day === 'vie';
+        const to = isVie && proposedTo > '16:00' ? '16:00' : proposedTo;
+        if (proposedFrom >= to) return null;
+        // Doctor disponible (titular o subrogante o cualquier activo)
+        const turnoIds = new Set(day.turnos.map(t => t.doctor_id));
+        const postIds = new Set(day.posturno.map(t => t.doctor_id));
+        const ausIds = new Set(day.ausencias.map(a => a.doctor_id));
+        const isAvailable = (id) => id && !turnoIds.has(id) && !postIds.has(id) && !ausIds.has(id);
+        const titular = titularByBlock[bt.id];
+        const subs = subrogantesByBlock[bt.id] || [];
+        const noOverlap = (id) => !day.bloqueos.some(b =>
+          b.doctor_id === id && !b.suspended && b.from && b.to &&
+          b.from < to && proposedFrom < b.to
+        );
+        const trySelect = (id) => isAvailable(id) && noOverlap(id) ? id : null;
+        const chosen = trySelect(titular) || subs.map(s => trySelect(s.doctor_id)).find(Boolean);
+        if (!chosen) return null;
+        return { doctor_id: chosen, from: proposedFrom, to, isAuto: chosen !== titular && !subs.some(s => s.doctor_id === chosen) };
+      };
+      let placed = null;
+      for (const cand of candidateDays) {
+        const fit = fits(cand);
+        if (fit) {
+          placed = { day: cand, fit };
+          break;
+        }
+      }
+      if (placed) {
+        placed.day.bloqueos.push({
+          block_id: bt.id,
+          name: bt.name,
+          from: placed.fit.from,
+          to: placed.fit.to,
+          doctor_id: placed.fit.doctor_id,
+          unassigned: false,
+          auto_assigned: !!placed.fit.isAuto,
+          category: bt.category,
+          source: 'relocated_holiday',
+          relocated_from: missed.date,
+        });
+      }
+      // si no se pudo: queda el déficit, validateAgenda lo reporta
+    }
+  }
 }
 
 const SUBDIRECTOR_ID = 'alvarado';
@@ -747,7 +844,7 @@ export function sortReinforcements({ weeks, doctors, existingReinforcements = {}
   return result;
 }
 
-export function validateAgenda(agenda, doctors = []) {
+export function validateAgenda(agenda, doctors = [], blockTemplates = []) {
   const warnings = [];
   const errors = [];
   const doctorName = id => doctors.find(d => d.id === id)?.display_name || id;
@@ -821,5 +918,55 @@ export function validateAgenda(agenda, doctors = []) {
     if (n >= 2) warnings.push({ kind: 'too_many_pm', doctorId: docId, message: `${doctorName(docId)} tiene ${n} refuerzos PM esta semana — redistribuir (los PM son los más sensibles)` });
   });
 
+  // Cumplimiento semanal vs spec canónico (BLOCK_SPECS) + bloqueos mensuales en feriado
+  const holidayDates = agenda.filter(d => d.is_holiday).map(d => d.date);
+  const countByBlock = {};
+  agenda.forEach(day => {
+    if (day.is_holiday) return;
+    day.bloqueos.forEach(b => {
+      if (b.suspended) return;
+      countByBlock[b.block_id] = (countByBlock[b.block_id] || 0) + 1;
+    });
+  });
+  // Para mensuales: detectar si la fecha objetivo cae en feriado
+  blockTemplates.forEach(bt => {
+    if (!bt.is_monthly) return;
+    const matchingDay = agenda.find(d => isMonthlyMatch(d.date, bt.monthly_rule));
+    if (!matchingDay) return;
+    // Si la fecha objetivo está dentro de la semana y es feriado → warning
+    if (matchingDay.is_holiday) {
+      warnings.push({
+        date: matchingDay.date, label: matchingDay.label,
+        kind: 'monthly_holiday_skipped', blockId: bt.id,
+        message: `${matchingDay.label}: "${bt.name}" no se agendó porque ${matchingDay.date} es feriado — reubicar manualmente si corresponde`,
+      });
+    }
+  });
+  // Para semanales: verificar count vs BLOCK_SPECS
+  const semWarnings = checkWeeklyCounts(countByBlock, blockTemplates, holidayDates);
+  warnings.push(...semWarnings);
+
   return { warnings, errors };
+}
+
+function checkWeeklyCounts(countByBlock, blockTemplates, holidayDates) {
+  const out = [];
+  for (const bt of blockTemplates) {
+    if (bt.is_monthly) continue;
+    const spec = BLOCK_SPECS[bt.id];
+    if (!spec || spec.manual || typeof spec.expected_count !== 'number') continue;
+    if (spec.expected_count < 1) continue; // semana por medio: salteado por ahora
+    const actual = countByBlock[bt.id] || 0;
+    if (actual < spec.expected_count) {
+      const motivoFeriado = holidayDates.length > 0 && (spec.expected_count - actual) <= holidayDates.length;
+      out.push({
+        kind: motivoFeriado ? 'weekly_count_short_unrelocatable' : 'weekly_count_short',
+        blockId: bt.id,
+        message: motivoFeriado
+          ? `"${bt.name}" esperado ${spec.expected_count}, actual ${actual} — no se pudo reubicar (no hubo día con titular/subrogante disponible)`
+          : `"${bt.name}" esperado ${spec.expected_count}, actual ${actual} — revisar (posible edición manual)`,
+      });
+    }
+  }
+  return out;
 }

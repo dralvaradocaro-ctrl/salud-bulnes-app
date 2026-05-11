@@ -4,12 +4,14 @@ import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, FileText, Settings2, Users, CalendarDays, Clock, Mic, Gavel, MoreHorizontal, BarChart3 } from 'lucide-react';
+import { LogOut, FileText, Settings2, Users, CalendarDays, Clock, Mic, Gavel, MoreHorizontal, BarChart3, ClipboardCheck } from 'lucide-react';
 import AgendaSemanal from '@/components/sdm/AgendaSemanal';
 import ProgramAssignments from '@/components/sdm/ProgramAssignments';
 import Cronograma from '@/components/sdm/Cronograma';
 import MeetingBlocks from '@/components/sdm/MeetingBlocks';
 import Distribucion from '@/components/sdm/Distribucion';
+import RevisarBloqueosSemanales from '@/components/sdm/RevisarBloqueosSemanales';
+import SimpleOneoffBlocks from '@/components/sdm/SimpleOneoffBlocks';
 
 function Placeholder({ icon: Icon, title, description }) {
   return (
@@ -82,6 +84,7 @@ export default function SubdireccionMedica() {
             <Tabs value={consoleTab} onValueChange={setConsoleTab} className="space-y-4">
               <TabsList className="flex flex-wrap h-auto">
                 <TabsTrigger value="agenda_semanal" className="gap-1.5"><CalendarDays className="h-4 w-4" />Agenda Semanal</TabsTrigger>
+                <TabsTrigger value="revisar_bloqueos" className="gap-1.5"><ClipboardCheck className="h-4 w-4" />Revisar bloqueos semanales</TabsTrigger>
                 <TabsTrigger value="agenda_diaria" className="gap-1.5"><Clock className="h-4 w-4" />Cronograma</TabsTrigger>
                 <TabsTrigger value="bloqueos_reuniones" className="gap-1.5">Bloqueos: Otras causas</TabsTrigger>
                 <TabsTrigger value="bloqueos_radio" className="gap-1.5"><Mic className="h-4 w-4" />Radio</TabsTrigger>
@@ -92,10 +95,11 @@ export default function SubdireccionMedica() {
               <TabsContent value="agenda_semanal">
                 <AgendaSemanal />
               </TabsContent>
+              <TabsContent value="revisar_bloqueos"><RevisarBloqueosSemanales /></TabsContent>
               <TabsContent value="agenda_diaria"><Cronograma /></TabsContent>
               <TabsContent value="bloqueos_reuniones"><MeetingBlocks /></TabsContent>
-              <TabsContent value="bloqueos_radio"><Placeholder icon={Mic} title="Bloqueos por visitas a la radio" /></TabsContent>
-              <TabsContent value="bloqueos_judiciales"><Placeholder icon={Gavel} title="Bloqueos por situaciones judiciales" /></TabsContent>
+              <TabsContent value="bloqueos_radio"><SimpleOneoffBlocks category="visita_radio" title="Visitas a la radio" icon={Mic} /></TabsContent>
+              <TabsContent value="bloqueos_judiciales"><SimpleOneoffBlocks category="judicial" title="Citaciones judiciales" icon={Gavel} /></TabsContent>
               <TabsContent value="asignaciones"><ProgramAssignments /></TabsContent>
               <TabsContent value="otros"><Placeholder icon={MoreHorizontal} title="Otros bloqueos" /></TabsContent>
             </Tabs>

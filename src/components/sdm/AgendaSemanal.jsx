@@ -149,7 +149,7 @@ export default function AgendaSemanal() {
     return generated;
   }, [loading, monday, doctors, rotation, shiftCalendar, blockTemplates, programAssignments, absences, oneoffBlocks, reinforcements, bloqueosOverrides, poli8amOverrides, visitaOverrides]);
 
-  const validation = useMemo(() => validateAgenda(agenda, doctors), [agenda, doctors]);
+  const validation = useMemo(() => validateAgenda(agenda, doctors, blockTemplates), [agenda, doctors, blockTemplates]);
   const errorKey = (e) => {
     if (!e) return '';
     if (e.kind === 'overlap') {
