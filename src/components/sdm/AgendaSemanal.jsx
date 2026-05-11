@@ -37,6 +37,7 @@ export default function AgendaSemanal() {
   const [bloqueosOverrides, setBloqueosOverrides] = useState({}); // { '2026-05-04': [bloqueo, ...] }
   const [dismissedErrors, setDismissedErrors] = useState([]); // array de keys descartadas por el usuario
   const [showDismissed, setShowDismissed] = useState(false);   // mostrar las descartadas con opción de restaurar
+  const [dragOverDate, setDragOverDate] = useState(null);      // celda BLOQUEOS resaltada durante drag
   const [poli8amOverrides, setPoli8amOverrides] = useState({}); // { '2026-05-04': 'doctor_id' }
   const [savedData, setSavedData] = useState(null); // data guardada de sdm_weekly_agendas
 
@@ -334,6 +335,26 @@ export default function AgendaSemanal() {
     alert('Acción no reconocida o incompleta: ' + opt.action);
   }
 
+  // Drag-and-drop de bloqueos entre días
+  function moveBloqueoBetweenDays(fromDate, blockId, toDate) {
+    if (!fromDate || !toDate || fromDate === toDate || !blockId) return;
+    const fromDay = agenda.find(d => d.date === fromDate);
+    const toDay   = agenda.find(d => d.date === toDate);
+    if (!fromDay || !toDay) return;
+    const fromCurrent = bloqueosOverrides[fromDate] ?? fromDay.bloqueos;
+    const idx = fromCurrent.findIndex(b => b.block_id === blockId);
+    if (idx === -1) return;
+    const block = fromCurrent[idx];
+    const fromNext = fromCurrent.filter((_, i) => i !== idx);
+    const toCurrent = bloqueosOverrides[toDate] ?? toDay.bloqueos;
+    const moved = { ...block, source: 'moved', auto_assigned: false };
+    setBloqueosOverrides(prev => ({
+      ...prev,
+      [fromDate]: fromNext,
+      [toDate]: [...toCurrent, moved],
+    }));
+  }
+
   function optimizarTitulares() {
     if (!confirm('Reasignará bloques al médico TITULAR cuando esté disponible (mueve a otro día si hace falta). ¿Continuar?')) return;
     const { agenda: optimized, moves } = optimizeForTitulars({
@@ -606,7 +627,20 @@ export default function AgendaSemanal() {
                 </td>
                 <td className="px-2 py-2 text-slate-600">{day.posturno.map((t, i) => <div key={i}>{doctorName(t.doctor_id)}</div>)}</td>
                 <td className="px-2 py-2">{day.ausencias.map((a, i) => <div key={i} className="text-red-700">{doctorName(a.doctor_id)} ({a.type})</div>)}</td>
-                <td className="px-2 py-2 group cursor-pointer hover:bg-blue-50/50" onClick={() => setEditingDay(day)}>
+                <td
+                  className={`px-2 py-2 group cursor-pointer transition-colors ${dragOverDate === day.date ? 'bg-blue-100 ring-2 ring-blue-400 ring-inset' : 'hover:bg-blue-50/50'}`}
+                  onClick={() => setEditingDay(day)}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverDate(day.date); }}
+                  onDragLeave={(e) => { if (dragOverDate === day.date) setDragOverDate(null); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOverDate(null);
+                    try {
+                      const payload = JSON.parse(e.dataTransfer.getData('application/sdm-block'));
+                      moveBloqueoBetweenDays(payload.fromDate, payload.blockId, day.date);
+                    } catch (_) { /* drop inválido */ }
+                  }}
+                >
                   <div className="flex items-start justify-between gap-1">
                     <div className="flex-1 space-y-0.5">
                       {day.is_holiday ? (
@@ -623,7 +657,18 @@ export default function AgendaSemanal() {
                                   ? 'text-amber-700'
                                   : 'text-slate-700';
                           return (
-                            <div key={i} className={`text-[11px] ${colorClass}`}>
+                            <div
+                              key={i}
+                              draggable={!b.suspended}
+                              onDragStart={(e) => {
+                                e.stopPropagation();
+                                e.dataTransfer.effectAllowed = 'move';
+                                e.dataTransfer.setData('application/sdm-block', JSON.stringify({ fromDate: day.date, blockId: b.block_id }));
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className={`text-[11px] ${colorClass} ${!b.suspended ? 'cursor-grab active:cursor-grabbing rounded hover:bg-blue-100/40 px-0.5 -mx-0.5' : ''}`}
+                              title={!b.suspended ? 'Arrastrar a otro día para mover este bloqueo' : undefined}
+                            >
                               {b.from && b.to ? `${b.from}–${b.to} ` : ''}
                               {b.doctor_id ? doctorName(b.doctor_id) : (b.suspended ? '' : '⚠ SIN ASIGNAR')} <span className={b.suspended ? '' : 'text-slate-500'}>{b.name}</span>
                               {b.suspended && (
