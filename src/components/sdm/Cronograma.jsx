@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, Save, RefreshCw, ZoomIn, ZoomOut, AlertTriangle } from 'lucide-react';
-import { getMondayOfWeek } from './lib/generateAgenda';
+import { findReplacementForBlock, getMondayOfWeek } from './lib/generateAgenda';
 import { sdmSupabase as supabase } from './lib/sdmSupabase';
 import CellEditor from './CellEditor';
 
@@ -15,6 +15,8 @@ const HOUR_HEIGHT = 72;
 const DAYS = ['lun', 'mar', 'mie', 'jue', 'vie'];
 const DAY_LABELS = { lun: 'LUNES', mar: 'MARTES', mie: 'MIÉRCOLES', jue: 'JUEVES', vie: 'VIERNES' };
 const EMPTY_EXTERNAL_VISITORS_OVERRIDE = '__empty_external_visitors_override';
+const LUNCH_START = 13 * 60 + 30;
+const LUNCH_END = 14 * 60;
 
 const CAT_COLORS = {
   clinico:        'bg-blue-50 border-blue-500 text-blue-950',
@@ -45,6 +47,31 @@ function buildSlots() {
     out.push({ minutes: m, label: minutesToTime(m) });
   }
   return out;
+}
+
+function clinicalDurationMinutes(block) {
+  const from = timeToMinutes(block.from);
+  const to = timeToMinutes(block.to);
+  if (from == null || to == null || to <= from) return 0;
+  const lunchOverlap = Math.max(0, Math.min(to, LUNCH_END) - Math.max(from, LUNCH_START));
+  return (to - from) - lunchOverlap;
+}
+
+function addClinicalMinutesSkippingLunch(startMin, clinicalMinutes) {
+  let cursor = startMin;
+  let remaining = clinicalMinutes;
+  while (remaining > 0) {
+    if (cursor >= LUNCH_START && cursor < LUNCH_END) {
+      cursor = LUNCH_END;
+      continue;
+    }
+    const nextBreak = cursor < LUNCH_START ? LUNCH_START : Infinity;
+    const available = Math.max(1, nextBreak - cursor);
+    const step = Math.min(remaining, available);
+    cursor += step;
+    remaining -= step;
+  }
+  return cursor;
 }
 
 function overlaps(a, b) {
@@ -109,6 +136,7 @@ export default function Cronograma({ weeklyAgenda, setMonday }) {
     doctors,
     shiftCalendar,
     setShiftCalendar,
+    programAssignments,
     agenda,
     loading,
     isDirty,
@@ -179,22 +207,78 @@ export default function Cronograma({ weeklyAgenda, setMonday }) {
     delete moved.hasParallel;
     delete moved._index;
 
+    let didMove = false;
     setBloqueosOverrides(prev => {
       const fromDay = agenda.find(d => d.date === draggedBlock.fromDate);
       const targetDay = agenda.find(d => d.date === targetDate);
       const fromCurrent = prev[draggedBlock.fromDate] ?? fromDay?.bloqueos ?? [];
       const toCurrent = prev[targetDate] ?? targetDay?.bloqueos ?? [];
       const fromNext = fromCurrent.filter(b => blockKey(b) !== blockKey(draggedBlock));
+      const targetBase = draggedBlock.fromDate === targetDate ? fromNext : toCurrent;
+      const sameBlockInstances = targetBase.filter(b => b.block_id === moved.block_id && !b.suspended && b.from && b.to);
+      const sameDoctorBlocks = targetBase.filter(b =>
+        b.doctor_id &&
+        b.doctor_id === moved.doctor_id &&
+        !b.suspended &&
+        b.block_id !== moved.block_id
+      );
+      let movedNext = moved;
+      if (sameDoctorBlocks.length > 0) {
+        const detail = sameDoctorBlocks
+          .slice()
+          .sort((a, b) => (a.from || '').localeCompare(b.from || ''))
+          .map(b => `• ${b.from || '—'}-${b.to || '—'} ${b.name}`)
+          .join('\n');
+        const replacement = findReplacementForBlock({
+          blockId: moved.block_id,
+          excludeDoctorId: moved.doctor_id,
+          day: targetDay,
+          programAssignments,
+        });
+        const choice = window.prompt(
+          `${doctorName(moved.doctor_id)} ya tiene otro bloqueo el ${targetDate}:\n\n${detail}\n\n` +
+          `Elige una opción:\n` +
+          `1 = Mover igual / sumar todo en ese día\n` +
+          `2 = Cambiar "${moved.name}" a ${replacement ? doctorName(replacement) : 'titular/subrogante disponible (no hay disponible)'}\n` +
+          `3 = No hacer el cambio`,
+          '1'
+        );
+        if (choice === null || choice.trim() === '3') return prev;
+        if (choice.trim() === '2') {
+          if (!replacement) {
+            toast.error('No hay titular/subrogante disponible para ese bloqueo en el día destino.');
+            return prev;
+          }
+          movedNext = { ...movedNext, doctor_id: replacement, unassigned: false, reassigned: true, originalDoctor: moved.doctor_id };
+        }
+      }
+      const targetNext = sameBlockInstances.length > 0
+        ? (() => {
+            const blocksToMerge = [...sameBlockInstances, movedNext];
+            const earliestStart = Math.min(...blocksToMerge.map(b => timeToMinutes(b.from)).filter(v => v != null));
+            const totalClinicalMinutes = blocksToMerge.reduce((sum, b) => sum + clinicalDurationMinutes(b), 0);
+            const merged = {
+              ...sameBlockInstances[0],
+              ...movedNext,
+              from: minutesToTime(earliestStart),
+              to: minutesToTime(addClinicalMinutesSkippingLunch(earliestStart, totalClinicalMinutes)),
+              merged_duration: true,
+              merged_count: blocksToMerge.length,
+              source: 'moved',
+            };
+            toast.info(`"${moved.name}" ya existe ese día; se sumó la duración saltando almuerzo 13:30-14:00.`);
+            return [...targetBase.filter(b => b.block_id !== moved.block_id || b.suspended), merged];
+          })()
+        : [...targetBase, movedNext];
+      didMove = true;
       return {
         ...prev,
         [draggedBlock.fromDate]: fromNext,
-        [targetDate]: draggedBlock.fromDate === targetDate
-          ? [...fromNext, moved]
-          : [...toCurrent, moved],
+        [targetDate]: targetNext,
       };
     });
     setDraggedBlock(null);
-    toast.success('Bloqueo movido. Guardá la agenda para dejarlo persistido.');
+    if (didMove) toast.success('Bloqueo movido. Guardá la agenda para dejarlo persistido.');
   }
 
   async function onCellSave(date, payload) {

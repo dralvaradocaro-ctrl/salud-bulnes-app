@@ -20,6 +20,45 @@ const ABSENCE_LABELS = {
   LM: 'Licencia Médica', CAP: 'Capacitación', PAS: 'Pasantía', OTRO: 'Otro'
 };
 const EMPTY_EXTERNAL_VISITORS_OVERRIDE = '__empty_external_visitors_override';
+const LUNCH_START = 13 * 60 + 30;
+const LUNCH_END = 14 * 60;
+
+function timeToMinutes(t) {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function minutesToTime(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function clinicalDurationMinutes(block) {
+  const from = timeToMinutes(block.from);
+  const to = timeToMinutes(block.to);
+  if (from == null || to == null || to <= from) return 0;
+  const lunchOverlap = Math.max(0, Math.min(to, LUNCH_END) - Math.max(from, LUNCH_START));
+  return (to - from) - lunchOverlap;
+}
+
+function addClinicalMinutesSkippingLunch(startMin, clinicalMinutes) {
+  let cursor = startMin;
+  let remaining = clinicalMinutes;
+  while (remaining > 0) {
+    if (cursor >= LUNCH_START && cursor < LUNCH_END) {
+      cursor = LUNCH_END;
+      continue;
+    }
+    const nextBreak = cursor < LUNCH_START ? LUNCH_START : Infinity;
+    const available = Math.max(1, nextBreak - cursor);
+    const step = Math.min(remaining, available);
+    cursor += step;
+    remaining -= step;
+  }
+  return cursor;
+}
 
 export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   const {
@@ -416,10 +455,56 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     const fromNext = fromCurrent.filter((_, i) => i !== idx);
     const toCurrent = bloqueosOverrides[toDate] ?? toDay.bloqueos;
     let moved = { ...block, source: 'moved', auto_assigned: false };
+    const sameBlockInstances = toCurrent.filter(b => b.block_id === block.block_id && !b.suspended && b.from && b.to);
+    const sameBlockCount = sameBlockInstances.length;
+    const sameDoctorBlocks = toCurrent.filter(b =>
+      b.doctor_id &&
+      b.doctor_id === block.doctor_id &&
+      !b.suspended &&
+      b.block_id !== block.block_id
+    );
+
+    if (sameDoctorBlocks.length > 0) {
+      const detail = sameDoctorBlocks
+        .slice()
+        .sort((a, b) => (a.from || '').localeCompare(b.from || ''))
+        .map(b => `• ${b.from || '—'}-${b.to || '—'} ${b.name}`)
+        .join('\n');
+      const replacement = findReplacementForBlock({
+        blockId: block.block_id,
+        excludeDoctorId: block.doctor_id,
+        day: toDay,
+        programAssignments,
+      });
+      const choice = window.prompt(
+        `${doctorName(block.doctor_id)} ya tiene otro bloqueo el ${toDate}:\n\n${detail}\n\n` +
+        `Elige una opción:\n` +
+        `1 = Mover igual / sumar todo en ese día\n` +
+        `2 = Cambiar "${block.name}" a ${replacement ? doctorName(replacement) : 'titular/subrogante disponible (no hay disponible)'}\n` +
+        `3 = No hacer el cambio`,
+        '1'
+      );
+      if (choice === null || choice.trim() === '3') return;
+      if (choice.trim() === '2') {
+        if (!replacement) {
+          toast.error('No hay titular/subrogante disponible para ese bloqueo en el día destino.');
+          return;
+        }
+        moved = {
+          ...moved,
+          doctor_id: replacement,
+          unassigned: false,
+          reassigned: true,
+          originalDoctor: block.doctor_id,
+        };
+      }
+    } else if (sameBlockCount > 0) {
+      toast.info(`"${block.name}" ya existe ese día; se sumará la duración saltando almuerzo 13:30-14:00.`);
+    }
 
     // Si el bloque tiene titular y está disponible en el día destino, ofrecer reasignar al titular.
     const titular = programAssignments.find(p => p.block_template_id === blockId && p.role_type === 'titular')?.doctor_id;
-    if (titular && titular !== block.doctor_id) {
+    if (titular && titular !== block.doctor_id && !moved.reassigned) {
       const turnoIds = new Set(toDay.turnos.map(t => t.doctor_id));
       const postIds = new Set(toDay.posturno.map(t => t.doctor_id));
       const ausIds = new Set(toDay.ausencias.map(a => a.doctor_id));
@@ -441,10 +526,28 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       }
     }
 
+    const toNext = sameBlockCount > 0
+      ? (() => {
+          const blocksToMerge = [...sameBlockInstances, moved];
+          const earliestStart = Math.min(...blocksToMerge.map(b => timeToMinutes(b.from)).filter(v => v != null));
+          const totalClinicalMinutes = blocksToMerge.reduce((sum, b) => sum + clinicalDurationMinutes(b), 0);
+          const merged = {
+            ...sameBlockInstances[0],
+            ...moved,
+            from: minutesToTime(earliestStart),
+            to: minutesToTime(addClinicalMinutesSkippingLunch(earliestStart, totalClinicalMinutes)),
+            merged_duration: true,
+            merged_count: blocksToMerge.length,
+            source: 'moved',
+          };
+          return [...toCurrent.filter(b => b.block_id !== block.block_id || b.suspended), merged];
+        })()
+      : [...toCurrent, moved];
+
     setBloqueosOverrides(prev => ({
       ...prev,
       [fromDate]: fromNext,
-      [toDate]: [...toCurrent, moved],
+      [toDate]: toNext,
     }));
   }
 
