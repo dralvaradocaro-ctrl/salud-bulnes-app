@@ -9,6 +9,12 @@ import { Lock, User, ChevronLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
+const ADMIN_USERS = [
+  { username: 'falvaradoc', password: '12345' },
+  { username: 'educordero', password: 'lalo123' },
+  { username: 'mfasani', password: 'mica123' },
+];
+
 export default function AdminLogin() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -22,7 +28,11 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     setTimeout(() => {
-      if (username === 'falvaradoc' && password === '12345') {
+      const isValidUser = ADMIN_USERS.some(user =>
+        user.username === username.trim().toLowerCase() &&
+        user.password === password
+      );
+      if (isValidUser) {
         localStorage.setItem('admin_logged_in', 'true');
         toast.success('Acceso autorizado');
         navigate(nextPath || createPageUrl('AdminDashboard'));

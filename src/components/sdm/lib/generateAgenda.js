@@ -79,7 +79,14 @@ function defaultExternalVisitorsForDay(day, days, calByDate) {
   };
 
   if (day.day === 'jue' || day.day === 'vie') {
-    add({ name: 'Dr. Rubilar', specialty: 'Internista', notes: '3 visitas por defecto; resto del tiempo a criterio del especialista' });
+    add({
+      name: 'Dr. Rubilar',
+      specialty: 'Internista',
+      no_show: !!calByDate[day.date]?.is_holiday,
+      notes: calByDate[day.date]?.is_holiday
+        ? 'No viene por feriado; mover si corresponde'
+        : '3 visitas por defecto; resto del tiempo a criterio del especialista',
+    });
   }
   if (day.date === sandovalDate) {
     add({
@@ -159,11 +166,25 @@ export function generateAgenda({
     const turnoNumber = cal ? cal.turno_number : null;
     const isHoliday = !!(cal && cal.is_holiday);
     const savedVisitors = getCalendarVisitors(cal);
-    const externalVisitors = Object.prototype.hasOwnProperty.call(externalVisitorOverrides, d.date)
+    let externalVisitors = Object.prototype.hasOwnProperty.call(externalVisitorOverrides, d.date)
       ? externalVisitorOverrides[d.date]
       : savedVisitors.hasOverride
       ? savedVisitors.visitors
       : defaultExternalVisitorsForDay(d, days, calByDate);
+    if (d.day === 'jue' && isHoliday && !externalVisitors.some(v => /rubilar/i.test(v?.name || ''))) {
+      externalVisitors = [
+        ...externalVisitors,
+        {
+          name: 'Dr. Rubilar',
+          specialty: 'Internista',
+          source: 'default',
+          editable_default: true,
+          holiday_pending: true,
+          no_show: true,
+          notes: 'No viene por feriado; mover si corresponde',
+        },
+      ];
+    }
     const turnos = turnoNumber != null
       ? getDoctorsForTurno(turnoNumber, rotation, cal.replacements || [])
       : [];

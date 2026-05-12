@@ -308,11 +308,26 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     if (!sourceDay || !targetDay) return;
     const sourceVisitors = Array.isArray(sourceDay.external_visitors) ? sourceDay.external_visitors : [];
     const targetVisitors = Array.isArray(targetDay.external_visitors) ? targetDay.external_visitors : [];
-    const sourceNext = sourceVisitors.filter((_, index) => index !== draggedVisitor.index);
+    let sourceNext = sourceVisitors.filter((_, index) => index !== draggedVisitor.index);
+    const isRubilar = /rubilar/i.test(draggedVisitor.visitor?.name || '');
+    if (isRubilar && sourceDay.day === 'jue') {
+      sourceNext = [
+        ...sourceNext,
+        {
+          name: 'Dr. Rubilar',
+          specialty: 'Internista',
+          source: 'manual',
+          no_show: true,
+          holiday_pending: !!sourceDay.is_holiday,
+          notes: `Movido a ${targetDay.label}; no viene este jueves`,
+        },
+      ];
+    }
     const moved = {
       ...draggedVisitor.visitor,
       source: 'manual',
       moved_from: draggedVisitor.fromDate,
+      no_show: false,
       holiday_pending: !!targetDay.is_holiday,
     };
     const targetNext = [...targetVisitors, moved];
@@ -716,15 +731,15 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
 		                            setVisitorDragOverDate(null);
 		                          }}
 		                          className={`text-[9px] font-normal leading-tight rounded px-1 py-0.5 -mx-1 cursor-grab active:cursor-grabbing ${
-		                            v.holiday_pending
-		                              ? 'sdm-print-hide bg-amber-100 text-amber-900 border border-amber-200'
-		                              : 'text-blue-700 hover:bg-blue-50'
+		                            v.holiday_pending || v.no_show
+			                              ? 'sdm-print-hide bg-amber-100 text-amber-900 border border-amber-200'
+			                              : 'text-blue-700 hover:bg-blue-50'
 		                          }`}
-		                          title={v.holiday_pending ? 'Arrastrar para mover desde feriado. No se imprime.' : 'Arrastrar para mover especialista a otro día'}
-		                        >
-	                          <span className="font-semibold">{v.name}</span>{v.specialty ? ` · ${v.specialty}` : ''}
-	                          {v.holiday_pending && <span className="ml-1 font-semibold">feriado/revisar</span>}
-	                        </div>
+			                          title={v.no_show ? 'Especialista marcado como no viene. No se imprime.' : v.holiday_pending ? 'Arrastrar para mover desde feriado. No se imprime.' : 'Arrastrar para mover especialista a otro día'}
+			                        >
+		                          <span className="font-semibold">{v.name}</span>{v.specialty ? ` · ${v.specialty}` : ''}
+		                          {v.no_show ? <span className="ml-1 font-semibold">no viene</span> : v.holiday_pending && <span className="ml-1 font-semibold">feriado/revisar</span>}
+		                        </div>
 	                      ))}
 	                    </div>
                   )}
