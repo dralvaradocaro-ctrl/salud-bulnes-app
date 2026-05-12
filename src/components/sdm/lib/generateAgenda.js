@@ -122,6 +122,7 @@ export function generateAgenda({
   manualReinforcements = {},   // { '2026-05-04': { am: 'doctor_id', pm: 'doctor_id' } }
   manualPoli8am = {},          // { '2026-05-04': 'doctor_id' } — override del médico full-day
   visitaOverrides = {},        // { '2026-05-04': { add: ['doc_id'], remove: ['doc_id'] } } — excepciones manuales en visita
+  externalVisitorOverrides = {}, // { '2026-05-04': [{name, specialty}] } — visitantes editados/movidos manualmente
   bloqueosOverrides = {},      // { '2026-05-04': [bloqueo, ...] } — bloqueos editados manualmente (drag-drop / CellEditor)
 }) {
   const days = weekDates(weekStart);
@@ -158,7 +159,9 @@ export function generateAgenda({
     const turnoNumber = cal ? cal.turno_number : null;
     const isHoliday = !!(cal && cal.is_holiday);
     const savedVisitors = getCalendarVisitors(cal);
-    const externalVisitors = savedVisitors.hasOverride
+    const externalVisitors = Object.prototype.hasOwnProperty.call(externalVisitorOverrides, d.date)
+      ? externalVisitorOverrides[d.date]
+      : savedVisitors.hasOverride
       ? savedVisitors.visitors
       : defaultExternalVisitorsForDay(d, days, calByDate);
     const turnos = turnoNumber != null

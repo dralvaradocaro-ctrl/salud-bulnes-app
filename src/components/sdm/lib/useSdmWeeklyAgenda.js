@@ -37,6 +37,7 @@ export function useSdmWeeklyAgenda(monday) {
   const [bloqueosOverrides, setBloqueosOverrides] = useState({});
   const [poli8amOverrides, setPoli8amOverrides] = useState({});
   const [visitaOverrides, setVisitaOverrides] = useState({});
+  const [externalVisitorOverrides, setExternalVisitorOverrides] = useState({});
   const [dismissedErrors, setDismissedErrors] = useState([]);
   const [savedAgendaId, setSavedAgendaId] = useState(null);
   const [savedData, setSavedData] = useState(null);
@@ -77,6 +78,7 @@ export function useSdmWeeklyAgenda(monday) {
       setBloqueosOverrides(ag.data.data.bloqueosOverrides || {});
       setPoli8amOverrides(ag.data.data.poli8amOverrides || {});
       setVisitaOverrides(ag.data.data.visitaOverrides || {});
+      setExternalVisitorOverrides(ag.data.data.externalVisitorOverrides || {});
       setDismissedErrors(Array.isArray(ag.data.data.dismissedErrors) ? ag.data.data.dismissedErrors : []);
     } else {
       setSavedData(null);
@@ -84,6 +86,7 @@ export function useSdmWeeklyAgenda(monday) {
       setBloqueosOverrides({});
       setPoli8amOverrides({});
       setVisitaOverrides({});
+      setExternalVisitorOverrides({});
       setDismissedErrors([]);
     }
     setSavedAgendaId(ag.data?.id || null);
@@ -103,7 +106,7 @@ export function useSdmWeeklyAgenda(monday) {
 
   useEffect(() => {
     if (initialLoadDone.current) setIsDirty(true);
-  }, [bloqueosOverrides, reinforcements, poli8amOverrides, visitaOverrides, dismissedErrors]);
+  }, [bloqueosOverrides, reinforcements, poli8amOverrides, visitaOverrides, externalVisitorOverrides, dismissedErrors]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -126,9 +129,10 @@ export function useSdmWeeklyAgenda(monday) {
       manualReinforcements: reinforcements,
       manualPoli8am: poli8amOverrides,
       visitaOverrides,
+      externalVisitorOverrides,
       bloqueosOverrides,
     });
-  }, [loading, monday, doctors, rotation, shiftCalendar, blockTemplates, programAssignments, absences, oneoffBlocks, reinforcements, poli8amOverrides, visitaOverrides, bloqueosOverrides]);
+  }, [loading, monday, doctors, rotation, shiftCalendar, blockTemplates, programAssignments, absences, oneoffBlocks, reinforcements, poli8amOverrides, visitaOverrides, externalVisitorOverrides, bloqueosOverrides]);
 
   const blockSuggestions = useMemo(() => buildBlockSuggestions(blockTemplates), [blockTemplates]);
 
@@ -146,6 +150,7 @@ export function useSdmWeeklyAgenda(monday) {
         bloqueosOverrides,
         poli8amOverrides,
         visitaOverrides,
+        externalVisitorOverrides,
         dismissedErrors,
         has_errors: hasErrors,
         generated_at: new Date().toISOString(),
@@ -174,7 +179,7 @@ export function useSdmWeeklyAgenda(monday) {
     setIsDirty(false);
     toast.success('Agenda guardada');
     return true;
-  }, [agenda, bloqueosOverrides, dismissedErrors, poli8amOverrides, reinforcements, savedAgendaId, visitaOverrides, weekStart]);
+  }, [agenda, bloqueosOverrides, dismissedErrors, externalVisitorOverrides, poli8amOverrides, reinforcements, savedAgendaId, visitaOverrides, weekStart]);
 
   return {
     monday,
@@ -203,6 +208,8 @@ export function useSdmWeeklyAgenda(monday) {
     setPoli8amOverrides,
     visitaOverrides,
     setVisitaOverrides,
+    externalVisitorOverrides,
+    setExternalVisitorOverrides,
     dismissedErrors,
     setDismissedErrors,
     savedAgendaId,

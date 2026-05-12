@@ -46,6 +46,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     setPoli8amOverrides,
     visitaOverrides,
     setVisitaOverrides,
+    setExternalVisitorOverrides,
     isDirty,
     agenda,
     blockSuggestions,
@@ -58,6 +59,8 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   const [aiError, setAiError] = useState(null); // error que se está corrigiendo con IA
   const [showDismissed, setShowDismissed] = useState(false);   // mostrar las descartadas con opción de restaurar
   const [dragOverDate, setDragOverDate] = useState(null);      // celda BLOQUEOS resaltada durante drag
+  const [visitorDragOverDate, setVisitorDragOverDate] = useState(null);
+  const [draggedVisitor, setDraggedVisitor] = useState(null);
   const [expandedAddDay, setExpandedAddDay] = useState(null);   // fecha del día con el form (+) expandido
 
   const confirmIfDirty = (msg = 'Tenés cambios sin guardar en esta semana. ¿Continuar y descartarlos?') => {
@@ -133,6 +136,32 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   async function deleteAbsence(id) {
     await supabase.from('sdm_absences').delete().eq('id', id);
     setAbsences(absences.filter(a => a.id !== id));
+  }
+
+  async function moveHolidayBlockToNextWeek(issue) {
+    const template = blockTemplates.find(bt => bt.id === issue.blockId);
+    if (!template || !issue.date) return;
+    const sourceDate = new Date(issue.date + 'T12:00:00');
+    const targetDate = new Date(sourceDate);
+    targetDate.setDate(targetDate.getDate() + 7);
+    const dayKey = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'][targetDate.getDay()];
+    const slot = template.weekday_pattern?.[dayKey]?.[0] || template.monthly_rule || {};
+    const payload = {
+      week_start: fmtDate(getMondayOfWeek(targetDate)),
+      date: fmtDate(targetDate),
+      doctor_id: null,
+      time_from: slot.from || null,
+      time_to: slot.to || null,
+      description: `${template.name} (diferido por feriado ${issue.date})`,
+      category: template.category || 'otro',
+    };
+    const { error } = await supabase.from('sdm_oneoff_blocks').insert(payload);
+    if (error) {
+      toast.error('Error al diferir: ' + (explainSdmWriteError(error) || error.message));
+      return;
+    }
+    dismissError(issue);
+    toast.success(`"${template.name}" diferido a ${payload.date}.`);
   }
 
   function updateReinforcement(date, slot, doctorId) {
@@ -253,6 +282,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       ? external_visitors
       : [{ [EMPTY_EXTERNAL_VISITORS_OVERRIDE]: true }];
     setBloqueosOverrides(prev => ({ ...prev, [date]: bloqueos }));
+    setExternalVisitorOverrides(prev => ({ ...prev, [date]: external_visitors }));
     // Persistir is_holiday y external_visitors en sdm_shift_calendar
     const existing = shiftCalendar.find(c => c.date === date);
     if (existing) {
@@ -265,6 +295,35 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       console.warn(`No hay entrada en sdm_shift_calendar para ${date}; feriado/visitantes no persistidos.`);
     }
     toast.success('Cambios aplicados. Guardá la agenda para dejarlos persistidos.');
+  }
+
+  function moveExternalVisitor(targetDate) {
+    if (!draggedVisitor || draggedVisitor.fromDate === targetDate) {
+      setDraggedVisitor(null);
+      setVisitorDragOverDate(null);
+      return;
+    }
+    const sourceDay = agenda.find(d => d.date === draggedVisitor.fromDate);
+    const targetDay = agenda.find(d => d.date === targetDate);
+    if (!sourceDay || !targetDay) return;
+    const sourceVisitors = Array.isArray(sourceDay.external_visitors) ? sourceDay.external_visitors : [];
+    const targetVisitors = Array.isArray(targetDay.external_visitors) ? targetDay.external_visitors : [];
+    const sourceNext = sourceVisitors.filter((_, index) => index !== draggedVisitor.index);
+    const moved = {
+      ...draggedVisitor.visitor,
+      source: 'manual',
+      moved_from: draggedVisitor.fromDate,
+      holiday_pending: !!targetDay.is_holiday,
+    };
+    const targetNext = [...targetVisitors, moved];
+    setExternalVisitorOverrides(prev => ({
+      ...prev,
+      [draggedVisitor.fromDate]: sourceNext,
+      [targetDate]: targetNext,
+    }));
+    setDraggedVisitor(null);
+    setVisitorDragOverDate(null);
+    toast.success(`Especialista movido a ${targetDay.label}. Guardá la agenda para dejarlo persistido.`);
   }
 
   function applyAiOption(error, opt) {
@@ -477,6 +536,15 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                       <Sparkles className="h-3 w-3" /> Sugerir IA
                     </button>
                   )}
+                  {e.kind === 'monthly_holiday_skipped' && (
+                    <button
+                      onClick={(ev) => { ev.stopPropagation(); moveHolidayBlockToNextWeek(e); }}
+                      className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-blue-700 hover:text-blue-900 hover:bg-blue-100 px-1.5 py-0.5 rounded"
+                      title="Crear este bloqueo como puntual en la misma jornada de la próxima semana"
+                    >
+                      Próxima semana
+                    </button>
+                  )}
                   <button
                     onClick={(ev) => { ev.stopPropagation(); dismissError(e); }}
                     className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-1.5 py-0.5 rounded"
@@ -508,6 +576,15 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                       title="Pedir sugerencia razonada a la IA"
                     >
                       <Sparkles className="h-3 w-3" /> Sugerir IA
+                    </button>
+                  )}
+                  {w.kind === 'monthly_holiday_skipped' && (
+                    <button
+                      onClick={(ev) => { ev.stopPropagation(); moveHolidayBlockToNextWeek(w); }}
+                      className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-blue-700 hover:text-blue-900 hover:bg-blue-100 px-1.5 py-0.5 rounded"
+                      title="Crear este bloqueo como puntual en la misma jornada de la próxima semana"
+                    >
+                      Próxima semana
                     </button>
                   )}
                   <button
@@ -600,24 +677,51 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
           <tbody>
             {agenda.map(day => (
               <tr key={day.date} className="border-b border-slate-200 align-top hover:bg-slate-50">
-                <td className="px-2 py-2 font-bold text-slate-800">
-                  {day.label}
-                  <div className="text-[10px] font-normal text-slate-500">{day.date}<br/>T{day.turnoNumber ?? '–'}</div>
+	                <td
+	                  className={`px-2 py-2 font-bold text-slate-800 transition-colors ${visitorDragOverDate === day.date ? 'bg-blue-50 ring-2 ring-blue-300 ring-inset' : ''}`}
+	                  onDragOver={(e) => {
+	                    if (!draggedVisitor) return;
+	                    e.preventDefault();
+	                    e.dataTransfer.dropEffect = 'move';
+	                    setVisitorDragOverDate(day.date);
+	                  }}
+	                  onDragLeave={() => {
+	                    if (visitorDragOverDate === day.date) setVisitorDragOverDate(null);
+	                  }}
+	                  onDrop={(e) => {
+	                    if (!draggedVisitor) return;
+	                    e.preventDefault();
+	                    moveExternalVisitor(day.date);
+	                  }}
+	                >
+	                  {day.label}
+	                  <div className="text-[10px] font-normal text-slate-500">{day.date}<br/>T{day.turnoNumber ?? '–'}</div>
                   {day.is_holiday && (
                     <div className="mt-1 inline-block rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-slate-200 text-slate-700">Feriado</div>
                   )}
 	                  {Array.isArray(day.external_visitors) && day.external_visitors.length > 0 && (
 	                    <div className="mt-1 space-y-0.5">
-	                      {day.external_visitors.map((v, i) => (
-	                        <div
-	                          key={i}
-	                          className={`text-[9px] font-normal leading-tight rounded px-1 py-0.5 -mx-1 ${
-	                            v.holiday_pending
-	                              ? 'sdm-print-hide bg-amber-100 text-amber-900 border border-amber-200'
-	                              : 'text-blue-700'
-	                          }`}
-	                          title={v.holiday_pending ? 'Especialista caía en feriado: revisar, mover o eliminar. No se imprime.' : v.notes}
-	                        >
+		                      {day.external_visitors.map((v, i) => (
+		                        <div
+		                          key={i}
+		                          draggable
+		                          onDragStart={(e) => {
+		                            e.stopPropagation();
+		                            setDraggedVisitor({ fromDate: day.date, index: i, visitor: v });
+		                            e.dataTransfer.effectAllowed = 'move';
+		                            e.dataTransfer.setData('application/sdm-external-visitor', JSON.stringify({ fromDate: day.date, index: i }));
+		                          }}
+		                          onDragEnd={() => {
+		                            setDraggedVisitor(null);
+		                            setVisitorDragOverDate(null);
+		                          }}
+		                          className={`text-[9px] font-normal leading-tight rounded px-1 py-0.5 -mx-1 cursor-grab active:cursor-grabbing ${
+		                            v.holiday_pending
+		                              ? 'sdm-print-hide bg-amber-100 text-amber-900 border border-amber-200'
+		                              : 'text-blue-700 hover:bg-blue-50'
+		                          }`}
+		                          title={v.holiday_pending ? 'Arrastrar para mover desde feriado. No se imprime.' : 'Arrastrar para mover especialista a otro día'}
+		                        >
 	                          <span className="font-semibold">{v.name}</span>{v.specialty ? ` · ${v.specialty}` : ''}
 	                          {v.holiday_pending && <span className="ml-1 font-semibold">feriado/revisar</span>}
 	                        </div>
