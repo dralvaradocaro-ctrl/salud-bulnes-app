@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ChevronLeft, ChevronRight, RefreshCw, Save, Printer, Plus, Trash2, Edit3, Sparkles } from 'lucide-react';
-import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, sortReinforcements, optimizeForTitulars, balanceLoad, HIERARCHICAL_BLOCK_IDS, findReplacementForBlock } from './lib/generateAgenda';
+import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, dayKeyForDate, sortReinforcements, optimizeForTitulars, balanceLoad, HIERARCHICAL_BLOCK_IDS, findReplacementForBlock } from './lib/generateAgenda';
 import AIFixModal from './AIFixModal';
 import { Shuffle, Wand2, Scale } from 'lucide-react';
 import CellEditor from './CellEditor';
@@ -419,6 +419,39 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
 
   function applyAiOption(error, opt) {
     if (!error || !opt) return;
+    if (opt.action === 'add' && opt.swap_with_day) {
+      const targetDay = agenda.find(d => d.date === opt.swap_with_day);
+      const template = blockTemplates.find(bt => bt.id === error.blockId);
+      if (!targetDay || !template) {
+        toast.error('No se pudo encontrar el día o template para agregar el bloqueo.');
+        return;
+      }
+      if (targetDay.is_holiday) {
+        toast.error('No se puede agregar en feriado. Elegí otro día.');
+        return;
+      }
+      const targetKey = dayKeyForDate(targetDay.date);
+      const slot = template.weekday_pattern?.[targetKey]?.[0]
+        || Object.values(template.weekday_pattern || {}).flat()[0]
+        || template.monthly_rule
+        || {};
+      const current = bloqueosOverrides[targetDay.date] ?? targetDay.bloqueos;
+      const newBlock = {
+        block_id: template.id,
+        name: template.name,
+        from: slot.from || null,
+        to: slot.to || null,
+        doctor_id: opt.doctor_id || null,
+        unassigned: !opt.doctor_id,
+        category: template.category || 'otro',
+        source: 'ai_added',
+        ai_assigned: true,
+      };
+      setBloqueosOverrides(prev => ({ ...prev, [targetDay.date]: [...current, newBlock] }));
+      toast.success(`IA agregó "${template.name}" el ${targetDay.label}. Guardá la agenda para dejarlo persistido.`);
+      return;
+    }
+
     const day = agenda.find(d => d.date === error.date);
     if (!day) return;
     const currentBloqueos = bloqueosOverrides[error.date] ?? day.bloqueos;
@@ -465,7 +498,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     if (!day) return;
     const current = bloqueosOverrides[date] ?? day.bloqueos;
     const newBlock = {
-      block_id: `oneoff-inline-${Date.now()}`,
+      block_id: blk.block_id || `oneoff-inline-${Date.now()}`,
       name: blk.name.trim(),
       from: blk.from,
       to: blk.to,
@@ -697,10 +730,11 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
 	            </div>
 	            {showIssuePanel && (
 	              <div className="space-y-1 border-t border-white/60 pt-2">
-	            {visibleErrors.map((e, i) => {
+            {visibleErrors.map((e, i) => {
               const targetDay = e.date ? agenda.find(d => d.date === e.date) : null;
               const isClickable = !!targetDay;
-              const aiCapable = isClickable && ['unassigned', 'absent_assigned', 'overlap', 'auto_assigned'].includes(e.kind);
+              const aiCapable = (isClickable && ['unassigned', 'absent_assigned', 'overlap', 'auto_assigned'].includes(e.kind))
+                || ['weekly_count_short', 'weekly_count_short_unrelocatable'].includes(e.kind);
               return (
                 <div key={'e' + i} className="flex items-center gap-2 text-red-800 px-1 -mx-1 hover:bg-red-100 rounded transition-colors">
                   <span
@@ -742,7 +776,8 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
             {visibleWarnings.map((w, i) => {
               const targetDay = w.date ? agenda.find(d => d.date === w.date) : null;
               const isClickable = !!targetDay;
-              const aiCapable = isClickable && ['auto_assigned', 'posturno_assigned', 'outside_jornada'].includes(w.kind);
+              const aiCapable = (isClickable && ['auto_assigned', 'posturno_assigned', 'outside_jornada'].includes(w.kind))
+                || ['weekly_count_short', 'weekly_count_short_unrelocatable'].includes(w.kind);
               return (
                 <div key={'w' + i} className="flex items-center gap-2 text-amber-800 px-1 -mx-1 hover:bg-amber-100 rounded transition-colors">
                   <span
@@ -1203,6 +1238,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
         error={aiError}
         agenda={agenda}
         doctors={doctors}
+        blockTemplates={blockTemplates}
         onApply={(opt) => applyAiOption(aiError, opt)}
       />
 
@@ -1249,6 +1285,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
  * Renderiza una fila compacta: nombre + desde + hasta + médico + ✓ + ×.
  */
 function QuickAddBlockForm({ doctors, blockSuggestions = [], onSave, onCancel }) {
+  const [blockId, setBlockId] = useState('');
   const [name, setName] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -1265,11 +1302,12 @@ function QuickAddBlockForm({ doctors, blockSuggestions = [], onSave, onCancel })
   const updateName = (value) => {
     const suggestion = blockSuggestions.find(s => s.matchValue === value.trim().toLowerCase());
     setName(suggestion?.name || value);
+    setBlockId(suggestion?.blockId || '');
     setCategory(suggestion?.category || 'otro');
   };
   const save = () => {
     if (!valid) return;
-    onSave({ name: name.trim(), from, to, doctor_id: doctorId || null, category });
+    onSave({ block_id: blockId, name: name.trim(), from, to, doctor_id: doctorId || null, category });
   };
   return (
     <div className="flex flex-wrap items-center gap-1 rounded border border-blue-300 bg-blue-50/40 px-1.5 py-1">

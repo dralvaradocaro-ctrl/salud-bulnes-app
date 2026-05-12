@@ -34,6 +34,7 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
     setItems(items.map(it => it._key === key
       ? {
           ...it,
+          block_id: suggestion?.blockId || it.block_id,
           name: suggestion?.name || value,
           category: suggestion?.category || it.category,
         }

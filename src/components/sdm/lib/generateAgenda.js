@@ -35,6 +35,37 @@ export function fmtDate(date) {
   return new Date(date).toISOString().slice(0, 10);
 }
 
+export function normalizeBlockLabel(value = '') {
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+export function buildBlockTemplateLookup(blockTemplates = []) {
+  const validIds = new Set(blockTemplates.map(t => t.id).filter(Boolean));
+  const byName = new Map();
+  blockTemplates.forEach(t => {
+    if (!t?.id || !t?.name) return;
+    byName.set(normalizeBlockLabel(t.name), t.id);
+    const compact = t.name.replace(/^Gestión\s+/i, '').trim();
+    if (compact && compact !== t.name) byName.set(normalizeBlockLabel(compact), t.id);
+  });
+  if (validIds.has('gestion_pscv')) {
+    byName.set(normalizeBlockLabel('Cardiovascular'), 'gestion_pscv');
+    byName.set(normalizeBlockLabel('PSCV'), 'gestion_pscv');
+  }
+  return { validIds, byName };
+}
+
+export function resolveBlockTemplateId(block, blockTemplates = [], lookup = buildBlockTemplateLookup(blockTemplates)) {
+  if (!block) return null;
+  if (lookup.validIds.has(block.block_id)) return block.block_id;
+  return lookup.byName.get(normalizeBlockLabel(block.name)) || block.block_id || null;
+}
+
 export function weekDates(monday) {
   const m = new Date(monday);
   return DAYS.map((d, i) => {
@@ -1025,12 +1056,15 @@ export function validateAgenda(agenda, doctors = [], blockTemplates = []) {
 
   // Cumplimiento semanal vs spec canónico (BLOCK_SPECS) + bloqueos mensuales en feriado
   const holidayDates = agenda.filter(d => d.is_holiday).map(d => d.date);
+  const blockLookup = buildBlockTemplateLookup(blockTemplates);
   const countByBlock = {};
   agenda.forEach(day => {
     if (day.is_holiday) return;
     day.bloqueos.forEach(b => {
       if (b.suspended) return;
-      countByBlock[b.block_id] = (countByBlock[b.block_id] || 0) + 1;
+      const blockId = resolveBlockTemplateId(b, blockTemplates, blockLookup);
+      if (!blockId) return;
+      countByBlock[blockId] = (countByBlock[blockId] || 0) + 1;
     });
   });
   // Para mensuales: detectar si la fecha objetivo cae en feriado

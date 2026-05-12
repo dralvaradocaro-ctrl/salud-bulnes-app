@@ -10,7 +10,7 @@ import { suggestFixForError } from './lib/aiAssistant';
  * Cada opción tiene un botón "Aplicar". El parent recibe la opción aplicada
  * vía onApply(option) y decide cómo mutar el estado.
  */
-export default function AIFixModal({ open, onOpenChange, error, agenda, doctors, onApply }) {
+export default function AIFixModal({ open, onOpenChange, error, agenda, doctors, blockTemplates = [], onApply }) {
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState(null);
   const [errMsg, setErrMsg] = useState(null);
@@ -22,7 +22,7 @@ export default function AIFixModal({ open, onOpenChange, error, agenda, doctors,
     setErrMsg(null);
     setOptions(null);
     try {
-      const res = await suggestFixForError(error, agenda, doctors);
+      const res = await suggestFixForError(error, agenda, doctors, blockTemplates);
       setOptions(Array.isArray(res?.options) ? res.options : []);
     } catch (e) {
       setErrMsg(e.message || 'Error consultando IA');
@@ -40,6 +40,7 @@ export default function AIFixModal({ open, onOpenChange, error, agenda, doctors,
 
   const labelForAction = (opt) => {
     if (opt.action === 'assign') return `Asignar a ${doctorName(opt.doctor_id)}`;
+    if (opt.action === 'add') return `Agregar el ${opt.swap_with_day}`;
     if (opt.action === 'swap') return `Mover al ${opt.swap_with_day}`;
     if (opt.action === 'suspend') return 'Suspender (diferir a próxima semana)';
     return opt.action;
@@ -47,6 +48,7 @@ export default function AIFixModal({ open, onOpenChange, error, agenda, doctors,
 
   const colorForAction = (action) => ({
     assign: 'border-emerald-300 bg-emerald-50',
+    add: 'border-emerald-300 bg-emerald-50',
     swap: 'border-amber-300 bg-amber-50',
     suspend: 'border-slate-300 bg-slate-50',
   }[action] || 'border-slate-200 bg-white');

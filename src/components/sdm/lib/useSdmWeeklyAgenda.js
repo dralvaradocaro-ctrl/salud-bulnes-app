@@ -5,13 +5,13 @@ import { fmtDate, generateAgenda, weekDates } from './generateAgenda';
 
 export function buildBlockSuggestions(blockTemplates) {
   const aliases = [
-    { key: 'alias-cardiovascular', value: 'Cardiovascular', matchValue: 'cardiovascular', name: 'Gestión PSCV', category: 'gestion' },
-    { key: 'alias-pscv', value: 'PSCV', matchValue: 'pscv', name: 'Gestión PSCV', category: 'gestion' },
+    { key: 'alias-cardiovascular', value: 'Cardiovascular', matchValue: 'cardiovascular', name: 'Gestión PSCV', blockId: 'gestion_pscv', category: 'gestion' },
+    { key: 'alias-pscv', value: 'PSCV', matchValue: 'pscv', name: 'Gestión PSCV', blockId: 'gestion_pscv', category: 'gestion' },
   ];
   const fromTemplates = blockTemplates
     .filter(t => t?.name)
     .flatMap(t => {
-      const main = { key: `tpl-${t.id}`, value: t.name, matchValue: t.name.trim().toLowerCase(), name: t.name, category: t.category || 'otro' };
+      const main = { key: `tpl-${t.id}`, value: t.name, matchValue: t.name.trim().toLowerCase(), name: t.name, blockId: t.id, category: t.category || 'otro' };
       const compact = t.name.replace(/^Gestión\s+/i, '').trim();
       return compact && compact !== t.name
         ? [main, { ...main, key: `tpl-${t.id}-compact`, value: compact, matchValue: compact.toLowerCase() }]

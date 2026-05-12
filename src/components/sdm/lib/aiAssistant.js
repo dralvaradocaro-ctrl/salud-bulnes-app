@@ -21,7 +21,7 @@ const RESPONSE_SCHEMA = {
       items: {
         type: 'object',
         properties: {
-          action: { type: 'string', enum: ['assign', 'swap', 'suspend'] },
+          action: { type: 'string', enum: ['assign', 'swap', 'suspend', 'add'] },
           doctor_id: { type: 'string', nullable: true },
           swap_with_day: { type: 'string', nullable: true },
           reasoning: { type: 'string' },
@@ -39,9 +39,69 @@ const RESPONSE_SCHEMA = {
  * @param doctors - catálogo completo de sdm_doctors
  * @returns { options: [{ action, doctor_id?, swap_with_day?, reasoning, side_effects? }] }
  */
-export async function suggestFixForError(error, agenda, doctors) {
+export async function suggestFixForError(error, agenda, doctors, blockTemplates = []) {
   const docName = id => doctors.find(d => d.id === id)?.display_name || id;
   const day = agenda.find(d => d.date === error.date);
+  const template = blockTemplates.find(bt => bt.id === error.blockId);
+  const isWeeklyCountIssue = ['weekly_count_short', 'weekly_count_short_unrelocatable'].includes(error.kind);
+
+  if (!day && isWeeklyCountIssue) {
+    const availableDays = agenda
+      .filter(d => !d.is_holiday)
+      .map(d => ({
+        fecha: d.date,
+        dia: d.label,
+        ya_tiene_bloque: d.bloqueos.some(b => !b.suspended && b.block_id === error.blockId),
+        bloqueos_activos: d.bloqueos
+          .filter(b => !b.suspended)
+          .map(b => ({
+            nombre: b.name,
+            desde: b.from,
+            hasta: b.to,
+            medico: b.doctor_id ? docName(b.doctor_id) : 'SIN ASIGNAR',
+          })),
+        ausencias: d.ausencias.map(a => `${docName(a.doctor_id)} (${ABSENCE_LABELS[a.type] || a.type})`),
+      }));
+
+    const prompt = `Sos un asistente experto en agendas médicas hospitalarias. El validador detectó un déficit semanal:
+
+ALERTA: ${error.message}
+TIPO: ${error.kind}
+BLOQUE FALTANTE: ${template?.name || error.blockId}
+HORARIOS ESPERADOS DEL TEMPLATE:
+${JSON.stringify(template?.weekday_pattern || template?.monthly_rule || {}, null, 2)}
+
+DÍAS DISPONIBLES DE ESTA SEMANA:
+${JSON.stringify(availableDays, null, 2)}
+
+REGLAS:
+- Proponé agregar el bloqueo faltante en un día no feriado.
+- Preferí un día donde todavía no exista ese mismo bloqueo.
+- Si el template tiene horario para ese día, usar ese día es mejor.
+- Si hay muchos bloqueos activos ese día, preferí otro día con menos carga.
+- La acción debe ser "add".
+- Usá swap_with_day para indicar la fecha destino YYYY-MM-DD.
+- doctor_id puede ser null si conviene dejarlo para asignación manual.
+
+Devuelve un JSON con esta forma EXACTA:
+{
+  "options": [
+    {
+      "action": "add",
+      "doctor_id": "<id del médico o null>",
+      "swap_with_day": "<YYYY-MM-DD>",
+      "reasoning": "<explicación humana, 1-2 oraciones>",
+      "side_effects": "<consecuencias o null>"
+    }
+  ]
+}
+
+Devuelve 2 o 3 opciones, ordenadas de mejor a peor.`;
+
+    const result = await invokeLLM({ prompt, response_json_schema: RESPONSE_SCHEMA });
+    return result;
+  }
+
   if (!day) throw new Error(`Día ${error.date} no encontrado en la agenda`);
 
   const block = day.bloqueos.find(b => b.block_id === error.blockId);

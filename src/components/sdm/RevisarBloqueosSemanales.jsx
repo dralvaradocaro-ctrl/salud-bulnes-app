@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChevronLeft, ChevronRight, ArrowRight, CheckCircle2, XCircle, MinusCircle, AlertTriangle } from 'lucide-react';
-import { generateAgenda, getMondayOfWeek, fmtDate, weekDates, isMonthlyMatch } from './lib/generateAgenda';
+import { generateAgenda, getMondayOfWeek, fmtDate, weekDates, isMonthlyMatch, buildBlockTemplateLookup, resolveBlockTemplateId } from './lib/generateAgenda';
 import { BLOCK_SPECS, BLOCK_SPEC_ORDER, isDailyBlock } from './lib/blockSpec';
 
 export default function RevisarBloqueosSemanales() {
@@ -73,15 +73,18 @@ export default function RevisarBloqueosSemanales() {
   // Conteo actual por block_id (excluyendo días feriado y bloques suspendidos)
   const countByBlock = useMemo(() => {
     const c = {};
+    const blockLookup = buildBlockTemplateLookup(data.blockTemplates);
     agenda.forEach(day => {
       if (day.is_holiday) return;
       day.bloqueos.forEach(b => {
         if (b.suspended) return;
-        c[b.block_id] = (c[b.block_id] || 0) + 1;
+        const blockId = resolveBlockTemplateId(b, data.blockTemplates, blockLookup);
+        if (!blockId) return;
+        c[blockId] = (c[blockId] || 0) + 1;
       });
     });
     return c;
-  }, [agenda]);
+  }, [agenda, data.blockTemplates]);
 
   // Para mensuales: ¿la fecha objetivo cae en la semana y es feriado?
   const monthlyStatus = useMemo(() => {
