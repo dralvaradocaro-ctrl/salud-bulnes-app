@@ -57,6 +57,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   const [newAbs, setNewAbs] = useState({ doctor_id: '', date: '', type: 'A', notes: '' });
   const [editingDay, setEditingDay] = useState(null);
   const [aiError, setAiError] = useState(null); // error que se está corrigiendo con IA
+  const [showIssuePanel, setShowIssuePanel] = useState(false);
   const [showDismissed, setShowDismissed] = useState(false);   // mostrar las descartadas con opción de restaurar
   const [dragOverDate, setDragOverDate] = useState(null);      // celda BLOQUEOS resaltada durante drag
   const [visitorDragOverDate, setVisitorDragOverDate] = useState(null);
@@ -524,11 +525,40 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
         <Button variant="outline" onClick={() => window.print()} className="gap-1.5"><Printer className="h-4 w-4" /> Imprimir</Button>
       </div>
 
-      {/* Banners de validación — clickeables: abren el editor del día problemático */}
-      {(visibleErrors.length > 0 || visibleWarnings.length > 0 || hiddenIssues.length > 0) && (
-        <Card className={`sdm-print-hide ${visibleErrors.length ? 'border-red-300 bg-red-50' : visibleWarnings.length ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
-          <CardContent className="pt-4 text-sm space-y-1">
-            {visibleErrors.map((e, i) => {
+	      {/* Banners de validación — clickeables: abren el editor del día problemático */}
+	      {(visibleErrors.length > 0 || visibleWarnings.length > 0 || hiddenIssues.length > 0) && (
+	        <Card className={`sdm-print-hide ${visibleErrors.length ? 'border-red-300 bg-red-50' : visibleWarnings.length ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
+	          <CardContent className="pt-3 text-sm space-y-2">
+	            <div className="flex flex-wrap items-center gap-2">
+	              <button
+	                onClick={() => setShowIssuePanel(s => !s)}
+	                className="inline-flex items-center gap-2 rounded px-1.5 py-1 text-left font-semibold text-slate-800 hover:bg-white/70"
+	              >
+	                <span className="text-[12px]">{showIssuePanel ? '▼' : '▶'}</span>
+	                Alertas de agenda
+	              </button>
+	              {visibleErrors.length > 0 && (
+	                <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-800 border border-red-200">
+	                  {visibleErrors.length} error(es)
+	                </span>
+	              )}
+	              {visibleWarnings.length > 0 && (
+	                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 border border-amber-200">
+	                  {visibleWarnings.length} aviso(s)
+	                </span>
+	              )}
+	              {hiddenIssues.length > 0 && (
+	                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600 border border-slate-200">
+	                  {hiddenIssues.length} descartada(s)
+	                </span>
+	              )}
+	              <span className="text-xs text-slate-500">
+	                {showIssuePanel ? 'Click en una alerta para corregir.' : 'Contraído para dejar más espacio al cronograma.'}
+	              </span>
+	            </div>
+	            {showIssuePanel && (
+	              <div className="space-y-1 border-t border-white/60 pt-2">
+	            {visibleErrors.map((e, i) => {
               const targetDay = e.date ? agenda.find(d => d.date === e.date) : null;
               const isClickable = !!targetDay;
               const aiCapable = isClickable && ['unassigned', 'absent_assigned', 'overlap', 'auto_assigned'].includes(e.kind);
@@ -636,11 +666,13 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                     ))}
                   </div>
                 )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+	              </div>
+	            )}
+	              </div>
+	            )}
+	          </CardContent>
+	        </Card>
+	      )}
 
       {/* Panel de reuniones internas SDM (no se imprimen en agenda final) */}
       <SdmInternalMeetings monday={monday} onChanged={reloadOneoff} />
@@ -685,8 +717,8 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
               <th className="px-2 py-2 text-left">AUSENCIAS</th>
               <th className="px-2 py-2 text-left w-72">BLOQUEOS</th>
               <th className="px-2 py-2 text-left">VISITA</th>
-              <th className="px-2 py-2 text-left">POLICLÍNICO</th>
               <th className="px-2 py-2 text-left">POLI 8 AM</th>
+              <th className="px-2 py-2 text-left">POLICLÍNICO</th>
             </tr>
           </thead>
           <tbody>

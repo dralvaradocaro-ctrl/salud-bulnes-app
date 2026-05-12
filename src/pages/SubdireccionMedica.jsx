@@ -42,6 +42,7 @@ export default function SubdireccionMedica() {
     weekParam ? getMondayOfWeek(new Date(weekParam + 'T12:00:00')) : getMondayOfWeek(new Date())
   );
   const weeklyAgenda = useSdmWeeklyAgenda(monday);
+  const profileName = localStorage.getItem('admin_profile_name') || 'Fernando Alvarado';
   const setTopTab    = (v) => setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('tab', v); return p; }, { replace: true });
   const setConsoleTab = (v) => setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('subtab', v); return p; }, { replace: true });
   const setMonday = (d) => {
@@ -66,12 +67,16 @@ export default function SubdireccionMedica() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Subdirección Médica</h1>
-            <p className="text-sm text-slate-500">Consola de gestión, documentos y pacientes</p>
+            <p className="text-sm text-slate-500">Hola, bienvenido de vuelta, {profileName}.</p>
           </div>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => { localStorage.removeItem('admin_logged_in'); navigate(createPageUrl('AdminLogin')); }}
+            onClick={() => {
+              localStorage.removeItem('admin_logged_in');
+              localStorage.removeItem('admin_profile_name');
+              navigate(createPageUrl('AdminLogin'));
+            }}
             className="gap-1.5"
           >
             <LogOut className="h-4 w-4" /> Salir

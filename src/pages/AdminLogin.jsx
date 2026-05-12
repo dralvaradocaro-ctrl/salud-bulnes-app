@@ -10,9 +10,9 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const ADMIN_USERS = [
-  { username: 'falvaradoc', password: '12345' },
-  { username: 'educordero', password: 'lalo123' },
-  { username: 'mfasani', password: 'mica123' },
+  { username: 'falvaradoc', password: '12345', name: 'Fernando Alvarado' },
+  { username: 'educordero', password: 'lalo123', name: 'Eduardo Cordero' },
+  { username: 'mfasani', password: 'mica123', name: 'Micaela Fasani' },
 ];
 
 export default function AdminLogin() {
@@ -28,12 +28,13 @@ export default function AdminLogin() {
     setIsLoading(true);
 
     setTimeout(() => {
-      const isValidUser = ADMIN_USERS.some(user =>
+      const validUser = ADMIN_USERS.find(user =>
         user.username === username.trim().toLowerCase() &&
         user.password === password
       );
-      if (isValidUser) {
+      if (validUser) {
         localStorage.setItem('admin_logged_in', 'true');
+        localStorage.setItem('admin_profile_name', validUser.name);
         toast.success('Acceso autorizado');
         navigate(nextPath || createPageUrl('AdminDashboard'));
       } else {
