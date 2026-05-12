@@ -350,19 +350,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     const targetVisitors = Array.isArray(targetDay.external_visitors) ? targetDay.external_visitors : [];
     let sourceNext = sourceVisitors.filter((_, index) => index !== draggedVisitor.index);
     const isRubilar = /rubilar/i.test(draggedVisitor.visitor?.name || '');
-    if (isRubilar && sourceDay.day === 'jue') {
-      sourceNext = [
-        ...sourceNext,
-        {
-          name: 'Dr. Rubilar',
-          specialty: 'Internista',
-          source: 'manual',
-          no_show: true,
-          holiday_pending: !!sourceDay.is_holiday,
-          notes: `Movido a ${targetDay.label}; no viene este jueves`,
-        },
-      ];
-    }
+    
     const moved = {
       ...draggedVisitor.visitor,
       source: 'manual',
@@ -370,12 +358,48 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       no_show: false,
       holiday_pending: !!targetDay.is_holiday,
     };
-    const targetNext = [...targetVisitors, moved];
+    
+    const isAlreadyInTarget = targetVisitors.some(v => v.name === moved.name);
+    const targetNext = isAlreadyInTarget
+      ? [...targetVisitors.filter(v => v.name !== moved.name), moved]
+      : [...targetVisitors, moved];
+
     setExternalVisitorOverrides(prev => ({
       ...prev,
       [draggedVisitor.fromDate]: sourceNext,
       [targetDate]: targetNext,
     }));
+
+    if (isRubilar) {
+      setVisitaOverrides(prev => {
+        let updated = { ...prev };
+        
+        // Remove from source day
+        const curSource = updated[draggedVisitor.fromDate] || {};
+        const removeSource = [...new Set([...(curSource.remove || []), 'rubilar'])];
+        const addSource = (curSource.add || []).filter(x => x !== 'rubilar');
+        if (addSource.length === 0 && removeSource.length === 0) {
+          delete updated[draggedVisitor.fromDate];
+        } else {
+          updated[draggedVisitor.fromDate] = { add: addSource, remove: removeSource };
+        }
+
+        // Add to target day if not holiday
+        if (!targetDay.is_holiday) {
+          const curTarget = updated[targetDate] || {};
+          const addTarget = [...new Set([...(curTarget.add || []), 'rubilar'])];
+          const removeTarget = (curTarget.remove || []).filter(x => x !== 'rubilar');
+          if (addTarget.length === 0 && removeTarget.length === 0) {
+            delete updated[targetDate];
+          } else {
+            updated[targetDate] = { add: addTarget, remove: removeTarget };
+          }
+        }
+
+        return updated;
+      });
+    }
+
     setDraggedVisitor(null);
     setVisitorDragOverDate(null);
     toast.success(`Especialista movido a ${targetDay.label}. Guardá la agenda para dejarlo persistido.`);

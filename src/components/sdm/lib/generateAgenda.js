@@ -171,20 +171,27 @@ export function generateAgenda({
       : savedVisitors.hasOverride
       ? savedVisitors.visitors
       : defaultExternalVisitorsForDay(d, days, calByDate);
+    
     if (d.day === 'jue' && isHoliday && !externalVisitors.some(v => /rubilar/i.test(v?.name || ''))) {
-      externalVisitors = [
-        ...externalVisitors,
-        {
-          name: 'Dr. Rubilar',
-          specialty: 'Internista',
-          source: 'default',
-          editable_default: true,
-          holiday_pending: true,
-          no_show: true,
-          notes: 'No viene por feriado; mover si corresponde',
-        },
-      ];
+      const rubilarMoved = Object.values(externalVisitorOverrides).flat().some(v => 
+        /rubilar/i.test(v?.name || '') && v.moved_from === d.date
+      );
+      if (!rubilarMoved) {
+        externalVisitors = [
+          ...externalVisitors,
+          {
+            name: 'Dr. Rubilar',
+            specialty: 'Internista',
+            source: 'default',
+            editable_default: true,
+            holiday_pending: true,
+            no_show: true,
+            notes: 'No viene por feriado; mover si corresponde',
+          },
+        ];
+      }
     }
+
     const turnos = turnoNumber != null
       ? getDoctorsForTurno(turnoNumber, rotation, cal.replacements || [])
       : [];
@@ -485,9 +492,9 @@ export function generateAgenda({
       if (turnoIds.has(docId) || postIds.has(docId) || ausIds.has(docId)) return;
       if (selectorDemandaIds.has(docId)) return;
       const doc = doctorById[docId];
-      if (!doc || doc.active === false) return;
+      if (docId !== 'rubilar' && (!doc || doc.active === false)) return;
       let cap = capacityByDoctor[docId] ?? null;
-      if (cap == null && doc.is_urgentologist) cap = 3;
+      if (cap == null && (doc?.is_urgentologist || docId === 'rubilar')) cap = 3;
       visitaFinal.push({ doctor_id: docId, capacity: cap, manual: true });
     });
 
