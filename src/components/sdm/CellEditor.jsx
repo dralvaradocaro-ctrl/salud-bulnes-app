@@ -14,7 +14,7 @@ import { Plus, Trash2, Pause, Play, AlertCircle } from 'lucide-react';
  *
  * Devuelve via onSave({ bloqueos, is_holiday, external_visitors }).
  */
-export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors, onSave }) {
+export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors, blockSuggestions = [], onSave }) {
   const [items, setItems] = useState([]);
   const [isHoliday, setIsHoliday] = useState(false);
   const [visitors, setVisitors] = useState([]);
@@ -29,6 +29,16 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
 
   const update = (key, field, value) =>
     setItems(items.map(it => it._key === key ? { ...it, [field]: value } : it));
+  const updateName = (key, value) => {
+    const suggestion = blockSuggestions.find(s => s.matchValue === value.trim().toLowerCase());
+    setItems(items.map(it => it._key === key
+      ? {
+          ...it,
+          name: suggestion?.name || value,
+          category: suggestion?.category || it.category,
+        }
+      : it));
+  };
   const remove = (key) => setItems(items.filter(it => it._key !== key));
   const add = () => setItems([
     ...items,
@@ -81,7 +91,7 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
 
   const save = () => {
     if (hasErrors) {
-      toast.error('Hay bloqueos con horarios inválidos o solapados. Corregilos antes de guardar.');
+      toast.error('Hay bloqueos con horarios inválidos. Corregilos antes de guardar.');
       return;
     }
     const cleanedBloqueos = items
@@ -137,7 +147,13 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
                 <div className={`flex-1 grid grid-cols-12 gap-2 ${it.suspended ? 'line-through decoration-slate-400' : ''}`}>
                   <div className="col-span-5">
                     <label className="text-[10px] uppercase tracking-wide text-slate-500">Programa / Descripción</label>
-                    <Input className="h-8" value={it.name || ''} onChange={e => update(it._key, 'name', e.target.value)} placeholder="ej. Reunión adicional" />
+                    <Input
+                      className="h-8"
+                      value={it.name || ''}
+                      onChange={e => updateName(it._key, e.target.value)}
+                      placeholder="ej. ECICEP, Cardiovascular"
+                      list="sdm-block-suggestions"
+                    />
                   </div>
                   <div className="col-span-2">
                     <label className="text-[10px] uppercase tracking-wide text-slate-500">Desde</label>
@@ -247,6 +263,9 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
             Guardar cambios{hasErrors && ' (corregir errores)'}
           </Button>
         </DialogFooter>
+        <datalist id="sdm-block-suggestions">
+          {blockSuggestions.map(s => <option key={s.key} value={s.value} />)}
+        </datalist>
       </DialogContent>
     </Dialog>
   );

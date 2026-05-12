@@ -12,6 +12,8 @@ import MeetingBlocks from '@/components/sdm/MeetingBlocks';
 import Distribucion from '@/components/sdm/Distribucion';
 import RevisarBloqueosSemanales from '@/components/sdm/RevisarBloqueosSemanales';
 import SimpleOneoffBlocks from '@/components/sdm/SimpleOneoffBlocks';
+import { getMondayOfWeek, fmtDate } from '@/components/sdm/lib/generateAgenda';
+import { useSdmWeeklyAgenda } from '@/components/sdm/lib/useSdmWeeklyAgenda';
 
 function Placeholder({ icon: Icon, title, description }) {
   return (
@@ -35,8 +37,17 @@ export default function SubdireccionMedica() {
   const [searchParams, setSearchParams] = useSearchParams();
   const topTab    = searchParams.get('tab') || 'consola';
   const consoleTab = searchParams.get('subtab') || 'agenda_semanal';
+  const weekParam = searchParams.get('week');
+  const [monday, setMondayState] = useState(
+    weekParam ? getMondayOfWeek(new Date(weekParam + 'T12:00:00')) : getMondayOfWeek(new Date())
+  );
+  const weeklyAgenda = useSdmWeeklyAgenda(monday);
   const setTopTab    = (v) => setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('tab', v); return p; }, { replace: true });
   const setConsoleTab = (v) => setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('subtab', v); return p; }, { replace: true });
+  const setMonday = (d) => {
+    setMondayState(d);
+    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('week', fmtDate(d)); return p; }, { replace: true });
+  };
 
   useEffect(() => {
     if (!localStorage.getItem('admin_logged_in')) {
@@ -93,13 +104,13 @@ export default function SubdireccionMedica() {
                 <TabsTrigger value="otros" className="gap-1.5"><MoreHorizontal className="h-4 w-4" />Otros</TabsTrigger>
               </TabsList>
               <TabsContent value="agenda_semanal">
-                <AgendaSemanal />
+                <AgendaSemanal weeklyAgenda={weeklyAgenda} setMonday={setMonday} />
               </TabsContent>
               <TabsContent value="revisar_bloqueos"><RevisarBloqueosSemanales /></TabsContent>
-              <TabsContent value="agenda_diaria"><Cronograma /></TabsContent>
-              <TabsContent value="bloqueos_reuniones"><MeetingBlocks /></TabsContent>
-              <TabsContent value="bloqueos_radio"><SimpleOneoffBlocks category="visita_radio" title="Visitas a la radio" icon={Mic} /></TabsContent>
-              <TabsContent value="bloqueos_judiciales"><SimpleOneoffBlocks category="judicial" title="Citaciones judiciales" icon={Gavel} /></TabsContent>
+              <TabsContent value="agenda_diaria"><Cronograma weeklyAgenda={weeklyAgenda} setMonday={setMonday} /></TabsContent>
+              <TabsContent value="bloqueos_reuniones"><MeetingBlocks onChanged={weeklyAgenda.reloadOneoff} /></TabsContent>
+              <TabsContent value="bloqueos_radio"><SimpleOneoffBlocks category="visita_radio" title="Visitas a la radio" icon={Mic} onChanged={weeklyAgenda.reloadOneoff} /></TabsContent>
+              <TabsContent value="bloqueos_judiciales"><SimpleOneoffBlocks category="judicial" title="Citaciones judiciales" icon={Gavel} onChanged={weeklyAgenda.reloadOneoff} /></TabsContent>
               <TabsContent value="asignaciones"><ProgramAssignments /></TabsContent>
               <TabsContent value="otros"><Placeholder icon={MoreHorizontal} title="Otros bloqueos" /></TabsContent>
             </Tabs>

@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { sdmSupabase as supabase, explainSdmWriteError } from './lib/sdmSupabase';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ChevronLeft, ChevronRight, RefreshCw, Save, Printer, Plus, Trash2, Edit3, Sparkles } from 'lucide-react';
-import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, weekDates, sortReinforcements, optimizeForTitulars, balanceLoad, HIERARCHICAL_BLOCK_IDS, findReplacementForBlock } from './lib/generateAgenda';
+import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, sortReinforcements, optimizeForTitulars, balanceLoad, HIERARCHICAL_BLOCK_IDS, findReplacementForBlock } from './lib/generateAgenda';
 import AIFixModal from './AIFixModal';
 import { Shuffle, Wand2, Scale } from 'lucide-react';
 import CellEditor from './CellEditor';
@@ -20,135 +19,51 @@ const ABSENCE_LABELS = {
   FL: 'Feriado Legal', P: 'Postnatal', A: 'Administrativo', DT: 'Devolución Tiempo',
   LM: 'Licencia Médica', CAP: 'Capacitación', PAS: 'Pasantía', OTRO: 'Otro'
 };
+const EMPTY_EXTERNAL_VISITORS_OVERRIDE = '__empty_external_visitors_override';
 
-export default function AgendaSemanal() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const weekParam = searchParams.get('week');
-  const initialMonday = weekParam
-    ? getMondayOfWeek(new Date(weekParam + 'T12:00:00'))
-    : getMondayOfWeek(new Date());
-  const [monday, setMondayState] = useState(initialMonday);
-  // Wrapper que sincroniza con URL
-  const setMonday = (d) => {
-    setMondayState(d);
-    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('week', fmtDate(d)); return p; }, { replace: true });
-  };
-  const [doctors, setDoctors] = useState([]);
-  const [rotation, setRotation] = useState([]);
-  const [shiftCalendar, setShiftCalendar] = useState([]);
-  const [blockTemplates, setBlockTemplates] = useState([]);
-  const [programAssignments, setProgramAssignments] = useState([]);
-  const [absences, setAbsences] = useState([]);
-  const [oneoffBlocks, setOneoffBlocks] = useState([]);
-  const [reinforcements, setReinforcements] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [savedAgendaId, setSavedAgendaId] = useState(null);
+export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
+  const {
+    monday,
+    weekStart,
+    weekDays,
+    weekEnd,
+    doctors,
+    rotation,
+    shiftCalendar,
+    setShiftCalendar,
+    blockTemplates,
+    programAssignments,
+    absences,
+    setAbsences,
+    reinforcements,
+    setReinforcements,
+    loading,
+    bloqueosOverrides,
+    setBloqueosOverrides,
+    dismissedErrors,
+    setDismissedErrors,
+    poli8amOverrides,
+    setPoli8amOverrides,
+    visitaOverrides,
+    setVisitaOverrides,
+    isDirty,
+    agenda,
+    blockSuggestions,
+    reloadOneoff,
+    saveAgenda: saveWeeklyAgenda,
+  } = weeklyAgenda;
   const [showAbsenceDialog, setShowAbsenceDialog] = useState(false);
   const [newAbs, setNewAbs] = useState({ doctor_id: '', date: '', type: 'A', notes: '' });
   const [editingDay, setEditingDay] = useState(null);
   const [aiError, setAiError] = useState(null); // error que se está corrigiendo con IA
-  const [bloqueosOverrides, setBloqueosOverrides] = useState({}); // { '2026-05-04': [bloqueo, ...] }
-  const [dismissedErrors, setDismissedErrors] = useState([]); // array de keys descartadas por el usuario
   const [showDismissed, setShowDismissed] = useState(false);   // mostrar las descartadas con opción de restaurar
   const [dragOverDate, setDragOverDate] = useState(null);      // celda BLOQUEOS resaltada durante drag
-  const [poli8amOverrides, setPoli8amOverrides] = useState({}); // { '2026-05-04': 'doctor_id' }
-  const [visitaOverrides, setVisitaOverrides] = useState({});   // { '2026-05-04': { add: [...], remove: [...] } }
   const [expandedAddDay, setExpandedAddDay] = useState(null);   // fecha del día con el form (+) expandido
-  const [savedData, setSavedData] = useState(null); // data guardada de sdm_weekly_agendas
-  const [isDirty, setIsDirty] = useState(false);
-  const initialLoadDone = useRef(false);
-
-  const weekStart = fmtDate(monday);
-  const weekDays = useMemo(() => weekDates(monday), [monday]);
-  const weekEnd = weekDays[4].date;
-
-  // Carga de catálogos + datos de la semana
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      setLoading(true);
-      const [d1, d2, d3, d4, d5] = await Promise.all([
-        supabase.from('sdm_doctors').select('*').order('display_name'),
-        supabase.from('sdm_shift_rotation').select('*'),
-        supabase.from('sdm_block_templates').select('*'),
-        supabase.from('sdm_program_assignments').select('*'),
-        supabase.from('sdm_shift_calendar').select('*').gte('date', fmtDate(new Date(monday.getTime() - 7*86400000))).lte('date', weekEnd),
-      ]);
-      if (!alive) return;
-      setDoctors(d1.data || []);
-      setRotation(d2.data || []);
-      setBlockTemplates(d3.data || []);
-      setProgramAssignments(d4.data || []);
-      setShiftCalendar(d5.data || []);
-
-      // Carga ausencias y oneoff de la semana
-      const [a, o, ag] = await Promise.all([
-        supabase.from('sdm_absences').select('*').gte('date', weekStart).lte('date', weekEnd),
-        supabase.from('sdm_oneoff_blocks').select('*').eq('week_start', weekStart),
-        supabase.from('sdm_weekly_agendas').select('*').eq('week_start', weekStart).maybeSingle(),
-      ]);
-      if (!alive) return;
-      setAbsences(a.data || []);
-      setOneoffBlocks(o.data || []);
-      if (ag.data?.data) {
-        setSavedData(ag.data.data);
-        setReinforcements(ag.data.data.reinforcements || {});
-        setBloqueosOverrides(ag.data.data.bloqueosOverrides || {});
-        setPoli8amOverrides(ag.data.data.poli8amOverrides || {});
-        setVisitaOverrides(ag.data.data.visitaOverrides || {});
-        setDismissedErrors(Array.isArray(ag.data.data.dismissedErrors) ? ag.data.data.dismissedErrors : []);
-      } else {
-        setSavedData(null);
-        setReinforcements({});
-        setBloqueosOverrides({});
-        setPoli8amOverrides({});
-        setVisitaOverrides({});
-        setDismissedErrors([]);
-      }
-      setSavedAgendaId(ag.data?.id || null);
-      setLoading(false);
-      // Marcar fin de carga inicial — desde ahora cualquier cambio es "dirty"
-      setTimeout(() => { initialLoadDone.current = true; setIsDirty(false); }, 50);
-    })();
-    return () => { alive = false; initialLoadDone.current = false; };
-  }, [weekStart, weekEnd]);
-
-  // Dirty flag: cualquier override del usuario después del load inicial → isDirty=true
-  useEffect(() => {
-    if (initialLoadDone.current) setIsDirty(true);
-  }, [bloqueosOverrides, reinforcements, poli8amOverrides, visitaOverrides, dismissedErrors]);
-
-  // beforeunload: avisar antes de cerrar/recargar pestaña si hay cambios sin guardar
-  useEffect(() => {
-    if (!isDirty) return;
-    const handler = (e) => { e.preventDefault(); e.returnValue = ''; };
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [isDirty]);
 
   const confirmIfDirty = (msg = 'Tenés cambios sin guardar en esta semana. ¿Continuar y descartarlos?') => {
     if (!isDirty) return true;
     return window.confirm(msg);
   };
-
-  async function reloadOneoff() {
-    const { data } = await supabase.from('sdm_oneoff_blocks').select('*').eq('week_start', weekStart);
-    setOneoffBlocks(data || []);
-  }
-
-  const agenda = useMemo(() => {
-    if (loading) return [];
-    const generated = generateAgenda({
-      weekStart: monday,
-      doctors, rotation, shiftCalendar, blockTemplates,
-      programAssignments, absences, oneoffBlocks,
-      manualReinforcements: reinforcements,
-      manualPoli8am: poli8amOverrides,
-      visitaOverrides,
-      bloqueosOverrides,
-    });
-    return generated;
-  }, [loading, monday, doctors, rotation, shiftCalendar, blockTemplates, programAssignments, absences, oneoffBlocks, reinforcements, bloqueosOverrides, poli8amOverrides, visitaOverrides]);
 
   const validation = useMemo(() => validateAgenda(agenda, doctors, blockTemplates), [agenda, doctors, blockTemplates]);
   const errorKey = (e) => {
@@ -168,12 +83,11 @@ export default function AgendaSemanal() {
     setDismissedErrors(prev => prev.includes(k) ? prev : [...prev, k]);
   };
   const restoreError = (k) => setDismissedErrors(prev => prev.filter(x => x !== k));
-  const doctorName = id => doctors.find(d => d.id === id)?.display_name || id;
+  const doctorName = id => doctors.find(d => d.id === id)?.display_name || (id === 'rubilar' ? 'RUBILAR' : id);
 
   // Auto-prune: si el usuario corrigió el problema, la entrada queda obsoleta en dismissedErrors.
   // Se eliminan las keys que ya no aparecen en validación activa.
   useEffect(() => {
-    if (!initialLoadDone.current) return;
     const activeKeys = new Set([...validation.errors, ...validation.warnings].map(errorKey));
     setDismissedErrors(prev => {
       const next = prev.filter(k => activeKeys.has(k));
@@ -203,25 +117,7 @@ export default function AgendaSemanal() {
       );
       if (!proceed) return;
     }
-    const payload = {
-      week_start: weekStart,
-      data: {
-        agenda, reinforcements, bloqueosOverrides, poli8amOverrides, visitaOverrides, dismissedErrors,
-        has_errors: visibleErrors.length > 0,
-        generated_at: new Date().toISOString(),
-      },
-      status: 'editada',
-      updated_at: new Date().toISOString(),
-    };
-    if (savedAgendaId) {
-      const { error } = await supabase.from('sdm_weekly_agendas').update(payload).eq('id', savedAgendaId);
-      if (error) toast.error('Error al guardar: ' + (explainSdmWriteError(error) || error.message));
-      else { toast.success('Agenda actualizada'); setIsDirty(false); }
-    } else {
-      const { data, error } = await supabase.from('sdm_weekly_agendas').insert(payload).select('id').single();
-      if (error) toast.error('Error al guardar: ' + (explainSdmWriteError(error) || error.message));
-      else { setSavedAgendaId(data.id); setIsDirty(false); toast.success('Agenda guardada'); }
-    }
+    await saveWeeklyAgenda({ hasErrors: visibleErrors.length > 0 });
   }
 
   async function addAbsence() {
@@ -349,21 +245,26 @@ export default function AgendaSemanal() {
     // Compatibilidad: si payload es array (formato legacy), tratar como bloqueos puros.
     if (Array.isArray(payload)) {
       setBloqueosOverrides(prev => ({ ...prev, [date]: payload }));
+      toast.success('Cambios aplicados. Guardá la agenda para dejarlos persistidos.');
       return;
     }
     const { bloqueos, is_holiday, external_visitors } = payload;
+    const visitorsForStorage = external_visitors.length > 0
+      ? external_visitors
+      : [{ [EMPTY_EXTERNAL_VISITORS_OVERRIDE]: true }];
     setBloqueosOverrides(prev => ({ ...prev, [date]: bloqueos }));
     // Persistir is_holiday y external_visitors en sdm_shift_calendar
     const existing = shiftCalendar.find(c => c.date === date);
     if (existing) {
       const { error } = await supabase.from('sdm_shift_calendar')
-        .update({ is_holiday, external_visitors })
+        .update({ is_holiday, external_visitors: visitorsForStorage })
         .eq('date', date);
       if (error) { toast.error("Error: " + (explainSdmWriteError(error) || error.message)); return; }
-      setShiftCalendar(prev => prev.map(c => c.date === date ? { ...c, is_holiday, external_visitors } : c));
+      setShiftCalendar(prev => prev.map(c => c.date === date ? { ...c, is_holiday, external_visitors: visitorsForStorage } : c));
     } else {
       console.warn(`No hay entrada en sdm_shift_calendar para ${date}; feriado/visitantes no persistidos.`);
     }
+    toast.success('Cambios aplicados. Guardá la agenda para dejarlos persistidos.');
   }
 
   function applyAiOption(error, opt) {
@@ -420,10 +321,11 @@ export default function AgendaSemanal() {
       to: blk.to,
       doctor_id: blk.doctor_id || null,
       unassigned: !blk.doctor_id,
-      category: 'otro',
+      category: blk.category || 'otro',
       source: 'manual',
     };
     setBloqueosOverrides(prev => ({ ...prev, [date]: [...current, newBlock] }));
+    toast.success('Bloqueo agregado. Guardá la agenda para dejarlo persistido.');
   }
 
   // Drag-and-drop de bloqueos entre días
@@ -704,14 +606,23 @@ export default function AgendaSemanal() {
                   {day.is_holiday && (
                     <div className="mt-1 inline-block rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-slate-200 text-slate-700">Feriado</div>
                   )}
-                  {Array.isArray(day.external_visitors) && day.external_visitors.length > 0 && (
-                    <div className="mt-1 space-y-0.5">
-                      {day.external_visitors.map((v, i) => (
-                        <div key={i} className="text-[9px] font-normal text-blue-700 leading-tight">
-                          <span className="font-semibold">{v.name}</span>{v.specialty ? ` · ${v.specialty}` : ''}
-                        </div>
-                      ))}
-                    </div>
+	                  {Array.isArray(day.external_visitors) && day.external_visitors.length > 0 && (
+	                    <div className="mt-1 space-y-0.5">
+	                      {day.external_visitors.map((v, i) => (
+	                        <div
+	                          key={i}
+	                          className={`text-[9px] font-normal leading-tight rounded px-1 py-0.5 -mx-1 ${
+	                            v.holiday_pending
+	                              ? 'sdm-print-hide bg-amber-100 text-amber-900 border border-amber-200'
+	                              : 'text-blue-700'
+	                          }`}
+	                          title={v.holiday_pending ? 'Especialista caía en feriado: revisar, mover o eliminar. No se imprime.' : v.notes}
+	                        >
+	                          <span className="font-semibold">{v.name}</span>{v.specialty ? ` · ${v.specialty}` : ''}
+	                          {v.holiday_pending && <span className="ml-1 font-semibold">feriado/revisar</span>}
+	                        </div>
+	                      ))}
+	                    </div>
                   )}
                 </td>
                 <td className="px-2 py-2">{day.turnos.map((t, i) => <div key={i}>{doctorName(t.doctor_id)}{t.replaced && <span className="text-amber-600 sdm-print-hide"> (←{doctorName(t.original_doctor_id)})</span>}</div>)}</td>
@@ -838,6 +749,7 @@ export default function AgendaSemanal() {
                           {expandedAddDay === day.date ? (
                             <QuickAddBlockForm
                               doctors={doctors}
+                              blockSuggestions={blockSuggestions}
                               onSave={(blk) => { addBlockInline(day.date, blk); setExpandedAddDay(null); }}
                               onCancel={() => setExpandedAddDay(null)}
                             />
@@ -990,6 +902,7 @@ export default function AgendaSemanal() {
         day={editingDay}
         bloqueos={editingDay ? agenda.find(d => d.date === editingDay.date)?.bloqueos || [] : []}
         doctors={doctors}
+        blockSuggestions={blockSuggestions}
         onSave={nuevos => onCellSave(editingDay.date, nuevos)}
       />
 
@@ -1045,23 +958,37 @@ export default function AgendaSemanal() {
  * Form inline expandible para agregar un bloqueo rápido a un día sin abrir CellEditor.
  * Renderiza una fila compacta: nombre + desde + hasta + médico + ✓ + ×.
  */
-function QuickAddBlockForm({ doctors, onSave, onCancel }) {
+function QuickAddBlockForm({ doctors, blockSuggestions = [], onSave, onCancel }) {
   const [name, setName] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [doctorId, setDoctorId] = useState('');
+  const [category, setCategory] = useState('otro');
   const valid = name.trim() && from && to && from < to;
+  const disabledReason = !name.trim()
+    ? 'Escribe un programa'
+    : !from || !to
+      ? 'Completa desde y hasta'
+      : from >= to
+        ? 'La hora de inicio debe ser anterior a la hora de término'
+        : '';
+  const updateName = (value) => {
+    const suggestion = blockSuggestions.find(s => s.matchValue === value.trim().toLowerCase());
+    setName(suggestion?.name || value);
+    setCategory(suggestion?.category || 'otro');
+  };
   const save = () => {
     if (!valid) return;
-    onSave({ name: name.trim(), from, to, doctor_id: doctorId || null });
+    onSave({ name: name.trim(), from, to, doctor_id: doctorId || null, category });
   };
   return (
     <div className="flex flex-wrap items-center gap-1 rounded border border-blue-300 bg-blue-50/40 px-1.5 py-1">
       <Input
         value={name}
-        onChange={e => setName(e.target.value)}
-        placeholder="Programa"
+        onChange={e => updateName(e.target.value)}
+        placeholder="ECICEP, Cardiovascular"
         className="h-6 text-[10px] px-1.5 py-0 w-28"
+        list="sdm-quick-block-suggestions"
         autoFocus
       />
       <Input
@@ -1084,13 +1011,21 @@ function QuickAddBlockForm({ doctors, onSave, onCancel }) {
         onClick={save}
         disabled={!valid}
         className={`text-[12px] leading-none px-1.5 py-0.5 rounded ${valid ? 'text-emerald-700 hover:bg-emerald-100' : 'text-slate-300 cursor-not-allowed'}`}
-        title="Guardar bloqueo"
+        title={valid ? 'Guardar bloqueo' : disabledReason}
       >✓</button>
       <button
         onClick={onCancel}
         className="text-[12px] leading-none px-1.5 py-0.5 rounded text-red-600 hover:bg-red-100"
         title="Cancelar"
       >×</button>
+      {from && to && from >= to && (
+        <span className="basis-full text-[10px] leading-tight text-red-700">
+          Desde debe ser menor que Hasta.
+        </span>
+      )}
+      <datalist id="sdm-quick-block-suggestions">
+        {blockSuggestions.map(s => <option key={s.key} value={s.value} />)}
+      </datalist>
     </div>
   );
 }

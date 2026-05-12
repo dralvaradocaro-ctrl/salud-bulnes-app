@@ -26,7 +26,7 @@ function getMonday(d) {
  * Útil para tabs Radio (category='visita_radio') y Judiciales (category='judicial').
  * Form solo pide médico + fecha + horario. Descripción se autogenera con un default.
  */
-export default function SimpleOneoffBlocks({ category, title, icon: Icon, descriptionLabel }) {
+export default function SimpleOneoffBlocks({ category, title, icon: Icon, descriptionLabel, onChanged }) {
   const [doctors, setDoctors] = useState([]);
   const [blocks, setBlocks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -71,14 +71,16 @@ export default function SimpleOneoffBlocks({ category, title, icon: Icon, descri
     if (error) { toast.error('Error: ' + (explainSdmWriteError(error) || error.message)); return; }
     toast.success(`${defaultDesc} agregado.`);
     setForm({ date: '', doctor_id: '', time_from: '', time_to: '', description: '' });
-    load();
+    await load();
+    onChanged?.();
   }
 
   async function remove(id) {
     if (!confirm('¿Eliminar este bloqueo?')) return;
     const { error } = await supabase.from('sdm_oneoff_blocks').delete().eq('id', id);
     if (error) { toast.error('Error: ' + error.message); return; }
-    load();
+    await load();
+    onChanged?.();
   }
 
   return (

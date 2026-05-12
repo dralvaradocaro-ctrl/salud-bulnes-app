@@ -6,6 +6,7 @@ import { BLOCK_SPECS, isDailyBlock } from './blockSpec';
 
 const DAYS = ['lun', 'mar', 'mie', 'jue', 'vie'];
 const DAY_LABELS = { lun: 'LUNES', mar: 'MARTES', mie: 'MIÉRCOLES', jue: 'JUEVES', vie: 'VIERNES' };
+const EMPTY_EXTERNAL_VISITORS_OVERRIDE = '__empty_external_visitors_override';
 
 export function getMondayOfWeek(date) {
   const d = new Date(date);
@@ -49,6 +50,53 @@ function getDoctorsForTurno(turnoNumber, rotation, replacements = []) {
     const r = replacements.find(rep => rep.doctor_id === docId);
     return r ? { doctor_id: r.replaced_by, original_doctor_id: docId, replaced: true, reason: r.reason } : { doctor_id: docId };
   });
+}
+
+function getCalendarVisitors(cal) {
+  const visitors = Array.isArray(cal?.external_visitors) ? cal.external_visitors : [];
+  if (visitors.some(v => v?.[EMPTY_EXTERNAL_VISITORS_OVERRIDE])) return { hasOverride: true, visitors: [] };
+  if (visitors.length > 0) return { hasOverride: true, visitors };
+  return { hasOverride: false, visitors: [] };
+}
+
+function sandovalTargetDate(days, calByDate) {
+  const thursday = days.find(d => d.day === 'jue');
+  const friday = days.find(d => d.day === 'vie');
+  if (!thursday || !friday) return thursday?.date || null;
+  return calByDate[thursday.date]?.is_holiday ? friday.date : thursday.date;
+}
+
+function defaultExternalVisitorsForDay(day, days, calByDate) {
+  const sandovalDate = sandovalTargetDate(days, calByDate);
+  const defaults = [];
+  const add = (visitor) => {
+    defaults.push({
+      source: 'default',
+      editable_default: true,
+      holiday_pending: !!calByDate[day.date]?.is_holiday,
+      ...visitor,
+    });
+  };
+
+  if (day.day === 'jue' || day.day === 'vie') {
+    add({ name: 'Dr. Rubilar', specialty: 'Internista', notes: '3 visitas por defecto; resto del tiempo a criterio del especialista' });
+  }
+  if (day.date === sandovalDate) {
+    add({
+      name: 'Dr. R. Sandoval',
+      specialty: 'Internista',
+      notes: day.day === 'vie' ? 'Movido desde jueves por feriado/bloqueo' : 'Visita habitual de jueves',
+      moved_from: day.day === 'vie' ? days.find(d => d.day === 'jue')?.date : null,
+    });
+  }
+  if (day.day === 'mie') add({ name: 'Dra. Rissi', specialty: 'Pediatría' });
+  if (day.day === 'jue') add({ name: 'Dra. Riquelme', specialty: 'Neurología' });
+  if (day.day === 'vie') add({ name: 'Dra. Figueroa', specialty: 'Neurología infantil' });
+  return defaults;
+}
+
+function hasDefaultSandovalServiceVisit(day, days, calByDate) {
+  return day.date === sandovalTargetDate(days, calByDate) && !calByDate[day.date]?.is_holiday;
 }
 
 export function isMonthlyMatch(date, rule) {
@@ -109,7 +157,10 @@ export function generateAgenda({
     const cal = calByDate[d.date];
     const turnoNumber = cal ? cal.turno_number : null;
     const isHoliday = !!(cal && cal.is_holiday);
-    const externalVisitors = (cal && Array.isArray(cal.external_visitors)) ? cal.external_visitors : [];
+    const savedVisitors = getCalendarVisitors(cal);
+    const externalVisitors = savedVisitors.hasOverride
+      ? savedVisitors.visitors
+      : defaultExternalVisitorsForDay(d, days, calByDate);
     const turnos = turnoNumber != null
       ? getDoctorsForTurno(turnoNumber, rotation, cal.replacements || [])
       : [];
@@ -262,6 +313,22 @@ export function generateAgenda({
         sdm_internal: o.category === 'sdm_interna',
       }));
 
+    if (hasDefaultSandovalServiceVisit(d, days, calByDate)) {
+      const isViernesSandoval = d.day === 'vie';
+      const sandovalId = doctorById.sandoval ? 'sandoval' : null;
+      bloqueos.push({
+        block_id: `external_sandoval_service_visit_${d.date}`,
+        name: 'Visita de servicio - Dr. R. Sandoval',
+        from: isViernesSandoval ? '14:00' : '15:00',
+        to: isViernesSandoval ? '16:00' : '17:00',
+        doctor_id: sandovalId,
+        unassigned: !sandovalId,
+        category: 'clinico',
+        source: 'external_default',
+        external_visitor: true,
+      });
+    }
+
     // Post-pass: Poli TACO toma por default al médico de Subdirección Médica del día,
     // salvo que tenga otro bloqueo conflictivo en el horario de TACO.
     const sdmBlock  = bloqueos.find(b => b.block_id === 'subdireccion_medica' && b.doctor_id);
@@ -344,6 +411,7 @@ export function generateAgenda({
       .filter(doc => !selectorDemandaIds.has(doc.id))
       .filter(doc => !morningHeavyIds.has(doc.id))
       .filter(doc => {
+        if (doc.id === 'rubilar') return true;
         if (doc.is_urgentologist) return true;
         const morningBlocks = bloqueos.filter(b => b.doctor_id === doc.id && overlapsVisitWindow(b));
         if (morningBlocks.length === 0) return true;
@@ -374,16 +442,19 @@ export function generateAgenda({
         };
         let capacity = capacityByDoctor[doc.id] ?? null;
         if (capacity == null) {
-          capacity = doc.is_urgentologist ? 3 : computeCapacityFromBlocks();
+          capacity = (doc.id === 'rubilar' || doc.is_urgentologist) ? 3 : computeCapacityFromBlocks();
         }
         return { doctor_id: doc.id, capacity };
       })
       .filter(v => v.capacity !== 0); // si la franja matinal quedó sin ventana útil, no se cuenta
 
     // Aplicar overrides manuales de visita (excepciones: subdirector / selector de demanda agregados a mano)
+    const visitaBase = (d.day === 'jue' || d.day === 'vie') && !visita.some(v => v.doctor_id === 'rubilar')
+      ? [...visita, { doctor_id: 'rubilar', capacity: 3, external_default: true }]
+      : visita;
     const visitaOv = visitaOverrides[d.date] || {};
     const removeSet = new Set(visitaOv.remove || []);
-    let visitaFinal = visita.filter(v => !removeSet.has(v.doctor_id));
+    let visitaFinal = visitaBase.filter(v => !removeSet.has(v.doctor_id));
     (visitaOv.add || []).forEach(docId => {
       if (visitaFinal.some(v => v.doctor_id === docId)) return;
       // hard-stops siguen aplicando incluso en override manual

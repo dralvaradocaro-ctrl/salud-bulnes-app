@@ -39,7 +39,7 @@ function getMonday(d) {
 
 const OTHER_CAUSE_CATEGORIES = CAUSES.map(c => c.value);
 
-export default function MeetingBlocks() {
+export default function MeetingBlocks({ onChanged }) {
   const [doctors, setDoctors] = useState([]);
   const [blocks, setBlocks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -77,16 +77,18 @@ export default function MeetingBlocks() {
       category: form.cause,
     };
     const { error } = await supabase.from('sdm_oneoff_blocks').insert(payload);
-    if (error) { alert('Error: ' + error.message); return; }
+    if (error) { alert('Error: ' + (explainSdmWriteError(error) || error.message)); return; }
     setShowDialog(false);
     setForm({ date: '', doctor_id: '', time_from: '', time_to: '', cause: 'reunion', description: '' });
-    load();
+    await load();
+    onChanged?.();
   }
 
   async function remove(id) {
     if (!confirm('¿Eliminar bloqueo?')) return;
     await supabase.from('sdm_oneoff_blocks').delete().eq('id', id);
-    load();
+    await load();
+    onChanged?.();
   }
 
   return (
