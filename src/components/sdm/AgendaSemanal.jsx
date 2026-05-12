@@ -117,10 +117,16 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     }
     return `${e.kind}:${e.date || ''}:${e.blockId || ''}:${e.doctorId || ''}`;
   };
-  const dismissedSet = useMemo(() => new Set(dismissedErrors), [dismissedErrors]);
+  const activeIssueKeys = useMemo(() => new Set([...validation.errors, ...validation.warnings].map(errorKey)), [validation]);
+  const activeDismissedErrors = useMemo(
+    () => dismissedErrors.filter(k => activeIssueKeys.has(k)),
+    [dismissedErrors, activeIssueKeys]
+  );
+  const dismissedSet = useMemo(() => new Set(activeDismissedErrors), [activeDismissedErrors]);
   const visibleErrors = validation.errors.filter(e => !dismissedSet.has(errorKey(e)));
   const visibleWarnings = validation.warnings.filter(w => !dismissedSet.has(errorKey(w)));
   const hiddenIssues = [...validation.errors, ...validation.warnings].filter(e => dismissedSet.has(errorKey(e)));
+  const totalIssues = visibleErrors.length + visibleWarnings.length + hiddenIssues.length;
   const dismissError = (e) => {
     const k = errorKey(e);
     setDismissedErrors(prev => prev.includes(k) ? prev : [...prev, k]);
@@ -131,12 +137,18 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   // Auto-prune: si el usuario corrigió el problema, la entrada queda obsoleta en dismissedErrors.
   // Se eliminan las keys que ya no aparecen en validación activa.
   useEffect(() => {
-    const activeKeys = new Set([...validation.errors, ...validation.warnings].map(errorKey));
     setDismissedErrors(prev => {
-      const next = prev.filter(k => activeKeys.has(k));
+      const next = prev.filter(k => activeIssueKeys.has(k));
       return next.length === prev.length ? prev : next;
     });
-  }, [validation]);
+  }, [activeIssueKeys, setDismissedErrors]);
+
+  useEffect(() => {
+    if (totalIssues === 0) {
+      setShowIssuePanel(false);
+      setShowDismissed(false);
+    }
+  }, [totalIssues]);
 
   function shiftWeek(deltaDays) {
     if (!confirmIfDirty()) return;
