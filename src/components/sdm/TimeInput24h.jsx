@@ -48,14 +48,26 @@ export default function TimeInput24h({ value, onChange, className = '', placehol
 
   const handleChange = (e) => {
     const v = e.target.value;
-    // Permitir tipeo intermedio (ej. "1", "14", "14:", "14:3"); solo aceptar dígitos y ":".
-    const filtered = v.replace(/[^0-9:]/g, '').slice(0, 5);
-    setDraft(filtered);
-    // Si ya parece HH:MM completo, emitir normalizado para que el padre lo guarde.
-    if (/^\d{2}:\d{2}$/.test(filtered)) {
-      const n = normalizeTime(filtered);
+    // Aceptar solo digitos y ":" pero AUTOFORMATEAR: cuando el usuario tipea
+    // 3+ digitos sin ":", insertamos el ":" automaticamente despues del 2do.
+    // Asi tipear "1400" → "14:00" sin que tenga que poner el :.
+    let raw = v.replace(/[^0-9:]/g, '');
+    let formatted = raw;
+    if (!raw.includes(':')) {
+      if (raw.length >= 3) {
+        formatted = `${raw.slice(0, 2)}:${raw.slice(2, 4)}`;
+      }
+    } else {
+      // Si pegó "14:00:00" o algo más largo, limitar a HH:MM
+      const [h = '', m = ''] = raw.split(':');
+      formatted = `${h.slice(0, 2)}${raw.includes(':') ? ':' : ''}${m.slice(0, 2)}`;
+    }
+    formatted = formatted.slice(0, 5);
+    setDraft(formatted);
+    if (/^\d{2}:\d{2}$/.test(formatted)) {
+      const n = normalizeTime(formatted);
       if (n) onChange(n);
-    } else if (filtered === '') {
+    } else if (formatted === '') {
       onChange('');
     }
   };

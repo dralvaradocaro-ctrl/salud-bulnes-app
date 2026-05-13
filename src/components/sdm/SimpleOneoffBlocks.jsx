@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { sdmSupabase as supabase, explainSdmWriteError, insertOneoffBlock } from './lib/sdmSupabase';
+import { getMondayDateStr } from './lib/generateAgenda';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,14 +19,8 @@ const DEFAULT_DESCRIPTION = {
   judicial: 'Citación judicial',
 };
 
-function getMonday(d) {
-  const x = new Date(d);
-  const day = x.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  x.setDate(x.getDate() + diff);
-  x.setHours(0, 0, 0, 0);
-  return x.toISOString().slice(0, 10);
-}
+// Usa getMondayDateStr de generateAgenda — parsea YYYY-MM-DD como fecha local
+// para evitar el desfase de timezone que metia el insert en la semana anterior.
 
 /**
  * Creador minimal de bloqueos puntuales (sdm_oneoff_blocks) para una categoría fija.
@@ -65,7 +60,7 @@ export default function SimpleOneoffBlocks({ category, title, icon: Icon, descri
       return;
     }
     const payload = {
-      week_start: getMonday(form.date),
+      week_start: getMondayDateStr(form.date),
       date: form.date,
       doctor_id: form.doctor_ids[0],
       doctor_ids: form.doctor_ids,

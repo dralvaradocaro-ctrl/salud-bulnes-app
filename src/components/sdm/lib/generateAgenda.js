@@ -21,6 +21,27 @@ export function getMondayOfWeek(date) {
   return d;
 }
 
+/**
+ * Devuelve el lunes de la semana de `dateStr` (YYYY-MM-DD) como YYYY-MM-DD local.
+ * Evita el bug timezone: parsear "2026-05-18" como UTC → en GMT-4 cae el
+ * domingo previo, y getDay() devuelve 0 → se calcula el lunes -7 dias.
+ * Esta funcion siempre parsea como FECHA LOCAL.
+ */
+export function getMondayDateStr(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return '';
+  const m = dateStr.slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return '';
+  const [, y, mo, da] = m;
+  const local = new Date(Number(y), Number(mo) - 1, Number(da));
+  const dow = local.getDay();
+  const diff = dow === 0 ? -6 : 1 - dow;
+  local.setDate(local.getDate() + diff);
+  const yy = local.getFullYear();
+  const mm = String(local.getMonth() + 1).padStart(2, '0');
+  const dd = String(local.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
 export function dayKeyForDate(date) {
   // Parsear YYYY-MM-DD como fecha LOCAL (no UTC) para evitar desfase de día en TZ Chile.
   // `new Date('2026-05-04')` se interpreta como UTC midnight → en GMT-4 cae el domingo previo.
