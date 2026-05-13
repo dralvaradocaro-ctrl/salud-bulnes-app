@@ -1201,7 +1201,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                               <div key={i} className="flex items-center gap-1 group/v">
                                 <span>
                                   {doctorName(v.doctor_id)}
-                                  {v.capacity != null && <span className="ml-1 text-slate-500">({v.capacity})</span>}
+                                  {v.capacity != null && v.capacity < 5 && <span className="ml-1 text-slate-500">({v.capacity})</span>}
                                 </span>
                                 {v.manual ? (
                                   <>
