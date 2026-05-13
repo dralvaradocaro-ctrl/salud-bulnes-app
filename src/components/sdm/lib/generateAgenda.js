@@ -51,6 +51,25 @@ function minutesToTime(minutes) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
+// Multi-médico por bloqueo: `doctor_ids: string[]` es la fuente de verdad.
+// `doctor_id` se conserva como espejo del primer id (legacy / lectores no migrados).
+export function blockDoctorIds(b) {
+  if (!b) return [];
+  if (Array.isArray(b.doctor_ids)) return b.doctor_ids.filter(Boolean);
+  return b.doctor_id ? [b.doctor_id] : [];
+}
+export function blockHasDoctor(b, id) {
+  if (!b || !id) return false;
+  if (Array.isArray(b.doctor_ids)) return b.doctor_ids.includes(id);
+  return b.doctor_id === id;
+}
+// Normaliza un bloqueo para que siempre tenga doctor_ids + doctor_id espejo.
+export function normalizeBlock(b) {
+  if (!b) return b;
+  const ids = blockDoctorIds(b);
+  return { ...b, doctor_ids: ids, doctor_id: ids[0] || null };
+}
+
 function fitBlockInsideJornada(block, dayEnd = JORNADA_FIN) {
   if (!block?.from || !block?.to) return block;
   const start = timeToMinutes(block.from);
@@ -166,8 +185,12 @@ function defaultExternalVisitorsForDay(day, days, calByDate) {
   return defaults;
 }
 
-function hasDefaultSandovalServiceVisit(day, days, calByDate) {
-  return day.date === sandovalTargetDate(days, calByDate) && !calByDate[day.date]?.is_holiday;
+// El bloque "Visita de servicio - Dr. R. Sandoval" se dispara el día que
+// Sandoval esté efectivamente como visitante externo (no por fecha hardcodeada).
+// Esto cubre default jue/vie y cualquier movimiento manual a otro día.
+function sandovalIsVisitingOnDay(externalVisitors) {
+  if (!Array.isArray(externalVisitors)) return false;
+  return externalVisitors.some(v => v && !v.no_show && typeof v.name === 'string' && /sandoval/i.test(v.name));
 }
 
 export function isMonthlyMatch(date, rule) {
@@ -340,7 +363,7 @@ export function generateAgenda({
       const isAvailable = id =>
         id && !ausIds_inner.has(id) && !turnoIds_inner.has(id) && !postIds_inner.has(id)
         && !urgentologistIds.has(id) && !poliIds.has(id);
-      const currentDayLoad = id => bloqueos.filter(b => !b.suspended && b.doctor_id === id).length;
+      const currentDayLoad = id => bloqueos.filter(b => !b.suspended && blockHasDoctor(b, id)).length;
       const register = (id, auto = false) => {
         if (!id) return { id: null, auto };
         weeklyBlockDoctorCount[blockId] = weeklyBlockDoctorCount[blockId] || {};
@@ -400,84 +423,83 @@ export function generateAgenda({
       if (slots && slots.length) {
         slots.forEach(slot => {
           const res = resolveDoctor(bt.id);
-          bloqueos.push({
+          bloqueos.push(normalizeBlock({
             block_id: bt.id,
             name: bt.name,
             from: slot.from,
             to: slot.to,
-            doctor_id: res.id,
+            doctor_ids: res.id ? [res.id] : [],
             unassigned: !res.id,
             auto_assigned: !!res.auto,
             category: bt.category,
             source: 'template',
-          });
+          }));
         });
       }
       // mensual
       if (bt.is_monthly && isMonthlyMatch(d.date, bt.monthly_rule)) {
         const res = resolveDoctor(bt.id);
-        bloqueos.push({
+        bloqueos.push(normalizeBlock({
           block_id: bt.id,
           name: bt.name,
           from: bt.monthly_rule?.from || null,
           to: bt.monthly_rule?.to || null,
-          doctor_id: res.id,
+          doctor_ids: res.id ? [res.id] : [],
           unassigned: !res.id,
           auto_assigned: !!res.auto,
           category: bt.category,
           source: 'monthly',
-        });
+        }));
       }
     }
     // oneoff
     oneoffBlocks
       .filter(o => o.date === d.date)
-      .forEach(o => bloqueos.push({
-        block_id: `oneoff-${o.id}`,
-        name: o.description,
-        from: o.time_from,
-        to: o.time_to,
-        doctor_id: o.doctor_id,
-        // Las reuniones internas SDM no requieren médico individual asignado
-        unassigned: o.category === 'sdm_interna' ? false : !o.doctor_id,
-        category: o.category,
-        source: 'oneoff',
-        sdm_internal: o.category === 'sdm_interna',
-      }));
-
-    if (hasDefaultSandovalServiceVisit(d, days, calByDate)) {
-      const isViernesSandoval = d.day === 'vie';
-      const sandovalId = doctorById.sandoval ? 'sandoval' : null;
-      bloqueos.push({
-        block_id: `external_sandoval_service_visit_${d.date}`,
-        name: 'Visita de servicio - Dr. R. Sandoval',
-        from: isViernesSandoval ? '14:00' : '15:00',
-        to: isViernesSandoval ? '16:00' : '17:00',
-        doctor_id: sandovalId,
-        unassigned: !sandovalId,
-        category: 'clinico',
-        source: 'external_default',
-        external_visitor: true,
+      .forEach(o => {
+        const ids = Array.isArray(o.doctor_ids) && o.doctor_ids.length
+          ? o.doctor_ids.filter(Boolean)
+          : (o.doctor_id ? [o.doctor_id] : []);
+        bloqueos.push(normalizeBlock({
+          block_id: `oneoff-${o.id}`,
+          name: o.description,
+          from: o.time_from,
+          to: o.time_to,
+          doctor_ids: ids,
+          // Las reuniones internas SDM no requieren médico individual asignado
+          unassigned: o.category === 'sdm_interna' ? false : ids.length === 0,
+          category: o.category,
+          source: 'oneoff',
+          sdm_internal: o.category === 'sdm_interna',
+        }));
       });
-    }
+
+    // El bloque "Visita de servicio - Dr. R. Sandoval" se inyecta más abajo,
+    // después del override, para que aparezca en cualquier día donde Sandoval
+    // esté como visitante (incluido cuando se corre por feriado).
+
 
     // Post-pass: Poli TACO toma por default al médico de Subdirección Médica del día,
     // salvo que tenga otro bloqueo conflictivo en el horario de TACO.
-    const sdmBlock  = bloqueos.find(b => b.block_id === 'subdireccion_medica' && b.doctor_id);
+    // Si SDM tiene varios médicos, se toma el primero como "principal".
+    const sdmBlock  = bloqueos.find(b => b.block_id === 'subdireccion_medica' && blockDoctorIds(b).length);
     const tacoBlock = bloqueos.find(b => b.block_id === 'poli_taco');
-    if (sdmBlock && tacoBlock && tacoBlock.from && tacoBlock.to && sdmBlock.doctor_id !== tacoBlock.doctor_id) {
-      const sdmId = sdmBlock.doctor_id;
-      const hasConflict = bloqueos.some(b =>
-        b !== sdmBlock && b !== tacoBlock && !b.suspended &&
-        b.doctor_id === sdmId && b.from && b.to &&
-        b.from < tacoBlock.to && b.to > tacoBlock.from
-      );
-      if (!hasConflict) {
-        tacoBlock.originalDoctor = tacoBlock.doctor_id;
-        tacoBlock.doctor_id = sdmId;
-        tacoBlock.unassigned = false;
-        tacoBlock.auto_assigned = false;
-        tacoBlock.reassigned = true;
+    if (sdmBlock && tacoBlock && tacoBlock.from && tacoBlock.to) {
+      const sdmId = blockDoctorIds(sdmBlock)[0];
+      const tacoIds = blockDoctorIds(tacoBlock);
+      if (sdmId && !tacoIds.includes(sdmId)) {
+        const hasConflict = bloqueos.some(b =>
+          b !== sdmBlock && b !== tacoBlock && !b.suspended &&
+          blockHasDoctor(b, sdmId) && b.from && b.to &&
+          b.from < tacoBlock.to && b.to > tacoBlock.from
+        );
+        if (!hasConflict) {
+          tacoBlock.originalDoctor = tacoIds[0] || null;
+          tacoBlock.doctor_ids = [sdmId];
+          tacoBlock.doctor_id = sdmId;
+          tacoBlock.unassigned = false;
+          tacoBlock.auto_assigned = false;
+          tacoBlock.reassigned = true;
+        }
       }
     }
 
@@ -486,7 +508,67 @@ export function generateAgenda({
     // computar visita para que las reglas de exclusión (Selector, bloqueo matinal pesado)
     // funcionen sobre los bloqueos editados, no los del template.
     if (bloqueosOverrides[d.date]) {
-      bloqueos = bloqueosOverrides[d.date];
+      // Normalizamos: cada bloqueo del override debe tener doctor_ids (overrides
+      // viejos guardados con `doctor_id` solo se convierten automáticamente).
+      bloqueos = bloqueosOverrides[d.date].map(normalizeBlock);
+    }
+
+    // Bloque "Visita de servicio - Dr. R. Sandoval": se inyecta DESPUÉS del
+    // override para que aparezca el día efectivo de la visita (default jue/vie
+    // o el día al que se movió manualmente), aunque haya ediciones guardadas.
+    // Si el override ya tiene un bloque con este block_id (porque el usuario
+    // editó manualmente el acompañante, p.ej.), se respeta tal cual.
+    const sandovalBlockId = `external_sandoval_service_visit_${d.date}`;
+    const sandovalAlreadyInOverride = bloqueos.some(b => b.block_id === sandovalBlockId);
+    if (!sandovalAlreadyInOverride && sandovalIsVisitingOnDay(externalVisitors) && !isHoliday) {
+      const isViernesSandoval = d.day === 'vie';
+      const visitFrom = isViernesSandoval ? '14:00' : '15:00';
+      const visitTo   = isViernesSandoval ? '16:00' : '17:00';
+      const sandovalId = doctorById.sandoval ? 'sandoval' : null;
+      // Acompañante: san_martin > grupo {alvarado, carreno, v_aguilera, toledo,
+      // r_aguilera, sbarbaro, enriquez, rivas, troncoso}. Empates → menor carga del día.
+      const COMPANION_TIERS = [
+        ['san_martin'],
+        ['alvarado', 'carreno', 'v_aguilera', 'toledo', 'r_aguilera', 'sbarbaro', 'enriquez', 'rivas', 'troncoso'],
+      ];
+      const companionConflict = (id) => bloqueos.some(b =>
+        !b.suspended && blockHasDoctor(b, id) && b.from && b.to &&
+        b.from < visitTo && b.to > visitFrom
+      );
+      const companionAvailable = (id) =>
+        id && id !== sandovalId &&
+        doctorById[id] && doctorById[id].active !== false &&
+        !urgentologistIds.has(id) &&
+        !turnoIds_inner.has(id) && !postIds_inner.has(id) &&
+        !ausIds_inner.has(id) && !poliIds.has(id) &&
+        refuerzos.am !== id && refuerzos.pm !== id &&
+        !companionConflict(id);
+      const dayLoad = (id) => bloqueos.filter(b => !b.suspended && blockHasDoctor(b, id)).length;
+      let companionId = null;
+      for (const tier of COMPANION_TIERS) {
+        const avail = tier.filter(companionAvailable);
+        if (avail.length) {
+          avail.sort((a, b) => dayLoad(a) - dayLoad(b) || (weeklyDoctorLoad[a] || 0) - (weeklyDoctorLoad[b] || 0));
+          companionId = avail[0];
+          break;
+        }
+      }
+      const ids = [sandovalId, companionId].filter(Boolean);
+      bloqueos.push(normalizeBlock({
+        block_id: sandovalBlockId,
+        name: 'Visita de servicio - Dr. R. Sandoval',
+        from: visitFrom,
+        to: visitTo,
+        doctor_ids: ids,
+        unassigned: ids.length === 0,
+        auto_assigned: !!companionId,
+        category: 'clinico',
+        source: 'external_default',
+        external_visitor: true,
+      }));
+      if (companionId) {
+        weeklyDoctorLoad[companionId] = (weeklyDoctorLoad[companionId] || 0) + 1;
+      }
     }
 
     // Regla operativa: nadie sale después del cierre de jornada. Si un bloqueo
@@ -522,19 +604,19 @@ export function generateAgenda({
     // Selector de Demanda: por convención operativa, quien lo cubre NO entra en visita por defecto.
     // Match robusto ante variantes de seed: id o nombre que contengan "selector".
     const isSelectorBlock = (b) => {
-      if (b.suspended || !b.doctor_id) return false;
+      if (b.suspended || blockDoctorIds(b).length === 0) return false;
       const id = (b.block_id || '').toLowerCase();
       const name = (b.name || '').toLowerCase();
       return /selector/.test(id) || /selector/.test(name);
     };
-    const selectorDemandaIds = new Set(bloqueos.filter(isSelectorBlock).map(b => b.doctor_id));
+    const selectorDemandaIds = new Set();
+    bloqueos.filter(isSelectorBlock).forEach(b => blockDoctorIds(b).forEach(id => selectorDemandaIds.add(id)));
     // Regla operativa: bloqueo que parte 08:00 y dura >2h (termina >10:00) ocupa la mañana clínica
     // → el médico no entra a visita por defecto (puede agregarse manualmente como excepción).
-    const morningHeavyIds = new Set(
-      bloqueos
-        .filter(b => !b.suspended && !b.sdm_internal && b.doctor_id && b.from === '08:00' && b.to && b.to > '10:00')
-        .map(b => b.doctor_id)
-    );
+    const morningHeavyIds = new Set();
+    bloqueos
+      .filter(b => !b.suspended && !b.sdm_internal && b.from === '08:00' && b.to && b.to > '10:00')
+      .forEach(b => blockDoctorIds(b).forEach(id => morningHeavyIds.add(id)));
     const visita = doctors
       .filter(doc => doc.active !== false)
       .filter(doc => !turnoIds.has(doc.id) && !postIds.has(doc.id) && !ausIds.has(doc.id) && !refIds.has(doc.id) && !poliIds.has(doc.id))
@@ -543,7 +625,7 @@ export function generateAgenda({
       .filter(doc => {
         if (doc.id === 'rubilar') return true;
         if (doc.is_urgentologist) return true;
-        const morningBlocks = bloqueos.filter(b => b.doctor_id === doc.id && overlapsVisitWindow(b));
+        const morningBlocks = bloqueos.filter(b => blockHasDoctor(b, doc.id) && overlapsVisitWindow(b));
         if (morningBlocks.length === 0) return true;
         // Excluir de visita si el bloqueo cubre toda la franja matinal
         const fullMorning = morningBlocks.some(b => b.from <= '08:30' && b.to >= '11:00');
@@ -561,7 +643,7 @@ export function generateAgenda({
         const MORNING_START = 8 * 60, MORNING_END = 11 * 60;
         const computeCapacityFromBlocks = () => {
           const morningBusy = bloqueos
-            .filter(b => b.doctor_id === doc.id && overlapsVisitWindow(b))
+            .filter(b => blockHasDoctor(b, doc.id) && overlapsVisitWindow(b))
             .reduce((sum, b) => {
               const from = Math.max(toMin(b.from), MORNING_START);
               const to = Math.min(toMin(b.to), MORNING_END);
@@ -1060,14 +1142,20 @@ export function validateAgenda(agenda, doctors = [], blockTemplates = []) {
     });
     // Auto-asignados — pedir revisar / formalizar
     day.bloqueos.filter(b => !b.suspended && b.auto_assigned).forEach(b => {
-      warnings.push({ date: day.date, label: day.label, kind: 'auto_assigned', blockId: b.block_id, doctorId: b.doctor_id,
-        message: `${day.label}: "${b.name}" auto-asignado a ${doctorName(b.doctor_id)} — revisar y formalizar como subrogante en el template` });
+      const ids = blockDoctorIds(b);
+      const namesStr = ids.map(doctorName).join(' + ') || '—';
+      warnings.push({ date: day.date, label: day.label, kind: 'auto_assigned', blockId: b.block_id, doctorId: ids[0] || null,
+        message: `${day.label}: "${b.name}" auto-asignado a ${namesStr} — revisar y formalizar como subrogante en el template` });
     });
-    // Médico ausente asignado
+    // Médico ausente asignado: si CUALQUIERA de los médicos del bloque está ausente, error.
     const ausIds = new Set(day.ausencias.map(a => a.doctor_id));
-    day.bloqueos.filter(b => !b.suspended && b.doctor_id && ausIds.has(b.doctor_id)).forEach(b => {
-      errors.push({ date: day.date, label: day.label, kind: 'absent_assigned', blockId: b.block_id, doctorId: b.doctor_id,
-        message: `${day.label}: ${doctorName(b.doctor_id)} ausente pero asignado a "${b.name}"` });
+    day.bloqueos.filter(b => !b.suspended).forEach(b => {
+      const ids = blockDoctorIds(b);
+      const absent = ids.filter(id => ausIds.has(id));
+      if (absent.length) {
+        errors.push({ date: day.date, label: day.label, kind: 'absent_assigned', blockId: b.block_id, doctorId: absent[0],
+          message: `${day.label}: ${absent.map(doctorName).join(', ')} ausente${absent.length>1?'s':''} pero asignado${absent.length>1?'s':''} a "${b.name}"` });
+      }
     });
     // Refuerzos no definidos
     if (!day.refuerzos.am) warnings.push({ date: day.date, label: day.label, kind: 'missing_am', message: `${day.label}: falta refuerzo AM` });

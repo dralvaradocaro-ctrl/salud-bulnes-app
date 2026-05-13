@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, Save, RefreshCw, ZoomIn, ZoomOut, AlertTriangle } from 'lucide-react';
-import { findReplacementForBlock, getMondayOfWeek } from './lib/generateAgenda';
+import { findReplacementForBlock, getMondayOfWeek, blockDoctorIds, blockHasDoctor } from './lib/generateAgenda';
 import { sdmSupabase as supabase } from './lib/sdmSupabase';
 import CellEditor from './CellEditor';
 
@@ -116,12 +116,16 @@ function layoutDayBlocks(day) {
     cluster.forEach(block => {
       block.laneCount = laneCount;
       block.hasParallel = cluster.length > 1;
-      block.hasConflict = block.unassigned || cluster.some(other =>
-        other !== block &&
-        block.doctor_id &&
-        other.doctor_id === block.doctor_id &&
-        overlaps(block, other)
-      );
+      const blockIds = Array.isArray(block.doctor_ids) && block.doctor_ids.length
+        ? block.doctor_ids
+        : (block.doctor_id ? [block.doctor_id] : []);
+      block.hasConflict = block.unassigned || cluster.some(other => {
+        if (other === block) return false;
+        const otherIds = Array.isArray(other.doctor_ids) && other.doctor_ids.length
+          ? other.doctor_ids
+          : (other.doctor_id ? [other.doctor_id] : []);
+        return blockIds.some(id => otherIds.includes(id)) && overlaps(block, other);
+      });
     });
   });
 
@@ -216,14 +220,14 @@ export default function Cronograma({ weeklyAgenda, setMonday }) {
       const fromNext = fromCurrent.filter(b => blockKey(b) !== blockKey(draggedBlock));
       const targetBase = draggedBlock.fromDate === targetDate ? fromNext : toCurrent;
       const sameBlockInstances = targetBase.filter(b => b.block_id === moved.block_id && !b.suspended && b.from && b.to);
+      const movedIds = blockDoctorIds(moved);
       const sameDoctorBlocks = targetBase.filter(b =>
-        b.doctor_id &&
-        b.doctor_id === moved.doctor_id &&
-        !b.suspended &&
-        b.block_id !== moved.block_id
+        !b.suspended && b.block_id !== moved.block_id &&
+        movedIds.some(id => blockHasDoctor(b, id))
       );
       let movedNext = moved;
       if (sameDoctorBlocks.length > 0) {
+        const conflictDoctor = movedIds.find(id => sameDoctorBlocks.some(b => blockHasDoctor(b, id))) || movedIds[0];
         const detail = sameDoctorBlocks
           .slice()
           .sort((a, b) => (a.from || '').localeCompare(b.from || ''))
@@ -231,12 +235,12 @@ export default function Cronograma({ weeklyAgenda, setMonday }) {
           .join('\n');
         const replacement = findReplacementForBlock({
           blockId: moved.block_id,
-          excludeDoctorId: moved.doctor_id,
+          excludeDoctorId: conflictDoctor,
           day: targetDay,
           programAssignments,
         });
         const choice = window.prompt(
-          `${doctorName(moved.doctor_id)} ya tiene otro bloqueo el ${targetDate}:\n\n${detail}\n\n` +
+          `${doctorName(conflictDoctor)} ya tiene otro bloqueo el ${targetDate}:\n\n${detail}\n\n` +
           `Elige una opción:\n` +
           `1 = Mover igual / sumar todo en ese día\n` +
           `2 = Cambiar "${moved.name}" a ${replacement ? doctorName(replacement) : 'titular/subrogante disponible (no hay disponible)'}\n` +
@@ -249,7 +253,9 @@ export default function Cronograma({ weeklyAgenda, setMonday }) {
             toast.error('No hay titular/subrogante disponible para ese bloqueo en el día destino.');
             return prev;
           }
-          movedNext = { ...movedNext, doctor_id: replacement, unassigned: false, reassigned: true, originalDoctor: moved.doctor_id };
+          const newIds = movedIds.map(id => id === conflictDoctor ? replacement : id);
+          if (!newIds.includes(replacement)) newIds.push(replacement);
+          movedNext = { ...movedNext, doctor_ids: newIds, doctor_id: newIds[0] || null, unassigned: false, reassigned: true, originalDoctor: conflictDoctor };
         }
       }
       const targetNext = sameBlockInstances.length > 0
@@ -441,11 +447,11 @@ export default function Cronograma({ weeklyAgenda, setMonday }) {
                             onClick={() => setEditingDay(day)}
                             className={`absolute rounded-md border-l-4 border border-slate-200 px-2 py-1 text-left text-[11px] leading-tight shadow-sm hover:ring-2 hover:ring-blue-400 ${colors}`}
                             style={{ top, height, left, width }}
-                            title={`${block.from}-${block.to} · ${block.name} · ${block.doctor_id ? doctorName(block.doctor_id) : 'Sin asignar'}`}
+                            title={`${block.from}-${block.to} · ${block.name} · ${blockDoctorIds(block).length ? blockDoctorIds(block).map(doctorName).join(' + ') : 'Sin asignar'}`}
                           >
                             <div className="flex items-center gap-1 font-bold">
                               {block.hasConflict && <AlertTriangle className="h-3 w-3 shrink-0" />}
-                              <span className="truncate">{block.doctor_id ? doctorName(block.doctor_id) : 'SIN ASIGNAR'}</span>
+                              <span className="truncate">{blockDoctorIds(block).length ? blockDoctorIds(block).map(doctorName).join(' + ') : 'SIN ASIGNAR'}</span>
                             </div>
                             <div className="truncate">{block.name}</div>
                             <div className="mt-0.5 text-[10px] opacity-70">{block.from}-{block.to}</div>

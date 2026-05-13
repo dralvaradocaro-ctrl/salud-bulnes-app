@@ -5,7 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Trash2, X } from 'lucide-react';
+
+const blockDocIds = (b) => Array.isArray(b?.doctor_ids) && b.doctor_ids.length
+  ? b.doctor_ids.filter(Boolean)
+  : (b?.doctor_id ? [b.doctor_id] : []);
 
 const DEFAULT_DESCRIPTION = {
   visita_radio: 'Visita radio',
@@ -30,7 +35,7 @@ export default function SimpleOneoffBlocks({ category, title, icon: Icon, descri
   const [doctors, setDoctors] = useState([]);
   const [blocks, setBlocks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ date: '', doctor_id: '', time_from: '', time_to: '', description: '' });
+  const [form, setForm] = useState({ date: '', doctor_ids: [], time_from: '', time_to: '', description: '' });
   const defaultDesc = DEFAULT_DESCRIPTION[category] || descriptionLabel || 'Bloqueo';
 
   async function load() {
@@ -50,7 +55,7 @@ export default function SimpleOneoffBlocks({ category, title, icon: Icon, descri
   const docName = (id) => doctors.find(d => d.id === id)?.display_name || id;
 
   async function add() {
-    if (!form.date || !form.doctor_id || !form.time_from || !form.time_to) {
+    if (!form.date || form.doctor_ids.length === 0 || !form.time_from || !form.time_to) {
       toast.error('Fecha, médico y horario son obligatorios.');
       return;
     }
@@ -61,7 +66,8 @@ export default function SimpleOneoffBlocks({ category, title, icon: Icon, descri
     const payload = {
       week_start: getMonday(form.date),
       date: form.date,
-      doctor_id: form.doctor_id,
+      doctor_id: form.doctor_ids[0],
+      doctor_ids: form.doctor_ids,
       time_from: form.time_from,
       time_to: form.time_to,
       description: form.description.trim() || defaultDesc,
@@ -70,7 +76,7 @@ export default function SimpleOneoffBlocks({ category, title, icon: Icon, descri
     const { error } = await supabase.from('sdm_oneoff_blocks').insert(payload);
     if (error) { toast.error('Error: ' + (explainSdmWriteError(error) || error.message)); return; }
     toast.success(`${defaultDesc} agregado.`);
-    setForm({ date: '', doctor_id: '', time_from: '', time_to: '', description: '' });
+    setForm({ date: '', doctor_ids: [], time_from: '', time_to: '', description: '' });
     await load();
     onChanged?.();
   }
@@ -99,13 +105,28 @@ export default function SimpleOneoffBlocks({ category, title, icon: Icon, descri
             <Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="h-8" />
           </div>
           <div className="col-span-12 sm:col-span-3">
-            <label className="text-[11px] uppercase tracking-wide text-slate-500">Médico</label>
-            <Select value={form.doctor_id} onValueChange={v => setForm({ ...form, doctor_id: v })}>
-              <SelectTrigger className="h-8"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-              <SelectContent>
-                {doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <label className="text-[11px] uppercase tracking-wide text-slate-500">Médicos</label>
+            <div className="min-h-8 rounded-md border border-input px-1.5 py-1 flex flex-wrap gap-1 items-center bg-white">
+              {form.doctor_ids.map(id => {
+                const d = doctors.find(x => x.id === id);
+                return (
+                  <Badge key={id} className="text-[10px] bg-blue-50 text-blue-800 border border-blue-200 gap-1 pl-2 pr-1 py-0.5">
+                    {d?.display_name || id}
+                    <button type="button" onClick={() => setForm({ ...form, doctor_ids: form.doctor_ids.filter(x => x !== id) })} className="hover:bg-blue-200 rounded">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                );
+              })}
+              <Select value="" onValueChange={v => { if (v && !form.doctor_ids.includes(v)) setForm({ ...form, doctor_ids: [...form.doctor_ids, v] }); }}>
+                <SelectTrigger className="h-6 px-1.5 py-0 w-auto border-0 shadow-none text-[10px] text-slate-500 hover:text-slate-700">
+                  <SelectValue placeholder={form.doctor_ids.length ? '+ Otro' : 'Seleccionar...'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {doctors.filter(d => !form.doctor_ids.includes(d.id)).map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="col-span-6 sm:col-span-2">
             <label className="text-[11px] uppercase tracking-wide text-slate-500">Desde</label>
@@ -147,7 +168,7 @@ export default function SimpleOneoffBlocks({ category, title, icon: Icon, descri
                 {blocks.map(b => (
                   <tr key={b.id} className="border-b hover:bg-slate-50">
                     <td className="py-2 px-2 font-mono">{b.date}</td>
-                    <td className="py-2 px-2">{docName(b.doctor_id)}</td>
+                    <td className="py-2 px-2">{blockDocIds(b).map(docName).join(' + ') || '—'}</td>
                     <td className="py-2 px-2 font-mono text-slate-600">{b.time_from || '—'} – {b.time_to || '—'}</td>
                     <td className="py-2 px-2 text-slate-600">{b.description || defaultDesc}</td>
                     <td className="py-2 px-2 text-right">

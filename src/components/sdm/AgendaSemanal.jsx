@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ChevronLeft, ChevronRight, RefreshCw, Save, Printer, Plus, Trash2, Edit3, Sparkles } from 'lucide-react';
-import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, dayKeyForDate, sortReinforcements, optimizeForTitulars, balanceLoad, HIERARCHICAL_BLOCK_IDS, findReplacementForBlock } from './lib/generateAgenda';
+import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, dayKeyForDate, sortReinforcements, optimizeForTitulars, balanceLoad, HIERARCHICAL_BLOCK_IDS, findReplacementForBlock, blockDoctorIds, blockHasDoctor } from './lib/generateAgenda';
 import AIFixModal from './AIFixModal';
 import { Shuffle, Wand2, Scale } from 'lucide-react';
 import CellEditor from './CellEditor';
@@ -223,7 +223,10 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     if (!doctorId) return;
     const day = agenda.find(d => d.date === date);
     if (!day) return;
-    const blkIdx = day.bloqueos.findIndex(b => b.doctor_id === doctorId && !HIERARCHICAL_BLOCK_IDS.has(b.block_id));
+    const blkIdx = day.bloqueos.findIndex(b => {
+      const ids = Array.isArray(b.doctor_ids) ? b.doctor_ids : (b.doctor_id ? [b.doctor_id] : []);
+      return ids.includes(doctorId) && !HIERARCHICAL_BLOCK_IDS.has(b.block_id);
+    });
     if (blkIdx === -1) return;
     const blk = day.bloqueos[blkIdx];
     const replacement = findReplacementForBlock({
@@ -236,8 +239,11 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       toast.warning(`⚠ ${doctorName(doctorId)} tiene "${blk.name}" ese día pero no hay subrogante disponible. Revisá manualmente.`);
       return;
     }
+    const prevIds = Array.isArray(blk.doctor_ids) ? blk.doctor_ids : (blk.doctor_id ? [blk.doctor_id] : []);
+    const newIds = prevIds.map(id => id === doctorId ? replacement : id);
+    if (!newIds.includes(replacement)) newIds.push(replacement);
     const nuevos = day.bloqueos.slice();
-    nuevos[blkIdx] = { ...blk, doctor_id: replacement, reassigned: true, originalDoctor: doctorId };
+    nuevos[blkIdx] = { ...blk, doctor_ids: newIds, doctor_id: newIds[0] || null, reassigned: true, originalDoctor: doctorId };
     setBloqueosOverrides(prev => ({ ...prev, [date]: nuevos }));
     toast.success(`✓ "${blk.name}" reasignado a ${doctorName(replacement)} porque ${doctorName(doctorId)} pasa a refuerzo ${slot.toUpperCase()}.`);
   }
@@ -436,13 +442,15 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
         || template.monthly_rule
         || {};
       const current = bloqueosOverrides[targetDay.date] ?? targetDay.bloqueos;
+      const aiIds = opt.doctor_id ? [opt.doctor_id] : [];
       const newBlock = {
         block_id: template.id,
         name: template.name,
         from: slot.from || null,
         to: slot.to || null,
-        doctor_id: opt.doctor_id || null,
-        unassigned: !opt.doctor_id,
+        doctor_ids: aiIds,
+        doctor_id: aiIds[0] || null,
+        unassigned: aiIds.length === 0,
         category: template.category || 'otro',
         source: 'ai_added',
         ai_assigned: true,
@@ -460,7 +468,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
 
     if (opt.action === 'assign' && opt.doctor_id) {
       const nuevos = currentBloqueos.map((b, i) =>
-        i === idx ? { ...b, doctor_id: opt.doctor_id, unassigned: false, auto_assigned: false, ai_assigned: true } : b
+        i === idx ? { ...b, doctor_ids: [opt.doctor_id], doctor_id: opt.doctor_id, unassigned: false, auto_assigned: false, ai_assigned: true } : b
       );
       setBloqueosOverrides(prev => ({ ...prev, [error.date]: nuevos }));
       return;
@@ -497,13 +505,17 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     const day = agenda.find(d => d.date === date);
     if (!day) return;
     const current = bloqueosOverrides[date] ?? day.bloqueos;
+    const blkIds = Array.isArray(blk.doctor_ids) && blk.doctor_ids.length
+      ? blk.doctor_ids.filter(Boolean)
+      : (blk.doctor_id ? [blk.doctor_id] : []);
     const newBlock = {
       block_id: blk.block_id || `oneoff-inline-${Date.now()}`,
       name: blk.name.trim(),
       from: blk.from,
       to: blk.to,
-      doctor_id: blk.doctor_id || null,
-      unassigned: !blk.doctor_id,
+      doctor_ids: blkIds,
+      doctor_id: blkIds[0] || null,
+      unassigned: blkIds.length === 0,
       category: blk.category || 'otro',
       source: 'manual',
     };
@@ -526,14 +538,14 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     let moved = { ...block, source: 'moved', auto_assigned: false };
     const sameBlockInstances = toCurrent.filter(b => b.block_id === block.block_id && !b.suspended && b.from && b.to);
     const sameBlockCount = sameBlockInstances.length;
+    const blockIds = blockDoctorIds(block);
     const sameDoctorBlocks = toCurrent.filter(b =>
-      b.doctor_id &&
-      b.doctor_id === block.doctor_id &&
-      !b.suspended &&
-      b.block_id !== block.block_id
+      !b.suspended && b.block_id !== block.block_id &&
+      blockIds.some(id => blockHasDoctor(b, id))
     );
 
     if (sameDoctorBlocks.length > 0) {
+      const conflictDoctor = blockIds.find(id => sameDoctorBlocks.some(b => blockHasDoctor(b, id))) || blockIds[0];
       const detail = sameDoctorBlocks
         .slice()
         .sort((a, b) => (a.from || '').localeCompare(b.from || ''))
@@ -541,12 +553,12 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
         .join('\n');
       const replacement = findReplacementForBlock({
         blockId: block.block_id,
-        excludeDoctorId: block.doctor_id,
+        excludeDoctorId: conflictDoctor,
         day: toDay,
         programAssignments,
       });
       const choice = window.prompt(
-        `${doctorName(block.doctor_id)} ya tiene otro bloqueo el ${toDate}:\n\n${detail}\n\n` +
+        `${doctorName(conflictDoctor)} ya tiene otro bloqueo el ${toDate}:\n\n${detail}\n\n` +
         `Elige una opción:\n` +
         `1 = Mover igual / sumar todo en ese día\n` +
         `2 = Cambiar "${block.name}" a ${replacement ? doctorName(replacement) : 'titular/subrogante disponible (no hay disponible)'}\n` +
@@ -559,12 +571,15 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
           toast.error('No hay titular/subrogante disponible para ese bloqueo en el día destino.');
           return;
         }
+        const newIds = blockIds.map(id => id === conflictDoctor ? replacement : id);
+        if (!newIds.includes(replacement)) newIds.push(replacement);
         moved = {
           ...moved,
-          doctor_id: replacement,
+          doctor_ids: newIds,
+          doctor_id: newIds[0] || null,
           unassigned: false,
           reassigned: true,
-          originalDoctor: block.doctor_id,
+          originalDoctor: conflictDoctor,
         };
       }
     } else if (sameBlockCount > 0) {
@@ -573,22 +588,25 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
 
     // Si el bloque tiene titular y está disponible en el día destino, ofrecer reasignar al titular.
     const titular = programAssignments.find(p => p.block_template_id === blockId && p.role_type === 'titular')?.doctor_id;
-    if (titular && titular !== block.doctor_id && !moved.reassigned) {
+    const movedIds = blockDoctorIds(moved);
+    if (titular && !movedIds.includes(titular) && !moved.reassigned) {
       const turnoIds = new Set(toDay.turnos.map(t => t.doctor_id));
       const postIds = new Set(toDay.posturno.map(t => t.doctor_id));
       const ausIds = new Set(toDay.ausencias.map(a => a.doctor_id));
       const titularDisponible = !turnoIds.has(titular) && !postIds.has(titular) && !ausIds.has(titular);
       if (titularDisponible) {
+        const currentNames = movedIds.map(doctorName).join(' + ') || 'nadie';
         const useTitular = window.confirm(
           `El titular de "${block.name}" (${doctorName(titular)}) está disponible el ${toDate}.\n\n` +
           `Aceptar → ${doctorName(titular)} lo hace (titular)\n` +
-          `Cancelar → ${doctorName(block.doctor_id)} lo sigue haciendo`
+          `Cancelar → ${currentNames} lo sigue haciendo`
         );
         if (useTitular) {
           moved = {
             ...moved,
+            doctor_ids: [titular],
             doctor_id: titular,
-            originalDoctor: block.doctor_id,
+            originalDoctor: movedIds[0] || null,
             reassigned: true,
           };
         }
@@ -956,11 +974,12 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                     const turnoIds = new Set(day.turnos.map(t => t.doctor_id));
                     const postIds = new Set(day.posturno.map(t => t.doctor_id));
                     const ausIds = new Set(day.ausencias.map(a => a.doctor_id));
-                    const hierarchicalDocs = new Set(
-                      day.bloqueos.filter(b => HIERARCHICAL_BLOCK_IDS.has(b.block_id)).map(b => b.doctor_id));
+                    const hierarchicalDocs = new Set();
+                    day.bloqueos.filter(b => HIERARCHICAL_BLOCK_IDS.has(b.block_id))
+                      .forEach(b => blockDoctorIds(b).forEach(id => hierarchicalDocs.add(id)));
                     const nominalDocs = new Map();
                     day.bloqueos.filter(b => !HIERARCHICAL_BLOCK_IDS.has(b.block_id))
-                      .forEach(b => { if (!nominalDocs.has(b.doctor_id)) nominalDocs.set(b.doctor_id, b.name); });
+                      .forEach(b => blockDoctorIds(b).forEach(id => { if (!nominalDocs.has(id)) nominalDocs.set(id, b.name); }));
                     const eligible = doctors.filter(doc =>
                       !turnoIds.has(doc.id) && !postIds.has(doc.id) && !ausIds.has(doc.id) && !hierarchicalDocs.has(doc.id));
                     // AM/PM mutuamente excluyentes: el médico ya elegido en un slot no aparece en el otro.
@@ -1052,7 +1071,10 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                                 </>
                               ) : (
                                 <>
-                                  {b.doctor_id ? doctorName(b.doctor_id) : (b.suspended ? '' : '⚠ SIN ASIGNAR')} <span className={b.suspended ? '' : 'text-slate-500'}>{b.name}</span>
+                                  {(() => {
+                                    const ids = blockDoctorIds(b);
+                                    return ids.length ? ids.map(doctorName).join(' + ') : (b.suspended ? '' : '⚠ SIN ASIGNAR');
+                                  })()} <span className={b.suspended ? '' : 'text-slate-500'}>{b.name}</span>
                                 </>
                               )}
                               {b.suspended && (
@@ -1289,7 +1311,7 @@ function QuickAddBlockForm({ doctors, blockSuggestions = [], onSave, onCancel })
   const [name, setName] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
-  const [doctorId, setDoctorId] = useState('');
+  const [doctorIds, setDoctorIds] = useState([]);
   const [category, setCategory] = useState('otro');
   const valid = name.trim() && from && to && from < to;
   const disabledReason = !name.trim()
@@ -1307,7 +1329,14 @@ function QuickAddBlockForm({ doctors, blockSuggestions = [], onSave, onCancel })
   };
   const save = () => {
     if (!valid) return;
-    onSave({ block_id: blockId, name: name.trim(), from, to, doctor_id: doctorId || null, category });
+    onSave({
+      block_id: blockId,
+      name: name.trim(),
+      from, to,
+      doctor_ids: doctorIds,
+      doctor_id: doctorIds[0] || null,
+      category,
+    });
   };
   return (
     <div className="flex flex-wrap items-center gap-1 rounded border border-blue-300 bg-blue-50/40 px-1.5 py-1">
@@ -1331,10 +1360,21 @@ function QuickAddBlockForm({ doctors, blockSuggestions = [], onSave, onCancel })
         onChange={e => setTo(e.target.value)}
         className="h-6 text-[10px] px-1 py-0 w-20"
       />
-      <Select value={doctorId} onValueChange={setDoctorId}>
-        <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-24"><SelectValue placeholder="Médico" /></SelectTrigger>
-        <SelectContent>{doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}</SelectContent>
-      </Select>
+      <div className="flex flex-wrap items-center gap-1">
+        {doctorIds.map(id => {
+          const d = doctors.find(x => x.id === id);
+          return (
+            <span key={id} className="text-[10px] bg-blue-50 text-blue-800 border border-blue-200 rounded px-1 inline-flex items-center gap-0.5">
+              {d?.display_name || id}
+              <button type="button" onClick={() => setDoctorIds(doctorIds.filter(x => x !== id))} className="hover:bg-blue-200 rounded leading-none">×</button>
+            </span>
+          );
+        })}
+        <Select value="" onValueChange={v => { if (v && !doctorIds.includes(v)) setDoctorIds([...doctorIds, v]); }}>
+          <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-24"><SelectValue placeholder={doctorIds.length ? '+ Otro' : 'Médico'} /></SelectTrigger>
+          <SelectContent>{doctors.filter(d => !doctorIds.includes(d.id)).map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
       <button
         onClick={save}
         disabled={!valid}

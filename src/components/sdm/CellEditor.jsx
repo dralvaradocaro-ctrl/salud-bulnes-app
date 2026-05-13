@@ -5,7 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Pause, Play, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Pause, Play, AlertCircle, X } from 'lucide-react';
+
+// Normaliza el campo doctor a array doctor_ids (compat con bloqueos viejos doctor_id).
+const blockDocIds = (b) => Array.isArray(b?.doctor_ids) ? b.doctor_ids.filter(Boolean) : (b?.doctor_id ? [b.doctor_id] : []);
 
 /**
  * Modal para editar la celda BLOQUEOS de un día + propiedades del día:
@@ -21,7 +24,7 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
 
   useEffect(() => {
     if (open) {
-      setItems(bloqueos.map((b, i) => ({ ...b, _key: `${b.block_id}-${i}` })));
+      setItems(bloqueos.map((b, i) => ({ ...b, doctor_ids: blockDocIds(b), _key: `${b.block_id}-${i}` })));
       setIsHoliday(!!day?.is_holiday);
       setVisitors(Array.isArray(day?.external_visitors) ? day.external_visitors.map((v, i) => ({ ...v, _key: `v-${i}` })) : []);
     }
@@ -46,10 +49,26 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
     {
       _key: `new-${Date.now()}`,
       block_id: `oneoff-${Date.now()}`,
-      name: '', from: '', to: '', doctor_id: null,
+      name: '', from: '', to: '', doctor_ids: [],
       category: 'otro', source: 'manual',
     },
   ]);
+  const addDoctor = (key, doctorId) => {
+    if (!doctorId) return;
+    setItems(items.map(it => {
+      if (it._key !== key) return it;
+      const ids = Array.isArray(it.doctor_ids) ? it.doctor_ids : [];
+      if (ids.includes(doctorId)) return it;
+      return { ...it, doctor_ids: [...ids, doctorId] };
+    }));
+  };
+  const removeDoctor = (key, doctorId) => {
+    setItems(items.map(it => {
+      if (it._key !== key) return it;
+      const ids = Array.isArray(it.doctor_ids) ? it.doctor_ids : [];
+      return { ...it, doctor_ids: ids.filter(id => id !== doctorId) };
+    }));
+  };
 
   const updateVisitor = (key, field, value) =>
     setVisitors(visitors.map(v => v._key === key ? { ...v, [field]: value } : v));
@@ -74,10 +93,13 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
     });
     for (let i = 0; i < activos.length; i++) {
       const a = activos[i];
-      if (!a.doctor_id || !a.from || !a.to || a.from >= a.to) continue;
+      const aIds = Array.isArray(a.doctor_ids) ? a.doctor_ids : [];
+      if (aIds.length === 0 || !a.from || !a.to || a.from >= a.to) continue;
       for (let j = i + 1; j < activos.length; j++) {
         const b = activos[j];
-        if (b.doctor_id !== a.doctor_id || !b.from || !b.to || b.from >= b.to) continue;
+        const bIds = Array.isArray(b.doctor_ids) ? b.doctor_ids : [];
+        if (!b.from || !b.to || b.from >= b.to) continue;
+        if (!aIds.some(id => bIds.includes(id))) continue;
         if (a.from < b.to && b.from < a.to) {
           const other = b.name?.slice(0, 30) || 'otro bloqueo';
           warns[a._key] = warns[a._key] || `Solapa con "${other}"`;
@@ -97,7 +119,15 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
     }
     const cleanedBloqueos = items
       .filter(it => it.name && it.name.trim())
-      .map(({ _key, ...rest }) => ({ ...rest, unassigned: !rest.doctor_id }));
+      .map(({ _key, doctor_id: _legacy, ...rest }) => {
+        const ids = Array.isArray(rest.doctor_ids) ? rest.doctor_ids.filter(Boolean) : [];
+        return {
+          ...rest,
+          doctor_ids: ids,
+          doctor_id: ids[0] || null,
+          unassigned: rest.sdm_internal ? false : ids.length === 0,
+        };
+      });
     const cleanedVisitors = visitors
       .filter(v => v.name && v.name.trim())
       .map(({ _key, ...rest }) => rest);
@@ -165,16 +195,30 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
                     <Input className="h-8" type="time" value={it.to || ''} onChange={e => update(it._key, 'to', e.target.value)} />
                   </div>
                   <div className="col-span-3">
-                    <label className="text-[10px] uppercase tracking-wide text-slate-500">Médico</label>
-                    <Select value={it.doctor_id || ''} onValueChange={v => update(it._key, 'doctor_id', v === '__none__' ? null : v)}>
-                      <SelectTrigger className={`h-8 ${!it.doctor_id && !it.suspended && 'border-amber-300'}`}>
-                        <SelectValue placeholder="Sin asignar" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">— Sin asignar —</SelectItem>
-                        {doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <label className="text-[10px] uppercase tracking-wide text-slate-500">Médicos</label>
+                    <div className={`min-h-8 rounded-md border px-1.5 py-1 flex flex-wrap gap-1 items-center ${(!it.doctor_ids || it.doctor_ids.length === 0) && !it.suspended ? 'border-amber-300' : 'border-input'}`}>
+                      {(it.doctor_ids || []).map(docId => {
+                        const doc = doctors.find(d => d.id === docId);
+                        return (
+                          <Badge key={docId} className="text-[10px] bg-blue-50 text-blue-800 border border-blue-200 gap-1 pl-2 pr-1 py-0.5">
+                            {doc?.display_name || docId}
+                            <button type="button" onClick={() => removeDoctor(it._key, docId)} className="hover:bg-blue-200 rounded">
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        );
+                      })}
+                      <Select value="" onValueChange={v => addDoctor(it._key, v)}>
+                        <SelectTrigger className="h-6 px-1.5 py-0 w-auto border-0 shadow-none text-[10px] text-slate-500 hover:text-slate-700">
+                          <SelectValue placeholder={(it.doctor_ids?.length ? '+ Otro' : '+ Agregar médico')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {doctors
+                            .filter(d => !(it.doctor_ids || []).includes(d.id))
+                            .map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="col-span-12 flex gap-2 items-center flex-wrap">
                     <Badge variant="outline" className="text-[10px]">

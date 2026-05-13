@@ -58,7 +58,9 @@ export async function suggestFixForError(error, agenda, doctors, blockTemplates 
             nombre: b.name,
             desde: b.from,
             hasta: b.to,
-            medico: b.doctor_id ? docName(b.doctor_id) : 'SIN ASIGNAR',
+            medico: (Array.isArray(b.doctor_ids) && b.doctor_ids.length
+              ? b.doctor_ids.map(docName).join(' + ')
+              : (b.doctor_id ? docName(b.doctor_id) : 'SIN ASIGNAR')),
           })),
         ausencias: d.ausencias.map(a => `${docName(a.doctor_id)} (${ABSENCE_LABELS[a.type] || a.type})`),
       }));
@@ -123,7 +125,9 @@ Devuelve 2 o 3 opciones, ordenadas de mejor a peor.`;
       .filter(b => !b.suspended)
       .map(b => ({
         nombre: b.name, desde: b.from, hasta: b.to,
-        medico: b.doctor_id ? docName(b.doctor_id) : 'SIN ASIGNAR',
+        medico: (Array.isArray(b.doctor_ids) && b.doctor_ids.length
+          ? b.doctor_ids.map(docName).join(' + ')
+          : (b.doctor_id ? docName(b.doctor_id) : 'SIN ASIGNAR')),
         auto_asignado: !!b.auto_assigned,
       })),
   };
@@ -131,8 +135,11 @@ Devuelve 2 o 3 opciones, ordenadas de mejor a peor.`;
   // Carga semanal por médico (cuántos bloqueos activos tiene cada uno en la semana)
   const cargaSemanal = {};
   agenda.forEach(d => {
-    d.bloqueos.filter(b => !b.suspended && b.doctor_id).forEach(b => {
-      cargaSemanal[b.doctor_id] = (cargaSemanal[b.doctor_id] || 0) + 1;
+    d.bloqueos.filter(b => !b.suspended).forEach(b => {
+      const ids = Array.isArray(b.doctor_ids) && b.doctor_ids.length
+        ? b.doctor_ids
+        : (b.doctor_id ? [b.doctor_id] : []);
+      ids.forEach(id => { cargaSemanal[id] = (cargaSemanal[id] || 0) + 1; });
     });
   });
 
@@ -149,7 +156,13 @@ Devuelve 2 o 3 opciones, ordenadas de mejor a peor.`;
       id: d.id,
       nombre: d.display_name,
       carga_semanal: cargaSemanal[d.id] || 0,
-      bloqueos_hoy: day.bloqueos.filter(b => !b.suspended && b.doctor_id === d.id).map(b => `${b.from}-${b.to} ${b.name}`),
+      bloqueos_hoy: day.bloqueos.filter(b => {
+        if (b.suspended) return false;
+        const ids = Array.isArray(b.doctor_ids) && b.doctor_ids.length
+          ? b.doctor_ids
+          : (b.doctor_id ? [b.doctor_id] : []);
+        return ids.includes(d.id);
+      }).map(b => `${b.from}-${b.to} ${b.name}`),
     }));
 
   // Para opción "swap": resumen breve por día de la semana
@@ -165,7 +178,12 @@ Devuelve 2 o 3 opciones, ordenadas de mejor a peor.`;
 
 ERROR: ${error.message}
 TIPO: ${error.kind}
-${block ? `BLOQUEO PROBLEMÁTICO: "${block.name}" (${block.from || '?'}-${block.to || '?'}), médico actual: ${block.doctor_id ? docName(block.doctor_id) : 'SIN ASIGNAR'}` : ''}
+${block ? `BLOQUEO PROBLEMÁTICO: "${block.name}" (${block.from || '?'}-${block.to || '?'}), médico actual: ${(() => {
+  const ids = Array.isArray(block.doctor_ids) && block.doctor_ids.length
+    ? block.doctor_ids
+    : (block.doctor_id ? [block.doctor_id] : []);
+  return ids.length ? ids.map(docName).join(' + ') : 'SIN ASIGNAR';
+})()}` : ''}
 
 ESTADO DEL DÍA ${day.label} (${day.date}):
 ${JSON.stringify(dayCtx, null, 2)}
