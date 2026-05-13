@@ -13,7 +13,6 @@ import AIFixModal from './AIFixModal';
 import { Shuffle, Wand2, Scale } from 'lucide-react';
 import CellEditor from './CellEditor';
 import SdmInternalMeetings from './SdmInternalMeetings';
-import SdmEditorPicker from './SdmEditorPicker';
 import SdmHistoryDialog from './SdmHistoryDialog';
 import TimeInput24h from './TimeInput24h';
 import { getSdmEditor } from './lib/sdmEditHistory';
@@ -218,11 +217,9 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       );
       if (!proceed) return;
     }
-    const editorName = getSdmEditor();
-    if (!editorName) {
-      toast.error('Antes de guardar elegí quién está editando (arriba a la izquierda).');
-      return;
-    }
+    // El editor se toma automaticamente de la sesion logueada
+    // (admin_profile_name → fallback de getSdmEditor). No requiere paso extra.
+    const editorName = getSdmEditor() || 'Sesión sin nombre';
     await saveWeeklyAgenda({ hasErrors: visibleErrors.length > 0, editorName });
   }
 
@@ -792,10 +789,6 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
           {visibleErrors.length > 0 && <span className="ml-1 bg-white text-red-700 text-[10px] font-bold rounded-full px-1.5">{visibleErrors.length}</span>}
         </Button>
         <Button variant="outline" onClick={() => window.print()} className="gap-1.5"><Printer className="h-4 w-4" /> Imprimir</Button>
-      </div>
-
-      <div className="sdm-print-hide -mt-2">
-        <SdmEditorPicker doctors={doctors} />
       </div>
 
 	      {/* Banners de validación — clickeables: abren el editor del día problemático */}

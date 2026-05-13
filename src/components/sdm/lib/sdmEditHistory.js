@@ -10,10 +10,22 @@
 import { sdmSupabase as supabase } from './sdmSupabase';
 
 export const SDM_EDITOR_KEY = 'sdm_editor_name';
+export const ADMIN_PROFILE_KEY = 'admin_profile_name';
 
+/**
+ * Devuelve quien edita la agenda SDM:
+ *  1) Override manual del picker (localStorage `sdm_editor_name`) si esta seteado.
+ *  2) En su defecto, el `admin_profile_name` de la sesion logueada (set por AdminLogin).
+ *  3) Vacio si no hay nada.
+ *
+ * Asi, por defecto, quien tiene su sesion abierta queda registrado en el
+ * historial sin requerir un paso extra de seleccion.
+ */
 export function getSdmEditor() {
   try {
-    return localStorage.getItem(SDM_EDITOR_KEY) || '';
+    const override = localStorage.getItem(SDM_EDITOR_KEY);
+    if (override) return override;
+    return localStorage.getItem(ADMIN_PROFILE_KEY) || '';
   } catch (_) {
     return '';
   }
@@ -24,6 +36,11 @@ export function setSdmEditor(name) {
     if (name) localStorage.setItem(SDM_EDITOR_KEY, name);
     else localStorage.removeItem(SDM_EDITOR_KEY);
   } catch (_) { /* ignore */ }
+}
+
+/** True si el editor actual proviene del override manual (no del login). */
+export function isSdmEditorOverride() {
+  try { return !!localStorage.getItem(SDM_EDITOR_KEY); } catch (_) { return false; }
 }
 
 function countDayBlockChanges(prevDay, currDay) {
