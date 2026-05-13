@@ -39,6 +39,7 @@ export function useSdmWeeklyAgenda(monday) {
   const [visitaOverrides, setVisitaOverrides] = useState({});
   const [externalVisitorOverrides, setExternalVisitorOverrides] = useState({});
   const [dismissedErrors, setDismissedErrors] = useState([]);
+  const [acknowledgedErrors, setAcknowledgedErrors] = useState([]);
   const [savedAgendaId, setSavedAgendaId] = useState(null);
   const [savedData, setSavedData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -80,6 +81,7 @@ export function useSdmWeeklyAgenda(monday) {
       setVisitaOverrides(ag.data.data.visitaOverrides || {});
       setExternalVisitorOverrides(ag.data.data.externalVisitorOverrides || {});
       setDismissedErrors(Array.isArray(ag.data.data.dismissedErrors) ? ag.data.data.dismissedErrors : []);
+      setAcknowledgedErrors(Array.isArray(ag.data.data.acknowledgedErrors) ? ag.data.data.acknowledgedErrors : []);
     } else {
       setSavedData(null);
       setReinforcements({});
@@ -88,6 +90,7 @@ export function useSdmWeeklyAgenda(monday) {
       setVisitaOverrides({});
       setExternalVisitorOverrides({});
       setDismissedErrors([]);
+      setAcknowledgedErrors([]);
     }
     setSavedAgendaId(ag.data?.id || null);
     setLoading(false);
@@ -106,7 +109,7 @@ export function useSdmWeeklyAgenda(monday) {
 
   useEffect(() => {
     if (initialLoadDone.current) setIsDirty(true);
-  }, [bloqueosOverrides, reinforcements, poli8amOverrides, visitaOverrides, externalVisitorOverrides, dismissedErrors]);
+  }, [bloqueosOverrides, reinforcements, poli8amOverrides, visitaOverrides, externalVisitorOverrides, dismissedErrors, acknowledgedErrors]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -152,6 +155,7 @@ export function useSdmWeeklyAgenda(monday) {
         visitaOverrides,
         externalVisitorOverrides,
         dismissedErrors,
+        acknowledgedErrors,
         has_errors: hasErrors,
         generated_at: new Date().toISOString(),
       },
@@ -179,7 +183,7 @@ export function useSdmWeeklyAgenda(monday) {
     setIsDirty(false);
     toast.success('Agenda guardada');
     return true;
-  }, [agenda, bloqueosOverrides, dismissedErrors, externalVisitorOverrides, poli8amOverrides, reinforcements, savedAgendaId, visitaOverrides, weekStart]);
+  }, [agenda, bloqueosOverrides, dismissedErrors, acknowledgedErrors, externalVisitorOverrides, poli8amOverrides, reinforcements, savedAgendaId, visitaOverrides, weekStart]);
 
   return {
     monday,
@@ -212,6 +216,8 @@ export function useSdmWeeklyAgenda(monday) {
     setExternalVisitorOverrides,
     dismissedErrors,
     setDismissedErrors,
+    acknowledgedErrors,
+    setAcknowledgedErrors,
     savedAgendaId,
     setSavedAgendaId,
     savedData,

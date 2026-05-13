@@ -81,6 +81,8 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     setBloqueosOverrides,
     dismissedErrors,
     setDismissedErrors,
+    acknowledgedErrors,
+    setAcknowledgedErrors,
     poli8amOverrides,
     setPoli8amOverrides,
     visitaOverrides,
@@ -122,26 +124,45 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     () => dismissedErrors.filter(k => activeIssueKeys.has(k)),
     [dismissedErrors, activeIssueKeys]
   );
-  const dismissedSet = useMemo(() => new Set(activeDismissedErrors), [activeDismissedErrors]);
-  const visibleErrors = validation.errors.filter(e => !dismissedSet.has(errorKey(e)));
-  const visibleWarnings = validation.warnings.filter(w => !dismissedSet.has(errorKey(w)));
-  const hiddenIssues = [...validation.errors, ...validation.warnings].filter(e => dismissedSet.has(errorKey(e)));
+  const activeAcknowledgedErrors = useMemo(
+    () => acknowledgedErrors.filter(k => activeIssueKeys.has(k)),
+    [acknowledgedErrors, activeIssueKeys]
+  );
+  const acknowledgedSet = useMemo(() => new Set(activeAcknowledgedErrors), [activeAcknowledgedErrors]);
+  const hiddenSet = useMemo(() => new Set([...activeDismissedErrors, ...activeAcknowledgedErrors]), [activeDismissedErrors, activeAcknowledgedErrors]);
+  const visibleErrors = validation.errors.filter(e => !hiddenSet.has(errorKey(e)));
+  const visibleWarnings = validation.warnings.filter(w => !hiddenSet.has(errorKey(w)));
+  const hiddenIssues = [...validation.errors, ...validation.warnings].filter(e => hiddenSet.has(errorKey(e)));
   const totalIssues = visibleErrors.length + visibleWarnings.length + hiddenIssues.length;
   const dismissError = (e) => {
     const k = errorKey(e);
     setDismissedErrors(prev => prev.includes(k) ? prev : [...prev, k]);
+    setAcknowledgedErrors(prev => prev.filter(x => x !== k));
   };
-  const restoreError = (k) => setDismissedErrors(prev => prev.filter(x => x !== k));
+  const acknowledgeError = (e) => {
+    const k = errorKey(e);
+    setAcknowledgedErrors(prev => prev.includes(k) ? prev : [...prev, k]);
+    setDismissedErrors(prev => prev.filter(x => x !== k));
+  };
+  const restoreError = (k) => {
+    setDismissedErrors(prev => prev.filter(x => x !== k));
+    setAcknowledgedErrors(prev => prev.filter(x => x !== k));
+  };
   const doctorName = id => doctors.find(d => d.id === id)?.display_name || (id === 'rubilar' ? 'RUBILAR' : id);
 
-  // Auto-prune: si el usuario corrigió el problema, la entrada queda obsoleta en dismissedErrors.
-  // Se eliminan las keys que ya no aparecen en validación activa.
+  // Auto-prune: si el usuario corrigió el problema, la entrada queda obsoleta
+  // en dismissedErrors/acknowledgedErrors. Se eliminan las keys que ya no
+  // aparecen en validación activa.
   useEffect(() => {
     setDismissedErrors(prev => {
       const next = prev.filter(k => activeIssueKeys.has(k));
       return next.length === prev.length ? prev : next;
     });
-  }, [activeIssueKeys, setDismissedErrors]);
+    setAcknowledgedErrors(prev => {
+      const next = prev.filter(k => activeIssueKeys.has(k));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [activeIssueKeys, setDismissedErrors, setAcknowledgedErrors]);
 
   useEffect(() => {
     if (totalIssues === 0) {
@@ -782,6 +803,13 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                     </button>
                   )}
                   <button
+                    onClick={(ev) => { ev.stopPropagation(); acknowledgeError(e); }}
+                    className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700 hover:text-amber-900 hover:bg-amber-100 px-1.5 py-0.5 rounded"
+                    title="Confirmar igual — entiendo la alerta pero archivo la agenda así. Se persiste al guardar."
+                  >
+                    ✓ Confirmar igual
+                  </button>
+                  <button
                     onClick={(ev) => { ev.stopPropagation(); dismissError(e); }}
                     className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-1.5 py-0.5 rounded"
                     title="Descartar alerta (compatible / falso positivo). Se persiste al guardar."
@@ -825,6 +853,13 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                     </button>
                   )}
                   <button
+                    onClick={(ev) => { ev.stopPropagation(); acknowledgeError(w); }}
+                    className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700 hover:text-amber-900 hover:bg-amber-100 px-1.5 py-0.5 rounded"
+                    title="Confirmar igual — entiendo la alerta pero archivo la agenda así. Se persiste al guardar."
+                  >
+                    ✓ Confirmar igual
+                  </button>
+                  <button
                     onClick={(ev) => { ev.stopPropagation(); dismissError(w); }}
                     className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-700 hover:bg-slate-100 px-1.5 py-0.5 rounded"
                     title="Descartar alerta (compatible / falso positivo). Se persiste al guardar."
@@ -841,21 +876,28 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                   onClick={() => setShowDismissed(s => !s)}
                   className="text-[11px] text-slate-500 hover:text-slate-700 font-semibold"
                 >
-                  {showDismissed ? '▼' : '▶'} {hiddenIssues.length} alerta(s) descartada(s)
+                  {showDismissed ? '▼' : '▶'} {hiddenIssues.length} alerta(s) archivada(s)
                 </button>
                 {showDismissed && (
                   <div className="mt-1 space-y-0.5">
-                    {hiddenIssues.map((d, i) => (
-                      <div key={'d' + i} className="flex items-center gap-2 text-[11px] text-slate-500 line-through">
-                        <span className="flex-1">{d.message}</span>
-                        <button
-                          onClick={() => restoreError(errorKey(d))}
-                          className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-800 hover:bg-slate-100 px-1.5 py-0.5 rounded no-underline"
-                        >
-                          ↺ Restaurar
-                        </button>
-                      </div>
-                    ))}
+                    {hiddenIssues.map((d, i) => {
+                      const k = errorKey(d);
+                      const isAck = acknowledgedSet.has(k);
+                      return (
+                        <div key={'d' + i} className={`flex items-center gap-2 text-[11px] ${isAck ? 'text-amber-700' : 'text-slate-500 line-through'}`}>
+                          <span className="flex-1">{d.message}</span>
+                          <span className={`shrink-0 inline-block text-[9px] font-bold uppercase tracking-wide px-1 rounded ${isAck ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-slate-100 text-slate-600 border border-slate-300'} no-underline`}>
+                            {isAck ? 'Confirmada igual' : 'Descartada'}
+                          </span>
+                          <button
+                            onClick={() => restoreError(k)}
+                            className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 hover:text-slate-800 hover:bg-slate-100 px-1.5 py-0.5 rounded no-underline"
+                          >
+                            ↺ Restaurar
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 	              </div>
@@ -1261,6 +1303,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
         agenda={agenda}
         doctors={doctors}
         blockTemplates={blockTemplates}
+        programAssignments={programAssignments}
         onApply={(opt) => applyAiOption(aiError, opt)}
       />
 

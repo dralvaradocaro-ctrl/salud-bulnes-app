@@ -39,10 +39,49 @@ const RESPONSE_SCHEMA = {
  * @param doctors - catálogo completo de sdm_doctors
  * @returns { options: [{ action, doctor_id?, swap_with_day?, reasoning, side_effects? }] }
  */
-export async function suggestFixForError(error, agenda, doctors, blockTemplates = []) {
+export async function suggestFixForError(error, agenda, doctors, blockTemplates = [], programAssignments = []) {
   const docName = id => doctors.find(d => d.id === id)?.display_name || id;
   const day = agenda.find(d => d.date === error.date);
   const template = blockTemplates.find(bt => bt.id === error.blockId);
+
+  // Para sugerencias de reubicación: necesitamos saber, para el bloque en
+  // cuestión, quién es el titular y los subrogantes en orden de prioridad,
+  // y en cada día de la semana cuál de ellos está disponible.
+  function buildPrincipalAvailability(blockId) {
+    if (!blockId) return null;
+    const titular = programAssignments.find(p => p.block_template_id === blockId && p.role_type === 'titular')?.doctor_id || null;
+    const subrogantes = programAssignments
+      .filter(p => p.block_template_id === blockId && p.role_type === 'subrogante')
+      .sort((a, b) => (a.priority || 1) - (b.priority || 1))
+      .map(p => ({ id: p.doctor_id, priority: p.priority || 1 }));
+    const principales = [
+      ...(titular ? [{ id: titular, rol: 'titular' }] : []),
+      ...subrogantes.map(s => ({ id: s.id, rol: `subrogante p${s.priority}` })),
+    ];
+    if (!principales.length) return null;
+    const disponibilidadPorDia = agenda.map(d => {
+      const turnoIds = new Set(d.turnos.map(t => t.doctor_id));
+      const postIds = new Set(d.posturno.map(t => t.doctor_id));
+      const ausIds = new Set(d.ausencias.map(a => a.doctor_id));
+      const isHoliday = !!d.is_holiday;
+      const lib = principales
+        .filter(p => !turnoIds.has(p.id) && !postIds.has(p.id) && !ausIds.has(p.id))
+        .map(p => ({ id: p.id, nombre: docName(p.id), rol: p.rol }));
+      return {
+        fecha: d.date,
+        dia: d.label,
+        feriado: isHoliday,
+        principales_disponibles: lib,
+        titular_disponible: lib.some(p => p.rol === 'titular'),
+      };
+    });
+    return {
+      titular: titular ? { id: titular, nombre: docName(titular) } : null,
+      subrogantes_orden: subrogantes.map(s => ({ id: s.id, nombre: docName(s.id), priority: s.priority })),
+      disponibilidad_por_dia: disponibilidadPorDia,
+    };
+  }
+  const principalAvailability = buildPrincipalAvailability(error.blockId);
   const isWeeklyCountIssue = ['weekly_count_short', 'weekly_count_short_unrelocatable'].includes(error.kind);
 
   if (!day && isWeeklyCountIssue) {
@@ -76,14 +115,19 @@ ${JSON.stringify(template?.weekday_pattern || template?.monthly_rule || {}, null
 DÍAS DISPONIBLES DE ESTA SEMANA:
 ${JSON.stringify(availableDays, null, 2)}
 
-REGLAS:
+${principalAvailability ? `TITULAR Y SUBROGANTES DEL BLOQUEO (orden de preferencia para asignación):
+${JSON.stringify(principalAvailability, null, 2)}
+
+` : ''}REGLAS:
 - Proponé agregar el bloqueo faltante en un día no feriado.
 - Preferí un día donde todavía no exista ese mismo bloqueo.
 - Si el template tiene horario para ese día, usar ese día es mejor.
 - Si hay muchos bloqueos activos ese día, preferí otro día con menos carga.
+- PRIORIDAD MÁXIMA: si el TITULAR del bloqueo está disponible en algún día (ver "disponibilidad_por_dia.titular_disponible: true"), elegir ese día y asignar al titular en doctor_id.
+- Si el titular no está disponible en ningún día razonable, usar el subrogante de menor priority disponible y proponer ese día.
+- Si ningún principal (titular ni subrogantes) está disponible, dejar doctor_id en null y mencionarlo explícitamente en reasoning.
 - La acción debe ser "add".
 - Usá swap_with_day para indicar la fecha destino YYYY-MM-DD.
-- doctor_id puede ser null si conviene dejarlo para asignación manual.
 
 Devuelve un JSON con esta forma EXACTA:
 {
@@ -194,12 +238,16 @@ ${JSON.stringify(disponiblesHoy, null, 2)}
 RESUMEN DE LA SEMANA:
 ${JSON.stringify(semana, null, 2)}
 
-REGLAS:
+${principalAvailability ? `TITULAR Y SUBROGANTES DEL BLOQUEO (orden de preferencia):
+${JSON.stringify(principalAvailability, null, 2)}
+
+` : ''}REGLAS:
 - Un médico no puede estar en turno/posturno/ausencia y simultáneamente en un bloqueo.
 - Quien hace "poli_full_day" cubre policlínico 08:00–17:00 y NO puede tomar bloqueos.
 - Urgenciólogos solo participan en VISITA con cupos fijos, no en bloqueos.
 - Preferir médicos con menor carga semanal para balancear.
-- "swap" mueve el bloqueo a OTRO día donde el titular original esté disponible.
+- PRIORIDAD AL REUBICAR ("swap"): elegir el día donde el TITULAR esté disponible (campo "titular_disponible: true" en "disponibilidad_por_dia"). Si no, el día donde haya algún subrogante de menor priority disponible. Si en ningún día hay titular ni subrogantes disponibles, mencionar esto en "side_effects" y proponer fallback a otro médico con baja carga.
+- PRIORIDAD AL ASIGNAR ("assign") en el mismo día: priorizar titular si está disponible; si no, subrogantes en orden de priority; recién después caer a cualquier médico libre con baja carga.
 - "suspend" difiere el bloqueo a próxima semana (no cubrirlo esta semana).
 
 Devuelve un JSON con esta forma EXACTA:

@@ -10,7 +10,7 @@ import { suggestFixForError } from './lib/aiAssistant';
  * Cada opción tiene un botón "Aplicar". El parent recibe la opción aplicada
  * vía onApply(option) y decide cómo mutar el estado.
  */
-export default function AIFixModal({ open, onOpenChange, error, agenda, doctors, blockTemplates = [], onApply }) {
+export default function AIFixModal({ open, onOpenChange, error, agenda, doctors, blockTemplates = [], programAssignments = [], onApply }) {
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState(null);
   const [errMsg, setErrMsg] = useState(null);
@@ -22,7 +22,7 @@ export default function AIFixModal({ open, onOpenChange, error, agenda, doctors,
     setErrMsg(null);
     setOptions(null);
     try {
-      const res = await suggestFixForError(error, agenda, doctors, blockTemplates);
+      const res = await suggestFixForError(error, agenda, doctors, blockTemplates, programAssignments);
       setOptions(Array.isArray(res?.options) ? res.options : []);
     } catch (e) {
       setErrMsg(e.message || 'Error consultando IA');
