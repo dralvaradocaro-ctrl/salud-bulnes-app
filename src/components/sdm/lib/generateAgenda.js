@@ -84,11 +84,16 @@ export function blockHasDoctor(b, id) {
   if (Array.isArray(b.doctor_ids)) return b.doctor_ids.includes(id);
   return b.doctor_id === id;
 }
-// Normaliza un bloqueo para que siempre tenga doctor_ids + doctor_id espejo.
+// Normaliza un bloqueo: doctor_ids + doctor_id espejo + hora HH:MM (sin segundos).
+// Es importante normalizar las horas tambien aca porque los overrides viejos
+// guardados en sdm_weekly_agendas conservan strings tipo "15:00:00" (heredados
+// de la columna TIME de Postgres) y se reusan al renderizar.
 export function normalizeBlock(b) {
   if (!b) return b;
   const ids = blockDoctorIds(b);
-  return { ...b, doctor_ids: ids, doctor_id: ids[0] || null };
+  const from = typeof b.from === 'string' && b.from.length > 5 ? b.from.slice(0, 5) : (b.from || null);
+  const to   = typeof b.to === 'string' && b.to.length > 5 ? b.to.slice(0, 5) : (b.to || null);
+  return { ...b, doctor_ids: ids, doctor_id: ids[0] || null, from, to };
 }
 
 function fitBlockInsideJornada(block, dayEnd = JORNADA_FIN) {
