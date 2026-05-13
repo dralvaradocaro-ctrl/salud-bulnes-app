@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, X } from 'lucide-react';
+import TimeInput24h from './TimeInput24h';
 
 const blockDocIds = (b) => Array.isArray(b?.doctor_ids) && b.doctor_ids.length
   ? b.doctor_ids.filter(Boolean)
@@ -129,12 +130,12 @@ export default function SimpleOneoffBlocks({ category, title, icon: Icon, descri
             </div>
           </div>
           <div className="col-span-6 sm:col-span-2">
-            <label className="text-[11px] uppercase tracking-wide text-slate-500">Desde</label>
-            <Input type="time" value={form.time_from} onChange={e => setForm({ ...form, time_from: e.target.value })} className="h-8" />
+            <label className="text-[11px] uppercase tracking-wide text-slate-500">Desde (24h)</label>
+            <TimeInput24h value={form.time_from} onChange={v => setForm({ ...form, time_from: v })} className="h-8" />
           </div>
           <div className="col-span-6 sm:col-span-2">
-            <label className="text-[11px] uppercase tracking-wide text-slate-500">Hasta</label>
-            <Input type="time" value={form.time_to} onChange={e => setForm({ ...form, time_to: e.target.value })} className="h-8" />
+            <label className="text-[11px] uppercase tracking-wide text-slate-500">Hasta (24h)</label>
+            <TimeInput24h value={form.time_to} onChange={v => setForm({ ...form, time_to: v })} className="h-8" />
           </div>
           <div className="col-span-12 sm:col-span-2">
             <Button onClick={add} size="sm" className="w-full gap-1.5">

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { sdmSupabase as supabase, explainSdmWriteError } from './sdmSupabase';
 import { fmtDate, generateAgenda, weekDates } from './generateAgenda';
+import { logSdmEdit, summarizeSdmChanges } from './sdmEditHistory';
 
 export function buildBlockSuggestions(blockTemplates) {
   const aliases = [
@@ -144,7 +145,7 @@ export function useSdmWeeklyAgenda(monday) {
     setOneoffBlocks(data || []);
   }, [weekStart]);
 
-  const saveAgenda = useCallback(async ({ hasErrors = false } = {}) => {
+  const saveAgenda = useCallback(async ({ hasErrors = false, editorName = null } = {}) => {
     const payload = {
       week_start: weekStart,
       data: {
@@ -162,6 +163,12 @@ export function useSdmWeeklyAgenda(monday) {
       status: 'editada',
       updated_at: new Date().toISOString(),
     };
+    const prevSnapshot = savedData;
+    const logEdit = async () => {
+      if (!editorName) return;
+      const summary = summarizeSdmChanges(prevSnapshot, payload.data);
+      await logSdmEdit({ weekStart, editorName, summary });
+    };
     if (savedAgendaId) {
       const { error } = await supabase.from('sdm_weekly_agendas').update(payload).eq('id', savedAgendaId);
       if (error) {
@@ -171,6 +178,7 @@ export function useSdmWeeklyAgenda(monday) {
       setIsDirty(false);
       setSavedData(payload.data);
       toast.success('Agenda actualizada');
+      logEdit();
       return true;
     }
     const { data, error } = await supabase.from('sdm_weekly_agendas').insert(payload).select('id').single();
@@ -182,8 +190,9 @@ export function useSdmWeeklyAgenda(monday) {
     setSavedData(payload.data);
     setIsDirty(false);
     toast.success('Agenda guardada');
+    logEdit();
     return true;
-  }, [agenda, bloqueosOverrides, dismissedErrors, acknowledgedErrors, externalVisitorOverrides, poli8amOverrides, reinforcements, savedAgendaId, visitaOverrides, weekStart]);
+  }, [agenda, bloqueosOverrides, dismissedErrors, acknowledgedErrors, externalVisitorOverrides, poli8amOverrides, reinforcements, savedAgendaId, savedData, visitaOverrides, weekStart]);
 
   return {
     monday,

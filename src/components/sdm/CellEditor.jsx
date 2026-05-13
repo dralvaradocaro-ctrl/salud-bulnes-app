@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Pause, Play, AlertCircle, X } from 'lucide-react';
+import TimeInput24h from './TimeInput24h';
 
 // Normaliza el campo doctor a array doctor_ids (compat con bloqueos viejos doctor_id).
 const blockDocIds = (b) => Array.isArray(b?.doctor_ids) ? b.doctor_ids.filter(Boolean) : (b?.doctor_id ? [b.doctor_id] : []);
@@ -231,12 +232,12 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="text-[10px] uppercase tracking-wide text-slate-500">Desde</label>
-                    <Input className="h-8" type="time" value={it.from || ''} onChange={e => update(it._key, 'from', e.target.value)} />
+                    <label className="text-[10px] uppercase tracking-wide text-slate-500">Desde (24h)</label>
+                    <TimeInput24h className="h-8" value={it.from || ''} onChange={v => update(it._key, 'from', v)} />
                   </div>
                   <div className="col-span-2">
-                    <label className="text-[10px] uppercase tracking-wide text-slate-500">Hasta</label>
-                    <Input className="h-8" type="time" value={it.to || ''} onChange={e => update(it._key, 'to', e.target.value)} />
+                    <label className="text-[10px] uppercase tracking-wide text-slate-500">Hasta (24h)</label>
+                    <TimeInput24h className="h-8" value={it.to || ''} onChange={v => update(it._key, 'to', v)} />
                   </div>
                   <div className="col-span-3">
                     <label className="text-[10px] uppercase tracking-wide text-slate-500">Médicos</label>

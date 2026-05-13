@@ -13,6 +13,10 @@ import AIFixModal from './AIFixModal';
 import { Shuffle, Wand2, Scale } from 'lucide-react';
 import CellEditor from './CellEditor';
 import SdmInternalMeetings from './SdmInternalMeetings';
+import SdmEditorPicker from './SdmEditorPicker';
+import SdmHistoryDialog from './SdmHistoryDialog';
+import TimeInput24h from './TimeInput24h';
+import { getSdmEditor } from './lib/sdmEditHistory';
 
 const ABSENCE_TYPES = ['FL', 'P', 'A', 'DT', 'LM', 'CAP', 'PAS', 'G', 'OTRO'];
 const ABSENCE_LABELS = {
@@ -104,6 +108,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   const [visitorDragOverDate, setVisitorDragOverDate] = useState(null);
   const [draggedVisitor, setDraggedVisitor] = useState(null);
   const [expandedAddDay, setExpandedAddDay] = useState(null);   // fecha del día con el form (+) expandido
+  const [showHistory, setShowHistory] = useState(false);        // modal de historial de ediciones
 
   const confirmIfDirty = (msg = 'Tenés cambios sin guardar en esta semana. ¿Continuar y descartarlos?') => {
     if (!isDirty) return true;
@@ -213,7 +218,12 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       );
       if (!proceed) return;
     }
-    await saveWeeklyAgenda({ hasErrors: visibleErrors.length > 0 });
+    const editorName = getSdmEditor();
+    if (!editorName) {
+      toast.error('Antes de guardar elegí quién está editando (arriba a la izquierda).');
+      return;
+    }
+    await saveWeeklyAgenda({ hasErrors: visibleErrors.length > 0, editorName });
   }
 
   async function addAbsence() {
@@ -782,6 +792,10 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
           {visibleErrors.length > 0 && <span className="ml-1 bg-white text-red-700 text-[10px] font-bold rounded-full px-1.5">{visibleErrors.length}</span>}
         </Button>
         <Button variant="outline" onClick={() => window.print()} className="gap-1.5"><Printer className="h-4 w-4" /> Imprimir</Button>
+      </div>
+
+      <div className="sdm-print-hide -mt-2">
+        <SdmEditorPicker doctors={doctors} />
       </div>
 
 	      {/* Banners de validación — clickeables: abren el editor del día problemático */}
@@ -1397,6 +1411,17 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Link discreto al historial de modificaciones de la semana */}
+      <div className="sdm-print-hide text-center pt-2 pb-4">
+        <button
+          onClick={() => setShowHistory(true)}
+          className="text-[11px] text-slate-400 hover:text-slate-700 hover:underline"
+        >
+          Historial de modificaciones
+        </button>
+      </div>
+      <SdmHistoryDialog open={showHistory} onOpenChange={setShowHistory} weekStart={weekStart} />
     </div>
   );
 }
@@ -1447,16 +1472,14 @@ function QuickAddBlockForm({ doctors, blockSuggestions = [], onSave, onCancel })
         list="sdm-quick-block-suggestions"
         autoFocus
       />
-      <Input
-        type="time"
+      <TimeInput24h
         value={from}
-        onChange={e => setFrom(e.target.value)}
+        onChange={setFrom}
         className="h-6 text-[10px] px-1 py-0 w-20"
       />
-      <Input
-        type="time"
+      <TimeInput24h
         value={to}
-        onChange={e => setTo(e.target.value)}
+        onChange={setTo}
         className="h-6 text-[10px] px-1 py-0 w-20"
       />
       <div className="flex flex-wrap items-center gap-1">

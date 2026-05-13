@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import TimeInput24h from './TimeInput24h';
 import { Plus, Trash2, Users2, EyeOff } from 'lucide-react';
 import { sdmSupabase as supabase, explainSdmWriteError } from './lib/sdmSupabase';
 import { fmtDate, weekDates } from './lib/generateAgenda';
@@ -95,12 +96,12 @@ export default function SdmInternalMeetings({ monday, onChanged }) {
             </select>
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-violet-700 mb-0.5">Desde</label>
-            <Input type="time" value={form.time_from} onChange={e => setForm({ ...form, time_from: e.target.value })} className="h-8 w-24 text-xs" />
+            <label className="block text-[10px] uppercase tracking-wide text-violet-700 mb-0.5">Desde (24h)</label>
+            <TimeInput24h value={form.time_from} onChange={v => setForm({ ...form, time_from: v })} className="h-8 w-24 text-xs" />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-violet-700 mb-0.5">Hasta</label>
-            <Input type="time" value={form.time_to} onChange={e => setForm({ ...form, time_to: e.target.value })} className="h-8 w-24 text-xs" />
+            <label className="block text-[10px] uppercase tracking-wide text-violet-700 mb-0.5">Hasta (24h)</label>
+            <TimeInput24h value={form.time_to} onChange={v => setForm({ ...form, time_to: v })} className="h-8 w-24 text-xs" />
           </div>
           <div className="flex-1 min-w-[180px]">
             <label className="block text-[10px] uppercase tracking-wide text-violet-700 mb-0.5">Asunto</label>
