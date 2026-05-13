@@ -1097,6 +1097,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     pr_protocolo_aborto: 'Tipos de aborto',
     pr_protocolo_otras: 'Otras pérdidas',
     triage_protocolo: 'Protocolo',
+    triage_equipo: 'Equipo',
     triage_categorias: 'Niveles ESI',
     triage_casos: 'Casos especiales',
     triage_flujogramas: 'Flujogramas',
