@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import { sdmSupabase as supabase, explainSdmWriteError } from './lib/sdmSupabase';
+import { sdmSupabase as supabase, explainSdmWriteError, insertOneoffBlock } from './lib/sdmSupabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -228,7 +228,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       description: `${template.name} (diferido por feriado ${issue.date})`,
       category: template.category || 'otro',
     };
-    const { error } = await supabase.from('sdm_oneoff_blocks').insert(payload);
+    const { error } = await insertOneoffBlock(payload);
     if (error) {
       toast.error('Error al diferir: ' + (explainSdmWriteError(error) || error.message));
       return;

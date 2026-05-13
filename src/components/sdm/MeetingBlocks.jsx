@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { sdmSupabase as supabase, explainSdmWriteError } from './lib/sdmSupabase';
+import { sdmSupabase as supabase, explainSdmWriteError, insertOneoffBlock } from './lib/sdmSupabase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -86,7 +86,7 @@ export default function MeetingBlocks({ onChanged }) {
       description: form.description.trim(),
       category: form.cause,
     };
-    const { error } = await supabase.from('sdm_oneoff_blocks').insert(payload);
+    const { error } = await insertOneoffBlock(payload);
     if (error) { alert('Error: ' + (explainSdmWriteError(error) || error.message)); return; }
     setShowDialog(false);
     setForm({ date: '', doctor_ids: [], time_from: '', time_to: '', cause: 'reunion', description: '' });

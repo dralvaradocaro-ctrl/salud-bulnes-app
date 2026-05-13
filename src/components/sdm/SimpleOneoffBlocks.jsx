@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { sdmSupabase as supabase, explainSdmWriteError } from './lib/sdmSupabase';
+import { sdmSupabase as supabase, explainSdmWriteError, insertOneoffBlock } from './lib/sdmSupabase';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,7 +73,7 @@ export default function SimpleOneoffBlocks({ category, title, icon: Icon, descri
       description: form.description.trim() || defaultDesc,
       category,
     };
-    const { error } = await supabase.from('sdm_oneoff_blocks').insert(payload);
+    const { error } = await insertOneoffBlock(payload);
     if (error) { toast.error('Error: ' + (explainSdmWriteError(error) || error.message)); return; }
     toast.success(`${defaultDesc} agregado.`);
     setForm({ date: '', doctor_ids: [], time_from: '', time_to: '', description: '' });

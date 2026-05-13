@@ -31,6 +31,25 @@ export const sdmSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
+/**
+ * Inserta una fila en `sdm_oneoff_blocks` con fallback: si la columna
+ * `doctor_ids` aún no existe en la BD (migración no aplicada), retry
+ * automático sin ese campo (solo `doctor_id`). Retorna { error } igual
+ * que supabase.from().insert().
+ */
+export async function insertOneoffBlock(payload) {
+  const first = await sdmSupabase.from('sdm_oneoff_blocks').insert(payload);
+  if (!first.error) return first;
+  const msg = first.error.message || '';
+  const schemaCacheMissing = /doctor_ids.*column|column.*doctor_ids/i.test(msg) || /schema cache/i.test(msg);
+  if (schemaCacheMissing && payload && Object.prototype.hasOwnProperty.call(payload, 'doctor_ids')) {
+    const { doctor_ids: _omit, ...fallback } = payload;
+    console.warn('[sdmSupabase] columna doctor_ids ausente en BD; reintentando insert solo con doctor_id. Aplicá la migración 20260513140000_sdm_oneoff_blocks_multi_doctor.sql cuando puedas.');
+    return await sdmSupabase.from('sdm_oneoff_blocks').insert(fallback);
+  }
+  return first;
+}
+
 /** Helper para detectar errores de RLS por falta de secret y dar mensaje claro. */
 export function explainSdmWriteError(error) {
   if (!error) return null;
