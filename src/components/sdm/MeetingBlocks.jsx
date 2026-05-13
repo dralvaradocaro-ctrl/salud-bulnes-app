@@ -63,8 +63,13 @@ export default function MeetingBlocks({ onChanged }) {
   const docName = id => doctors.find(d => d.id === id)?.display_name || id;
 
   async function add() {
-    if (!form.date || !form.doctor_id || !form.description.trim()) {
-      alert('Fecha, médico y motivo son obligatorios.');
+    const missing = [];
+    if (!form.date) missing.push('fecha');
+    if (!form.doctor_id) missing.push('médico');
+    if (!form.description.trim()) missing.push('motivo');
+    if (missing.length) {
+      console.warn('[MeetingBlocks] add() bloqueado — estado actual del form:', form, 'faltan:', missing);
+      alert('Falta: ' + missing.join(', ') + '.');
       return;
     }
     const payload = {
