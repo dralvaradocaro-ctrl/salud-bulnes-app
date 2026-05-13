@@ -247,6 +247,7 @@ ${JSON.stringify(principalAvailability, null, 2)}
 - Urgenciólogos solo participan en VISITA con cupos fijos, no en bloqueos.
 - Preferir médicos con menor carga semanal para balancear.
 - PRIORIDAD AL REUBICAR ("swap"): elegir el día donde el TITULAR esté disponible (campo "titular_disponible: true" en "disponibilidad_por_dia"). Si no, el día donde haya algún subrogante de menor priority disponible. Si en ningún día hay titular ni subrogantes disponibles, mencionar esto en "side_effects" y proponer fallback a otro médico con baja carga.
+- OBLIGATORIO: una opción "swap" SIEMPRE debe traer doctor_id NO NULO — el id del médico que hará el bloqueo en el día destino. Tomar el id del array "principales_disponibles" del día propuesto (campo "id"). Si ningún principal está disponible, elegir un médico de la lista "MÉDICOS DISPONIBLES HOY" del día destino con menor carga.
 - PRIORIDAD AL ASIGNAR ("assign") en el mismo día: priorizar titular si está disponible; si no, subrogantes en orden de priority; recién después caer a cualquier médico libre con baja carga.
 - "suspend" difiere el bloqueo a próxima semana (no cubrirlo esta semana).
 

@@ -509,7 +509,10 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       const original = currentBloqueos[idx];
       const sourceWithout = currentBloqueos.filter((_, i) => i !== idx);
       const targetCurrent = bloqueosOverrides[opt.swap_with_day] ?? targetDay.bloqueos;
-      const moved = { ...original, source: 'optimized', auto_assigned: false, ai_assigned: true };
+      // Si la IA propuso un médico para el nuevo día, aplicarlo; si no, mantener el original.
+      const moved = opt.doctor_id
+        ? { ...original, doctor_ids: [opt.doctor_id], doctor_id: opt.doctor_id, unassigned: false, source: 'optimized', auto_assigned: false, ai_assigned: true, reassigned: original.doctor_id && original.doctor_id !== opt.doctor_id ? true : original.reassigned, originalDoctor: original.doctor_id && original.doctor_id !== opt.doctor_id ? original.doctor_id : original.originalDoctor }
+        : { ...original, source: 'optimized', auto_assigned: false, ai_assigned: true };
       setBloqueosOverrides(prev => ({
         ...prev,
         [error.date]: sourceWithout,

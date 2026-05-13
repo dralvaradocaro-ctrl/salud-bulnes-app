@@ -40,8 +40,12 @@ export default function AIFixModal({ open, onOpenChange, error, agenda, doctors,
 
   const labelForAction = (opt) => {
     if (opt.action === 'assign') return `Asignar a ${doctorName(opt.doctor_id)}`;
-    if (opt.action === 'add') return `Agregar el ${opt.swap_with_day}`;
-    if (opt.action === 'swap') return `Mover al ${opt.swap_with_day}`;
+    if (opt.action === 'add') return opt.doctor_id
+      ? `Agregar el ${opt.swap_with_day} — ${doctorName(opt.doctor_id)}`
+      : `Agregar el ${opt.swap_with_day} (sin médico)`;
+    if (opt.action === 'swap') return opt.doctor_id
+      ? `Mover al ${opt.swap_with_day} — ${doctorName(opt.doctor_id)}`
+      : `Mover al ${opt.swap_with_day} (mismo médico)`;
     if (opt.action === 'suspend') return 'Suspender (diferir a próxima semana)';
     return opt.action;
   };
