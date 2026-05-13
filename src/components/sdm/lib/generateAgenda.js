@@ -510,7 +510,32 @@ export function generateAgenda({
     if (bloqueosOverrides[d.date]) {
       // Normalizamos: cada bloqueo del override debe tener doctor_ids (overrides
       // viejos guardados con `doctor_id` solo se convierten automáticamente).
-      bloqueos = bloqueosOverrides[d.date].map(normalizeBlock);
+      const overrideBlocks = bloqueosOverrides[d.date].map(normalizeBlock);
+      // Los oneoff blocks recien creados (sdm_oneoff_blocks) deben aparecer
+      // SIEMPRE en la agenda, incluso si el día tiene un override guardado
+      // anteriormente. Sin esta fusión, un bloqueo de Radio/Judicial que se
+      // crea después de haber editado el día se pierde porque el override
+      // viejo no lo contiene.
+      const overrideBlockIds = new Set(overrideBlocks.map(b => b.block_id));
+      const missingOneoffs = oneoffBlocks
+        .filter(o => o.date === d.date && !overrideBlockIds.has(`oneoff-${o.id}`))
+        .map(o => {
+          const ids = Array.isArray(o.doctor_ids) && o.doctor_ids.length
+            ? o.doctor_ids.filter(Boolean)
+            : (o.doctor_id ? [o.doctor_id] : []);
+          return normalizeBlock({
+            block_id: `oneoff-${o.id}`,
+            name: o.description,
+            from: o.time_from,
+            to: o.time_to,
+            doctor_ids: ids,
+            unassigned: o.category === 'sdm_interna' ? false : ids.length === 0,
+            category: o.category,
+            source: 'oneoff',
+            sdm_internal: o.category === 'sdm_interna',
+          });
+        });
+      bloqueos = [...overrideBlocks, ...missingOneoffs];
     }
 
     // Bloque "Visita de servicio - Dr. R. Sandoval": se inyecta DESPUÉS del
