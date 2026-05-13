@@ -70,6 +70,50 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
     }));
   };
 
+  // Estado de disponibilidad de un médico para un bloqueo concreto (con
+  // sus from/to). Sirve para colorear el dropdown:
+  //  - 'turno' / 'posturno' / 'ausencia': el médico no puede tomar bloqueos ese día (rojo)
+  //  - 'overlap': el médico ya tiene OTRO bloqueo que solapa la franja del actual (amarillo)
+  //  - 'ok': libre
+  const turnoIds = useMemo(() => new Set((day?.turnos || []).map(t => t.doctor_id)), [day]);
+  const postIds = useMemo(() => new Set((day?.posturno || []).map(t => t.doctor_id)), [day]);
+  const ausenciasById = useMemo(() => {
+    const m = new Map();
+    (day?.ausencias || []).forEach(a => m.set(a.doctor_id, a));
+    return m;
+  }, [day]);
+  const getAvailabilityStatus = (doctorId, currentItem) => {
+    if (turnoIds.has(doctorId)) return { kind: 'turno', label: 'TURNO' };
+    if (postIds.has(doctorId)) return { kind: 'posturno', label: 'POSTURNO' };
+    if (ausenciasById.has(doctorId)) {
+      const a = ausenciasById.get(doctorId);
+      return { kind: 'ausencia', label: a?.type ? `AUS ${a.type}` : 'AUSENTE' };
+    }
+    const from = currentItem?.from;
+    const to = currentItem?.to;
+    if (from && to && from < to) {
+      const overlapper = items.find(other =>
+        other._key !== currentItem._key &&
+        !other.suspended &&
+        other.from && other.to && other.from < other.to &&
+        Array.isArray(other.doctor_ids) && other.doctor_ids.includes(doctorId) &&
+        other.from < to && other.to > from
+      );
+      if (overlapper) {
+        const label = (overlapper.name || 'otro bloqueo').slice(0, 22);
+        return { kind: 'overlap', label, otherFrom: overlapper.from, otherTo: overlapper.to };
+      }
+    }
+    return { kind: 'ok' };
+  };
+  const STATUS_STYLES = {
+    turno:    { className: 'text-red-700 bg-red-50/60',    badge: 'bg-red-100 text-red-800 border border-red-200' },
+    posturno: { className: 'text-red-700 bg-red-50/60',    badge: 'bg-red-100 text-red-800 border border-red-200' },
+    ausencia: { className: 'text-red-700 bg-red-50/60',    badge: 'bg-red-100 text-red-800 border border-red-200' },
+    overlap:  { className: 'text-amber-800 bg-amber-50/60', badge: 'bg-amber-100 text-amber-800 border border-amber-200' },
+    ok:       { className: '',                              badge: '' },
+  };
+
   const updateVisitor = (key, field, value) =>
     setVisitors(visitors.map(v => v._key === key ? { ...v, [field]: value } : v));
   const removeVisitor = (key) => setVisitors(visitors.filter(v => v._key !== key));
@@ -215,7 +259,27 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
                         <SelectContent>
                           {doctors
                             .filter(d => !(it.doctor_ids || []).includes(d.id))
-                            .map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
+                            .map(d => {
+                              const status = getAvailabilityStatus(d.id, it);
+                              const styles = STATUS_STYLES[status.kind];
+                              return (
+                                <SelectItem key={d.id} value={d.id} className={styles.className}>
+                                  <span className="inline-flex items-center gap-1.5 w-full">
+                                    <span className="flex-1">{d.display_name}</span>
+                                    {status.kind !== 'ok' && (
+                                      <span
+                                        className={`text-[9px] font-bold uppercase tracking-wide rounded px-1 py-0.5 ${styles.badge}`}
+                                        title={status.kind === 'overlap'
+                                          ? `Solapa con "${status.label}" ${status.otherFrom || ''}-${status.otherTo || ''}`
+                                          : `No disponible: ${status.label}`}
+                                      >
+                                        {status.label}
+                                      </span>
+                                    )}
+                                  </span>
+                                </SelectItem>
+                              );
+                            })}
                         </SelectContent>
                       </Select>
                     </div>
