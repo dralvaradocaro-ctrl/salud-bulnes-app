@@ -120,6 +120,26 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     return `${e.kind}:${e.date || ''}:${e.blockId || ''}:${e.doctorId || ''}`;
   };
   const activeIssueKeys = useMemo(() => new Set([...validation.errors, ...validation.warnings].map(errorKey)), [validation]);
+
+  // Para destacar visualmente cada bloque con conflicto/warning en la columna
+  // Bloqueos sin abrir el editor. Las claves son `${date}|${blockId}`.
+  // Los issues acknowledged/dismissed se ignoran (el usuario ya los archivó).
+  const { blockErrorKeys, blockWarningKeys } = useMemo(() => {
+    const errs = new Set();
+    const warns = new Set();
+    const archivedKeys = new Set([...dismissedErrors, ...acknowledgedErrors]);
+    const addBlocks = (target, e) => {
+      if (!e.date || archivedKeys.has(errorKey(e))) return;
+      if (e.blockId)  target.add(`${e.date}|${e.blockId}`);
+      if (e.blockId2) target.add(`${e.date}|${e.blockId2}`);
+    };
+    validation.errors.forEach(e => addBlocks(errs, e));
+    validation.warnings
+      .filter(w => ['overlap', 'posturno_assigned', 'outside_jornada'].includes(w.kind))
+      .forEach(w => addBlocks(warns, w));
+    return { blockErrorKeys: errs, blockWarningKeys: warns };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validation, dismissedErrors, acknowledgedErrors]);
   const activeDismissedErrors = useMemo(
     () => dismissedErrors.filter(k => activeIssueKeys.has(k)),
     [dismissedErrors, activeIssueKeys]
@@ -710,6 +730,31 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
           .sdm-print-only { display: block !important; }
           .sdm-print-area table { font-size: 9px; width: 100%; }
           .sdm-print-area th, .sdm-print-area td { padding: 3px 4px !important; }
+          /* Texto en negro alto contraste — sin azul/naranjo/rojo/violeta */
+          .sdm-print-area, .sdm-print-area * { color: #000 !important; }
+          /* Quitar fondos pastel (conflicto, SDM-internal, ausencias) */
+          .sdm-print-area .bg-red-50,
+          .sdm-print-area .bg-amber-50,
+          .sdm-print-area .bg-blue-50,
+          .sdm-print-area .bg-blue-100\\/40,
+          .sdm-print-area .bg-violet-50,
+          .sdm-print-area .bg-violet-100,
+          .sdm-print-area .bg-emerald-50,
+          .sdm-print-area .bg-pink-50,
+          .sdm-print-area .bg-cyan-50,
+          .sdm-print-area .bg-slate-50,
+          .sdm-print-area .bg-slate-100 { background: transparent !important; }
+          /* Quitar rings de colores de conflicto / drag-over */
+          .sdm-print-area .sdm-conflict-error,
+          .sdm-print-area .sdm-conflict-warn,
+          .sdm-print-area [class*="ring-"] {
+            box-shadow: none !important;
+            --tw-ring-shadow: 0 0 #0000 !important;
+            --tw-ring-color: transparent !important;
+            --tw-ring-offset-shadow: 0 0 #0000 !important;
+          }
+          /* line-through de bloqueos suspendidos en negro */
+          .sdm-print-area .line-through { text-decoration: line-through; opacity: 1 !important; }
         }
         .sdm-print-only { display: none; }
       `}</style>
@@ -1094,6 +1139,14 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                                   : b.reassigned
                                     ? 'text-amber-700'
                                     : 'text-slate-700';
+                          const blockKey = `${day.date}|${b.block_id}`;
+                          const isError = blockErrorKeys.has(blockKey);
+                          const isWarn  = !isError && blockWarningKeys.has(blockKey);
+                          const conflictClass = isError
+                            ? 'sdm-conflict-error bg-red-50 ring-1 ring-red-300 rounded px-1'
+                            : isWarn
+                              ? 'sdm-conflict-warn bg-amber-50 ring-1 ring-amber-300 rounded px-1'
+                              : '';
                           const extraClass = b.sdm_internal ? 'sdm-print-hide bg-violet-50 rounded px-1 -mx-0.5' : '';
                           return (
                             <div
@@ -1105,8 +1158,8 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                                 e.dataTransfer.setData('application/sdm-block', JSON.stringify({ fromDate: day.date, blockId: b.block_id }));
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className={`text-[11px] ${colorClass} ${extraClass} ${!b.suspended && !b.sdm_internal ? 'cursor-grab active:cursor-grabbing rounded hover:bg-blue-100/40 px-0.5 -mx-0.5' : ''}`}
-                              title={b.sdm_internal ? 'Reunión interna SDM (no se imprime)' : !b.suspended ? 'Arrastrar a otro día para mover este bloqueo' : undefined}
+                              className={`text-[11px] ${colorClass} ${conflictClass} ${extraClass} ${!b.suspended && !b.sdm_internal ? 'cursor-grab active:cursor-grabbing rounded hover:bg-blue-100/40 px-0.5 -mx-0.5' : ''}`}
+                              title={b.sdm_internal ? 'Reunión interna SDM (no se imprime)' : isError ? 'Bloqueo con error — click para editar' : isWarn ? 'Bloqueo con superposición — click para editar' : !b.suspended ? 'Arrastrar a otro día para mover este bloqueo' : undefined}
                             >
                               {b.from && b.to ? `${b.from}–${b.to} ` : ''}
                               {b.sdm_internal ? (

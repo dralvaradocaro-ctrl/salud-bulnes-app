@@ -462,8 +462,8 @@ export function generateAgenda({
         bloqueos.push(normalizeBlock({
           block_id: `oneoff-${o.id}`,
           name: o.description,
-          from: o.time_from,
-          to: o.time_to,
+          from: o.time_from ? String(o.time_from).slice(0, 5) : null,
+          to: o.time_to ? String(o.time_to).slice(0, 5) : null,
           doctor_ids: ids,
           // Las reuniones internas SDM no requieren médico individual asignado
           unassigned: o.category === 'sdm_interna' ? false : ids.length === 0,
@@ -526,8 +526,8 @@ export function generateAgenda({
           return normalizeBlock({
             block_id: `oneoff-${o.id}`,
             name: o.description,
-            from: o.time_from,
-            to: o.time_to,
+            from: o.time_from ? String(o.time_from).slice(0, 5) : null,
+            to: o.time_to ? String(o.time_to).slice(0, 5) : null,
             doctor_ids: ids,
             unassigned: o.category === 'sdm_interna' ? false : ids.length === 0,
             category: o.category,
@@ -1185,23 +1185,34 @@ export function validateAgenda(agenda, doctors = [], blockTemplates = []) {
     // Refuerzos no definidos
     if (!day.refuerzos.am) warnings.push({ date: day.date, label: day.label, kind: 'missing_am', message: `${day.label}: falta refuerzo AM` });
     if (!day.refuerzos.pm) warnings.push({ date: day.date, label: day.label, kind: 'missing_pm', message: `${day.label}: falta refuerzo PM` });
-    // Superposición horaria mismo médico en bloqueos
-    const slots = day.bloqueos.filter(b => !b.suspended && b.doctor_id && b.from && b.to);
+    // Superposición horaria — algún médico compartido en dos bloques cuya
+    // franja se cruza. Con multi-doctor: revisamos por cada id del array.
+    const slots = day.bloqueos.filter(b => !b.suspended && b.from && b.to && blockDoctorIds(b).length);
     for (let i = 0; i < slots.length; i++) {
+      const a = slots[i];
+      const aIds = blockDoctorIds(a);
       for (let j = i + 1; j < slots.length; j++) {
-        if (slots[i].doctor_id === slots[j].doctor_id &&
-            slots[i].from < slots[j].to && slots[j].from < slots[i].to) {
-          if (slots[i].doctor_id === SUBDIRECTOR_ID) continue;
-          errors.push({ date: day.date, label: day.label, kind: 'overlap', blockId: slots[i].block_id, blockId2: slots[j].block_id, doctorId: slots[i].doctor_id,
-            message: `${day.label}: ${doctorName(slots[i].doctor_id)} con superposición "${slots[i].name}" vs "${slots[j].name}"` });
-        }
+        const b = slots[j];
+        if (!(a.from < b.to && b.from < a.to)) continue;
+        const bIds = blockDoctorIds(b);
+        const shared = aIds.filter(id => bIds.includes(id) && id !== SUBDIRECTOR_ID);
+        if (shared.length === 0) continue;
+        errors.push({
+          date: day.date, label: day.label, kind: 'overlap',
+          blockId: a.block_id, blockId2: b.block_id, doctorId: shared[0],
+          message: `${day.label}: ${shared.map(doctorName).join(', ')} con superposición "${a.name}" vs "${b.name}"`,
+        });
       }
     }
-    // Posturno asignado (warning)
+    // Posturno asignado (warning): si CUALQUIERA de los médicos del bloque está en posturno.
     const postIds = new Set(day.posturno.map(t => t.doctor_id));
-    day.bloqueos.filter(b => !b.suspended && b.doctor_id && postIds.has(b.doctor_id)).forEach(b => {
-      warnings.push({ date: day.date, label: day.label, kind: 'posturno_assigned', blockId: b.block_id, doctorId: b.doctor_id,
-        message: `${day.label}: ${doctorName(b.doctor_id)} en posturno asignado a "${b.name}"` });
+    day.bloqueos.filter(b => !b.suspended).forEach(b => {
+      const ids = blockDoctorIds(b);
+      const inPost = ids.filter(id => postIds.has(id));
+      if (inPost.length) {
+        warnings.push({ date: day.date, label: day.label, kind: 'posturno_assigned', blockId: b.block_id, doctorId: inPost[0],
+          message: `${day.label}: ${inPost.map(doctorName).join(', ')} en posturno asignado a "${b.name}"` });
+      }
     });
     // Refuerzo en conflicto con turno/posturno/ausencia (error)
     const turnoIdsDay = new Set(day.turnos.map(t => t.doctor_id));
