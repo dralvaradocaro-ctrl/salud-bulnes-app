@@ -8,6 +8,8 @@ import { PROTECTED_PRIORITY_BLOCK_IDS, buildEffectiveProgramAssignments } from '
 const DAYS = ['lun', 'mar', 'mie', 'jue', 'vie'];
 const DAY_LABELS = { lun: 'LUNES', mar: 'MARTES', mie: 'MIÉRCOLES', jue: 'JUEVES', vie: 'VIERNES' };
 const EMPTY_EXTERNAL_VISITORS_OVERRIDE = '__empty_external_visitors_override';
+const JORNADA_INICIO = '08:00';
+const JORNADA_FIN = '17:00';
 const VIERNES_JORNADA_FIN = '16:00';
 
 export function getMondayOfWeek(date) {
@@ -738,7 +740,6 @@ function applyHolidayRelocation({ result, days, blockTemplates, programAssignmen
 }
 
 const SUBDIRECTOR_ID = 'alvarado';
-const JORNADA_INICIO = '08:00';
 
 /**
  * Bloques JERÁRQUICOS: el rol no se puede ceder. El médico asignado queda
