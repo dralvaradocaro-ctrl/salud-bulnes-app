@@ -5,7 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Search, Star, Wand2, X } from 'lucide-react';
+import { DEFAULT_PROGRAM_PRIORITIES, PROTECTED_PRIORITY_BLOCK_IDS } from './lib/programPriorityDefaults';
 
 const CAT_LABEL = {
   clinico: 'Clínico',
@@ -32,6 +33,11 @@ export default function ProgramAssignments() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
   const [savingFor, setSavingFor] = useState(null);
+
+  async function reloadAssignments() {
+    const { data } = await supabase.from('sdm_program_assignments').select('*');
+    setAssignments(data || []);
+  }
 
   useEffect(() => {
     let alive = true;
@@ -103,8 +109,7 @@ export default function ProgramAssignments() {
         .insert({ block_template_id: blockId, doctor_id: doctorId, role_type: 'titular', priority: 1 });
       if (error) { alert('Error: ' + error.message); setSavingFor(null); return; }
     }
-    const { data } = await supabase.from('sdm_program_assignments').select('*');
-    setAssignments(data || []);
+    await reloadAssignments();
     setSavingFor(null);
   }
 
@@ -121,15 +126,71 @@ export default function ProgramAssignments() {
     const { error } = await supabase.from('sdm_program_assignments')
       .insert({ block_template_id: blockId, doctor_id: doctorId, role_type: 'subrogante', priority: nextPriority });
     if (error) { alert('Error: ' + error.message); setSavingFor(null); return; }
-    const { data } = await supabase.from('sdm_program_assignments').select('*');
-    setAssignments(data || []);
+    await reloadAssignments();
     setSavingFor(null);
   }
 
   async function removeSubrogante(assignmentId) {
     await supabase.from('sdm_program_assignments').delete().eq('id', assignmentId);
-    const { data } = await supabase.from('sdm_program_assignments').select('*');
-    setAssignments(data || []);
+    await reloadAssignments();
+  }
+
+  async function updateSubPriority(blockId, assignmentId, direction) {
+    const subs = subrogantesBy[blockId] || [];
+    const idx = subs.findIndex(s => s.id === assignmentId);
+    const swap = subs[idx + direction];
+    if (idx === -1 || !swap) return;
+    setSavingFor(`${blockId}:priority`);
+    const current = subs[idx];
+    const [a, b] = await Promise.all([
+      supabase.from('sdm_program_assignments').update({ priority: swap.priority || idx + 1 }).eq('id', current.id),
+      supabase.from('sdm_program_assignments').update({ priority: current.priority || idx + 2 }).eq('id', swap.id),
+    ]);
+    const error = a.error || b.error;
+    if (error) alert('Error: ' + (explainSdmWriteError(error) || error.message));
+    await reloadAssignments();
+    setSavingFor(null);
+  }
+
+  async function promoteSubrogante(blockId, assignment) {
+    if (!assignment) return;
+    setSavingFor(`${blockId}:titular`);
+    await supabase.from('sdm_program_assignments')
+      .delete()
+      .eq('block_template_id', blockId)
+      .eq('role_type', 'titular');
+    const { error } = await supabase.from('sdm_program_assignments')
+      .update({ role_type: 'titular', priority: 1 })
+      .eq('id', assignment.id);
+    if (error) alert('Error: ' + (explainSdmWriteError(error) || error.message));
+    await reloadAssignments();
+    setSavingFor(null);
+  }
+
+  async function preloadTemplatePriorities() {
+    if (!window.confirm('Esto precargará las prioridades de la plantilla solo en programas que todavía no tienen encargados guardados. ¿Continuar?')) return;
+    setSavingFor('preload');
+    const existingBlocks = new Set(assignments.map(a => a.block_template_id));
+    const rows = [];
+    blocks.forEach(block => {
+      if (!block?.id || existingBlocks.has(block.id) || PROTECTED_PRIORITY_BLOCK_IDS.has(block.id)) return;
+      const defaults = DEFAULT_PROGRAM_PRIORITIES[block.id] || [];
+      defaults.forEach((item, index) => rows.push({
+        block_template_id: block.id,
+        doctor_id: item.doctor_id,
+        role_type: index === 0 ? 'titular' : 'subrogante',
+        priority: item.priority,
+      }));
+    });
+    if (rows.length === 0) {
+      alert('No hay prioridades nuevas para precargar.');
+      setSavingFor(null);
+      return;
+    }
+    const { error } = await supabase.from('sdm_program_assignments').insert(rows);
+    if (error) alert('Error: ' + (explainSdmWriteError(error) || error.message));
+    await reloadAssignments();
+    setSavingFor(null);
   }
 
   if (loading) return <div className="p-6 text-slate-500">Cargando…</div>;
@@ -139,16 +200,28 @@ export default function ProgramAssignments() {
       <CardHeader>
         <CardTitle className="text-base">Asignaciones por programa</CardTitle>
         <CardDescription>
-          Definí el médico titular y el subrogante para cada bloqueo recurrente. Los cambios se guardan automáticamente.
+          Definí encargados y prioridades para cada bloqueo recurrente. La plantilla aporta prioridades iniciales, sin reemplazar reglas especiales de Subdirección, Poli TACO ni Selector de demanda.
         </CardDescription>
-        <div className="relative max-w-md mt-2">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-          <Input
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
-            placeholder="Filtrar por nombre, categoría…"
-            className="pl-9"
-          />
+        <div className="flex flex-wrap items-center gap-2 mt-2">
+          <div className="relative max-w-md flex-1 min-w-72">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+            <Input
+              value={filter}
+              onChange={e => setFilter(e.target.value)}
+              placeholder="Filtrar por nombre, categoría…"
+              className="pl-9"
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={preloadTemplatePriorities}
+            disabled={savingFor === 'preload'}
+            className="gap-1.5"
+            title="Carga las prioridades frecuentes de la plantilla en programas sin encargados guardados"
+          >
+            <Wand2 className="h-4 w-4" />
+            {savingFor === 'preload' ? 'Precargando…' : 'Precargar plantilla'}
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -169,6 +242,7 @@ export default function ProgramAssignments() {
                 const subs = subrogantesBy[b.id] || [];
                 const savingT = savingFor === `${b.id}:titular`;
                 const savingAdd = savingFor === `${b.id}:add_sub`;
+                const savingPriority = savingFor === `${b.id}:priority`;
                 const regular = tieneHorarioRegular(b);
                 // Separador entre regulares e incidentales
                 const isFirstIncidental = !regular && idx > 0 && tieneHorarioRegular(filtered[idx - 1]);
@@ -223,6 +297,30 @@ export default function ProgramAssignments() {
                         <div key={s.id} className="flex items-center gap-1.5">
                           <Badge variant="outline" className="text-[10px] w-5 justify-center">{idx + 1}</Badge>
                           <span className="text-sm flex-1">{doctors.find(d => d.id === s.doctor_id)?.display_name || s.doctor_id}</span>
+                          <button
+                            onClick={() => promoteSubrogante(b.id, s)}
+                            className="text-slate-400 hover:text-amber-600 disabled:opacity-40"
+                            disabled={savingT}
+                            title="Hacer titular"
+                          >
+                            <Star className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => updateSubPriority(b.id, s.id, -1)}
+                            className="text-slate-400 hover:text-slate-700 disabled:opacity-40"
+                            disabled={idx === 0 || savingPriority}
+                            title="Subir prioridad"
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => updateSubPriority(b.id, s.id, 1)}
+                            className="text-slate-400 hover:text-slate-700 disabled:opacity-40"
+                            disabled={idx === subs.length - 1 || savingPriority}
+                            title="Bajar prioridad"
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </button>
                           <button onClick={() => removeSubrogante(s.id)} className="text-red-500 hover:text-red-700">
                             <X className="h-3 w-3" />
                           </button>

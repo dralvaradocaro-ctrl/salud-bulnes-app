@@ -3,10 +3,12 @@
  * Toma catálogos + ausencias + bloqueos puntuales y devuelve la grilla 5×8.
  */
 import { BLOCK_SPECS, isDailyBlock } from './blockSpec';
+import { PROTECTED_PRIORITY_BLOCK_IDS, buildEffectiveProgramAssignments } from './programPriorityDefaults';
 
 const DAYS = ['lun', 'mar', 'mie', 'jue', 'vie'];
 const DAY_LABELS = { lun: 'LUNES', mar: 'MARTES', mie: 'MIÉRCOLES', jue: 'JUEVES', vie: 'VIERNES' };
 const EMPTY_EXTERNAL_VISITORS_OVERRIDE = '__empty_external_visitors_override';
+const VIERNES_JORNADA_FIN = '16:00';
 
 export function getMondayOfWeek(date) {
   const d = new Date(date);
@@ -33,6 +35,35 @@ export function dayKeyForDate(date) {
 
 export function fmtDate(date) {
   return new Date(date).toISOString().slice(0, 10);
+}
+
+function timeToMinutes(time) {
+  if (!time || !/^\d{2}:\d{2}/.test(time)) return null;
+  const [h, m] = time.slice(0, 5).split(':').map(Number);
+  return h * 60 + m;
+}
+
+function minutesToTime(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function fitBlockInsideJornada(block, dayEnd = JORNADA_FIN) {
+  if (!block?.from || !block?.to) return block;
+  const start = timeToMinutes(block.from);
+  const end = timeToMinutes(block.to);
+  const limit = timeToMinutes(dayEnd);
+  if (start == null || end == null || limit == null || end <= limit) return block;
+  const duration = Math.max(0, end - start);
+  if (duration <= 0) return { ...block, to: dayEnd, adjusted_jornada_end: true };
+  const shiftedStart = Math.max(timeToMinutes(JORNADA_INICIO), limit - duration);
+  return {
+    ...block,
+    from: minutesToTime(shiftedStart),
+    to: dayEnd,
+    adjusted_jornada_end: true,
+  };
 }
 
 export function normalizeBlockLabel(value = '') {
@@ -172,17 +203,31 @@ export function generateAgenda({
     (acc[a.date] = acc[a.date] || []).push(a);
     return acc;
   }, {});
+  const effectiveProgramAssignments = buildEffectiveProgramAssignments(programAssignments, blockTemplates);
+
   // Múltiples subrogantes ordenados por priority (cascada de fallback)
   const titularByBlock = {}, subrogantesByBlock = {};
-  programAssignments.forEach(p => {
+  effectiveProgramAssignments.forEach(p => {
     if (p.role_type === 'titular') titularByBlock[p.block_template_id] = p.doctor_id;
     if (p.role_type === 'subrogante') {
       (subrogantesByBlock[p.block_template_id] = subrogantesByBlock[p.block_template_id] || [])
         .push({ doctor_id: p.doctor_id, priority: p.priority || 1 });
     }
   });
-  // Ordenar subrogantes por priority
   Object.values(subrogantesByBlock).forEach(arr => arr.sort((a, b) => a.priority - b.priority));
+  const priorityPeopleByBlock = {};
+  effectiveProgramAssignments.forEach(p => {
+    if (!p.block_template_id || !p.doctor_id) return;
+    const priority = p.priority || (p.role_type === 'titular' ? 0 : 1);
+    const arr = priorityPeopleByBlock[p.block_template_id] || [];
+    if (!arr.some(x => x.doctor_id === p.doctor_id)) {
+      arr.push({ doctor_id: p.doctor_id, priority });
+    }
+    priorityPeopleByBlock[p.block_template_id] = arr;
+  });
+  Object.values(priorityPeopleByBlock).forEach(arr => arr.sort((a, b) => a.priority - b.priority));
+  const weeklyBlockDoctorCount = {};
+  const weeklyDoctorLoad = {};
 
   // ID del subdirector (regla operativa: puede acumular bloqueos)
   const SUBDIRECTOR_ID = 'alvarado';
@@ -293,20 +338,42 @@ export function generateAgenda({
       const isAvailable = id =>
         id && !ausIds_inner.has(id) && !turnoIds_inner.has(id) && !postIds_inner.has(id)
         && !urgentologistIds.has(id) && !poliIds.has(id);
+      const currentDayLoad = id => bloqueos.filter(b => !b.suspended && b.doctor_id === id).length;
+      const register = (id, auto = false) => {
+        if (!id) return { id: null, auto };
+        weeklyBlockDoctorCount[blockId] = weeklyBlockDoctorCount[blockId] || {};
+        weeklyBlockDoctorCount[blockId][id] = (weeklyBlockDoctorCount[blockId][id] || 0) + 1;
+        weeklyDoctorLoad[id] = (weeklyDoctorLoad[id] || 0) + 1;
+        return { id, auto };
+      };
+
+      if (!PROTECTED_PRIORITY_BLOCK_IDS.has(blockId)) {
+        const priorityAvail = (priorityPeopleByBlock[blockId] || []).filter(p => isAvailable(p.doctor_id));
+        if (priorityAvail.length > 0) {
+          const countForBlock = weeklyBlockDoctorCount[blockId] || {};
+          const untouched = priorityAvail.filter(p => !countForBlock[p.doctor_id]);
+          const pool = untouched.length > 0 ? untouched : priorityAvail;
+          pool.sort((a, b) =>
+            (a.priority || 1) - (b.priority || 1) ||
+            (countForBlock[a.doctor_id] || 0) - (countForBlock[b.doctor_id] || 0) ||
+            currentDayLoad(a.doctor_id) - currentDayLoad(b.doctor_id) ||
+            (weeklyDoctorLoad[a.doctor_id] || 0) - (weeklyDoctorLoad[b.doctor_id] || 0)
+          );
+          return register(pool[0].doctor_id, false);
+        }
+      }
+
       // 1a) Titular disponible (prioridad absoluta sobre subrogantes)
-      if (isAvailable(t)) return { id: t, auto: false };
+      if (isAvailable(t)) return register(t, false);
       // 1b) Subrogantes disponibles: si todos tienen la misma priority, desempatar por menor carga del día.
       //     Si tienen priority distinta, respetar el orden.
       const subsAvail = subs.filter(s => isAvailable(s.doctor_id));
       if (subsAvail.length > 0) {
         const allSamePriority = subsAvail.every(s => (s.priority || 1) === (subsAvail[0].priority || 1));
         if (allSamePriority) {
-          const cargaHoy = {};
-          subsAvail.forEach(s => { cargaHoy[s.doctor_id] = 0; });
-          bloqueos.forEach(b => { if (b.doctor_id && !b.suspended && cargaHoy[b.doctor_id] != null) cargaHoy[b.doctor_id]++; });
-          subsAvail.sort((a, b) => cargaHoy[a.doctor_id] - cargaHoy[b.doctor_id]);
+          subsAvail.sort((a, b) => currentDayLoad(a.doctor_id) - currentDayLoad(b.doctor_id));
         }
-        return { id: subsAvail[0].doctor_id, auto: false };
+        return register(subsAvail[0].doctor_id, false);
       }
       // 2) Fallback genérico: cualquier médico activo no-urgenciólogo, libre del día y no en poli full-day.
       //    Preferir doctores con menor carga del día (menos bloqueos activos).
@@ -315,13 +382,14 @@ export function generateAgenda({
         .filter(doc => !ausIds_inner.has(doc.id) && !turnoIds_inner.has(doc.id) && !postIds_inner.has(doc.id) && !poliIds.has(doc.id))
         .map(doc => doc.id);
       if (pool.length > 0) {
-        const cargaHoy = Object.fromEntries(pool.map(id => [id, 0]));
-        bloqueos.forEach(b => { if (b.doctor_id && !b.suspended && cargaHoy[b.doctor_id] != null) cargaHoy[b.doctor_id]++; });
-        pool.sort((a, b) => cargaHoy[a] - cargaHoy[b]);
-        return { id: pool[0], auto: true };
+        pool.sort((a, b) =>
+          currentDayLoad(a) - currentDayLoad(b) ||
+          (weeklyDoctorLoad[a] || 0) - (weeklyDoctorLoad[b] || 0)
+        );
+        return register(pool[0], true);
       }
       // 3) Nada → unassigned (último recurso, normalmente solo si TODOS los médicos están bloqueados ese día).
-      return { id: null, auto: false };
+      return register(null, false);
     };
 
     for (const bt of blockTemplates) {
@@ -419,14 +487,12 @@ export function generateAgenda({
       bloqueos = bloqueosOverrides[d.date];
     }
 
-    // Regla operativa viernes: jornada termina 16:00. Ningún bloqueo puede correr 16:00–17:00.
-    // - Si arranca >= 16:00 → se descarta del array (no debería existir).
-    // - Si arranca antes pero termina >16:00 → se trunca a 16:00.
-    if (d.day === 'vie') {
-      bloqueos = bloqueos
-        .filter(b => !b.from || b.from < '16:00')
-        .map(b => (b.to && b.to > '16:00') ? { ...b, to: '16:00', truncated_friday: true } : b);
-    }
+    // Regla operativa: nadie sale después del cierre de jornada. Si un bloqueo
+    // se pasa, se corre hacia atrás manteniendo duración; viernes cierra 16:00.
+    const dayEnd = d.day === 'vie' ? VIERNES_JORNADA_FIN : JORNADA_FIN;
+    bloqueos = bloqueos
+      .filter(b => !b.from || b.from < dayEnd)
+      .map(b => fitBlockInsideJornada(b, dayEnd));
 
     // VISITA: médicos disponibles para visita matinal MQ
     // Excluir: turno, postturno, ausencias, refuerzos, médico de Poli full-day.
@@ -588,7 +654,8 @@ export function generateAgenda({
  */
 function applyHolidayRelocation({ result, days, blockTemplates, programAssignments, doctors, bloqueosOverrides, calByDate, absencesByDate, rotation }) {
   const titularByBlock = {}, subrogantesByBlock = {};
-  programAssignments.forEach(p => {
+  const effectiveProgramAssignments = buildEffectiveProgramAssignments(programAssignments, blockTemplates);
+  effectiveProgramAssignments.forEach(p => {
     if (p.role_type === 'titular') titularByBlock[p.block_template_id] = p.doctor_id;
     if (p.role_type === 'subrogante') {
       (subrogantesByBlock[p.block_template_id] = subrogantesByBlock[p.block_template_id] || [])
@@ -672,7 +739,6 @@ function applyHolidayRelocation({ result, days, blockTemplates, programAssignmen
 
 const SUBDIRECTOR_ID = 'alvarado';
 const JORNADA_INICIO = '08:00';
-const JORNADA_FIN = '17:00';
 
 /**
  * Bloques JERÁRQUICOS: el rol no se puede ceder. El médico asignado queda
