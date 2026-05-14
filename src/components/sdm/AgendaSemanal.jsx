@@ -964,29 +964,71 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
 	      )}
 
       {/* Panel de reuniones internas SDM (no se imprimen en agenda final) */}
-      <SdmInternalMeetings monday={monday} onChanged={reloadOneoff} />
-
-      {/* Panel de ausencias */}
+      {/* Panel de ausencias — agrupado por médico, con pills compactos por día */}
       <Card className="sdm-print-hide">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-base">Ausencias de la semana ({absences.length})</CardTitle>
+          <div className="flex items-center gap-2 flex-wrap">
+            <CardTitle className="text-base">Ausencias de la semana ({absences.length})</CardTitle>
+            <SdmInternalMeetings monday={monday} onChanged={reloadOneoff} />
+          </div>
           <Button size="sm" variant="outline" onClick={() => setShowAbsenceDialog(true)} className="gap-1.5">
-            <Plus className="h-4 w-4" /> Agregar
+            <Plus className="h-4 w-4" /> Agregar ausencia
           </Button>
         </CardHeader>
         <CardContent>
           {absences.length === 0 ? (
             <p className="text-sm text-slate-500">Sin ausencias registradas para la semana.</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {absences.map(a => (
-                <Badge key={a.id} variant="secondary" className="gap-1.5">
-                  {doctorName(a.doctor_id)} · {a.date} · {a.type}
-                  <button onClick={() => deleteAbsence(a.id)} className="hover:text-red-600"><Trash2 className="h-3 w-3" /></button>
-                </Badge>
-              ))}
-            </div>
-          )}
+          ) : (() => {
+            // Agrupar por médico, ordenar fechas dentro del médico
+            const byDoctor = new Map();
+            absences.forEach(a => {
+              if (!byDoctor.has(a.doctor_id)) byDoctor.set(a.doctor_id, []);
+              byDoctor.get(a.doctor_id).push(a);
+            });
+            // Orden alfabético por nombre de médico
+            const rows = Array.from(byDoctor.entries())
+              .map(([id, arr]) => ({ id, name: doctorName(id), items: arr.sort((x, y) => x.date.localeCompare(y.date)) }))
+              .sort((a, b) => a.name.localeCompare(b.name));
+            const TYPE_COLOR = {
+              FL: 'bg-purple-100 text-purple-800 border-purple-200',
+              P: 'bg-pink-100 text-pink-800 border-pink-200',
+              A: 'bg-blue-100 text-blue-800 border-blue-200',
+              DT: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+              LM: 'bg-red-100 text-red-800 border-red-200',
+              CAP: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+              PAS: 'bg-orange-100 text-orange-800 border-orange-200',
+              G: 'bg-amber-100 text-amber-800 border-amber-200',
+              OTRO: 'bg-slate-100 text-slate-800 border-slate-200',
+            };
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {rows.map(row => (
+                  <div key={row.id} className="rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-2">
+                    <div className="text-xs font-semibold text-slate-900 mb-1.5">{row.name}</div>
+                    <div className="flex flex-wrap gap-1">
+                      {row.items.map(a => {
+                        const cls = TYPE_COLOR[a.type] || TYPE_COLOR.OTRO;
+                        const d = a.date.slice(8, 10);
+                        return (
+                          <span
+                            key={a.id}
+                            className={`inline-flex items-center gap-1 text-[10px] font-medium rounded border px-1.5 py-0.5 ${cls}`}
+                            title={`${ABSENCE_LABELS[a.type] || a.type} · ${a.date}${a.notes ? ' · ' + a.notes : ''}`}
+                          >
+                            <span className="font-bold">{a.type}</span>
+                            <span className="opacity-70">{d}</span>
+                            <button onClick={() => deleteAbsence(a.id)} className="hover:text-red-700 -mr-0.5">
+                              <Trash2 className="h-2.5 w-2.5" />
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 
