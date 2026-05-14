@@ -737,21 +737,19 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
           .sdm-print-only { display: block !important; }
           .sdm-print-area table { font-size: 9px; width: 100%; }
           .sdm-print-area th, .sdm-print-area td { padding: 3px 4px !important; }
-          /* Texto en negro alto contraste — sin azul/naranjo/rojo/violeta */
-          .sdm-print-area, .sdm-print-area * { color: #000 !important; }
-          /* Quitar fondos pastel (conflicto, SDM-internal, ausencias) */
-          .sdm-print-area .bg-red-50,
-          .sdm-print-area .bg-amber-50,
-          .sdm-print-area .bg-blue-50,
-          .sdm-print-area .bg-blue-100\\/40,
-          .sdm-print-area .bg-violet-50,
-          .sdm-print-area .bg-violet-100,
-          .sdm-print-area .bg-emerald-50,
-          .sdm-print-area .bg-pink-50,
-          .sdm-print-area .bg-cyan-50,
-          .sdm-print-area .bg-slate-50,
-          .sdm-print-area .bg-slate-100 { background: transparent !important; }
-          /* Quitar rings de colores de conflicto / drag-over */
+          /* Asegurar que los colores de fondo se impriman (Chrome/Safari) */
+          .sdm-print-area, .sdm-print-area * {
+            print-color-adjust: exact !important;
+            -webkit-print-color-adjust: exact !important;
+          }
+          /* Encabezado de columnas: fondo verde + texto blanco */
+          .sdm-print-area thead { background: #047857 !important; }
+          .sdm-print-area thead th { color: #ffffff !important; font-weight: bold; }
+          /* Columnas con color identificativo (matchea el PDF de referencia) */
+          .sdm-print-area td.sdm-col-refuerzos { color: #c2410c !important; font-weight: 600; }   /* naranjo */
+          .sdm-print-area td.sdm-col-posturno  { color: #1d4ed8 !important; font-weight: 600; }   /* azul */
+          .sdm-print-area td.sdm-col-ausencias { color: #b91c1c !important; font-weight: 600; }   /* rojo */
+          /* Suspender rings/sombras de hints de UI (drag-over, conflicto) */
           .sdm-print-area .sdm-conflict-error,
           .sdm-print-area .sdm-conflict-warn,
           .sdm-print-area [class*="ring-"] {
@@ -760,7 +758,6 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
             --tw-ring-color: transparent !important;
             --tw-ring-offset-shadow: 0 0 #0000 !important;
           }
-          /* line-through de bloqueos suspendidos en negro */
           .sdm-print-area .line-through { text-decoration: line-through; opacity: 1 !important; }
         }
         .sdm-print-only { display: none; }
@@ -1120,7 +1117,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                   )}
                 </td>
                 <td className="px-2 py-2">{day.turnos.map((t, i) => <div key={i}>{doctorName(t.doctor_id)}{t.replaced && <span className="text-amber-600 sdm-print-hide"> (←{doctorName(t.original_doctor_id)})</span>}</div>)}</td>
-                <td className="px-2 py-2 space-y-1">
+                <td className="px-2 py-2 space-y-1 sdm-col-refuerzos">
                   {day.is_holiday ? <span className="text-slate-300 italic text-[11px]">–</span> : (() => {
                     const turnoIds = new Set(day.turnos.map(t => t.doctor_id));
                     const postIds = new Set(day.posturno.map(t => t.doctor_id));
@@ -1167,8 +1164,8 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                     );
                   })()}
                 </td>
-                <td className="px-2 py-2 text-slate-600">{day.posturno.map((t, i) => <div key={i}>{doctorName(t.doctor_id)}</div>)}</td>
-                <td className="px-2 py-2">{day.ausencias.map((a, i) => <div key={i} className="text-red-700">{doctorName(a.doctor_id)} ({a.type})</div>)}</td>
+                <td className="px-2 py-2 text-slate-600 sdm-col-posturno">{day.posturno.map((t, i) => <div key={i}>{doctorName(t.doctor_id)}</div>)}</td>
+                <td className="px-2 py-2 sdm-col-ausencias">{day.ausencias.map((a, i) => <div key={i} className="text-red-700">{doctorName(a.doctor_id)} ({a.type})</div>)}</td>
                 <td
                   className={`px-2 py-2 group cursor-pointer transition-colors ${dragOverDate === day.date ? 'bg-blue-100 ring-2 ring-blue-400 ring-inset' : 'hover:bg-blue-50/50'}`}
                   onClick={() => setEditingDay(day)}
