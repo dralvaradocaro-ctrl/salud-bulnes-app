@@ -4,7 +4,7 @@ import { createPageUrl } from '@/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { LogOut, FileText, Settings2, Users, CalendarDays, Clock, Mic, Gavel, MoreHorizontal, BarChart3, ClipboardCheck } from 'lucide-react';
+import { LogOut, FileText, Settings2, Users, CalendarDays, Clock, Mic, Gavel, MoreHorizontal, BarChart3, ClipboardCheck, AlertCircle, LayoutGrid } from 'lucide-react';
 import AgendaSemanal from '@/components/sdm/AgendaSemanal';
 import ProgramAssignments from '@/components/sdm/ProgramAssignments';
 import Cronograma from '@/components/sdm/Cronograma';
@@ -37,6 +37,7 @@ export default function SubdireccionMedica() {
   const [searchParams, setSearchParams] = useSearchParams();
   const topTab    = searchParams.get('tab') || 'consola';
   const consoleTab = searchParams.get('subtab') || 'agenda_semanal';
+  const agendaView = searchParams.get('view') || 'tabla'; // 'tabla' | 'horario'
   const weekParam = searchParams.get('week');
   const [monday, setMondayState] = useState(
     weekParam ? getMondayOfWeek(new Date(weekParam + 'T12:00:00')) : getMondayOfWeek(new Date())
@@ -45,6 +46,7 @@ export default function SubdireccionMedica() {
   const profileName = localStorage.getItem('admin_profile_name') || 'Fernando Alvarado';
   const setTopTab    = (v) => setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('tab', v); return p; }, { replace: true });
   const setConsoleTab = (v) => setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('subtab', v); return p; }, { replace: true });
+  const setAgendaView = (v) => setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('view', v); return p; }, { replace: true });
   const setMonday = (d) => {
     setMondayState(d);
     setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('week', fmtDate(d)); return p; }, { replace: true });
@@ -84,11 +86,12 @@ export default function SubdireccionMedica() {
         </div>
 
         <Tabs value={topTab} onValueChange={setTopTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 max-w-3xl">
+          <TabsList className="flex flex-wrap h-auto w-full max-w-5xl">
             <TabsTrigger value="documentos" className="gap-1.5"><FileText className="h-4 w-4" />Documentos</TabsTrigger>
             <TabsTrigger value="consola" className="gap-1.5"><Settings2 className="h-4 w-4" />Consola Gestión</TabsTrigger>
             <TabsTrigger value="pacientes" className="gap-1.5"><Users className="h-4 w-4" />Pacientes</TabsTrigger>
             <TabsTrigger value="distribucion" className="gap-1.5"><BarChart3 className="h-4 w-4" />Distribución</TabsTrigger>
+            <TabsTrigger value="distribucion_programas" className="gap-1.5"><Users className="h-4 w-4" />Distribución de programas y bloqueos médicos</TabsTrigger>
           </TabsList>
 
           <TabsContent value="documentos">
@@ -100,23 +103,36 @@ export default function SubdireccionMedica() {
             <Tabs value={consoleTab} onValueChange={setConsoleTab} className="space-y-4">
               <TabsList className="flex flex-wrap h-auto">
                 <TabsTrigger value="agenda_semanal" className="gap-1.5"><CalendarDays className="h-4 w-4" />Agenda Semanal</TabsTrigger>
-                <TabsTrigger value="revisar_bloqueos" className="gap-1.5"><ClipboardCheck className="h-4 w-4" />Revisar bloqueos semanales</TabsTrigger>
-                <TabsTrigger value="agenda_diaria" className="gap-1.5"><Clock className="h-4 w-4" />Cronograma</TabsTrigger>
-                <TabsTrigger value="bloqueos_reuniones" className="gap-1.5">Bloqueos: Otras causas</TabsTrigger>
+                <TabsTrigger value="revisar_bloqueos" className="gap-1.5"><ClipboardCheck className="h-4 w-4" />Bloqueos médicos</TabsTrigger>
+                <TabsTrigger value="bloqueos_reuniones" className="gap-1.5">Otros bloqueos</TabsTrigger>
                 <TabsTrigger value="bloqueos_radio" className="gap-1.5"><Mic className="h-4 w-4" />Radio</TabsTrigger>
                 <TabsTrigger value="bloqueos_judiciales" className="gap-1.5"><Gavel className="h-4 w-4" />Judiciales</TabsTrigger>
-                <TabsTrigger value="asignaciones" className="gap-1.5"><Users className="h-4 w-4" />Asignaciones</TabsTrigger>
                 <TabsTrigger value="otros" className="gap-1.5"><MoreHorizontal className="h-4 w-4" />Otros</TabsTrigger>
               </TabsList>
               <TabsContent value="agenda_semanal">
-                <AgendaSemanal weeklyAgenda={weeklyAgenda} setMonday={setMonday} />
+                {/* Toggle de vista: Tabla (AgendaSemanal) ↔ Horario (Cronograma) */}
+                <div className="flex items-center gap-1 mb-3 rounded-lg bg-slate-100 p-1 w-fit">
+                  <button
+                    onClick={() => setAgendaView('tabla')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${agendaView === 'tabla' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    <LayoutGrid className="h-4 w-4" /> Vista en tabla
+                  </button>
+                  <button
+                    onClick={() => setAgendaView('horario')}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${agendaView === 'horario' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    <Clock className="h-4 w-4" /> Vista en horario
+                  </button>
+                </div>
+                {agendaView === 'horario'
+                  ? <Cronograma weeklyAgenda={weeklyAgenda} setMonday={setMonday} />
+                  : <AgendaSemanal weeklyAgenda={weeklyAgenda} setMonday={setMonday} />}
               </TabsContent>
               <TabsContent value="revisar_bloqueos"><RevisarBloqueosSemanales /></TabsContent>
-              <TabsContent value="agenda_diaria"><Cronograma weeklyAgenda={weeklyAgenda} setMonday={setMonday} /></TabsContent>
               <TabsContent value="bloqueos_reuniones"><MeetingBlocks onChanged={weeklyAgenda.reloadOneoff} /></TabsContent>
               <TabsContent value="bloqueos_radio"><SimpleOneoffBlocks category="visita_radio" title="Visitas a la radio" icon={Mic} onChanged={weeklyAgenda.reloadOneoff} /></TabsContent>
               <TabsContent value="bloqueos_judiciales"><SimpleOneoffBlocks category="judicial" title="Citaciones judiciales" icon={Gavel} onChanged={weeklyAgenda.reloadOneoff} /></TabsContent>
-              <TabsContent value="asignaciones"><ProgramAssignments /></TabsContent>
               <TabsContent value="otros"><Placeholder icon={MoreHorizontal} title="Otros bloqueos" /></TabsContent>
             </Tabs>
           </TabsContent>
@@ -127,6 +143,16 @@ export default function SubdireccionMedica() {
 
           <TabsContent value="distribucion">
             <Distribucion />
+          </TabsContent>
+
+          <TabsContent value="distribucion_programas">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 mb-3 flex items-start gap-2 text-amber-900">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <div className="text-xs">
+                Los cambios en esta distribución <strong>alterarán la agenda</strong> de las próximas semanas.
+              </div>
+            </div>
+            <ProgramAssignments />
           </TabsContent>
         </Tabs>
       </div>
