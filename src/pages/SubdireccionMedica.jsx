@@ -12,6 +12,7 @@ import MeetingBlocks from '@/components/sdm/MeetingBlocks';
 import Distribucion from '@/components/sdm/Distribucion';
 import RevisarBloqueosSemanales from '@/components/sdm/RevisarBloqueosSemanales';
 import SimpleOneoffBlocks from '@/components/sdm/SimpleOneoffBlocks';
+import SdmCalendar from '@/components/sdm/SdmCalendar';
 import { getMondayOfWeek, fmtDate } from '@/components/sdm/lib/generateAgenda';
 import { useSdmWeeklyAgenda } from '@/components/sdm/lib/useSdmWeeklyAgenda';
 
@@ -103,6 +104,7 @@ export default function SubdireccionMedica() {
             <Tabs value={consoleTab} onValueChange={setConsoleTab} className="space-y-4">
               <TabsList className="flex flex-wrap h-auto">
                 <TabsTrigger value="agenda_semanal" className="gap-1.5"><CalendarDays className="h-4 w-4" />Agenda Semanal</TabsTrigger>
+                <TabsTrigger value="calendario" className="gap-1.5"><CalendarDays className="h-4 w-4" />Calendario</TabsTrigger>
                 <TabsTrigger value="revisar_bloqueos" className="gap-1.5"><ClipboardCheck className="h-4 w-4" />Bloqueos médicos</TabsTrigger>
                 <TabsTrigger value="bloqueos_reuniones" className="gap-1.5">Otros bloqueos</TabsTrigger>
                 <TabsTrigger value="bloqueos_radio" className="gap-1.5"><Mic className="h-4 w-4" />Radio</TabsTrigger>
@@ -128,6 +130,9 @@ export default function SubdireccionMedica() {
                 {agendaView === 'horario'
                   ? <Cronograma weeklyAgenda={weeklyAgenda} setMonday={setMonday} />
                   : <AgendaSemanal weeklyAgenda={weeklyAgenda} setMonday={setMonday} />}
+              </TabsContent>
+              <TabsContent value="calendario">
+                <SdmCalendar onChanged={() => weeklyAgenda.reload?.()} />
               </TabsContent>
               <TabsContent value="revisar_bloqueos"><RevisarBloqueosSemanales /></TabsContent>
               <TabsContent value="bloqueos_reuniones"><MeetingBlocks onChanged={weeklyAgenda.reloadOneoff} /></TabsContent>

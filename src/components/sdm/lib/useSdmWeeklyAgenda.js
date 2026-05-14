@@ -213,6 +213,7 @@ export function useSdmWeeklyAgenda(monday) {
     setAbsences,
     oneoffBlocks,
     setOneoffBlocks,
+    reload: loadWeek,
     reinforcements,
     setReinforcements,
     bloqueosOverrides,
