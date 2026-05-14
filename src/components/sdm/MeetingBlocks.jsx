@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, CalendarDays, X } from 'lucide-react';
 import TimeInput24h from './TimeInput24h';
+import DateInputDdmm from './DateInputDdmm';
 
 const blockDocIds = (b) => Array.isArray(b?.doctor_ids) && b.doctor_ids.length
   ? b.doctor_ids.filter(Boolean)
@@ -134,8 +135,8 @@ export default function MeetingBlocks({ onChanged }) {
           <DialogHeader><DialogTitle>Agendar bloqueo</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <div>
-              <label className="text-xs font-medium text-slate-600">Fecha</label>
-              <Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+              <label className="text-xs font-medium text-slate-600">Fecha (DD/MM/AAAA)</label>
+              <DateInputDdmm value={form.date} onChange={v => setForm({ ...form, date: v })} />
             </div>
             <div>
               <label className="text-xs font-medium text-slate-600">Médicos</label>

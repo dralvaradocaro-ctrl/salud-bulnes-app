@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, X } from 'lucide-react';
 import TimeInput24h from './TimeInput24h';
+import DateInputDdmm from './DateInputDdmm';
 
 const blockDocIds = (b) => Array.isArray(b?.doctor_ids) && b.doctor_ids.length
   ? b.doctor_ids.filter(Boolean)
@@ -97,8 +98,8 @@ export default function SimpleOneoffBlocks({ category, title, icon: Icon, descri
         {/* Form de alta */}
         <div className="grid grid-cols-12 gap-2 items-end border border-dashed border-slate-300 rounded-lg p-3 bg-slate-50">
           <div className="col-span-12 sm:col-span-3">
-            <label className="text-[11px] uppercase tracking-wide text-slate-500">Fecha</label>
-            <Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} className="h-8" />
+            <label className="text-[11px] uppercase tracking-wide text-slate-500">Fecha (DD/MM/AAAA)</label>
+            <DateInputDdmm value={form.date} onChange={v => setForm({ ...form, date: v })} className="h-8" />
           </div>
           <div className="col-span-12 sm:col-span-3">
             <label className="text-[11px] uppercase tracking-wide text-slate-500">Médicos</label>

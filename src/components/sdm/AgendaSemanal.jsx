@@ -15,6 +15,7 @@ import CellEditor from './CellEditor';
 import SdmInternalMeetings from './SdmInternalMeetings';
 import SdmHistoryDialog from './SdmHistoryDialog';
 import TimeInput24h from './TimeInput24h';
+import DateInputDdmm from './DateInputDdmm';
 import { getSdmEditor } from './lib/sdmEditHistory';
 
 const ABSENCE_TYPES = ['FL', 'P', 'A', 'DT', 'LM', 'CAP', 'PAS', 'G', 'OTRO'];
@@ -231,13 +232,21 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   }
 
   async function addAbsence() {
-    if (!newAbs.doctor_id || !newAbs.date) return;
+    const missing = [];
+    if (!newAbs.doctor_id) missing.push('médico');
+    if (!newAbs.date) missing.push('fecha');
+    if (missing.length) {
+      console.warn('[addAbsence] bloqueado — estado actual:', newAbs, 'faltan:', missing);
+      toast.error('Falta: ' + missing.join(', ') + '. (En Mac la fecha tipeada manualmente a veces no se guarda — usá el calendario del campo)');
+      return;
+    }
     const { error } = await supabase.from('sdm_absences').insert(newAbs);
     if (error) { toast.error("Error: " + (explainSdmWriteError(error) || error.message)); return; }
     const { data } = await supabase.from('sdm_absences').select('*').gte('date', weekStart).lte('date', weekEnd);
     setAbsences(data || []);
     setShowAbsenceDialog(false);
     setNewAbs({ doctor_id: '', date: '', type: 'A', notes: '' });
+    toast.success('Ausencia agregada');
   }
 
   async function deleteAbsence(id) {
@@ -1442,8 +1451,8 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-600">Fecha</label>
-              <Input type="date" value={newAbs.date} onChange={e => setNewAbs({ ...newAbs, date: e.target.value })} />
+              <label className="text-xs font-medium text-slate-600">Fecha (DD/MM/AAAA)</label>
+              <DateInputDdmm value={newAbs.date} onChange={v => setNewAbs({ ...newAbs, date: v })} />
             </div>
             <div>
               <label className="text-xs font-medium text-slate-600">Tipo</label>
