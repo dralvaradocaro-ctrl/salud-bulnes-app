@@ -18,6 +18,13 @@ import TimeInput24h from './TimeInput24h';
 import { getSdmEditor } from './lib/sdmEditHistory';
 
 const ABSENCE_TYPES = ['FL', 'P', 'A', 'DT', 'LM', 'CAP', 'PAS', 'G', 'OTRO'];
+
+// Formato DD-MM-AAAA a partir de YYYY-MM-DD
+function ddmm(d) {
+  if (!d) return '';
+  const m = String(d).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : d;
+}
 const ABSENCE_LABELS = {
   FL: 'Feriado Legal', P: 'Postnatal', A: 'Administrativo', DT: 'Devolución Tiempo',
   LM: 'Licencia Médica', CAP: 'Capacitación', PAS: 'Pasantía', OTRO: 'Otro'
@@ -745,7 +752,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
           .sdm-print-area thead { background: #047857 !important; }
           .sdm-print-area thead th { color: #ffffff !important; font-weight: bold; }
           .sdm-print-area td.sdm-col-refuerzos { color: #c2410c !important; font-weight: 600; }
-          .sdm-print-area td.sdm-col-posturno  { color: #1d4ed8 !important; font-weight: 600; }
+          .sdm-print-area td.sdm-col-posturno  { color: #0284c7 !important; font-weight: 600; }
           .sdm-print-area td.sdm-col-ausencias { color: #b91c1c !important; font-weight: 600; }
           .sdm-print-area td.sdm-col-bloqueos,
           .sdm-print-area td.sdm-col-bloqueos * { color: #0f172a !important; }
@@ -763,7 +770,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       <div className="flex items-center gap-3 flex-wrap sdm-print-hide">
         <Button variant="outline" size="sm" onClick={() => shiftWeek(-7)}><ChevronLeft className="h-4 w-4" /></Button>
         <div className="font-semibold text-slate-700 flex items-center gap-2">
-          Semana del {weekDays[0].date} al {weekDays[4].date}
+          Semana del {ddmm(weekDays[0].date)} al {ddmm(weekDays[4].date)}
           {isDirty && (
             <span title="Tenés cambios sin guardar" className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide bg-orange-100 text-orange-800 border border-orange-300 px-1.5 py-0.5 rounded">
               <span className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" /> sin guardar
@@ -1099,14 +1106,18 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
 		                            setDraggedVisitor(null);
 		                            setVisitorDragOverDate(null);
 		                          }}
-		                          className={`text-[9px] font-normal leading-tight rounded px-1 py-0.5 -mx-1 cursor-grab active:cursor-grabbing ${
+		                          className={`sdm-visitor-pill text-[9px] leading-tight rounded border px-1.5 py-0.5 cursor-grab active:cursor-grabbing ${
 		                            v.holiday_pending || v.no_show
-			                              ? 'sdm-print-hide bg-amber-100 text-amber-900 border border-amber-200'
-			                              : 'text-blue-700 hover:bg-blue-50'
+			                              ? 'sdm-print-hide bg-amber-100 text-amber-900 border-amber-300'
+			                              : /neuro/i.test(v.specialty || '') ? 'bg-green-100 text-green-900 border-green-300'
+			                              : /pediatr/i.test(v.specialty || '') ? 'bg-pink-100 text-pink-900 border-pink-300'
+			                              : (/internista/i.test(v.specialty || '') || /sandoval/i.test(v.name || '')) ? 'bg-fuchsia-100 text-fuchsia-900 border-fuchsia-300'
+			                              : (/urgenc/i.test(v.specialty || '') || /rubilar/i.test(v.name || '')) ? 'bg-purple-100 text-purple-900 border-purple-300'
+			                              : 'bg-blue-100 text-blue-900 border-blue-300'
 		                          }`}
 			                          title={v.no_show ? 'Especialista marcado como no viene. No se imprime.' : v.holiday_pending ? 'Arrastrar para mover desde feriado. No se imprime.' : 'Arrastrar para mover especialista a otro día'}
 			                        >
-		                          <span className="font-semibold">{v.name}</span>{v.specialty ? ` · ${v.specialty}` : ''}
+		                          <div className="font-bold">{v.name}</div>{v.specialty && <div className="opacity-80">{v.specialty}</div>}
 		                          {v.no_show ? <span className="ml-1 font-semibold">no viene</span> : v.holiday_pending && <span className="ml-1 font-semibold">feriado/revisar</span>}
 		                        </div>
 	                      ))}

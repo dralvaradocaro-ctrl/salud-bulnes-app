@@ -90,6 +90,7 @@ export default function SdmCalendar({ onChanged }) {
   const [absences, setAbsences] = useState([]);   // sdm_absences para el mes
   const [loading, setLoading] = useState(true);
   const [editingDate, setEditingDate] = useState(null);
+  const [view, setView] = useState('turnos'); // 'turnos' | 'ausencias'
 
   const rangeStart = fmt(startOfMonth(monthDate));
   const rangeEnd   = fmt(endOfMonth(monthDate));
@@ -129,10 +130,12 @@ export default function SdmCalendar({ onChanged }) {
   }, [absences]);
 
   // Aplica replacements: devuelve doctor_id efectivo + flag replaced.
-  function effectiveDoctorsForDay(iso) {
+  // turnoNumber permite forzar un turno distinto (ej. PM en sábados).
+  function effectiveDoctorsForDay(iso, turnoNumber = null) {
     const s = shiftByDate[iso];
     if (!s) return [];
-    const base = rotationByTurno[s.turno_number] || [];
+    const tn = turnoNumber != null ? turnoNumber : s.turno_number;
+    const base = rotationByTurno[tn] || [];
     const reps = Array.isArray(s.replacements) ? s.replacements : [];
     return base.map(b => {
       const rep = reps.find(r => r.doctor_id === b.doctor_id);
@@ -181,6 +184,9 @@ export default function SdmCalendar({ onChanged }) {
   async function setTurnoNumber(date, n) {
     await upsertShift(date, { turno_number: Number(n) });
   }
+  async function setTurnoNumberPm(date, n) {
+    await upsertShift(date, { turno_number_pm: n === '' || n === null ? null : Number(n) });
+  }
   async function setReplacement(date, originalDoctorId, replacedBy) {
     const cur = shiftByDate[date];
     const reps = Array.isArray(cur?.replacements) ? cur.replacements.slice() : [];
@@ -224,6 +230,22 @@ export default function SdmCalendar({ onChanged }) {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Toggle entre vista de Turnos y vista de Ausencias */}
+        <div className="flex items-center gap-1 mb-3 rounded-lg bg-slate-100 p-1 w-fit">
+          <button
+            onClick={() => setView('turnos')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'turnos' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+          >
+            Turnos
+          </button>
+          <button
+            onClick={() => setView('ausencias')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'ausencias' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+          >
+            Ausencias
+          </button>
+        </div>
+
         {loading ? <p className="text-sm text-slate-500">Cargando…</p> : (
           <div className="grid grid-cols-7 gap-1.5">
             {DAY_HEADERS.map(h => (
@@ -232,44 +254,88 @@ export default function SdmCalendar({ onChanged }) {
             {cells.map(cell => {
               const dow = cell.date.getDay(); // 0 dom 6 sab
               const isWeekend = dow === 0 || dow === 6;
+              const isSaturday = dow === 6;
               const shift = shiftByDate[cell.iso];
               const isHoliday = !!shift?.is_holiday;
               const eff = effectiveDoctorsForDay(cell.iso);
+              const effPm = isSaturday && shift && shift.turno_number_pm != null ? effectiveDoctorsForDay(cell.iso, shift.turno_number_pm) : [];
               const dayAbsences = absencesByDate[cell.iso] || [];
               const turnoColor = shift ? TURNO_COLOR[shift.turno_number] || TURNO_COLOR[0] : 'bg-white border-slate-200';
+              const showTurnos = view === 'turnos';
               return (
                 <button
                   key={cell.iso}
                   onClick={() => setEditingDate(cell.iso)}
-                  className={`text-left rounded-md border p-1.5 min-h-[110px] hover:ring-2 hover:ring-blue-300 hover:ring-inset transition-shadow ${cell.inMonth ? '' : 'opacity-40'} ${isWeekend ? 'bg-slate-50' : ''} ${turnoColor}`}
+                  className={`text-left rounded-md border p-1.5 min-h-[110px] hover:ring-2 hover:ring-blue-300 hover:ring-inset transition-shadow ${cell.inMonth ? '' : 'opacity-40'} ${isWeekend ? 'bg-slate-50' : ''} ${showTurnos ? turnoColor : 'bg-white border-slate-200'}`}
                   title="Click para editar este día"
                 >
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-bold ${cell.inMonth ? 'text-slate-900' : 'text-slate-400'}`}>{cell.date.getDate()}</span>
-                    {shift && (
-                      <span className="text-[9px] font-bold uppercase tracking-wide bg-white/60 rounded px-1">T{shift.turno_number}</span>
+                    {shift && showTurnos && (
+                      <span className="text-[9px] font-bold uppercase tracking-wide bg-white/60 rounded px-1">
+                        T{shift.turno_number}{isSaturday && shift.turno_number_pm != null ? ` / T${shift.turno_number_pm}` : ''}
+                      </span>
+                    )}
+                    {!showTurnos && dayAbsences.length > 0 && (
+                      <span className="text-[9px] font-bold rounded-full bg-red-500 text-white px-1.5">{dayAbsences.length}</span>
                     )}
                   </div>
                   {isHoliday && (
                     <div className="mt-1 text-[10px] font-bold text-red-700 bg-red-100 border border-red-300 rounded px-1 py-0.5 text-center">FERIADO</div>
                   )}
-                  {!isHoliday && eff.length > 0 && (
-                    <div className="mt-0.5 space-y-0.5">
-                      {eff.map((e, i) => (
-                        <div key={i} className="text-[10px] truncate">
-                          <span className={e.replaced ? 'line-through opacity-60' : ''}>{doctorName(e.original_doctor_id)}</span>
-                          {e.replaced && <span className="ml-1 text-emerald-700 font-semibold">→ {doctorName(e.doctor_id)}</span>}
+                  {showTurnos ? (
+                    <>
+                      {eff.length > 0 && (
+                        <div className="mt-0.5 space-y-0.5">
+                          {isSaturday && effPm.length > 0 && (
+                            <div className="text-[8px] font-bold uppercase tracking-wide text-slate-500">AM</div>
+                          )}
+                          {eff.map((e, i) => (
+                            <div key={i} className="text-[10px] truncate">
+                              <span className={e.replaced ? 'line-through opacity-60' : ''}>{doctorName(e.original_doctor_id)}</span>
+                              {e.replaced && <span className="ml-1 text-emerald-700 font-semibold">→ {doctorName(e.doctor_id)}</span>}
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  {dayAbsences.length > 0 && (
-                    <div className="mt-1 flex flex-wrap gap-0.5">
-                      {dayAbsences.map(a => (
-                        <span key={a.id} className={`text-[9px] font-bold rounded border px-1 ${TYPE_COLOR[a.type] || TYPE_COLOR.OTRO}`} title={`${doctorName(a.doctor_id)} · ${ABSENCE_LABELS[a.type] || a.type}`}>
-                          {a.type}
-                        </span>
-                      ))}
+                      )}
+                      {isSaturday && effPm.length > 0 && (
+                        <div className="mt-0.5 space-y-0.5 border-t border-slate-300/50 pt-0.5">
+                          <div className="text-[8px] font-bold uppercase tracking-wide text-slate-500">PM</div>
+                          {effPm.map((e, i) => (
+                            <div key={i} className="text-[10px] truncate">
+                              <span className={e.replaced ? 'line-through opacity-60' : ''}>{doctorName(e.original_doctor_id)}</span>
+                              {e.replaced && <span className="ml-1 text-emerald-700 font-semibold">→ {doctorName(e.doctor_id)}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {dayAbsences.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-0.5">
+                          {dayAbsences.map(a => (
+                            <span key={a.id} className={`text-[9px] font-bold rounded border px-1 ${TYPE_COLOR[a.type] || TYPE_COLOR.OTRO}`} title={`${doctorName(a.doctor_id)} · ${ABSENCE_LABELS[a.type] || a.type}`}>
+                              {a.type}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    /* Vista AUSENCIAS — destaca quién está ausente y por qué */
+                    <div className="mt-1 space-y-0.5">
+                      {dayAbsences.length === 0 ? (
+                        <div className="text-[10px] italic text-slate-300">—</div>
+                      ) : (
+                        dayAbsences.map(a => (
+                          <div
+                            key={a.id}
+                            className={`text-[10px] rounded border px-1 py-0.5 ${TYPE_COLOR[a.type] || TYPE_COLOR.OTRO}`}
+                            title={`${doctorName(a.doctor_id)} · ${ABSENCE_LABELS[a.type] || a.type}${a.notes ? ' · ' + a.notes : ''}`}
+                          >
+                            <div className="font-bold truncate">{doctorName(a.doctor_id)}</div>
+                            <div className="opacity-80">{a.type} · {ABSENCE_LABELS[a.type] || ''}</div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   )}
                 </button>
@@ -295,6 +361,7 @@ export default function SdmCalendar({ onChanged }) {
           <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <span>Los cambios se reflejan automáticamente en la Agenda Semanal y el resto de las pestañas (sin necesidad de guardar manualmente).</span>
         </div>
+
       </CardContent>
 
       {/* ── Dialog de edición de un día ── */}
@@ -323,20 +390,46 @@ export default function SdmCalendar({ onChanged }) {
               </div>
 
               {/* Turno number */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Turno del día</label>
-                <Select value={String(editingTurnoNumber ?? '')} onValueChange={v => setTurnoNumber(editingDate, v)}>
-                  <SelectTrigger className="h-9 w-40"><SelectValue placeholder="— elegir turno —" /></SelectTrigger>
-                  <SelectContent>
-                    {[0, 1, 2, 3, 4, 5, 6, 7].map(n => (
-                      <SelectItem key={n} value={String(n)}>Turno {n}{n === 0 ? ' (volante)' : ''}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {editingTurnoNumber == null && (
-                  <p className="text-[11px] text-slate-500 italic">Sin turno asignado para este día.</p>
-                )}
-              </div>
+              {(() => {
+                const isSat = editingDate ? new Date(editingDate + 'T12:00:00').getDay() === 6 : false;
+                return (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                      {isSat ? 'Turnos del día (AM y PM)' : 'Turno del día'}
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <div>
+                        {isSat && <div className="text-[10px] font-bold text-slate-500 mb-0.5">AM</div>}
+                        <Select value={String(editingTurnoNumber ?? '')} onValueChange={v => setTurnoNumber(editingDate, v)}>
+                          <SelectTrigger className="h-9 w-40"><SelectValue placeholder="— elegir turno —" /></SelectTrigger>
+                          <SelectContent>
+                            {[0, 1, 2, 3, 4, 5, 6, 7].map(n => (
+                              <SelectItem key={n} value={String(n)}>Turno {n}{n === 0 ? ' (volante)' : ''}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {isSat && (
+                        <div>
+                          <div className="text-[10px] font-bold text-slate-500 mb-0.5">PM</div>
+                          <Select value={String(editingShift?.turno_number_pm ?? '__none__')} onValueChange={v => setTurnoNumberPm(editingDate, v === '__none__' ? null : v)}>
+                            <SelectTrigger className="h-9 w-40"><SelectValue placeholder="— elegir turno PM —" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">— sin turno PM —</SelectItem>
+                              {[0, 1, 2, 3, 4, 5, 6, 7].map(n => (
+                                <SelectItem key={n} value={String(n)}>Turno {n}{n === 0 ? ' (volante)' : ''}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                    {editingTurnoNumber == null && (
+                      <p className="text-[11px] text-slate-500 italic">Sin turno asignado para este día.</p>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Médicos del turno + replacements */}
               {editingBaseDoctors.length > 0 && (
