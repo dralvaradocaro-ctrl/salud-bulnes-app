@@ -82,6 +82,43 @@ function buildMonthGrid(monthDate) {
 const DAY_HEADERS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
+// Rotación oficial: 2026-04-16 (jue) = T1. Cada día consume 1 slot, sábado 2.
+const ROTATION_BASE_ISO = '2026-04-16';
+const ROTATION_BASE_TURNO = 1; // 1..7
+
+function parseIsoLocal(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+// Calcula el turno AM (y PM si es sábado) para un día según la rotación cíclica.
+// turnos: 1..7. PM solo aplica sábados.
+function computeTurnoForIso(iso) {
+  const base = parseIsoLocal(ROTATION_BASE_ISO);
+  const target = parseIsoLocal(iso);
+  // Slots transcurridos desde base hasta target (sin contar target).
+  let slots = 0;
+  const cur = new Date(base);
+  if (target < base) {
+    // Contar hacia atrás
+    while (cur > target) {
+      cur.setDate(cur.getDate() - 1);
+      slots -= cur.getDay() === 6 ? 2 : 1;
+    }
+  } else {
+    while (cur < target) {
+      slots += cur.getDay() === 6 ? 2 : 1;
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+  const baseIdx = ROTATION_BASE_TURNO - 1;
+  const amIdx = ((baseIdx + slots) % 7 + 7) % 7;
+  const am = amIdx + 1;
+  const isSaturday = target.getDay() === 6;
+  const pm = isSaturday ? ((amIdx + 1) % 7) + 1 : null;
+  return { am, pm };
+}
+
 export default function SdmCalendar({ onChanged }) {
   const [monthDate, setMonthDate] = useState(() => startOfMonth(new Date()));
   const [doctors, setDoctors] = useState([]);
@@ -130,13 +167,14 @@ export default function SdmCalendar({ onChanged }) {
   }, [absences]);
 
   // Aplica replacements: devuelve doctor_id efectivo + flag replaced.
-  // turnoNumber permite forzar un turno distinto (ej. PM en sábados).
+  // turnoNumber permite forzar un turno distinto (ej. PM en sábados o rotación
+  // automática cuando aún no hay entrada en sdm_shift_calendar).
   function effectiveDoctorsForDay(iso, turnoNumber = null) {
     const s = shiftByDate[iso];
-    if (!s) return [];
-    const tn = turnoNumber != null ? turnoNumber : s.turno_number;
+    const tn = turnoNumber != null ? turnoNumber : s?.turno_number;
+    if (tn == null) return [];
     const base = rotationByTurno[tn] || [];
-    const reps = Array.isArray(s.replacements) ? s.replacements : [];
+    const reps = Array.isArray(s?.replacements) ? s.replacements : [];
     return base.map(b => {
       const rep = reps.find(r => r.doctor_id === b.doctor_id);
       return {
@@ -187,6 +225,41 @@ export default function SdmCalendar({ onChanged }) {
   async function setTurnoNumberPm(date, n) {
     await upsertShift(date, { turno_number_pm: n === '' || n === null ? null : Number(n) });
   }
+
+  async function applyRotationToMonth() {
+    const days = buildMonthGrid(monthDate).filter(c => c.inMonth);
+    const toInsert = [];
+    const toUpdate = [];
+    days.forEach(c => {
+      const existing = shiftByDate[c.iso];
+      const auto = computeTurnoForIso(c.iso);
+      const isSat = c.date.getDay() === 6;
+      const payload = { turno_number: auto.am, turno_number_pm: isSat ? auto.pm : null };
+      if (existing) {
+        if (existing.turno_number !== payload.turno_number || (existing.turno_number_pm ?? null) !== payload.turno_number_pm) {
+          toUpdate.push({ date: c.iso, ...payload });
+        }
+      } else {
+        toInsert.push({ date: c.iso, ...payload, replacements: [], is_holiday: false });
+      }
+    });
+    if (toInsert.length === 0 && toUpdate.length === 0) {
+      toast.info('La rotación del mes ya está aplicada.');
+      return;
+    }
+    if (toInsert.length) {
+      const { error } = await supabase.from('sdm_shift_calendar').insert(toInsert);
+      if (error) { toast.error('Error: ' + (explainSdmWriteError(error) || error.message)); return; }
+    }
+    for (const u of toUpdate) {
+      const { date, ...patch } = u;
+      const { error } = await supabase.from('sdm_shift_calendar').update(patch).eq('date', date);
+      if (error) { toast.error('Error: ' + (explainSdmWriteError(error) || error.message)); return; }
+    }
+    toast.success(`Rotación aplicada: ${toInsert.length} día${toInsert.length === 1 ? '' : 's'} nuevo${toInsert.length === 1 ? '' : 's'}, ${toUpdate.length} actualizado${toUpdate.length === 1 ? '' : 's'}.`);
+    await loadAll();
+    notifyChanged();
+  }
   async function setReplacement(date, originalDoctorId, replacedBy) {
     const cur = shiftByDate[date];
     const reps = Array.isArray(cur?.replacements) ? cur.replacements.slice() : [];
@@ -224,6 +297,9 @@ export default function SdmCalendar({ onChanged }) {
           {MONTH_NAMES[monthDate.getMonth()]} {monthDate.getFullYear()}
         </CardTitle>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={applyRotationToMonth} title="Crea/actualiza las entradas del mes según la rotación oficial (base 2026-04-16 = T1, sábados AM/PM)">
+            Aplicar rotación al mes
+          </Button>
           <Button variant="outline" size="sm" onClick={() => shiftMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
           <Button variant="outline" size="sm" onClick={() => setMonthDate(startOfMonth(new Date()))}>Hoy</Button>
           <Button variant="outline" size="sm" onClick={() => shiftMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
@@ -257,10 +333,15 @@ export default function SdmCalendar({ onChanged }) {
               const isSaturday = dow === 6;
               const shift = shiftByDate[cell.iso];
               const isHoliday = !!shift?.is_holiday;
-              const eff = effectiveDoctorsForDay(cell.iso);
-              const effPm = isSaturday && shift && shift.turno_number_pm != null ? effectiveDoctorsForDay(cell.iso, shift.turno_number_pm) : [];
+              // Turno explícito si existe; si no, calculado según rotación.
+              const auto = computeTurnoForIso(cell.iso);
+              const effAmTurno = shift ? shift.turno_number : auto.am;
+              const effPmTurno = isSaturday ? (shift && shift.turno_number_pm != null ? shift.turno_number_pm : auto.pm) : null;
+              const isAuto = !shift; // ningún override → es la rotación automática
+              const eff = effectiveDoctorsForDay(cell.iso, effAmTurno);
+              const effPm = isSaturday && effPmTurno != null ? effectiveDoctorsForDay(cell.iso, effPmTurno) : [];
               const dayAbsences = absencesByDate[cell.iso] || [];
-              const turnoColor = shift ? TURNO_COLOR[shift.turno_number] || TURNO_COLOR[0] : 'bg-white border-slate-200';
+              const turnoColor = TURNO_COLOR[effAmTurno] || TURNO_COLOR[0];
               const showTurnos = view === 'turnos';
               return (
                 <button
@@ -271,9 +352,9 @@ export default function SdmCalendar({ onChanged }) {
                 >
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-bold ${cell.inMonth ? 'text-slate-900' : 'text-slate-400'}`}>{cell.date.getDate()}</span>
-                    {shift && showTurnos && (
-                      <span className="text-[9px] font-bold uppercase tracking-wide bg-white/60 rounded px-1">
-                        T{shift.turno_number}{isSaturday && shift.turno_number_pm != null ? ` / T${shift.turno_number_pm}` : ''}
+                    {showTurnos && (
+                      <span className={`text-[9px] font-bold uppercase tracking-wide rounded px-1 ${isAuto ? 'bg-white/40 text-slate-500 italic' : 'bg-white/60'}`} title={isAuto ? 'Turno calculado por rotación automática (sin override)' : 'Turno explícito'}>
+                        T{effAmTurno}{isSaturday && effPmTurno != null ? ` / T${effPmTurno}` : ''}
                       </span>
                     )}
                     {!showTurnos && dayAbsences.length > 0 && (
