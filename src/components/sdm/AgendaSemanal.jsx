@@ -108,12 +108,6 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   const [draggedVisitor, setDraggedVisitor] = useState(null);
   const [expandedAddDay, setExpandedAddDay] = useState(null);   // fecha del día con el form (+) expandido
   const [showHistory, setShowHistory] = useState(false);        // modal de historial de ediciones
-  const [showPreview, setShowPreview] = useState(false);        // vista previa de impresión a pantalla completa
-  const handlePrintFromPreview = () => {
-    // Cerrar el overlay para que el @media print solo capture .sdm-print-area
-    setShowPreview(false);
-    setTimeout(() => window.print(), 80);
-  };
 
   const confirmIfDirty = (msg = 'Tenés cambios sin guardar en esta semana. ¿Continuar y descartarlos?') => {
     if (!isDirty) return true;
@@ -734,7 +728,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   return (
     <div className="space-y-4">
       <style>{`
-        /* ════════ Estilos compartidos: aplican en @media print Y en preview onscreen ════════ */
+        .sdm-print-only { display: none; }
         @media print {
           @page { size: A4 landscape; margin: 8mm; }
           body * { visibility: hidden; }
@@ -744,80 +738,25 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
           .sdm-print-only { display: block !important; }
           .sdm-print-area table { font-size: 9px; width: 100%; }
           .sdm-print-area th, .sdm-print-area td { padding: 3px 4px !important; }
-        }
-        /* Reglas de colores que se aplican TANTO en print real como en la
-           preview onscreen (.sdm-print-preview-body). Usamos un selector
-           reutilizable: ambos contextos comparten `.sdm-printable` colocado
-           sobre el contenedor del area imprimible. */
-        @media print { .sdm-print-area { } }
-        .sdm-printable, .sdm-printable * {
-          print-color-adjust: exact !important;
-          -webkit-print-color-adjust: exact !important;
-        }
-        .sdm-printable thead { background: #047857 !important; }
-        .sdm-printable thead th { color: #ffffff !important; font-weight: bold; }
-        .sdm-printable td.sdm-col-refuerzos { color: #c2410c !important; font-weight: 600; }
-        .sdm-printable td.sdm-col-posturno  { color: #1d4ed8 !important; font-weight: 600; }
-        .sdm-printable td.sdm-col-ausencias { color: #b91c1c !important; font-weight: 600; }
-        /* Columna Bloqueos: SIN color (todo negro). Sobreescribe los text-*
-           que cada bloque pone segun estado. */
-        .sdm-printable td.sdm-col-bloqueos,
-        .sdm-printable td.sdm-col-bloqueos * { color: #0f172a !important; }
-        .sdm-printable td.sdm-col-bloqueos .bg-violet-50,
-        .sdm-printable td.sdm-col-bloqueos .bg-red-50,
-        .sdm-printable td.sdm-col-bloqueos .bg-amber-50,
-        .sdm-printable td.sdm-col-bloqueos .bg-blue-50,
-        .sdm-printable td.sdm-col-bloqueos .bg-emerald-50 { background: transparent !important; }
-        .sdm-printable .sdm-conflict-error,
-        .sdm-printable .sdm-conflict-warn,
-        .sdm-printable [class*="ring-"] {
-          box-shadow: none !important;
-          --tw-ring-shadow: 0 0 #0000 !important;
-          --tw-ring-color: transparent !important;
-          --tw-ring-offset-shadow: 0 0 #0000 !important;
-        }
-        .sdm-printable .line-through { text-decoration: line-through; opacity: 1 !important; }
-        .sdm-print-only { display: none; }
-        /* Cuando la preview está activa, el print-area se levanta a fullscreen
-           sobre todo el resto y muestra los slots print-only. */
-        .sdm-print-previewing {
-          position: fixed !important;
-          inset: 0;
-          z-index: 60;
-          background: white;
-          overflow: auto;
-          padding: 5rem 2rem 2rem;
-          box-shadow: 0 20px 50px rgba(0,0,0,0.25) inset;
-        }
-        .sdm-print-previewing .sdm-print-only { display: block !important; }
-        .sdm-print-previewing .sdm-print-hide { display: none !important; }
-        .sdm-print-previewing table { width: 100% !important; }
-        /* Backdrop oscuro detrás del print-area cuando preview está activa */
-        .sdm-print-preview-backdrop {
-          position: fixed; inset: 0; z-index: 59;
-          background: rgba(15, 23, 42, 0.55);
-        }
-        /* Toolbar fixed sobre la preview */
-        .sdm-print-preview-toolbar {
-          position: fixed; top: 1rem; left: 50%;
-          transform: translateX(-50%);
-          z-index: 61;
-          display: flex; align-items: center; gap: 0.5rem;
-          background: white; border: 1px solid #e2e8f0;
-          border-radius: 0.5rem; box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-          padding: 0.5rem 0.75rem;
-        }
-        @media print {
-          .sdm-print-preview-backdrop, .sdm-print-preview-toolbar { display: none !important; }
-          /* Durante impresión real, eliminar el position:fixed para que
-             @media print fluya con position absolute / inset 0 / width 100% */
-          .sdm-print-previewing {
-            position: absolute !important;
-            inset: auto !important;
-            padding: 0 !important;
-            box-shadow: none !important;
-            background: transparent !important;
+          .sdm-print-area, .sdm-print-area * {
+            print-color-adjust: exact !important;
+            -webkit-print-color-adjust: exact !important;
           }
+          .sdm-print-area thead { background: #047857 !important; }
+          .sdm-print-area thead th { color: #ffffff !important; font-weight: bold; }
+          .sdm-print-area td.sdm-col-refuerzos { color: #c2410c !important; font-weight: 600; }
+          .sdm-print-area td.sdm-col-posturno  { color: #1d4ed8 !important; font-weight: 600; }
+          .sdm-print-area td.sdm-col-ausencias { color: #b91c1c !important; font-weight: 600; }
+          .sdm-print-area td.sdm-col-bloqueos,
+          .sdm-print-area td.sdm-col-bloqueos * { color: #0f172a !important; }
+          .sdm-print-area td.sdm-col-bloqueos .bg-violet-50,
+          .sdm-print-area td.sdm-col-bloqueos .bg-red-50,
+          .sdm-print-area td.sdm-col-bloqueos .bg-amber-50,
+          .sdm-print-area td.sdm-col-bloqueos .bg-blue-50,
+          .sdm-print-area td.sdm-col-bloqueos .bg-emerald-50 { background: transparent !important; }
+          .sdm-print-area .sdm-conflict-error,
+          .sdm-print-area .sdm-conflict-warn,
+          .sdm-print-area [class*="ring-"] { box-shadow: none !important; }
         }
       `}</style>
       {/* Selector semana + acciones */}
@@ -844,7 +783,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
           <Save className="h-4 w-4" /> Guardar
           {visibleErrors.length > 0 && <span className="ml-1 bg-white text-red-700 text-[10px] font-bold rounded-full px-1.5">{visibleErrors.length}</span>}
         </Button>
-        <Button variant="outline" onClick={() => setShowPreview(true)} className="gap-1.5"><Printer className="h-4 w-4" /> Imprimir</Button>
+        <Button variant="outline" onClick={() => window.print()} className="gap-1.5"><Printer className="h-4 w-4" /> Imprimir</Button>
       </div>
 
 	      {/* Banners de validación — clickeables: abren el editor del día problemático */}
@@ -1100,21 +1039,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       </Card>
 
       {/* Tabla agenda 5x8 */}
-      {showPreview && (
-        <>
-          <div className="sdm-print-preview-backdrop" onClick={() => setShowPreview(false)} />
-          <div className="sdm-print-preview-toolbar">
-            <span className="text-xs text-slate-500 mr-2">Vista previa de impresión</span>
-            <Button onClick={handlePrintFromPreview} className="gap-1.5">
-              <Printer className="h-4 w-4" /> Imprimir
-            </Button>
-            <Button variant="outline" onClick={() => setShowPreview(false)} className="gap-1.5">
-              Cerrar
-            </Button>
-          </div>
-        </>
-      )}
-      <div className={`sdm-print-area sdm-printable ${showPreview ? 'sdm-print-previewing' : ''}`}>
+      <div className="sdm-print-area">
       <div className="sdm-print-only mb-2 text-center">
         <h2 className="text-base font-bold text-slate-900">Agenda Semanal · {weekDays[0].date} al {weekDays[4].date}</h2>
       </div>
