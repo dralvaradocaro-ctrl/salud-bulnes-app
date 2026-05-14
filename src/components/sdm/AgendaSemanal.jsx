@@ -784,6 +784,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
         <Button variant="outline" onClick={optimizarTitulares} className="gap-1.5" title="Reasigna bloques al titular si está disponible otro día"><Wand2 className="h-4 w-4" /> Optimizar titulares</Button>
         <Button variant="outline" onClick={equilibrarCarga} className="gap-1.5" title="Distribuye los bloques de manera más homogénea entre los días"><Scale className="h-4 w-4" /> Equilibrar carga</Button>
         <Button variant="outline" onClick={regenerarPreliminar} className="gap-1.5" title="Descarta ediciones y vuelve al template"><RefreshCw className="h-4 w-4" /> Regenerar</Button>
+        <SdmInternalMeetings monday={monday} onChanged={reloadOneoff} />
         <Button onClick={saveAgenda} className="gap-1.5" title={visibleErrors.length > 0 ? `⚠ ${visibleErrors.length} error(es) sin resolver` : 'Guardar agenda'}>
           <Save className="h-4 w-4" /> Guardar
           {visibleErrors.length > 0 && <span className="ml-1 bg-white text-red-700 text-[10px] font-bold rounded-full px-1.5">{visibleErrors.length}</span>}
@@ -967,10 +968,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       {/* Panel de ausencias — agrupado por médico, con pills compactos por día */}
       <Card className="sdm-print-hide">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <CardTitle className="text-base">Ausencias de la semana ({absences.length})</CardTitle>
-            <SdmInternalMeetings monday={monday} onChanged={reloadOneoff} />
-          </div>
+          <CardTitle className="text-base">Ausencias de la semana ({absences.length})</CardTitle>
           <Button size="sm" variant="outline" onClick={() => setShowAbsenceDialog(true)} className="gap-1.5">
             <Plus className="h-4 w-4" /> Agregar ausencia
           </Button>
