@@ -979,48 +979,62 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
           {absences.length === 0 ? (
             <p className="text-sm text-slate-500">Sin ausencias registradas para la semana.</p>
           ) : (() => {
-            // Agrupar por médico, ordenar fechas dentro del médico
+            // Agrupar por médico, indexar ausencias por fecha
             const byDoctor = new Map();
             absences.forEach(a => {
-              if (!byDoctor.has(a.doctor_id)) byDoctor.set(a.doctor_id, []);
-              byDoctor.get(a.doctor_id).push(a);
+              if (!byDoctor.has(a.doctor_id)) byDoctor.set(a.doctor_id, {});
+              byDoctor.get(a.doctor_id)[a.date] = a;
             });
-            // Orden alfabético por nombre de médico
             const rows = Array.from(byDoctor.entries())
-              .map(([id, arr]) => ({ id, name: doctorName(id), items: arr.sort((x, y) => x.date.localeCompare(y.date)) }))
+              .map(([id, map]) => ({ id, name: doctorName(id), byDate: map }))
               .sort((a, b) => a.name.localeCompare(b.name));
             const TYPE_COLOR = {
-              FL: 'bg-purple-100 text-purple-800 border-purple-200',
-              P: 'bg-pink-100 text-pink-800 border-pink-200',
-              A: 'bg-blue-100 text-blue-800 border-blue-200',
-              DT: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-              LM: 'bg-red-100 text-red-800 border-red-200',
-              CAP: 'bg-cyan-100 text-cyan-800 border-cyan-200',
-              PAS: 'bg-orange-100 text-orange-800 border-orange-200',
-              G: 'bg-amber-100 text-amber-800 border-amber-200',
-              OTRO: 'bg-slate-100 text-slate-800 border-slate-200',
+              FL: 'bg-purple-100 text-purple-800 border-purple-300',
+              P: 'bg-pink-100 text-pink-800 border-pink-300',
+              A: 'bg-blue-100 text-blue-800 border-blue-300',
+              DT: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+              LM: 'bg-red-100 text-red-800 border-red-300',
+              CAP: 'bg-cyan-100 text-cyan-800 border-cyan-300',
+              PAS: 'bg-orange-100 text-orange-800 border-orange-300',
+              G: 'bg-amber-100 text-amber-800 border-amber-300',
+              OTRO: 'bg-slate-100 text-slate-800 border-slate-300',
             };
             return (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {rows.map(row => (
                   <div key={row.id} className="rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-2">
                     <div className="text-xs font-semibold text-slate-900 mb-1.5">{row.name}</div>
-                    <div className="flex flex-wrap gap-1">
-                      {row.items.map(a => {
+                    <div className="grid grid-cols-5 gap-1">
+                      {weekDays.map(d => {
+                        const a = row.byDate[d.date];
+                        const dd = d.date.slice(8, 10);
+                        const label = d.label.slice(0, 3); // "LUN", "MAR", ...
+                        if (!a) {
+                          return (
+                            <div key={d.date} className="flex flex-col items-center justify-center rounded border border-dashed border-slate-200 bg-white text-slate-300 py-1">
+                              <span className="text-[9px] font-bold uppercase tracking-wide">{label}</span>
+                              <span className="text-[10px] font-mono">{dd}</span>
+                            </div>
+                          );
+                        }
                         const cls = TYPE_COLOR[a.type] || TYPE_COLOR.OTRO;
-                        const d = a.date.slice(8, 10);
                         return (
-                          <span
-                            key={a.id}
-                            className={`inline-flex items-center gap-1 text-[10px] font-medium rounded border px-1.5 py-0.5 ${cls}`}
-                            title={`${ABSENCE_LABELS[a.type] || a.type} · ${a.date}${a.notes ? ' · ' + a.notes : ''}`}
+                          <div
+                            key={d.date}
+                            className={`relative flex flex-col items-center justify-center rounded border py-1 ${cls}`}
+                            title={`${ABSENCE_LABELS[a.type] || a.type} · ${d.label} ${d.date}${a.notes ? ' · ' + a.notes : ''}`}
                           >
-                            <span className="font-bold">{a.type}</span>
-                            <span className="opacity-70">{d}</span>
-                            <button onClick={() => deleteAbsence(a.id)} className="hover:text-red-700 -mr-0.5">
+                            <span className="text-[9px] font-bold uppercase tracking-wide opacity-80">{label}</span>
+                            <span className="text-[11px] font-mono font-bold leading-none">{dd}</span>
+                            <span className="text-[9px] font-bold tracking-wide leading-none mt-0.5">{a.type}</span>
+                            <button
+                              onClick={() => deleteAbsence(a.id)}
+                              className="absolute top-0 right-0.5 opacity-40 hover:opacity-100 hover:text-red-700"
+                              title="Eliminar ausencia"
+                            >
                               <Trash2 className="h-2.5 w-2.5" />
                             </button>
-                          </span>
+                          </div>
                         );
                       })}
                     </div>
