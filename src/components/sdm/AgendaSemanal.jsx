@@ -1451,7 +1451,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-600">Fecha (DD/MM/AAAA)</label>
+              <label className="text-xs font-medium text-slate-600">Fecha (DD-MM-AAAA)</label>
               <DateInputDdmm value={newAbs.date} onChange={v => setNewAbs({ ...newAbs, date: v })} />
             </div>
             <div>

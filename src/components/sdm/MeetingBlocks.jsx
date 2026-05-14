@@ -135,7 +135,7 @@ export default function MeetingBlocks({ onChanged }) {
           <DialogHeader><DialogTitle>Agendar bloqueo</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <div>
-              <label className="text-xs font-medium text-slate-600">Fecha (DD/MM/AAAA)</label>
+              <label className="text-xs font-medium text-slate-600">Fecha (DD-MM-AAAA)</label>
               <DateInputDdmm value={form.date} onChange={v => setForm({ ...form, date: v })} />
             </div>
             <div>
