@@ -1391,8 +1391,22 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                   {day.is_holiday
                     ? <span className="text-slate-300 italic">–</span>
                     : day.policlinico
-                      ? <div><span className="font-semibold">{doctorName(day.policlinico.doctor_id)}</span> <span className="text-slate-500">{day.policlinico.from}–{day.policlinico.to}</span></div>
-                      : <span className="text-slate-400 italic">Sin refuerzo AM</span>}
+                      ? (
+                        <div className="flex items-center gap-1">
+                          <div className="flex-1">
+                            <span className="font-semibold">{doctorName(day.policlinico.doctor_id)}</span>{' '}
+                            <span className="text-slate-500">{day.policlinico.from}–{day.policlinico.to}</span>
+                          </div>
+                          <button
+                            onClick={() => updateReinforcement(day.date, 'am', '')}
+                            className="sdm-print-hide text-[10px] text-red-600 hover:bg-red-100 rounded px-1"
+                            title="Quitar policlínico AM (quita el refuerzo AM)"
+                          >✕</button>
+                        </div>
+                      )
+                      : day.refuerzos?.am_suspended
+                        ? <span className="text-slate-400 italic">— (suspendido)</span>
+                        : <span className="text-slate-400 italic">Sin refuerzo AM</span>}
                 </td>
                 <td className="px-2 py-2 text-[11px] space-y-0.5">
                   {day.is_holiday ? <span className="text-slate-300 italic">–</span> : <>
@@ -1424,7 +1438,17 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                       className="text-[9px] text-slate-400 hover:text-red-600 sdm-print-hide">limpiar</button>
                   )}
                   {day.poli_8am.ref_pm && (
-                    <div><span className="font-semibold">{doctorName(day.poli_8am.ref_pm.doctor_id)}</span> <span className="text-slate-500">{day.poli_8am.ref_pm.from}–{day.poli_8am.ref_pm.to}</span></div>
+                    <div className="flex items-center gap-1">
+                      <div className="flex-1">
+                        <span className="font-semibold">{doctorName(day.poli_8am.ref_pm.doctor_id)}</span>{' '}
+                        <span className="text-slate-500">{day.poli_8am.ref_pm.from}–{day.poli_8am.ref_pm.to}</span>
+                      </div>
+                      <button
+                        onClick={() => updateReinforcement(day.date, 'pm', '')}
+                        className="sdm-print-hide text-[10px] text-red-600 hover:bg-red-100 rounded px-1"
+                        title="Quitar refuerzo PM"
+                      >✕</button>
+                    </div>
                   )}
                   {!day.poli_8am.full_day && !day.poli_8am.ref_pm && !day.poli_8am.full_day_editable && <span className="text-slate-400 italic">–</span>}
                   </>}
