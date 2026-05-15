@@ -96,6 +96,8 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     setAcknowledgedErrors,
     poli8amOverrides,
     setPoli8amOverrides,
+    poliDisabled,
+    setPoliDisabled,
     visitaOverrides,
     setVisitaOverrides,
     setExternalVisitorOverrides,
@@ -280,11 +282,20 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     toast.success(`"${template.name}" diferido a ${payload.date}.`);
   }
 
+  function togglePoliDisabled(date, slot, value) {
+    setPoliDisabled(prev => {
+      const next = { ...prev, [date]: { ...(prev[date] || {}), [slot]: value } };
+      // Limpiar si no queda nada que apague
+      if (!next[date].am && !next[date].pm) delete next[date];
+      return next;
+    });
+  }
+
   function updateReinforcement(date, slot, doctorId) {
     setReinforcements(prev => ({ ...prev, [date]: { ...(prev[date] || {}), [slot]: doctorId || null } }));
 
     // Si el médico elegido tiene un bloque nominal reasignable ese día → reasignar al subrogante
-    if (!doctorId || doctorId === '__suspended__') return;
+    if (!doctorId) return;
     const day = agenda.find(d => d.date === date);
     if (!day) return;
     const blkIdx = day.bloqueos.findIndex(b => {
@@ -1158,45 +1169,24 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                     );
                     return (
                       <>
-                        {['am', 'pm'].map(slot => {
-                          const id = day.refuerzos[slot];
-                          const suspended = day.refuerzos[`${slot}_suspended`];
-                          return (
-                            <div key={slot} className="flex items-center gap-1 sdm-print-hide">
-                              <span className="text-[9px] font-bold text-slate-500 w-5">{slot.toUpperCase()}</span>
-                              {suspended ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-200 text-slate-700 border border-slate-400 rounded px-1.5 py-0.5 w-28">
-                                  SUSPENDIDO
-                                </span>
-                              ) : (
-                                <Select value={id || ''} onValueChange={v => updateReinforcement(day.date, slot, v)}>
-                                  <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-28"><SelectValue placeholder="—" /></SelectTrigger>
-                                  <SelectContent>{(slot === 'am' ? eligibleAM : eligiblePM).map(renderItem)}</SelectContent>
-                                </Select>
-                              )}
-                              <button
-                                onClick={() => updateReinforcement(day.date, slot, suspended ? '' : '__suspended__')}
-                                className={`text-[9px] px-1 rounded ${suspended ? 'text-emerald-700 hover:bg-emerald-100' : 'text-amber-700 hover:bg-amber-100'}`}
-                                title={suspended ? 'Reactivar' : 'Suspender refuerzo (no se pedirá llenar)'}
-                              >
-                                {suspended ? '▶' : '⏸'}
-                              </button>
-                              {(id || suspended) && !suspended && (
-                                <button
-                                  onClick={() => updateReinforcement(day.date, slot, '')}
-                                  className="text-[9px] px-1 text-red-600 hover:bg-red-100 rounded"
-                                  title="Quitar refuerzo (queda como faltante)"
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
+                        <div className="flex items-center gap-1 sdm-print-hide">
+                          <span className="text-[9px] font-bold text-slate-500 w-5">AM</span>
+                          <Select value={day.refuerzos.am || ''} onValueChange={v => updateReinforcement(day.date, 'am', v)}>
+                            <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-28"><SelectValue placeholder="—" /></SelectTrigger>
+                            <SelectContent>{eligibleAM.map(renderItem)}</SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-center gap-1 sdm-print-hide">
+                          <span className="text-[9px] font-bold text-slate-500 w-5">PM</span>
+                          <Select value={day.refuerzos.pm || ''} onValueChange={v => updateReinforcement(day.date, 'pm', v)}>
+                            <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-28"><SelectValue placeholder="—" /></SelectTrigger>
+                            <SelectContent>{eligiblePM.map(renderItem)}</SelectContent>
+                          </Select>
+                        </div>
                         {/* Versión print: solo texto */}
                         <div className="sdm-print-only">
-                          <div><span className="font-bold mr-1">AM</span>{day.refuerzos.am ? doctorName(day.refuerzos.am) : (day.refuerzos.am_suspended ? '— (suspendido)' : '—')}</div>
-                          <div><span className="font-bold mr-1">PM</span>{day.refuerzos.pm ? doctorName(day.refuerzos.pm) : (day.refuerzos.pm_suspended ? '— (suspendido)' : '—')}</div>
+                          <div><span className="font-bold mr-1">AM</span>{day.refuerzos.am ? doctorName(day.refuerzos.am) : '—'}</div>
+                          <div><span className="font-bold mr-1">PM</span>{day.refuerzos.pm ? doctorName(day.refuerzos.pm) : '—'}</div>
                         </div>
                       </>
                     );
@@ -1398,14 +1388,23 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                             <span className="text-slate-500">{day.policlinico.from}–{day.policlinico.to}</span>
                           </div>
                           <button
-                            onClick={() => updateReinforcement(day.date, 'am', '')}
+                            onClick={() => togglePoliDisabled(day.date, 'am', true)}
                             className="sdm-print-hide text-[10px] text-red-600 hover:bg-red-100 rounded px-1"
-                            title="Quitar policlínico AM (quita el refuerzo AM)"
+                            title="Quitar policlínico AM (el refuerzo AM se mantiene)"
                           >✕</button>
                         </div>
                       )
-                      : day.refuerzos?.am_suspended
-                        ? <span className="text-slate-400 italic">— (suspendido)</span>
+                      : poliDisabled?.[day.date]?.am
+                        ? (
+                          <div className="flex items-center gap-1">
+                            <span className="flex-1 text-slate-400 italic">Poli AM apagado</span>
+                            <button
+                              onClick={() => togglePoliDisabled(day.date, 'am', false)}
+                              className="sdm-print-hide text-[10px] text-emerald-700 hover:bg-emerald-100 rounded px-1"
+                              title="Reactivar policlínico AM"
+                            >↺</button>
+                          </div>
+                        )
                         : <span className="text-slate-400 italic">Sin refuerzo AM</span>}
                 </td>
                 <td className="px-2 py-2 text-[11px] space-y-0.5">
@@ -1444,10 +1443,20 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                         <span className="text-slate-500">{day.poli_8am.ref_pm.from}–{day.poli_8am.ref_pm.to}</span>
                       </div>
                       <button
-                        onClick={() => updateReinforcement(day.date, 'pm', '')}
+                        onClick={() => togglePoliDisabled(day.date, 'pm', true)}
                         className="sdm-print-hide text-[10px] text-red-600 hover:bg-red-100 rounded px-1"
-                        title="Quitar refuerzo PM"
+                        title="Quitar policlínico PM (el refuerzo PM se mantiene)"
                       >✕</button>
+                    </div>
+                  )}
+                  {!day.poli_8am.ref_pm && poliDisabled?.[day.date]?.pm && (
+                    <div className="flex items-center gap-1">
+                      <span className="flex-1 text-slate-400 italic">Poli PM apagado</span>
+                      <button
+                        onClick={() => togglePoliDisabled(day.date, 'pm', false)}
+                        className="sdm-print-hide text-[10px] text-emerald-700 hover:bg-emerald-100 rounded px-1"
+                        title="Reactivar policlínico PM"
+                      >↺</button>
                     </div>
                   )}
                   {!day.poli_8am.full_day && !day.poli_8am.ref_pm && !day.poli_8am.full_day_editable && <span className="text-slate-400 italic">–</span>}
