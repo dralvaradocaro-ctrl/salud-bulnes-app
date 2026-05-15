@@ -284,7 +284,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     setReinforcements(prev => ({ ...prev, [date]: { ...(prev[date] || {}), [slot]: doctorId || null } }));
 
     // Si el médico elegido tiene un bloque nominal reasignable ese día → reasignar al subrogante
-    if (!doctorId) return;
+    if (!doctorId || doctorId === '__suspended__') return;
     const day = agenda.find(d => d.date === date);
     if (!day) return;
     const blkIdx = day.bloqueos.findIndex(b => {
@@ -1158,24 +1158,45 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
                     );
                     return (
                       <>
-                        <div className="flex items-center gap-1 sdm-print-hide">
-                          <span className="text-[9px] font-bold text-slate-500 w-5">AM</span>
-                          <Select value={day.refuerzos.am || ''} onValueChange={v => updateReinforcement(day.date, 'am', v)}>
-                            <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-28"><SelectValue placeholder="—" /></SelectTrigger>
-                            <SelectContent>{eligibleAM.map(renderItem)}</SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-center gap-1 sdm-print-hide">
-                          <span className="text-[9px] font-bold text-slate-500 w-5">PM</span>
-                          <Select value={day.refuerzos.pm || ''} onValueChange={v => updateReinforcement(day.date, 'pm', v)}>
-                            <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-28"><SelectValue placeholder="—" /></SelectTrigger>
-                            <SelectContent>{eligiblePM.map(renderItem)}</SelectContent>
-                          </Select>
-                        </div>
+                        {['am', 'pm'].map(slot => {
+                          const id = day.refuerzos[slot];
+                          const suspended = day.refuerzos[`${slot}_suspended`];
+                          return (
+                            <div key={slot} className="flex items-center gap-1 sdm-print-hide">
+                              <span className="text-[9px] font-bold text-slate-500 w-5">{slot.toUpperCase()}</span>
+                              {suspended ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-200 text-slate-700 border border-slate-400 rounded px-1.5 py-0.5 w-28">
+                                  SUSPENDIDO
+                                </span>
+                              ) : (
+                                <Select value={id || ''} onValueChange={v => updateReinforcement(day.date, slot, v)}>
+                                  <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-28"><SelectValue placeholder="—" /></SelectTrigger>
+                                  <SelectContent>{(slot === 'am' ? eligibleAM : eligiblePM).map(renderItem)}</SelectContent>
+                                </Select>
+                              )}
+                              <button
+                                onClick={() => updateReinforcement(day.date, slot, suspended ? '' : '__suspended__')}
+                                className={`text-[9px] px-1 rounded ${suspended ? 'text-emerald-700 hover:bg-emerald-100' : 'text-amber-700 hover:bg-amber-100'}`}
+                                title={suspended ? 'Reactivar' : 'Suspender refuerzo (no se pedirá llenar)'}
+                              >
+                                {suspended ? '▶' : '⏸'}
+                              </button>
+                              {(id || suspended) && !suspended && (
+                                <button
+                                  onClick={() => updateReinforcement(day.date, slot, '')}
+                                  className="text-[9px] px-1 text-red-600 hover:bg-red-100 rounded"
+                                  title="Quitar refuerzo (queda como faltante)"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
                         {/* Versión print: solo texto */}
                         <div className="sdm-print-only">
-                          <div><span className="font-bold mr-1">AM</span>{day.refuerzos.am ? doctorName(day.refuerzos.am) : '—'}</div>
-                          <div><span className="font-bold mr-1">PM</span>{day.refuerzos.pm ? doctorName(day.refuerzos.pm) : '—'}</div>
+                          <div><span className="font-bold mr-1">AM</span>{day.refuerzos.am ? doctorName(day.refuerzos.am) : (day.refuerzos.am_suspended ? '— (suspendido)' : '—')}</div>
+                          <div><span className="font-bold mr-1">PM</span>{day.refuerzos.pm ? doctorName(day.refuerzos.pm) : (day.refuerzos.pm_suspended ? '— (suspendido)' : '—')}</div>
                         </div>
                       </>
                     );

@@ -376,11 +376,17 @@ export function generateAgenda({
 
     // Saneamiento de refuerzos guardados: si el médico quedó en turno/posturno/ausencia/poli-fullday,
     // se anula automáticamente (evita arrastrar refuerzos obsoletos tras cambios de rotación).
+    // Sentinel '__suspended__' = refuerzo intencionalmente vacío (la UI no debe
+    // pedir asignarlo ni el validator avisar que falta).
+    const SUSP = '__suspended__';
     const refuerzoInvalido = id =>
-      id && (turnoIds_inner.has(id) || postIds_inner.has(id) || ausIds_inner.has(id) || poliIds.has(id));
+      id && id !== SUSP && (turnoIds_inner.has(id) || postIds_inner.has(id) || ausIds_inner.has(id) || poliIds.has(id));
+    const normalizeRef = (v) => (v === SUSP ? SUSP : (refuerzoInvalido(v) ? null : (v || null)));
     const refuerzos = {
-      am: refuerzoInvalido(rawRefuerzos.am) ? null : (rawRefuerzos.am || null),
-      pm: refuerzoInvalido(rawRefuerzos.pm) ? null : (rawRefuerzos.pm || null),
+      am: normalizeRef(rawRefuerzos.am),
+      pm: normalizeRef(rawRefuerzos.pm),
+      am_suspended: rawRefuerzos.am === SUSP,
+      pm_suspended: rawRefuerzos.pm === SUSP,
     };
 
     const resolveDoctor = (blockId) => {
@@ -635,7 +641,7 @@ export function generateAgenda({
     const turnoIds = turnoIds_inner;
     const postIds = postIds_inner;
     const ausIds = ausIds_inner;
-    const refIds = new Set([refuerzos.am, refuerzos.pm].filter(Boolean));
+    const refIds = new Set([refuerzos.am, refuerzos.pm].filter(x => x && x !== SUSP));
     // Capacity por médico: busca el primer assignment con capacity para este doctor en cualquier bloqueo
     // visita-like (categoría visita o template id que incluya 'visita'). Como fallback, null.
     const capacityByDoctor = {};
@@ -744,15 +750,17 @@ export function generateAgenda({
       turnoNumber,
       turnos,
       refuerzos: {
-        am: refuerzos.am || null,
-        pm: refuerzos.pm || null,
+        am: refuerzos.am === SUSP ? null : (refuerzos.am || null),
+        pm: refuerzos.pm === SUSP ? null : (refuerzos.pm || null),
+        am_suspended: refuerzos.am === SUSP,
+        pm_suspended: refuerzos.pm === SUSP,
       },
       posturno,
       ausencias,
       bloqueos,
       visita: visitaFinal,
       // POLICLÍNICO column: refuerzo AM hace policlínico AM 8-10
-      policlinico: refuerzos.am
+      policlinico: refuerzos.am && refuerzos.am !== SUSP
         ? { doctor_id: refuerzos.am, from: '08:00', to: '10:00', label: 'Poli AM' }
         : null,
       // POLI 8 AM column: médico full-day (default BELTRÁN) + refuerzo PM
@@ -761,7 +769,7 @@ export function generateAgenda({
           ? { doctor_id: poliFullDay, from: '08:00', to: isViernes ? '16:00' : '17:00', label: 'Full día', isOverride: !!poliFullDayOverride, isDefault: poliFullDay === POLI_FULLDAY_DEFAULT }
           : null,
         full_day_editable: poliFullDayEditable,
-        ref_pm: refuerzos.pm
+        ref_pm: refuerzos.pm && refuerzos.pm !== SUSP
           ? { doctor_id: refuerzos.pm, from: refPmFrom, to: refPmTo, label: 'Ref PM' }
           : null,
       },
@@ -1209,8 +1217,8 @@ export function validateAgenda(agenda, doctors = [], blockTemplates = []) {
       }
     });
     // Refuerzos no definidos
-    if (!day.refuerzos.am) warnings.push({ date: day.date, label: day.label, kind: 'missing_am', message: `${day.label}: falta refuerzo AM` });
-    if (!day.refuerzos.pm) warnings.push({ date: day.date, label: day.label, kind: 'missing_pm', message: `${day.label}: falta refuerzo PM` });
+    if (!day.refuerzos.am && !day.refuerzos.am_suspended) warnings.push({ date: day.date, label: day.label, kind: 'missing_am', message: `${day.label}: falta refuerzo AM` });
+    if (!day.refuerzos.pm && !day.refuerzos.pm_suspended) warnings.push({ date: day.date, label: day.label, kind: 'missing_pm', message: `${day.label}: falta refuerzo PM` });
     // Superposición horaria — algún médico compartido en dos bloques cuya
     // franja se cruza. Con multi-doctor: revisamos por cada id del array.
     const slots = day.bloqueos.filter(b => !b.suspended && b.from && b.to && blockDoctorIds(b).length);
