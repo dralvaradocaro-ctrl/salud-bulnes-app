@@ -198,12 +198,24 @@ export default function CalculatorTemplate({ config }) {
             <div>
               <h4 className="font-bold text-slate-900 mb-2">Recomendaciones:</h4>
               <div className="space-y-1">
-                {result.recommendations.map((rec, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-sm text-slate-700">
-                    <span>•</span>
-                    <span>{rec}</span>
-                  </div>
-                ))}
+                {result.recommendations.map((rec, idx) => {
+                  // Separador de sección: "━━━ TÍTULO ━━━" → encabezado sin viñeta
+                  const isSection = typeof rec === 'string' && /^━+/.test(rec.trim());
+                  if (isSection) {
+                    const label = rec.replace(/━/g, '').trim();
+                    return (
+                      <div key={idx} className="pt-2 first:pt-0">
+                        <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={idx} className="flex items-start gap-2 text-sm text-slate-700">
+                      <span>•</span>
+                      <span>{rec}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
