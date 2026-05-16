@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import { ChevronLeft } from 'lucide-react';
@@ -13,15 +13,35 @@ import {
 } from '@/components/calculators/catalog';
 
 export default function AllCalculators() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const initialCalc = urlParams.get('calc');
-  
+  const [searchParams, setSearchParams] = useSearchParams();
+  const calcParam = searchParams.get('calc');
+
   const [activeCalculator, setActiveCalculator] = useState(
-    allCalculators.some(calc => calc.id === initialCalc) ? initialCalc : null
+    allCalculators.some(calc => calc.id === calcParam) ? calcParam : null
   );
 
-  const ActiveComponent = activeCalculator ? 
-    allCalculators.find(c => c.id === activeCalculator)?.component 
+  // Sincronizar con el parámetro ?calc de la URL — necesario porque el
+  // buscador puede navegar a AllCalculators?calc=X estando ya en esta página
+  // (el componente no se remonta, así que el useState inicial no se relee).
+  useEffect(() => {
+    if (calcParam && allCalculators.some(c => c.id === calcParam)) {
+      setActiveCalculator(calcParam);
+    } else if (!calcParam) {
+      setActiveCalculator(null);
+    }
+  }, [calcParam]);
+
+  // Cambiar de calculadora actualiza la URL (?calc); el useEffect sincroniza el estado.
+  const selectCalculator = (id) => {
+    setSearchParams(prev => {
+      const p = new URLSearchParams(prev);
+      if (id) p.set('calc', id); else p.delete('calc');
+      return p;
+    });
+  };
+
+  const ActiveComponent = activeCalculator ?
+    allCalculators.find(c => c.id === activeCalculator)?.component
     : null;
 
   useEffect(() => {
@@ -53,7 +73,7 @@ export default function AllCalculators() {
           <div>
             <Button 
               variant="ghost" 
-              onClick={() => setActiveCalculator(null)}
+              onClick={() => selectCalculator(null)}
               className="mb-4"
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
@@ -76,7 +96,7 @@ export default function AllCalculators() {
                   .map((calc) => (
                     <button
                       key={calc.id}
-                      onClick={() => setActiveCalculator(calc.id)}
+                      onClick={() => selectCalculator(calc.id)}
                       className="p-4 bg-white rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all text-left"
                     >
                       <calc.icon className="h-5 w-5 text-blue-600 mb-2" />
@@ -110,7 +130,7 @@ export default function AllCalculators() {
                     {calcs.map((calc) => (
                       <button
                         key={calc.id}
-                        onClick={() => setActiveCalculator(calc.id)}
+                        onClick={() => selectCalculator(calc.id)}
                         className="group p-6 bg-white rounded-2xl border border-slate-100 hover:border-blue-300 hover:shadow-xl transition-all text-left"
                       >
                         <div className={`p-3 rounded-xl bg-gradient-to-br ${colorClass} w-fit mb-3`}>
