@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import CalculatorWrapper from './CalculatorWrapper';
 import CalculatorReferences from './CalculatorReferences';
 import { Input } from '@/components/ui/input';
@@ -199,10 +200,34 @@ export default function CalculatorTemplate({ config }) {
               <h4 className="font-bold text-slate-900 mb-2">Recomendaciones:</h4>
               <div className="space-y-1">
                 {result.recommendations.map((rec, idx) => {
+                  // Recomendación con link a otra herramienta: { text, link }
+                  if (rec && typeof rec === 'object' && rec.link) {
+                    return (
+                      <div key={idx} className="my-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                        <Link
+                          to={rec.link}
+                          className="text-sm font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                        >
+                          {rec.text} →
+                        </Link>
+                      </div>
+                    );
+                  }
                   const text = typeof rec === 'string' ? rec : String(rec ?? '');
-                  // Separador de sección: "━━━ TÍTULO ━━━" → encabezado con acento
+                  // Separador de sección: "━━━ TÍTULO ━━━" → encabezado con acento.
+                  // Las secciones de POSOLOGÍA se destacan con barra ámbar.
                   if (/^━+/.test(text.trim())) {
                     const label = text.replace(/━/g, '').trim();
+                    const isPosologia = /POSOLOG/i.test(label);
+                    if (isPosologia) {
+                      return (
+                        <div key={idx} className="pt-3 first:pt-0">
+                          <div className="rounded-md bg-amber-100 border-l-4 border-amber-500 px-2.5 py-1.5">
+                            <span className="text-[11px] font-extrabold uppercase tracking-wide text-amber-900">{label}</span>
+                          </div>
+                        </div>
+                      );
+                    }
                     return (
                       <div key={idx} className="pt-3 first:pt-0 flex items-center gap-2">
                         <span className="h-3 w-1 rounded bg-slate-400" />
@@ -210,12 +235,11 @@ export default function CalculatorTemplate({ config }) {
                       </div>
                     );
                   }
-                  // Línea destacada: comienza con "★" → tarjeta resaltada (arsenal local, etc.)
-                  if (/^\s*★/.test(text)) {
-                    const clean = text.replace(/^\s*★\s*/, '');
+                  // Línea destacada: comienza con "»" → tarjeta resaltada (arsenal local, etc.)
+                  if (/^\s*»/.test(text)) {
+                    const clean = text.replace(/^\s*»\s*/, '');
                     return (
-                      <div key={idx} className="my-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 flex items-start gap-2">
-                        <span className="text-amber-500 mt-0.5">★</span>
+                      <div key={idx} className="my-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                         <span className="font-medium">{clean}</span>
                       </div>
                     );

@@ -1,6 +1,7 @@
 import { Pill } from 'lucide-react';
 
 import CalculatorTemplate from '@/components/calculator/CalculatorTemplate';
+import { createPageUrl } from '@/utils';
 
 /**
  * Función Discriminante de Maddrey (mDF) para hepatitis alcohólica.
@@ -111,14 +112,14 @@ const maddreyConfig = {
     // mDF >= 32 → grave
     const posologiaCorticoide = [
       '━━━ POSOLOGÍA — CORTICOIDE (primera línea si NO hay contraindicación) ━━━',
-      '★ Arsenal local HCSF Bulnes: PREDNISONA 40 mg/día VO × 28 días, luego suspender o descender en 2-3 semanas. Es el corticoide disponible localmente y la opción práctica de elección.',
+      '» Arsenal local HCSF Bulnes: PREDNISONA 40 mg/día VO × 28 días, luego suspender o descender en 2-3 semanas. Es el corticoide disponible localmente y la opción práctica de elección.',
       'Equivalente internacional: prednisolona 40 mg/día VO (misma dosis). En hepatitis alcohólica el hígado conserva la capacidad de convertir prednisona en prednisolona, por lo que prednisona es válida.',
       'Si no tolera vía oral: metilprednisolona 32 mg/día EV.',
       'Reevaluar respuesta al DÍA 7 con el score de Lille: Lille ≥ 0,45 = no respondedor → suspender corticoide (no prolongar exposición); Lille < 0,45 = respondedor → completar 28 días.',
     ];
     const posologiaPentoxifilina = [
       '━━━ POSOLOGÍA — PENTOXIFILINA (alternativa si corticoide contraindicado) ━━━',
-      '★ Arsenal local HCSF Bulnes: PENTOXIFILINA 400 mg VO cada 8 h × 28 días.',
+      '» Arsenal local HCSF Bulnes: PENTOXIFILINA 400 mg VO cada 8 h × 28 días.',
       'Indicada cuando hay contraindicación a corticoides (infección activa, HDA, sepsis).',
       'Su mayor beneficio descrito es la reducción del síndrome hepatorrenal; el beneficio en mortalidad global es menor que el de los corticoides.',
     ];
@@ -141,6 +142,9 @@ const maddreyConfig = {
         ...dxBeneficio,
         ...(contraindicado ? posologiaPentoxifilina : posologiaCorticoide),
         ...soporte,
+        '━━━ REEVALUACIÓN AL DÍA 7 ━━━',
+        'Si inició corticoide, calcular el score de Lille al día 7 para decidir si continuar o suspender.',
+        { text: 'Abrir calculadora de score de Lille', link: createPageUrl('AllCalculators?calc=lille') },
       ],
     };
   },

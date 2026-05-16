@@ -14,6 +14,7 @@ import HASBLEDCalculator from '@/components/calculators/HASBLEDCalculator';
 import CHA2DS2VAScCalculator from '@/components/calculators/CHA2DS2VAScCalculator';
 import PediatricDoseCalculator from '@/components/calculators/PediatricDoseCalculator';
 import MaddreyCalculator from '@/components/calculators/MaddreyCalculator';
+import LilleCalculator from '@/components/calculators/LilleCalculator';
 
 export const calculatorsByCategory = {
   'Urgencias': [
@@ -38,6 +39,7 @@ export const calculatorsByCategory = {
   'Gastroenterología': [
     { id: 'meld', name: 'MELD 3.0', component: MELDCalculator, icon: Pill },
     { id: 'maddrey', name: 'Maddrey (mDF) — Hepatitis Alcohólica', component: MaddreyCalculator, icon: Pill },
+    { id: 'lille', name: 'Lille — Respuesta a Corticoides (día 7)', component: LilleCalculator, icon: Pill },
     { id: 'child-pugh', name: 'Child-Pugh', component: ChildPughCalculator, icon: Pill },
     { id: 'ascitic-fluid', name: 'Interpretación de Líquido Ascítico', component: AsciticFluidCalculator, icon: Pill },
     { id: 'r-factor', name: 'Factor R', component: RFactorCalculator, icon: Pill }
