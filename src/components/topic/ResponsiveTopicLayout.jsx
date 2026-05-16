@@ -749,7 +749,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
               </div>
             )}
             <div className="p-4">
-              <MermaidDiagram chart={block.content} />
+              <MermaidDiagram chart={block.content || block.diagram || block.chart || ''} />
             </div>
           </div>
         );
