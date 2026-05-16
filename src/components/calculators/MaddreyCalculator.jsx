@@ -111,15 +111,15 @@ const maddreyConfig = {
     // mDF >= 32 → grave
     const posologiaCorticoide = [
       '━━━ POSOLOGÍA — CORTICOIDE (primera línea si NO hay contraindicación) ━━━',
-      'Prednisolona 40 mg/día VO por 28 días, luego suspender o descender en 2-3 semanas.',
-      'Arsenal local: si no hay prednisolona, usar PREDNISONA 40 mg/día VO (equivalencia práctica; el hígado conserva capacidad de convertirla). Es el corticoide disponible en arsenal del HCSF Bulnes.',
-      'Alternativa parenteral: metilprednisolona 32 mg/día EV si no tolera vía oral.',
+      '★ Arsenal local HCSF Bulnes: PREDNISONA 40 mg/día VO × 28 días, luego suspender o descender en 2-3 semanas. Es el corticoide disponible localmente y la opción práctica de elección.',
+      'Equivalente internacional: prednisolona 40 mg/día VO (misma dosis). En hepatitis alcohólica el hígado conserva la capacidad de convertir prednisona en prednisolona, por lo que prednisona es válida.',
+      'Si no tolera vía oral: metilprednisolona 32 mg/día EV.',
       'Reevaluar respuesta al DÍA 7 con el score de Lille: Lille ≥ 0,45 = no respondedor → suspender corticoide (no prolongar exposición); Lille < 0,45 = respondedor → completar 28 días.',
     ];
     const posologiaPentoxifilina = [
       '━━━ POSOLOGÍA — PENTOXIFILINA (alternativa si corticoide contraindicado) ━━━',
-      'Pentoxifilina 400 mg VO cada 8 h por 28 días.',
-      'Indicada cuando hay contraindicación a corticoides (infección activa, HDA, sepsis). Disponible en arsenal local.',
+      '★ Arsenal local HCSF Bulnes: PENTOXIFILINA 400 mg VO cada 8 h × 28 días.',
+      'Indicada cuando hay contraindicación a corticoides (infección activa, HDA, sepsis).',
       'Su mayor beneficio descrito es la reducción del síndrome hepatorrenal; el beneficio en mortalidad global es menor que el de los corticoides.',
     ];
     const soporte = [

@@ -199,19 +199,30 @@ export default function CalculatorTemplate({ config }) {
               <h4 className="font-bold text-slate-900 mb-2">Recomendaciones:</h4>
               <div className="space-y-1">
                 {result.recommendations.map((rec, idx) => {
-                  // Separador de sección: "━━━ TÍTULO ━━━" → encabezado sin viñeta
-                  const isSection = typeof rec === 'string' && /^━+/.test(rec.trim());
-                  if (isSection) {
-                    const label = rec.replace(/━/g, '').trim();
+                  const text = typeof rec === 'string' ? rec : String(rec ?? '');
+                  // Separador de sección: "━━━ TÍTULO ━━━" → encabezado con acento
+                  if (/^━+/.test(text.trim())) {
+                    const label = text.replace(/━/g, '').trim();
                     return (
-                      <div key={idx} className="pt-2 first:pt-0">
-                        <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</span>
+                      <div key={idx} className="pt-3 first:pt-0 flex items-center gap-2">
+                        <span className="h-3 w-1 rounded bg-slate-400" />
+                        <span className="text-[11px] font-bold uppercase tracking-wide text-slate-600">{label}</span>
+                      </div>
+                    );
+                  }
+                  // Línea destacada: comienza con "★" → tarjeta resaltada (arsenal local, etc.)
+                  if (/^\s*★/.test(text)) {
+                    const clean = text.replace(/^\s*★\s*/, '');
+                    return (
+                      <div key={idx} className="my-1 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 flex items-start gap-2">
+                        <span className="text-amber-500 mt-0.5">★</span>
+                        <span className="font-medium">{clean}</span>
                       </div>
                     );
                   }
                   return (
                     <div key={idx} className="flex items-start gap-2 text-sm text-slate-700">
-                      <span>•</span>
+                      <span className="text-slate-400">•</span>
                       <span>{rec}</span>
                     </div>
                   );
