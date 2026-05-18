@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { 
-  Copy, 
-  Check, 
-  Mail, 
+import {
+  Copy,
+  Check,
+  Mail,
   FileText,
-  Send
+  Send,
+  Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ImageProtocolForm from './ImageProtocolForm';
@@ -44,6 +45,35 @@ export default function RequestForm({ template, onClose }) {
     setCopied(true);
     toast.success('Documento copiado al portapapeles');
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Descarga un .doc (HTML-Word) que Word y Google Docs abren nativamente,
+  // listo para copiar/pegar manteniendo el formato de párrafos.
+  const downloadWord = () => {
+    const escapeHtml = (s) => String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const bodyHtml = generated.split('\n')
+      .map(line => line.trim() === ''
+        ? '<p style="margin:0;">&nbsp;</p>'
+        : `<p style="margin:0;">${escapeHtml(line)}</p>`)
+      .join('');
+    const html = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>${escapeHtml(template.name)}</title></head>
+<body style="font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #000;">
+${bodyHtml}
+</body></html>`;
+    const blob = new Blob(['﻿', html], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeName = (template.name || 'plantilla').replace(/[^\w\sáéíóúñ-]/gi, '').trim() || 'plantilla';
+    a.download = `${safeName}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Word descargado — listo para subir a Google Docs');
   };
 
   return (
@@ -135,11 +165,11 @@ export default function RequestForm({ template, onClose }) {
                 </div>
               )}
 
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <Button
                   onClick={copyToClipboard}
                   variant="outline"
-                  className="flex-1 h-12"
+                  className="flex-1 min-w-[120px] h-12"
                 >
                   {copied ? (
                     <>
@@ -154,13 +184,24 @@ export default function RequestForm({ template, onClose }) {
                   )}
                 </Button>
                 <Button
+                  onClick={downloadWord}
+                  variant="outline"
+                  className="flex-1 min-w-[140px] h-12 border-blue-300 text-blue-700 hover:bg-blue-50"
+                >
+                  <Download className="mr-2 h-5 w-5" />
+                  Descargar Word
+                </Button>
+                <Button
                   onClick={() => setGenerated('')}
                   variant="outline"
-                  className="flex-1 h-12"
+                  className="flex-1 min-w-[120px] h-12"
                 >
                   Editar datos
                 </Button>
               </div>
+              <p className="text-[11px] text-slate-500 text-center">
+                El archivo .doc se abre en Word o se sube directo a Google Docs para copiar y pegar.
+              </p>
             </div>
           )}
         </div>
