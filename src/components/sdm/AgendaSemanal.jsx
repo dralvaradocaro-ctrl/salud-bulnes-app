@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, RefreshCw, Save, Printer, Plus, Trash2, Edit3, Sparkles, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RefreshCw, Save, Printer, Plus, Trash2, Edit3, Sparkles, Download, FileText } from 'lucide-react';
 import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, dayKeyForDate, sortReinforcements, optimizeForTitulars, balanceLoad, HIERARCHICAL_BLOCK_IDS, findReplacementForBlock, blockDoctorIds, blockHasDoctor } from './lib/generateAgenda';
 import AIFixModal from './AIFixModal';
 import { Shuffle, Wand2, Scale } from 'lucide-react';
@@ -216,10 +216,13 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
     setMonday(getMondayOfWeek(new Date(dateStr + 'T12:00:00')));
   }
 
-  // Exporta la agenda semanal como .doc (HTML-Word). Se abre en Word y se
-  // sube directo a Google Docs. Mantiene el header verde+blanco y los
-  // colores de columna (refuerzos naranjo, posturno celeste, ausencias rojo).
-  function downloadAgendaWord() {
+  // Construye el HTML de la tabla de agenda (con colores y estructura) que se
+  // usa tanto para descargar .doc como para copiar al portapapeles y pegar
+  // en Google Docs. Devuelve { table, doc, plain } —
+  //   table: solo la tabla (ideal para Clipboard API → pegar en Doc existente)
+  //   doc:   HTML completo con shell (para .doc / Word)
+  //   plain: versión texto plano como fallback del portapapeles
+  function buildAgendaHtml() {
     const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const ddmm = (iso) => iso ? `${iso.slice(8,10)}-${iso.slice(5,7)}-${iso.slice(0,4)}` : '';
     const cellStyle = 'border:1px solid #cbd5e1; padding:4px 6px; vertical-align:top; font-size:9pt;';
@@ -228,7 +231,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       posturno:  'color:#0284c7; font-weight:600;',
       ausencias: 'color:#b91c1c; font-weight:600;',
     };
-
+    const headStyle = 'background:#047857; color:#ffffff; padding:6px 6px; border:1px solid #065f46; font-size:9pt; text-align:left;';
     const rows = (agenda || []).map(d => {
       const turnos = (d.turnos || [])
         .map(t => `${esc(doctorName(t.doctor_id))}${t.replaced ? ` (←${esc(doctorName(t.original_doctor_id))})` : ''}`)
@@ -269,7 +272,6 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
         : d.policlinico
           ? `${esc(doctorName(d.policlinico.doctor_id))} <span style="color:#475569;">${d.policlinico.from}–${d.policlinico.to}</span>`
           : '—';
-
       return `<tr>
         <td style="${cellStyle} font-weight:bold; background:#f8fafc; width:78px;">${esc(d.label)}<br/><span style="font-weight:normal; color:#475569; font-size:8pt;">${ddmm(d.date)}</span></td>
         <td style="${cellStyle}">${turnos}</td>
@@ -282,18 +284,9 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
         <td style="${cellStyle}">${policlinico}</td>
       </tr>`;
     }).join('');
-
-    const headStyle = 'background:#047857; color:#ffffff; padding:6px 6px; border:1px solid #065f46; font-size:9pt; text-align:left;';
-    const html = `<!DOCTYPE html>
-<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-<head><meta charset="utf-8">
-<title>Agenda Semanal ${weekDays[0]?.date || ''}</title>
-<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom></w:WordDocument></xml><![endif]-->
-<style>@page { size: A4 landscape; margin: 1.2cm; } table { border-collapse: collapse; width: 100%; }</style>
-</head>
-<body style="font-family: Calibri, Arial, sans-serif; font-size: 10pt; color:#000;">
-<h2 style="text-align:center; margin:0 0 8px 0;">Agenda Semanal · ${ddmm(weekDays[0]?.date)} al ${ddmm(weekDays[4]?.date)}</h2>
-<table>
+    const titulo = `Agenda Semanal · ${ddmm(weekDays[0]?.date)} al ${ddmm(weekDays[4]?.date)}`;
+    const table = `<h2 style="text-align:center; margin:0 0 8px 0; font-family: Calibri, Arial, sans-serif;">${titulo}</h2>
+<table style="border-collapse: collapse; width: 100%; font-family: Calibri, Arial, sans-serif;">
   <thead>
     <tr>
       <th style="${headStyle}">DÍA</th>
@@ -307,13 +300,59 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       <th style="${headStyle}">POLICLÍNICO</th>
     </tr>
   </thead>
-  <tbody>
-    ${rows}
-  </tbody>
-</table>
+  <tbody>${rows}</tbody>
+</table>`;
+    const doc = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8">
+<title>${titulo}</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>@page { size: A4 landscape; margin: 1.2cm; } table { border-collapse: collapse; width: 100%; }</style>
+</head>
+<body style="font-family: Calibri, Arial, sans-serif; font-size: 10pt; color:#000;">
+${table}
 </body></html>`;
+    // Plain text fallback simple para clipboard
+    const plain = (agenda || []).map(d => {
+      const turnos = (d.turnos || []).map(t => doctorName(t.doctor_id)).join(', ');
+      const refuerzos = `AM ${d.refuerzos?.am ? doctorName(d.refuerzos.am) : '—'} | PM ${d.refuerzos?.pm ? doctorName(d.refuerzos.pm) : '—'}`;
+      const ausencias = (d.ausencias || []).map(a => `${doctorName(a.doctor_id)} (${a.type})`).join(', ');
+      return `${d.label} ${ddmm(d.date)}\n  Turnos: ${turnos}\n  Refuerzos: ${refuerzos}\n  Ausencias: ${ausencias || '—'}`;
+    }).join('\n\n');
+    return { table, doc, plain };
+  }
 
-    const blob = new Blob(['﻿', html], { type: 'application/msword' });
+  // Copia la tabla de la agenda al portapapeles como HTML (text/html). El
+  // usuario abre un Google Doc en blanco y con Cmd/Ctrl+V la tabla queda
+  // pegada con colores, header verde, formato y todo. Sin OAuth, sin setup.
+  async function copyAgendaForGoogleDocs() {
+    try {
+      const { table, plain } = buildAgendaHtml();
+      // Envolvemos la tabla en un body básico para que el target reciba HTML válido.
+      const htmlBlob = new Blob([`<meta charset="utf-8">${table}`], { type: 'text/html' });
+      const plainBlob = new Blob([plain], { type: 'text/plain' });
+      if (navigator.clipboard && window.ClipboardItem) {
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html': htmlBlob,
+          'text/plain': plainBlob,
+        })]);
+      } else {
+        // Fallback antiguo: copiamos solo texto plano
+        await navigator.clipboard.writeText(plain);
+      }
+      toast.success('Copiado. Abrí un Google Doc y pegá con Cmd/Ctrl+V.', { duration: 4000 });
+    } catch (e) {
+      console.error('[copyAgendaForGoogleDocs]', e);
+      toast.error('No se pudo copiar al portapapeles: ' + (e?.message || e));
+    }
+  }
+
+  // Exporta la agenda semanal como .doc (HTML-Word). Se abre en Word y se
+  // sube directo a Google Docs. Mantiene el header verde+blanco y los
+  // colores de columna (refuerzos naranjo, posturno celeste, ausencias rojo).
+  function downloadAgendaWord() {
+    const { doc } = buildAgendaHtml();
+    const blob = new Blob(['﻿', doc], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -921,6 +960,17 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
         </Button>
         <Button variant="outline" onClick={() => window.print()} className="gap-1.5"><Printer className="h-4 w-4" /> Imprimir</Button>
         <Button variant="outline" onClick={downloadAgendaWord} className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50" title="Descarga la agenda como .doc — abre en Word o se sube directo a Google Docs"><Download className="h-4 w-4" /> Descargar Word</Button>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            await copyAgendaForGoogleDocs();
+            window.open('https://docs.google.com/document/u/0/create', '_blank', 'noopener');
+          }}
+          className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+          title="Copia la tabla al portapapeles y abre un Google Doc nuevo. Pegá con Cmd/Ctrl+V."
+        >
+          <FileText className="h-4 w-4" /> Copiar y abrir Google Docs
+        </Button>
       </div>
 
 	      {/* Banners de validación — clickeables: abren el editor del día problemático */}
