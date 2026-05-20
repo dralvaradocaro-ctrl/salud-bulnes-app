@@ -258,15 +258,6 @@ function PrintView({ f }) {
       <TextBox label="Medicamentos indicados al usuario(a)" value={f.medicamentos} lines={3} />
       <TextBox label="Descripción del estado funcional del usuario(a)" value={f.estadoFuncional} lines={3} />
 
-      {/* ── Salto de página antes de "Atenciones" ── */}
-      <div style={{ pageBreakBefore: 'always', breakBefore: 'page' }} />
-      <img
-        className="ib-print-header-logo"
-        src={logoSrc}
-        alt=""
-        style={logoStyle}
-      />
-
       <TextBox
         label="Atenciones o intervenciones recibidas en el sistema de salud y/o educativo (tratamiento, programa de salud, rehabilitación, otro)"
         value={f.atenciones} lines={3}
