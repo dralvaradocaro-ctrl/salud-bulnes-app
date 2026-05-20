@@ -3,7 +3,7 @@
  * Toma catálogos + ausencias + bloqueos puntuales y devuelve la grilla 5×8.
  */
 import { BLOCK_SPECS, isDailyBlock } from './blockSpec';
-import { PROTECTED_PRIORITY_BLOCK_IDS, buildEffectiveProgramAssignments } from './programPriorityDefaults';
+import { PROTECTED_PRIORITY_BLOCK_IDS, STRICT_TITULAR_BLOCKS, FLEXIBLE_BLOCKS, buildEffectiveProgramAssignments } from './programPriorityDefaults';
 
 const DAYS = ['lun', 'mar', 'mie', 'jue', 'vie'];
 const DAY_LABELS = { lun: 'LUNES', mar: 'MARTES', mie: 'MIÉRCOLES', jue: 'JUEVES', vie: 'VIERNES' };
@@ -394,13 +394,27 @@ export function generateAgenda({
       pm: refuerzoInvalido(rawRefuerzos.pm) ? null : (rawRefuerzos.pm || null),
     };
 
-    const resolveDoctor = (blockId) => {
+    const resolveDoctor = (blockId, slotFrom = null, slotTo = null) => {
       const t = titularByBlock[blockId];
       const subs = subrogantesByBlock[blockId] || [];
       const isAvailable = id =>
         id && !ausIds_inner.has(id) && !turnoIds_inner.has(id) && !postIds_inner.has(id)
         && !urgentologistIds.has(id) && !poliIds.has(id);
       const currentDayLoad = id => bloqueos.filter(b => !b.suspended && blockHasDoctor(b, id)).length;
+      // Para bloques flexibles (ECICEP, Gestión TM, Telesalud): rechazar
+      // candidato si ya tiene otro bloqueo que solapa este horario. Para
+      // STRICT_TITULAR_BLOCKS y PROTECTED se mantiene la prioridad y se
+      // tolera la superposición (el sistema reporta el conflicto y el
+      // usuario decide). Para el resto, también se intenta evitar overlap.
+      const overlapsExistingBlock = (id) => {
+        if (!useProspectiveRules || !slotFrom || !slotTo || !id) return false;
+        if (STRICT_TITULAR_BLOCKS.has(blockId)) return false; // estricto: no cede
+        return bloqueos.some(b =>
+          !b.suspended && b.from && b.to && blockHasDoctor(b, id) &&
+          b.from < slotTo && b.to > slotFrom
+        );
+      };
+      const isSlotFree = id => isAvailable(id) && !overlapsExistingBlock(id);
       const register = (id, auto = false) => {
         if (!id) return { id: null, auto };
         weeklyBlockDoctorCount[blockId] = weeklyBlockDoctorCount[blockId] || {};
@@ -409,35 +423,52 @@ export function generateAgenda({
         return { id, auto };
       };
 
-      // 0) TITULAR primero (regla prospectiva ≥ 2026-05-25): si el médico
-      //    titular está disponible, se le asigna el bloqueo sin importar si
-      //    ya hizo ese mismo bloqueo en la semana o si tiene más carga.
-      //    Especialmente útil para gestion_iaas / gestion_proa (Sbarbaro
-      //    titular). En semanas anteriores no se aplica este atajo para no
-      //    alterar agendas históricas.
-      if (useProspectiveRules && !PROTECTED_PRIORITY_BLOCK_IDS.has(blockId) && isAvailable(t)) {
+      // 0) TITULAR primero (regla prospectiva ≥ 2026-05-25): solo para
+      //    bloques en STRICT_TITULAR_BLOCKS (paliativos, gestion_ges,
+      //    regulacion_ic, dependencia_severa). En esos casos el titular
+      //    tiene prioridad absoluta aunque ya haya hecho el bloque en la
+      //    semana o tenga más carga.
+      if (useProspectiveRules && STRICT_TITULAR_BLOCKS.has(blockId) && isAvailable(t)) {
         return register(t, false);
       }
 
+      // 1) Priority pool con preferencia por candidato SIN superposición.
       if (!PROTECTED_PRIORITY_BLOCK_IDS.has(blockId)) {
         const priorityAvail = (priorityPeopleByBlock[blockId] || []).filter(p => isAvailable(p.doctor_id));
         if (priorityAvail.length > 0) {
           const countForBlock = weeklyBlockDoctorCount[blockId] || {};
-          const untouched = priorityAvail.filter(p => !countForBlock[p.doctor_id]);
-          const pool = untouched.length > 0 ? untouched : priorityAvail;
-          pool.sort((a, b) =>
+          const sortFn = (a, b) =>
             (a.priority || 1) - (b.priority || 1) ||
             (countForBlock[a.doctor_id] || 0) - (countForBlock[b.doctor_id] || 0) ||
             currentDayLoad(a.doctor_id) - currentDayLoad(b.doctor_id) ||
-            (weeklyDoctorLoad[a.doctor_id] || 0) - (weeklyDoctorLoad[b.doctor_id] || 0)
-          );
-          return register(pool[0].doctor_id, false);
+            (weeklyDoctorLoad[a.doctor_id] || 0) - (weeklyDoctorLoad[b.doctor_id] || 0);
+          // 1a) Primero intentar dentro de los "untouched" sin superposición.
+          const untouchedFree = priorityAvail.filter(p => !countForBlock[p.doctor_id] && !overlapsExistingBlock(p.doctor_id));
+          if (untouchedFree.length > 0) {
+            untouchedFree.sort(sortFn);
+            return register(untouchedFree[0].doctor_id, false);
+          }
+          // 1b) Si no, cualquier untouched (acepta overlap si no queda otra).
+          const untouched = priorityAvail.filter(p => !countForBlock[p.doctor_id]);
+          if (untouched.length > 0) {
+            untouched.sort(sortFn);
+            return register(untouched[0].doctor_id, false);
+          }
+          // 1c) Reintentar con todo el pool sin superposición.
+          const allFree = priorityAvail.filter(p => !overlapsExistingBlock(p.doctor_id));
+          if (allFree.length > 0) {
+            allFree.sort(sortFn);
+            return register(allFree[0].doctor_id, false);
+          }
+          // 1d) Último recurso: todo el pool aunque haya overlap.
+          priorityAvail.sort(sortFn);
+          return register(priorityAvail[0].doctor_id, false);
         }
       }
 
-      // 1a) Titular disponible (en blocks protegidos como SDM/TACO/SELECTOR)
+      // 2) Titular disponible (en blocks protegidos como SDM/TACO/SELECTOR)
       if (isAvailable(t)) return register(t, false);
-      // 1b) Subrogantes disponibles: si todos tienen la misma priority, desempatar por menor carga del día.
+      // 3) Subrogantes disponibles: si todos tienen la misma priority, desempatar por menor carga del día.
       //     Si tienen priority distinta, respetar el orden.
       const subsAvail = subs.filter(s => isAvailable(s.doctor_id));
       if (subsAvail.length > 0) {
@@ -445,6 +476,9 @@ export function generateAgenda({
         if (allSamePriority) {
           subsAvail.sort((a, b) => currentDayLoad(a.doctor_id) - currentDayLoad(b.doctor_id));
         }
+        // Preferir subrogantes sin superposición horaria
+        const subsFree = subsAvail.filter(s => !overlapsExistingBlock(s.doctor_id));
+        if (subsFree.length > 0) return register(subsFree[0].doctor_id, false);
         return register(subsAvail[0].doctor_id, false);
       }
       // 2) Fallback genérico: cualquier médico activo no-urgenciólogo, libre del día y no en poli full-day.
@@ -469,7 +503,7 @@ export function generateAgenda({
       const slots = bt.weekday_pattern?.[dayKey];
       if (slots && slots.length) {
         slots.forEach(slot => {
-          const res = resolveDoctor(bt.id);
+          const res = resolveDoctor(bt.id, slot.from, slot.to);
           bloqueos.push(normalizeBlock({
             block_id: bt.id,
             name: bt.name,
@@ -485,7 +519,7 @@ export function generateAgenda({
       }
       // mensual
       if (bt.is_monthly && isMonthlyMatch(d.date, bt.monthly_rule)) {
-        const res = resolveDoctor(bt.id);
+        const res = resolveDoctor(bt.id, bt.monthly_rule?.from || null, bt.monthly_rule?.to || null);
         bloqueos.push(normalizeBlock({
           block_id: bt.id,
           name: bt.name,

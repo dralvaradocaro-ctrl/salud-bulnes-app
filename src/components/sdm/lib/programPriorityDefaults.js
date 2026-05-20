@@ -4,17 +4,50 @@ export const PROTECTED_PRIORITY_BLOCK_IDS = new Set([
   'selector_demanda',
 ]);
 
+// Bloqueos donde el TITULAR tiene prioridad absoluta y se respeta estrictamente
+// la priority (paliativos a Santibañez, gestion_ges a R. Aguilera, regulacion
+// de IC a Enriquez/Sandoval/Sbarbaro/Correa). Estos no ceden ante overlap.
+export const STRICT_TITULAR_BLOCKS = new Set([
+  'cp_y_ad',
+  'dependencia_severa',
+  'gestion_dep_severa',
+  'gestion_ges',
+  'regulacion_ic',
+]);
+
+// Bloqueos flexibles: si el candidato preferido ya está en otra cosa al mismo
+// horario, se prueba el siguiente del pool. La motivación: ECICEP, Gestión TM
+// y Telesalud pueden moverse y los hace cualquiera del pool capacitado.
+export const FLEXIBLE_BLOCKS = new Set([
+  'ecicep',
+  'gestion_tm',
+  'telesalud',
+]);
+
 export const DEFAULT_PROGRAM_PRIORITIES = {
   regulacion_ic: [
     { doctor_id: 'enriquez', priority: 1 },
     { doctor_id: 'sandoval', priority: 1 },
     { doctor_id: 'sbarbaro', priority: 1 },
+    { doctor_id: 'correa', priority: 2 },
   ],
   cp_y_ad: [
     { doctor_id: 'santibanez', priority: 1 },
   ],
+  // ECICEP es un bloque flexible: cualquiera del pool puede hacerlo.
+  // Ruf queda como titular pero se cede ante superposición horaria.
   ecicep: [
     { doctor_id: 'ruf', priority: 1 },
+    { doctor_id: 'sandoval', priority: 2 },
+    { doctor_id: 'alvarado', priority: 2 },
+    { doctor_id: 'v_aguilera', priority: 2 },
+    { doctor_id: 'sbarbaro', priority: 2 },
+    { doctor_id: 'correa', priority: 2 },
+    { doctor_id: 'gil', priority: 2 },
+    { doctor_id: 'r_aguilera', priority: 2 },
+    { doctor_id: 'san_martin', priority: 2 },
+    { doctor_id: 'santibanez', priority: 2 },
+    { doctor_id: 'cordero', priority: 2 },
   ],
   gestion_ges: [
     { doctor_id: 'r_aguilera', priority: 1 },
