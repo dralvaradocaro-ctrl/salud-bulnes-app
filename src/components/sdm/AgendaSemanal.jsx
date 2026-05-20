@@ -490,65 +490,38 @@ ${table}
     setBloqueosOverrides({});
   }
 
-  async function sortearRefuerzosMes() {
-    if (!confirm('Sorteará refuerzos AM/PM para las próximas 4 semanas, balanceando carga (especialmente viernes PM). ¿Continuar?')) return;
-    // Generar 4 semanas a partir del lunes actual
-    const semanas = [];
-    for (let i = 0; i < 4; i++) {
-      const m = new Date(monday);
-      m.setDate(monday.getDate() + i * 7);
-      const ws = fmtDate(m);
-      const we = fmtDate(new Date(m.getTime() + 4 * 86400000));
-      const [{ data: cal }, { data: abs }, { data: existAg }] = await Promise.all([
-        supabase.from('sdm_shift_calendar').select('*').gte('date', fmtDate(new Date(m.getTime() - 86400000))).lte('date', we),
-        supabase.from('sdm_absences').select('*').gte('date', ws).lte('date', we),
-        supabase.from('sdm_weekly_agendas').select('data').eq('week_start', ws).maybeSingle(),
-      ]);
-      const existingReinf = existAg?.data?.reinforcements || {};
-      const generated = generateAgenda({
-        weekStart: m, doctors, rotation,
-        shiftCalendar: cal || [],
-        blockTemplates, programAssignments,
-        absences: abs || [],
-        oneoffBlocks: [],
-        manualReinforcements: existingReinf,
-      });
-      semanas.push({
-        weekStart: ws,
-        days: generated,
-        existingReinforcements: existingReinf,
-      });
+  // Sortea refuerzos AM/PM SOLO para la semana actual, usando como historial
+  // de carga acumulada todas las agendas guardadas desde el 1 de enero del
+  // año en curso. Sobrescribe los refuerzos actuales de la semana (queda
+  // sin guardar hasta que el usuario apriete Guardar).
+  async function sortearRefuerzosSemana() {
+    if (!confirm('Sorteará los refuerzos AM/PM de esta semana, balanceando con el historial desde el 1 de enero. Los refuerzos actuales de la semana se reemplazan. ¿Continuar?')) return;
+
+    const yearStart = `${monday.getFullYear()}-01-01`;
+    // Cargar refuerzos históricos (semanas anteriores a la actual, dentro del año)
+    const { data: pastAgendas, error } = await supabase
+      .from('sdm_weekly_agendas')
+      .select('week_start, data')
+      .gte('week_start', yearStart)
+      .lt('week_start', weekStart);
+    if (error) {
+      toast.error('Error cargando historial: ' + (explainSdmWriteError(error) || error.message));
+      return;
     }
-    // Construir map existing acumulado
-    const existing = {};
-    semanas.forEach(s => existing[s.weekStart] = s.existingReinforcements);
-    const sorteado = sortReinforcements({
-      weeks: semanas.map(s => ({ weekStart: s.weekStart, days: s.days })),
-      doctors,
-      existingReinforcements: existing,
+    const existingReinf = {};
+    (pastAgendas || []).forEach(a => {
+      if (a?.data?.reinforcements) existingReinf[a.week_start] = a.data.reinforcements;
     });
-    // Guardar en cada semana afectada
-    let saved = 0;
-    for (const s of semanas) {
-      const newReinf = sorteado[s.weekStart];
-      const payload = {
-        week_start: s.weekStart,
-        data: { reinforcements: newReinf, generated_at: new Date().toISOString() },
-        status: 'preliminar',
-        updated_at: new Date().toISOString(),
-      };
-      const { data: existing } = await supabase.from('sdm_weekly_agendas').select('id, data').eq('week_start', s.weekStart).maybeSingle();
-      if (existing) {
-        await supabase.from('sdm_weekly_agendas').update({
-          data: { ...(existing.data || {}), reinforcements: newReinf, updated_at: new Date().toISOString() },
-        }).eq('id', existing.id);
-      } else {
-        await supabase.from('sdm_weekly_agendas').insert(payload);
-      }
-      if (s.weekStart === weekStart) setReinforcements(newReinf);
-      saved++;
-    }
-    toast.success(`Sorteado refuerzos en  semanas.`);
+    // No incluyo la semana actual en existing → se sortea desde cero
+    const sorteado = sortReinforcements({
+      weeks: [{ weekStart, days: agenda }],
+      doctors,
+      existingReinforcements: existingReinf,
+    });
+    const nuevos = sorteado[weekStart] || {};
+    setReinforcements(nuevos);
+    const semanas = Object.keys(existingReinf).length;
+    toast.success(`Refuerzos sorteados para esta semana${semanas ? ` (considerando ${semanas} semana${semanas > 1 ? 's' : ''} previa${semanas > 1 ? 's' : ''} del año)` : ''}. Apretá Guardar para persistir.`);
   }
 
   async function onCellSave(date, payload) {
@@ -949,28 +922,41 @@ ${table}
         <Button variant="outline" size="sm" onClick={() => { if (confirmIfDirty()) setMonday(getMondayOfWeek(new Date())); }}>Hoy</Button>
         <Input type="date" className="h-8 w-36 text-xs" value={weekStart} onChange={(e) => e.target.value && goToWeek(e.target.value)} title="Ir a una semana específica" />
         <div className="flex-1" />
-        <Button variant="outline" onClick={sortearRefuerzosMes} className="gap-1.5" title="Sortea refuerzos AM/PM para próximas 4 semanas, balanceando carga"><Shuffle className="h-4 w-4" /> Sortear refuerzos</Button>
-        <Button variant="outline" onClick={optimizarTitulares} className="gap-1.5" title="Reasigna bloques al titular si está disponible otro día"><Wand2 className="h-4 w-4" /> Optimizar titulares</Button>
-        <Button variant="outline" onClick={equilibrarCarga} className="gap-1.5" title="Distribuye los bloques de manera más homogénea entre los días"><Scale className="h-4 w-4" /> Equilibrar carga</Button>
-        <Button variant="outline" onClick={regenerarPreliminar} className="gap-1.5" title="Descarta ediciones y vuelve al template"><RefreshCw className="h-4 w-4" /> Regenerar</Button>
-        <SdmInternalMeetings monday={monday} onChanged={reloadOneoff} />
         <Button onClick={saveAgenda} className="gap-1.5" title={visibleErrors.length > 0 ? `⚠ ${visibleErrors.length} error(es) sin resolver` : 'Guardar agenda'}>
           <Save className="h-4 w-4" /> Guardar
           {visibleErrors.length > 0 && <span className="ml-1 bg-white text-red-700 text-[10px] font-bold rounded-full px-1.5">{visibleErrors.length}</span>}
         </Button>
-        <Button variant="outline" onClick={() => window.print()} className="gap-1.5"><Printer className="h-4 w-4" /> Imprimir</Button>
-        <Button variant="outline" onClick={downloadAgendaWord} className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50" title="Descarga la agenda como .doc — abre en Word o se sube directo a Google Docs"><Download className="h-4 w-4" /> Descargar Word</Button>
-        <Button
-          variant="outline"
-          onClick={async () => {
-            await copyAgendaForGoogleDocs();
-            window.open('https://docs.google.com/document/u/0/create', '_blank', 'noopener');
-          }}
-          className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-          title="Copia la tabla al portapapeles y abre un Google Doc nuevo. Pegá con Cmd/Ctrl+V."
-        >
-          <FileText className="h-4 w-4" /> Copiar y abrir Google Docs
-        </Button>
+      </div>
+
+      {/* Acciones agrupadas: automáticas / exportar / extras (todas operan sobre la semana visible) */}
+      <div className="sdm-print-hide flex flex-wrap items-center gap-3 -mt-2">
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Esta semana</span>
+          <Button variant="outline" size="sm" onClick={sortearRefuerzosSemana} className="gap-1.5" title="Sortea refuerzos AM/PM de esta semana, balanceando carga con todas las semanas del año ya guardadas"><Shuffle className="h-4 w-4" /> Sortear refuerzos</Button>
+          <Button variant="outline" size="sm" onClick={optimizarTitulares} className="gap-1.5" title="Reasigna bloques de esta semana al médico titular si está disponible"><Wand2 className="h-4 w-4" /> Optimizar titulares</Button>
+          <Button variant="outline" size="sm" onClick={equilibrarCarga} className="gap-1.5" title="Distribuye los bloques de esta semana de forma homogénea entre los días"><Scale className="h-4 w-4" /> Equilibrar carga</Button>
+          <Button variant="outline" size="sm" onClick={regenerarPreliminar} className="gap-1.5" title="Descarta las ediciones manuales de esta semana y vuelve al template"><RefreshCw className="h-4 w-4" /> Regenerar</Button>
+        </div>
+
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Exportar</span>
+          <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5"><Printer className="h-4 w-4" /> Imprimir</Button>
+          <Button variant="outline" size="sm" onClick={downloadAgendaWord} className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50" title="Descarga la agenda como .doc — abre en Word o se sube directo a Google Docs"><Download className="h-4 w-4" /> Word</Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await copyAgendaForGoogleDocs();
+              window.open('https://docs.google.com/document/u/0/create', '_blank', 'noopener');
+            }}
+            className="gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+            title="Copia la tabla al portapapeles y abre un Google Doc nuevo. Pegá con Cmd/Ctrl+V."
+          >
+            <FileText className="h-4 w-4" /> Google Docs
+          </Button>
+        </div>
+
+        <SdmInternalMeetings monday={monday} onChanged={reloadOneoff} />
       </div>
 
 	      {/* Banners de validación — clickeables: abren el editor del día problemático */}
