@@ -831,6 +831,17 @@ export function generateAgenda({
     const turnoSet = new Set((day.turnos || []).map(t => t.doctor_id));
     const postSet = new Set((day.posturno || []).map(t => t.doctor_id));
     const ausSet = new Set((day.ausencias || []).map(a => a.doctor_id));
+    // Doctores con bloqueo jerárquico (Subdirección Médica, citación tribunales)
+    // — el dropdown de refuerzos de la UI los excluye, así que el autofill
+    // tampoco los debe elegir o el Select quedaría sin valor visible.
+    const hierarchicalSet = new Set();
+    (day.bloqueos || []).forEach(b => {
+      if (HIERARCHICAL_BLOCK_IDS.has(b.block_id)) {
+        const ids = Array.isArray(b.doctor_ids) && b.doctor_ids.length
+          ? b.doctor_ids : (b.doctor_id ? [b.doctor_id] : []);
+        ids.forEach(id => hierarchicalSet.add(id));
+      }
+    });
     const poliFullId = day.poli_8am?.full_day?.doctor_id;
     const eligible = doctors.filter(d =>
       d.active !== false &&
@@ -839,7 +850,8 @@ export function generateAgenda({
       d.id !== SUBDIRECTOR &&
       d.id !== POLI_FULLDAY_ID &&
       d.id !== poliFullId &&
-      !turnoSet.has(d.id) && !postSet.has(d.id) && !ausSet.has(d.id)
+      !turnoSet.has(d.id) && !postSet.has(d.id) && !ausSet.has(d.id) &&
+      !hierarchicalSet.has(d.id)
     );
     ['am', 'pm'].forEach(slot => {
       if (day.refuerzos[slot]) return;
