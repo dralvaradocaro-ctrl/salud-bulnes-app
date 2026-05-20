@@ -247,6 +247,16 @@ export function generateAgenda({
   poliDisabled = {},           // { '2026-05-04': { am: bool, pm: bool } } — poli AM/PM apagado para un día (refuerzo sigue activo)
 }) {
   const days = weekDates(weekStart);
+
+  // Reglas operativas que se introdujeron en mayo 2026 y solo deben aplicar
+  // prospectivamente, sin alterar agendas históricas ya generadas/guardadas.
+  // Cambios afectados:
+  //   - Rubilar +3 visitas en cualquier día donde sea visitante (no solo jue/vie).
+  //   - Auto-llenado por defecto de refuerzos AM/PM faltantes.
+  //   - Titular con prioridad absoluta sobre el priority pool en resolveDoctor.
+  const PROSPECTIVE_CUTOFF = '2026-05-25';
+  const weekStartIso = typeof weekStart === 'string' ? String(weekStart).slice(0, 10) : fmtDate(weekStart);
+  const useProspectiveRules = weekStartIso >= PROSPECTIVE_CUTOFF;
   const doctorById = Object.fromEntries(doctors.map(d => [d.id, d]));
 
   // Mapas auxiliares
@@ -399,12 +409,13 @@ export function generateAgenda({
         return { id, auto };
       };
 
-      // 0) TITULAR primero: si el médico titular está disponible, se le asigna
-      //    el bloqueo sin importar si ya hizo ese mismo bloqueo en la semana
-      //    o si tiene más carga. Es la regla operativa que pidió el usuario,
-      //    especialmente para gestion_iaas / gestion_proa (Sbarbaro titular)
-      //    y demás bloques con titular explícito.
-      if (!PROTECTED_PRIORITY_BLOCK_IDS.has(blockId) && isAvailable(t)) {
+      // 0) TITULAR primero (regla prospectiva ≥ 2026-05-25): si el médico
+      //    titular está disponible, se le asigna el bloqueo sin importar si
+      //    ya hizo ese mismo bloqueo en la semana o si tiene más carga.
+      //    Especialmente útil para gestion_iaas / gestion_proa (Sbarbaro
+      //    titular). En semanas anteriores no se aplica este atajo para no
+      //    alterar agendas históricas.
+      if (useProspectiveRules && !PROTECTED_PRIORITY_BLOCK_IDS.has(blockId) && isAvailable(t)) {
         return register(t, false);
       }
 
@@ -722,12 +733,15 @@ export function generateAgenda({
       .filter(v => v.capacity !== 0); // si la franja matinal quedó sin ventana útil, no se cuenta
 
     // Aplicar overrides manuales de visita (excepciones: subdirector / selector de demanda agregados a mano)
-    // Rubilar: aparece automáticamente con capacidad 3 cuando está como visitante
-    // externo del día (sea jue/vie habitual o un día al que se lo movió manualmente,
-    // siempre que no esté marcado como no_show ni el día sea feriado).
-    const rubilarVisitsToday = Array.isArray(externalVisitors)
-      && externalVisitors.some(v => v && !v.no_show && /rubilar/i.test(v?.name || ''))
-      && !isHoliday;
+    // Rubilar (regla prospectiva ≥ 2026-05-25): aparece automáticamente con
+    // capacidad 3 cuando está como visitante externo del día (incluido si se
+    // lo movió manualmente desde jue/vie). En semanas anteriores se mantiene
+    // la regla histórica (solo jueves/viernes).
+    const rubilarVisitsToday = useProspectiveRules
+      ? (Array.isArray(externalVisitors)
+          && externalVisitors.some(v => v && !v.no_show && /rubilar/i.test(v?.name || ''))
+          && !isHoliday)
+      : (d.day === 'jue' || d.day === 'vie');
     const visitaBase = rubilarVisitsToday && !visita.some(v => v.doctor_id === 'rubilar')
       ? [...visita, { doctor_id: 'rubilar', capacity: 3, external_default: true }]
       : visita;
@@ -799,9 +813,12 @@ export function generateAgenda({
     bloqueosOverrides, calByDate, absencesByDate, rotation,
   });
 
-  // Post-pass: auto-rellenar refuerzos AM/PM que quedaron vacíos. Por defecto
-  // todo refuerzo debe estar asignado; el usuario puede ajustar luego. Se elige
-  // al médico elegible con menor carga semanal de refuerzos para balancear.
+  // Post-pass (regla prospectiva ≥ 2026-05-25): auto-rellenar refuerzos AM/PM
+  // que quedaron vacíos. Por defecto todo refuerzo debe estar asignado; el
+  // usuario puede ajustar luego. Se elige al médico elegible con menor carga
+  // semanal de refuerzos para balancear. En semanas anteriores los refuerzos
+  // vacíos se respetan tal cual (sin auto-rellenado).
+  if (useProspectiveRules) {
   const refuerzoLoad = {};
   result.forEach(day => {
     if (day.refuerzos?.am) refuerzoLoad[day.refuerzos.am] = (refuerzoLoad[day.refuerzos.am] || 0) + 1;
@@ -843,6 +860,7 @@ export function generateAgenda({
       }
     });
   });
+  } // end if (useProspectiveRules)
 
   return result;
 }
