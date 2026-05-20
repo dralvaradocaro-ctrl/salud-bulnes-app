@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ChevronLeft, ChevronRight, RefreshCw, Save, Printer, Plus, Trash2, Edit3, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RefreshCw, Save, Printer, Plus, Trash2, Edit3, Sparkles, Download } from 'lucide-react';
 import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, dayKeyForDate, sortReinforcements, optimizeForTitulars, balanceLoad, HIERARCHICAL_BLOCK_IDS, findReplacementForBlock, blockDoctorIds, blockHasDoctor } from './lib/generateAgenda';
 import AIFixModal from './AIFixModal';
 import { Shuffle, Wand2, Scale } from 'lucide-react';
@@ -214,6 +214,115 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   function goToWeek(dateStr) {
     if (!confirmIfDirty()) return;
     setMonday(getMondayOfWeek(new Date(dateStr + 'T12:00:00')));
+  }
+
+  // Exporta la agenda semanal como .doc (HTML-Word). Se abre en Word y se
+  // sube directo a Google Docs. Mantiene el header verde+blanco y los
+  // colores de columna (refuerzos naranjo, posturno celeste, ausencias rojo).
+  function downloadAgendaWord() {
+    const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const ddmm = (iso) => iso ? `${iso.slice(8,10)}-${iso.slice(5,7)}-${iso.slice(0,4)}` : '';
+    const cellStyle = 'border:1px solid #cbd5e1; padding:4px 6px; vertical-align:top; font-size:9pt;';
+    const colStyle = {
+      refuerzos: 'color:#c2410c; font-weight:600;',
+      posturno:  'color:#0284c7; font-weight:600;',
+      ausencias: 'color:#b91c1c; font-weight:600;',
+    };
+
+    const rows = (agenda || []).map(d => {
+      const turnos = (d.turnos || [])
+        .map(t => `${esc(doctorName(t.doctor_id))}${t.replaced ? ` (←${esc(doctorName(t.original_doctor_id))})` : ''}`)
+        .join('<br/>');
+      const refuerzos = `<div><b>AM</b> ${d.refuerzos?.am ? esc(doctorName(d.refuerzos.am)) : '—'}</div>` +
+                       `<div><b>PM</b> ${d.refuerzos?.pm ? esc(doctorName(d.refuerzos.pm)) : '—'}</div>`;
+      const posturno = (d.posturno || []).map(t => esc(doctorName(t.doctor_id))).join('<br/>');
+      const ausencias = (d.ausencias || []).map(a => `${esc(doctorName(a.doctor_id))} (${esc(a.type)})`).join('<br/>');
+      const bloqueos = d.is_holiday
+        ? '<b>FERIADO</b>'
+        : (d.bloqueos || [])
+            .slice()
+            .sort((x, y) => (x.from || '').localeCompare(y.from || ''))
+            .map(b => {
+              if (b.suspended) return null;
+              const ids = Array.isArray(b.doctor_ids) && b.doctor_ids.length
+                ? b.doctor_ids : (b.doctor_id ? [b.doctor_id] : []);
+              const docs = ids.length ? ids.map(id => esc(doctorName(id))).join(' + ') : '⚠ SIN ASIGNAR';
+              const hora = b.from && b.to ? `${b.from}–${b.to} ` : '';
+              return `${hora}${docs} <span style="color:#475569;">${esc(b.name)}</span>`;
+            })
+            .filter(Boolean)
+            .join('<br/>');
+      const visita = d.is_holiday
+        ? '—'
+        : (d.visita || [])
+            .map(v => `${esc(doctorName(v.doctor_id))}${v.capacity != null && v.capacity < 5 ? ` (${v.capacity})` : ''}`)
+            .join('<br/>');
+      const poli8amFullDay = d.poli_8am?.full_day
+        ? `<div>${esc(doctorName(d.poli_8am.full_day.doctor_id))} <span style="color:#475569;">${d.poli_8am.full_day.from}–${d.poli_8am.full_day.to}</span></div>`
+        : '';
+      const poli8amRefPm = d.poli_8am?.ref_pm
+        ? `<div>${esc(doctorName(d.poli_8am.ref_pm.doctor_id))} <span style="color:#475569;">${d.poli_8am.ref_pm.from}–${d.poli_8am.ref_pm.to}</span></div>`
+        : '';
+      const poli8am = d.is_holiday ? '—' : (poli8amFullDay + poli8amRefPm) || '—';
+      const policlinico = d.is_holiday
+        ? '—'
+        : d.policlinico
+          ? `${esc(doctorName(d.policlinico.doctor_id))} <span style="color:#475569;">${d.policlinico.from}–${d.policlinico.to}</span>`
+          : '—';
+
+      return `<tr>
+        <td style="${cellStyle} font-weight:bold; background:#f8fafc; width:78px;">${esc(d.label)}<br/><span style="font-weight:normal; color:#475569; font-size:8pt;">${ddmm(d.date)}</span></td>
+        <td style="${cellStyle}">${turnos}</td>
+        <td style="${cellStyle} ${colStyle.refuerzos}">${refuerzos}</td>
+        <td style="${cellStyle} ${colStyle.posturno}">${posturno}</td>
+        <td style="${cellStyle} ${colStyle.ausencias}">${ausencias}</td>
+        <td style="${cellStyle} min-width:220px;">${bloqueos}</td>
+        <td style="${cellStyle}">${visita}</td>
+        <td style="${cellStyle}">${poli8am}</td>
+        <td style="${cellStyle}">${policlinico}</td>
+      </tr>`;
+    }).join('');
+
+    const headStyle = 'background:#047857; color:#ffffff; padding:6px 6px; border:1px solid #065f46; font-size:9pt; text-align:left;';
+    const html = `<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8">
+<title>Agenda Semanal ${weekDays[0]?.date || ''}</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>@page { size: A4 landscape; margin: 1.2cm; } table { border-collapse: collapse; width: 100%; }</style>
+</head>
+<body style="font-family: Calibri, Arial, sans-serif; font-size: 10pt; color:#000;">
+<h2 style="text-align:center; margin:0 0 8px 0;">Agenda Semanal · ${ddmm(weekDays[0]?.date)} al ${ddmm(weekDays[4]?.date)}</h2>
+<table>
+  <thead>
+    <tr>
+      <th style="${headStyle}">DÍA</th>
+      <th style="${headStyle}">TURNOS</th>
+      <th style="${headStyle}">REFUERZOS</th>
+      <th style="${headStyle}">POSTURNO</th>
+      <th style="${headStyle}">AUSENCIAS</th>
+      <th style="${headStyle}">BLOQUEOS</th>
+      <th style="${headStyle}">VISITA</th>
+      <th style="${headStyle}">POLI 8 AM</th>
+      <th style="${headStyle}">POLICLÍNICO</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${rows}
+  </tbody>
+</table>
+</body></html>`;
+
+    const blob = new Blob(['﻿', html], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `agenda-sdm-${weekDays[0]?.date || 'semana'}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Word descargado — listo para subir a Google Docs');
   }
 
   async function saveAgenda() {
@@ -811,6 +920,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
           {visibleErrors.length > 0 && <span className="ml-1 bg-white text-red-700 text-[10px] font-bold rounded-full px-1.5">{visibleErrors.length}</span>}
         </Button>
         <Button variant="outline" onClick={() => window.print()} className="gap-1.5"><Printer className="h-4 w-4" /> Imprimir</Button>
+        <Button variant="outline" onClick={downloadAgendaWord} className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50" title="Descarga la agenda como .doc — abre en Word o se sube directo a Google Docs"><Download className="h-4 w-4" /> Descargar Word</Button>
       </div>
 
 	      {/* Banners de validación — clickeables: abren el editor del día problemático */}
