@@ -448,7 +448,9 @@ export default function InformeBiomedico() {
         /* @page con margen acotado: el navegador respeta el ajuste del diálogo
            ("Predeterminado/Mínimo/Personalizado") en vez de quedar bloqueado
            por padding interno fijo. */
-        @page { size: A4; margin: 10mm; }
+        /* Margenes por defecto que rinden bien con el ancho de las tablas
+           internas. El usuario puede sobreescribir desde el dialogo del navegador. */
+        @page { size: A4; margin: 4mm 22mm; }
         html, body, #root {
           background: #fff !important;
         }
