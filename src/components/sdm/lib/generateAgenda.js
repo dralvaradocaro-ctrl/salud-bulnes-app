@@ -781,6 +781,10 @@ export function generateAgenda({
       : visita;
     const visitaOv = visitaOverrides[d.date] || {};
     const removeSet = new Set(visitaOv.remove || []);
+    // Rubilar viene dirigido por el pill de externalVisitors. Si está presente
+    // como visitante externo hoy, ignorar el remove persistido (puede quedar
+    // de un drag previo) — para ocultarlo se usa el pill (no_show / mover).
+    if (rubilarVisitsToday) removeSet.delete('rubilar');
     let visitaFinal = visitaBase.filter(v => !removeSet.has(v.doctor_id));
     (visitaOv.add || []).forEach(docId => {
       if (visitaFinal.some(v => v.doctor_id === docId)) return;
@@ -888,7 +892,16 @@ export function generateAgenda({
       !hierarchicalSet.has(d.id)
     );
     ['am', 'pm'].forEach(slot => {
-      if (day.refuerzos[slot]) return;
+      const current = day.refuerzos[slot];
+      // Si el valor guardado ya no es elegible (médico quedó en turno, posturno,
+      // ausencia o con bloqueo jerárquico ese día), lo limpiamos para que el
+      // autofill elija un reemplazo válido — si no, el Select de la UI queda
+      // en blanco porque su dropdown lo excluye.
+      if (current) {
+        if (eligible.some(d => d.id === current)) return;
+        day.refuerzos[slot] = null;
+        refuerzoLoad[current] = Math.max(0, (refuerzoLoad[current] || 0) - 1);
+      }
       const otherSlot = slot === 'am' ? day.refuerzos.pm : day.refuerzos.am;
       const pool = eligible.filter(d => d.id !== otherSlot);
       if (pool.length === 0) return;

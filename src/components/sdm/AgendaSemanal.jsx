@@ -118,6 +118,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   const [draggedVisitor, setDraggedVisitor] = useState(null);
   const [expandedAddDay, setExpandedAddDay] = useState(null);   // fecha del día con el form (+) expandido
   const [showHistory, setShowHistory] = useState(false);        // modal de historial de ediciones
+  const [editingVisitor, setEditingVisitor] = useState(null);   // { name } — pill clickeado para editar semana
 
   const confirmIfDirty = (msg = 'Tenés cambios sin guardar en esta semana. ¿Continuar y descartarlos?') => {
     if (!isDirty) return true;
@@ -522,6 +523,21 @@ ${table}
     setReinforcements(nuevos);
     const semanas = Object.keys(existingReinf).length;
     toast.success(`Refuerzos sorteados para esta semana${semanas ? ` (considerando ${semanas} semana${semanas > 1 ? 's' : ''} previa${semanas > 1 ? 's' : ''} del año)` : ''}. Apretá Guardar para persistir.`);
+  }
+
+  // Persistir external_visitors de una fecha — usado por el editor de pill.
+  async function persistVisitorsForDate(date, visitors) {
+    const list = Array.isArray(visitors) ? visitors : [];
+    const visitorsForStorage = list.length > 0 ? list : [{ [EMPTY_EXTERNAL_VISITORS_OVERRIDE]: true }];
+    setExternalVisitorOverrides(prev => ({ ...prev, [date]: list }));
+    const existing = shiftCalendar.find(c => c.date === date);
+    if (existing) {
+      const { error } = await supabase.from('sdm_shift_calendar')
+        .update({ external_visitors: visitorsForStorage })
+        .eq('date', date);
+      if (error) { toast.error('Error: ' + (explainSdmWriteError(error) || error.message)); return; }
+      setShiftCalendar(prev => prev.map(c => c.date === date ? { ...c, external_visitors: visitorsForStorage } : c));
+    }
   }
 
   async function onCellSave(date, payload) {
@@ -1269,7 +1285,11 @@ ${table}
 		                            setDraggedVisitor(null);
 		                            setVisitorDragOverDate(null);
 		                          }}
-		                          className={`sdm-visitor-pill text-[9px] leading-tight rounded border px-1.5 py-0.5 cursor-grab active:cursor-grabbing ${
+		                          onClick={(e) => {
+		                            e.stopPropagation();
+		                            setEditingVisitor({ name: v.name });
+		                          }}
+		                          className={`sdm-visitor-pill text-[9px] leading-tight rounded border px-1.5 py-0.5 cursor-pointer active:cursor-grabbing ${
 		                            v.holiday_pending || v.no_show
 			                              ? 'sdm-print-hide bg-amber-100 text-amber-900 border-amber-300'
 			                              : /neuro/i.test(v.specialty || '') ? 'bg-green-100 text-green-900 border-green-300'
@@ -1669,6 +1689,76 @@ ${table}
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Editor de visitante externo: presencia por día de la semana + no-show global */}
+      {editingVisitor && (() => {
+        const matches = (v) => v?.name && editingVisitor?.name && v.name.toLowerCase() === editingVisitor.name.toLowerCase();
+        const sample = agenda.flatMap(d => d.external_visitors || []).find(matches) || { name: editingVisitor.name };
+        const presentDates = new Set(
+          agenda.filter(d => (d.external_visitors || []).some(v => matches(v) && !v.no_show)).map(d => d.date)
+        );
+        const togglePresence = (date, present) => {
+          const day = agenda.find(d => d.date === date);
+          if (!day) return;
+          const current = (day.external_visitors || []).filter(v => !matches(v));
+          const next = present
+            ? [...current, { ...sample, no_show: false, holiday_pending: !!day.is_holiday }]
+            : current;
+          persistVisitorsForDate(date, next);
+        };
+        const markNoShowAll = async () => {
+          for (const day of agenda) {
+            const list = day.external_visitors || [];
+            if (!list.some(matches)) continue;
+            const next = list.map(v => matches(v) ? { ...v, no_show: true } : v);
+            await persistVisitorsForDate(day.date, next);
+          }
+          toast.success(`${sample.name} marcado como no viene esta semana.`);
+        };
+        const removeFromWeek = async () => {
+          for (const day of agenda) {
+            const list = day.external_visitors || [];
+            if (!list.some(matches)) continue;
+            await persistVisitorsForDate(day.date, list.filter(v => !matches(v)));
+          }
+          toast.success(`${sample.name} quitado de la semana.`);
+          setEditingVisitor(null);
+        };
+        return (
+          <Dialog open onOpenChange={(o) => !o && setEditingVisitor(null)}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{sample.name}{sample.specialty && <span className="text-sm font-normal text-slate-500 ml-2">{sample.specialty}</span>}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 py-2">
+                <div>
+                  <label className="text-xs font-medium text-slate-600 mb-1 block">Días que asiste esta semana</label>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {agenda.map(day => (
+                      <label key={day.date} className={`flex items-center gap-2 px-2 py-1 rounded border ${day.is_holiday ? 'opacity-60' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={presentDates.has(day.date)}
+                          disabled={day.is_holiday}
+                          onChange={e => togglePresence(day.date, e.target.checked)}
+                        />
+                        <span className="text-sm">{day.label} <span className="text-slate-400 text-xs">{day.date}</span></span>
+                        {day.is_holiday && <span className="text-[10px] uppercase text-slate-500 ml-auto">feriado</span>}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">El total muestra cuántas veces a la semana viene. Editar marca/desmarca los días.</p>
+                </div>
+              </div>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={markNoShowAll} className="text-amber-700 border-amber-300 hover:bg-amber-50">No viene esta semana</Button>
+                <Button variant="outline" onClick={removeFromWeek} className="text-red-700 border-red-300 hover:bg-red-50">Quitar de la semana</Button>
+                <Button onClick={() => setEditingVisitor(null)}>Cerrar</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       {/* Link discreto al historial de modificaciones de la semana */}
       <div className="sdm-print-hide text-center pt-2 pb-4">
