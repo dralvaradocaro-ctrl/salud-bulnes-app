@@ -458,7 +458,10 @@ export default function InformeBiomedico() {
     <>
       {/* CSS de impresión — usando clases explícitas, NO Tailwind print: variants */}
       <style>{`
-        @page { size: A4; margin: 0; }
+        /* @page con margen acotado: el navegador respeta el ajuste del diálogo
+           ("Predeterminado/Mínimo/Personalizado") en vez de quedar bloqueado
+           por padding interno fijo. */
+        @page { size: A4; margin: 10mm; }
         html, body, #root {
           background: #fff !important;
         }
@@ -483,19 +486,23 @@ export default function InformeBiomedico() {
           .ib-screen { display: none !important; }
           .ib-print  {
             display: block !important;
-            width: 210mm !important;
+            width: auto !important;
             max-width: none !important;
             margin: 0 !important;
             padding: 0 !important;
             overflow: visible !important;
             background: #fff !important;
           }
+          /* En impresión, el área de página se ajusta al printable area
+             que define @page (incluyendo cualquier override del usuario).
+             Sin width/min-height fijos ni padding extra que vuelvan a
+             agregar margen al margen del navegador. */
           .ib-print-page {
-            width: 210mm !important;
-            max-width: 210mm !important;
-            min-height: 297mm !important;
+            width: auto !important;
+            max-width: none !important;
+            min-height: 0 !important;
             margin: 0 !important;
-            padding: 28mm 30mm 25mm !important;
+            padding: 0 !important;
             background: #fff !important;
           }
           .ib-print-header-logo {
