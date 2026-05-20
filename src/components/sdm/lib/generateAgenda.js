@@ -399,6 +399,15 @@ export function generateAgenda({
         return { id, auto };
       };
 
+      // 0) TITULAR primero: si el médico titular está disponible, se le asigna
+      //    el bloqueo sin importar si ya hizo ese mismo bloqueo en la semana
+      //    o si tiene más carga. Es la regla operativa que pidió el usuario,
+      //    especialmente para gestion_iaas / gestion_proa (Sbarbaro titular)
+      //    y demás bloques con titular explícito.
+      if (!PROTECTED_PRIORITY_BLOCK_IDS.has(blockId) && isAvailable(t)) {
+        return register(t, false);
+      }
+
       if (!PROTECTED_PRIORITY_BLOCK_IDS.has(blockId)) {
         const priorityAvail = (priorityPeopleByBlock[blockId] || []).filter(p => isAvailable(p.doctor_id));
         if (priorityAvail.length > 0) {
@@ -415,7 +424,7 @@ export function generateAgenda({
         }
       }
 
-      // 1a) Titular disponible (prioridad absoluta sobre subrogantes)
+      // 1a) Titular disponible (en blocks protegidos como SDM/TACO/SELECTOR)
       if (isAvailable(t)) return register(t, false);
       // 1b) Subrogantes disponibles: si todos tienen la misma priority, desempatar por menor carga del día.
       //     Si tienen priority distinta, respetar el orden.
@@ -713,7 +722,13 @@ export function generateAgenda({
       .filter(v => v.capacity !== 0); // si la franja matinal quedó sin ventana útil, no se cuenta
 
     // Aplicar overrides manuales de visita (excepciones: subdirector / selector de demanda agregados a mano)
-    const visitaBase = (d.day === 'jue' || d.day === 'vie') && !visita.some(v => v.doctor_id === 'rubilar')
+    // Rubilar: aparece automáticamente con capacidad 3 cuando está como visitante
+    // externo del día (sea jue/vie habitual o un día al que se lo movió manualmente,
+    // siempre que no esté marcado como no_show ni el día sea feriado).
+    const rubilarVisitsToday = Array.isArray(externalVisitors)
+      && externalVisitors.some(v => v && !v.no_show && /rubilar/i.test(v?.name || ''))
+      && !isHoliday;
+    const visitaBase = rubilarVisitsToday && !visita.some(v => v.doctor_id === 'rubilar')
       ? [...visita, { doctor_id: 'rubilar', capacity: 3, external_default: true }]
       : visita;
     const visitaOv = visitaOverrides[d.date] || {};
@@ -783,6 +798,52 @@ export function generateAgenda({
     result, days, blockTemplates, programAssignments, doctors,
     bloqueosOverrides, calByDate, absencesByDate, rotation,
   });
+
+  // Post-pass: auto-rellenar refuerzos AM/PM que quedaron vacíos. Por defecto
+  // todo refuerzo debe estar asignado; el usuario puede ajustar luego. Se elige
+  // al médico elegible con menor carga semanal de refuerzos para balancear.
+  const refuerzoLoad = {};
+  result.forEach(day => {
+    if (day.refuerzos?.am) refuerzoLoad[day.refuerzos.am] = (refuerzoLoad[day.refuerzos.am] || 0) + 1;
+    if (day.refuerzos?.pm) refuerzoLoad[day.refuerzos.pm] = (refuerzoLoad[day.refuerzos.pm] || 0) + 1;
+  });
+  const SUBDIRECTOR = 'alvarado';
+  const POLI_FULLDAY_ID = 'beltran';
+  result.forEach(day => {
+    if (day.is_holiday) return;
+    const turnoSet = new Set((day.turnos || []).map(t => t.doctor_id));
+    const postSet = new Set((day.posturno || []).map(t => t.doctor_id));
+    const ausSet = new Set((day.ausencias || []).map(a => a.doctor_id));
+    const poliFullId = day.poli_8am?.full_day?.doctor_id;
+    const eligible = doctors.filter(d =>
+      d.active !== false &&
+      !d.is_urgentologist &&
+      d.is_reinforcement_eligible !== false &&
+      d.id !== SUBDIRECTOR &&
+      d.id !== POLI_FULLDAY_ID &&
+      d.id !== poliFullId &&
+      !turnoSet.has(d.id) && !postSet.has(d.id) && !ausSet.has(d.id)
+    );
+    ['am', 'pm'].forEach(slot => {
+      if (day.refuerzos[slot]) return;
+      const otherSlot = slot === 'am' ? day.refuerzos.pm : day.refuerzos.am;
+      const pool = eligible.filter(d => d.id !== otherSlot);
+      if (pool.length === 0) return;
+      pool.sort((a, b) => (refuerzoLoad[a.id] || 0) - (refuerzoLoad[b.id] || 0));
+      const chosen = pool[0].id;
+      day.refuerzos[slot] = chosen;
+      refuerzoLoad[chosen] = (refuerzoLoad[chosen] || 0) + 1;
+      // Reflejar en policlínico/poli_8am.ref_pm si no está apagado manualmente
+      if (slot === 'am' && !poliDisabled?.[day.date]?.am) {
+        day.policlinico = { doctor_id: chosen, from: '08:00', to: '10:00', label: 'Poli AM' };
+      }
+      if (slot === 'pm' && !poliDisabled?.[day.date]?.pm) {
+        const refPmFrom = day.day === 'vie' ? '12:00' : '11:00';
+        day.poli_8am.ref_pm = { doctor_id: chosen, from: refPmFrom, to: '13:00', label: 'Ref PM' };
+      }
+    });
+  });
+
   return result;
 }
 
