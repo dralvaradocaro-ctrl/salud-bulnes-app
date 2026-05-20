@@ -133,10 +133,6 @@ function PrintView({ f }) {
       color: '#000',
       lineHeight: '1.15',
       background: '#fff',
-      width: '210mm',
-      maxWidth: '210mm',
-      minHeight: '297mm',
-      padding: '28mm 30mm 25mm',
       boxSizing: 'border-box',
       overflow: 'visible',
     }}>
