@@ -418,6 +418,19 @@ function PrintView({ f }) {
   );
 }
 
+// Formatea un RUT chileno al estilo "25.855.789-1". Acepta entrada con o sin
+// puntos/guion y deja el digito verificador (numerico o "K") al final.
+function formatRut(raw) {
+  if (!raw) return '';
+  const clean = String(raw).replace(/[^0-9kK]/g, '').toUpperCase();
+  if (!clean) return '';
+  const body = clean.slice(0, -1);
+  const dv = clean.slice(-1);
+  if (!body) return dv;
+  const bodyDotted = body.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${bodyDotted}-${dv}`;
+}
+
 // ── Formulario pantalla ───────────────────────────────────────────────
 const inputCls = 'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none';
 const textareaCls = 'w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none resize-none';
@@ -571,7 +584,7 @@ export default function InformeBiomedico() {
                 <input className={inputCls} value={f.nombre} onChange={e => u('nombre', e.target.value)} placeholder="Nombre(s)" />
               </Field>
               <Field label="RUT">
-                <input className={inputCls} value={f.rut} onChange={e => u('rut', e.target.value)} placeholder="12.345.678-9" />
+                <input className={inputCls} value={f.rut} onChange={e => u('rut', formatRut(e.target.value))} placeholder="12.345.678-9" />
               </Field>
               <Field label="Fecha de nacimiento">
                 <input type="date" className={inputCls} value={f.fechaNac} onChange={e => u('fechaNac', e.target.value)} />
@@ -677,7 +690,7 @@ export default function InformeBiomedico() {
                 <input className={inputCls} value={f.profNombre} onChange={e => u('profNombre', e.target.value)} placeholder="Nombre completo del médico" />
               </Field>
               <Field label="RUT del profesional">
-                <input className={inputCls} value={f.profRut} onChange={e => u('profRut', e.target.value)} placeholder="12.345.678-9" />
+                <input className={inputCls} value={f.profRut} onChange={e => u('profRut', formatRut(e.target.value))} placeholder="12.345.678-9" />
               </Field>
               <Field label="Correo electrónico">
                 <input type="email" className={inputCls} value={f.profCorreo} onChange={e => u('profCorreo', e.target.value)} placeholder="medico@redsalud.gob.cl" />
