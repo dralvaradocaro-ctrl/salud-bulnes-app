@@ -152,11 +152,25 @@ export default function MeetingBlocks({ onChanged }) {
                     </Badge>
                   );
                 })}
-                <Select value="" onValueChange={v => { if (v && !form.doctor_ids.includes(v)) setForm({ ...form, doctor_ids: [...form.doctor_ids, v] }); }}>
+                <Select
+                  value=""
+                  onValueChange={v => {
+                    if (!v) return;
+                    if (v === '__all__') {
+                      const allIds = doctors
+                        .filter(d => d.active !== false && !d.is_urgentologist)
+                        .map(d => d.id);
+                      setForm({ ...form, doctor_ids: allIds });
+                      return;
+                    }
+                    if (!form.doctor_ids.includes(v)) setForm({ ...form, doctor_ids: [...form.doctor_ids, v] });
+                  }}
+                >
                   <SelectTrigger className="h-7 border-0 shadow-none w-auto text-sm text-slate-500 hover:text-slate-700 px-1">
                     <SelectValue placeholder={form.doctor_ids.length ? '+ Otro' : 'Elegir médico'} />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="__all__" className="font-semibold text-blue-700">★ Todos los médicos</SelectItem>
                     {doctors.filter(d => !form.doctor_ids.includes(d.id)).map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
                   </SelectContent>
                 </Select>

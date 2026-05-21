@@ -1844,9 +1844,22 @@ function QuickAddBlockForm({ doctors, blockSuggestions = [], onSave, onCancel })
             </span>
           );
         })}
-        <Select value="" onValueChange={v => { if (v && !doctorIds.includes(v)) setDoctorIds([...doctorIds, v]); }}>
+        <Select
+          value=""
+          onValueChange={v => {
+            if (!v) return;
+            if (v === '__all__') {
+              setDoctorIds(doctors.filter(d => d.active !== false && !d.is_urgentologist).map(d => d.id));
+              return;
+            }
+            if (!doctorIds.includes(v)) setDoctorIds([...doctorIds, v]);
+          }}
+        >
           <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-24"><SelectValue placeholder={doctorIds.length ? '+ Otro' : 'Médico'} /></SelectTrigger>
-          <SelectContent>{doctors.filter(d => !doctorIds.includes(d.id)).map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}</SelectContent>
+          <SelectContent>
+            <SelectItem value="__all__" className="font-semibold text-blue-700">★ Todos los médicos</SelectItem>
+            {doctors.filter(d => !doctorIds.includes(d.id)).map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
+          </SelectContent>
         </Select>
       </div>
       <button

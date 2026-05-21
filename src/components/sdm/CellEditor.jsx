@@ -280,11 +280,19 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
                           </Badge>
                         );
                       })}
-                      <Select value="" onValueChange={v => addDoctor(it._key, v)}>
+                      <Select
+                        value=""
+                        onValueChange={v => {
+                          if (!v) return;
+                          if (v === '__all__') { fillAllAvailable(it._key); return; }
+                          addDoctor(it._key, v);
+                        }}
+                      >
                         <SelectTrigger className="h-6 px-1.5 py-0 w-auto border-0 shadow-none text-[10px] text-slate-500 hover:text-slate-700">
                           <SelectValue placeholder={(it.doctor_ids?.length ? '+ Otro' : '+ Agregar médico')} />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="__all__" className="font-semibold text-blue-700">★ Todos los médicos disponibles</SelectItem>
                           {doctors
                             .filter(d => !(it.doctor_ids || []).includes(d.id))
                             .map(d => {
