@@ -273,8 +273,12 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
         : d.policlinico
           ? `${esc(doctorName(d.policlinico.doctor_id))} <span style="color:#475569;">${d.policlinico.from}–${d.policlinico.to}</span>`
           : '—';
+      const visitorsList = (Array.isArray(d.external_visitors) ? d.external_visitors : [])
+        .filter(v => v && !v.no_show && !v.holiday_pending && !v[EMPTY_EXTERNAL_VISITORS_OVERRIDE])
+        .map(v => `<div style="font-weight:normal; color:#334155; font-size:7.5pt; margin-top:2px;">${esc(v.name || '')}${v.specialty ? ` <span style="color:#64748b;">${esc(v.specialty)}</span>` : ''}</div>`)
+        .join('');
       return `<tr>
-        <td style="${cellStyle} font-weight:bold; background:#f8fafc; width:78px;">${esc(d.label)}<br/><span style="font-weight:normal; color:#475569; font-size:8pt;">${ddmm(d.date)}</span></td>
+        <td style="${cellStyle} font-weight:bold; background:#f8fafc; width:88px;">${esc(d.label)}<br/><span style="font-weight:normal; color:#475569; font-size:8pt;">${ddmm(d.date)}</span>${d.is_holiday ? '<div style="font-weight:bold; color:#64748b; font-size:7.5pt; margin-top:2px;">FERIADO</div>' : ''}${visitorsList}</td>
         <td style="${cellStyle}">${turnos}</td>
         <td style="${cellStyle} ${colStyle.refuerzos}">${refuerzos}</td>
         <td style="${cellStyle} ${colStyle.posturno}">${posturno}</td>

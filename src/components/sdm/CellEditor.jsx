@@ -71,6 +71,23 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
     }));
   };
 
+  // Llena doctor_ids con TODOS los medicos disponibles del dia: activos, no
+  // urgentologos, sin turno/posturno/ausencia y que no esten haciendo refuerzo
+  // AM/PM ni policlinico full-day. Util para reuniones medicas donde
+  // participan todos.
+  const fillAllAvailable = (key) => {
+    const refAm = day?.refuerzos?.am;
+    const refPm = day?.refuerzos?.pm;
+    const poliFull = day?.poli_8am?.full_day?.doctor_id;
+    const ausIds = new Set((day?.ausencias || []).map(a => a.doctor_id));
+    const allIds = (doctors || [])
+      .filter(d => d.active !== false && !d.is_urgentologist)
+      .filter(d => !turnoIds.has(d.id) && !postIds.has(d.id) && !ausIds.has(d.id))
+      .filter(d => d.id !== refAm && d.id !== refPm && d.id !== poliFull)
+      .map(d => d.id);
+    setItems(items.map(it => it._key === key ? { ...it, doctor_ids: allIds } : it));
+  };
+
   // Estado de disponibilidad de un médico para un bloqueo concreto (con
   // sus from/to). Sirve para colorear el dropdown:
   //  - 'turno' / 'posturno' / 'ausencia': el médico no puede tomar bloqueos ese día (rojo)
@@ -240,7 +257,17 @@ export default function CellEditor({ open, onOpenChange, day, bloqueos, doctors,
                     <TimeInput24h className="h-8" value={it.to || ''} onChange={v => update(it._key, 'to', v)} />
                   </div>
                   <div className="col-span-3">
-                    <label className="text-[10px] uppercase tracking-wide text-slate-500">Médicos</label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] uppercase tracking-wide text-slate-500">Médicos</label>
+                      <button
+                        type="button"
+                        onClick={() => fillAllAvailable(it._key)}
+                        className="text-[10px] text-blue-600 hover:text-blue-800 hover:underline"
+                        title="Bloquea a todos los médicos disponibles del día (excluye turno, posturno, ausencias, refuerzos y poli full-day)"
+                      >
+                        Todos disponibles
+                      </button>
+                    </div>
                     <div className={`min-h-8 rounded-md border px-1.5 py-1 flex flex-wrap gap-1 items-center ${(!it.doctor_ids || it.doctor_ids.length === 0) && !it.suspended ? 'border-amber-300' : 'border-input'}`}>
                       {(it.doctor_ids || []).map(docId => {
                         const doc = doctors.find(d => d.id === docId);
