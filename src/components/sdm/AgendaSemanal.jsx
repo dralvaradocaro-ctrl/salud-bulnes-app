@@ -223,6 +223,27 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   //   table: solo la tabla (ideal para Clipboard API → pegar en Doc existente)
   //   doc:   HTML completo con shell (para .doc / Word)
   //   plain: versión texto plano como fallback del portapapeles
+  // Si un bloque cubre a todos los medicos elegibles del dia (excluye los
+  // que estan en turno/posturno/ausencia/refuerzos/poli full-day), mostrarlo
+  // como "TODOS" en vez de listar nombres uno por uno.
+  function isAllDoctorsBlock(block, day) {
+    const ids = blockDoctorIds(block);
+    if (ids.length < 4) return false; // umbral minimo para evitar falsos positivos
+    const refAm = day?.refuerzos?.am;
+    const refPm = day?.refuerzos?.pm;
+    const poliFull = day?.poli_8am?.full_day?.doctor_id;
+    const turnoIds = new Set((day?.turnos || []).map(t => t.doctor_id));
+    const postIds = new Set((day?.posturno || []).map(t => t.doctor_id));
+    const ausIds = new Set((day?.ausencias || []).map(a => a.doctor_id));
+    const eligible = (doctors || []).filter(d =>
+      d.active !== false && !d.is_urgentologist &&
+      !turnoIds.has(d.id) && !postIds.has(d.id) && !ausIds.has(d.id) &&
+      d.id !== refAm && d.id !== refPm && d.id !== poliFull
+    );
+    if (eligible.length === 0) return false;
+    return eligible.every(d => ids.includes(d.id));
+  }
+
   function buildAgendaHtml() {
     const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     const ddmm = (iso) => iso ? `${iso.slice(8,10)}-${iso.slice(5,7)}-${iso.slice(0,4)}` : '';
@@ -250,7 +271,10 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
               if (b.suspended) return null;
               const ids = Array.isArray(b.doctor_ids) && b.doctor_ids.length
                 ? b.doctor_ids : (b.doctor_id ? [b.doctor_id] : []);
-              const docs = ids.length ? ids.map(id => esc(doctorName(id))).join(' + ') : '⚠ SIN ASIGNAR';
+              let docs;
+              if (!ids.length) docs = '⚠ SIN ASIGNAR';
+              else if (isAllDoctorsBlock(b, d)) docs = '<b>TODOS</b>';
+              else docs = ids.map(id => esc(doctorName(id))).join(' + ');
               const hora = b.from && b.to ? `${b.from}–${b.to} ` : '';
               return `${hora}${docs} <span style="color:#475569;">${esc(b.name)}</span>`;
             })
@@ -1424,7 +1448,9 @@ ${table}
                                 <>
                                   {(() => {
                                     const ids = blockDoctorIds(b);
-                                    return ids.length ? ids.map(doctorName).join(' + ') : (b.suspended ? '' : '⚠ SIN ASIGNAR');
+                                    if (!ids.length) return b.suspended ? '' : '⚠ SIN ASIGNAR';
+                                    if (isAllDoctorsBlock(b, day)) return <span className="font-bold">TODOS</span>;
+                                    return ids.map(doctorName).join(' + ');
                                   })()} <span className={b.suspended ? '' : 'text-slate-500'}>{b.name}</span>
                                 </>
                               )}
