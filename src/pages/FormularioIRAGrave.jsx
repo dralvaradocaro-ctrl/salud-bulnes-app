@@ -145,9 +145,10 @@ const inputStyle = {
 };
 const smallInputStyle = { ...inputStyle, width: '28pt', textAlign: 'center', padding: '1px 2px' };
 const sectionTitleStyle = {
-  fontFamily: F, fontWeight: 'bold', fontSize: '12pt',
-  borderBottom: '1pt solid #000', paddingBottom: '2px',
-  marginTop: '8pt', marginBottom: '5pt',
+  fontFamily: F, fontWeight: 700, fontSize: '13pt',
+  borderBottom: '1.2pt solid #000', paddingBottom: '3pt',
+  marginTop: '10pt', marginBottom: '6pt',
+  letterSpacing: '-0.2pt',
 };
 
 function Cell({ children, style }) {
@@ -396,12 +397,47 @@ export default function FormularioIRAGrave() {
           }
         }
         .ira-header-band {
-          display: flex; align-items: flex-start; gap: 12pt;
-          border-bottom: 1pt solid #000; padding-bottom: 4pt; margin-bottom: 6pt;
+          display: flex; align-items: center; gap: 14pt;
+          border-bottom: 1pt solid #000; padding-bottom: 6pt; margin-bottom: 8pt;
         }
         .ira-header-band img {
-          height: 60px; width: auto; object-fit: contain;
+          height: 22mm; width: auto; object-fit: contain;
           flex-shrink: 0;
+        }
+        .ira-header-band .ira-title {
+          font-weight: 700;
+          font-size: 14pt;
+          line-height: 1.15;
+          margin: 0;
+          letter-spacing: -0.1pt;
+        }
+        .ira-header-band .ira-code { font-size: 9pt; margin: 3pt 0 0 0; color: #222; }
+        .ira-header-band .ira-meta { text-align: right; font-size: 8pt; color: #444; line-height: 1.3; }
+        /* Visor estilo PDF: fondo gris, hojas A4 centradas con sombra. */
+        .ira-pdf-viewer {
+          background: #525659;
+          padding: 24px 16px;
+          min-height: calc(100vh - 60px);
+        }
+        .ira-pdf-viewer .ira-print-page {
+          width: 210mm;
+          min-height: 297mm;
+          padding: 8mm 10mm;
+          background: #fff;
+          box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+          margin: 0 auto 18px auto;
+        }
+        @media print {
+          .ira-pdf-viewer {
+            background: #fff !important;
+            padding: 0 !important;
+            min-height: 0 !important;
+          }
+          .ira-pdf-viewer .ira-print-page {
+            box-shadow: none !important;
+            margin: 0 !important;
+            min-height: 0 !important;
+          }
         }
       `}</style>
 
@@ -535,19 +571,19 @@ export default function FormularioIRAGrave() {
       </div>
       )}
 
-      {/* ── Documento generado: dos páginas A4 ──────────────────────── */}
-      {showPreview && (<>
+      {/* ── Documento generado: dos páginas A4 (visor estilo PDF) ──── */}
+      {showPreview && (<div className="ira-pdf-viewer">
       {/* ── Página 1 ────────────────────────────────────────────────── */}
       <div className="ira-print-page mx-auto bg-white" style={{ maxWidth: '210mm', padding: '8mm 10mm', fontFamily: F, color: '#000' }}>
         <div className="ira-header-band">
           <img src={ISP_LOGO} alt="Instituto de Salud Pública de Chile" crossOrigin="anonymous" />
           <div style={{ flex: 1 }}>
-            <p style={{ fontWeight: 'bold', fontSize: '13pt', margin: 0 }}>
+            <p className="ira-title">
               Formulario notificación inmediata y envío de muestras a confirmación IRA grave y 2019-nCoV
             </p>
-            <p style={{ fontSize: '9pt', margin: '2pt 0 0 0' }}>PR-244.00-007</p>
+            <p className="ira-code">PR-244.00-007</p>
           </div>
-          <div style={{ textAlign: 'right', fontSize: '8pt', color: '#444' }}>
+          <div className="ira-meta">
             <div>Actualizado: 25/08/2020</div>
             <div>Versión: 4</div>
             <div>Página 1 de 2</div>
@@ -725,12 +761,12 @@ export default function FormularioIRAGrave() {
         <div className="ira-header-band">
           <img src={ISP_LOGO} alt="Instituto de Salud Pública de Chile" crossOrigin="anonymous" />
           <div style={{ flex: 1 }}>
-            <p style={{ fontWeight: 'bold', fontSize: '13pt', margin: 0 }}>
+            <p className="ira-title">
               Formulario notificación inmediata y envío de muestras a confirmación IRA grave y 2019-nCoV
             </p>
-            <p style={{ fontSize: '9pt', margin: '2pt 0 0 0' }}>PR-244.00-007</p>
+            <p className="ira-code">PR-244.00-007</p>
           </div>
-          <div style={{ textAlign: 'right', fontSize: '8pt', color: '#444' }}>
+          <div className="ira-meta">
             <div>Actualizado: 25/08/2020</div>
             <div>Versión: 4</div>
             <div>Página 2 de 2</div>
@@ -809,7 +845,7 @@ export default function FormularioIRAGrave() {
           <li>En caso de dudas consultar a <strong>Unidad de Recepción de Muestras (02) 5755187</strong>.</li>
         </ol>
       </div>
-      </>)}
+      </div>)}
     </>
   );
 }
