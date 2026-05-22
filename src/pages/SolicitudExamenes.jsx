@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ChevronLeft, Search, Printer, X, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 
 // ── Datos de exámenes ─────────────────────────────────────────────────
 const SECTIONS = [
@@ -278,6 +279,24 @@ export default function SolicitudExamenes() {
   const [search, setSearch]   = useState('');
   const [selected, setSelected] = useState(new Set());
   const [patient, setPatient] = useState(EMPTY_PATIENT);
+
+  // Prefill desde el wizard multi-plantilla: si el usuario llenó datos
+  // comunes del paciente en /Templates y luego abrió esta página, los
+  // tomamos aquí. La key se mantiene en sessionStorage hasta nueva tanda.
+  useEffect(() => {
+    const p = getMultiPrefill();
+    if (!p) return;
+    setPatient(prev => ({
+      ...prev,
+      nombre:           p.patient_name      || prev.nombre,
+      rut:              p.patient_rut       ? formatRut(p.patient_rut) : prev.rut,
+      fecha_nacimiento: p.patient_fecha_nac || prev.fecha_nacimiento,
+      edad:             p.patient_fecha_nac ? calcularEdad(p.patient_fecha_nac) : prev.edad,
+      n_ficha:          p.n_ficha           || prev.n_ficha,
+      prevision:        p.prevision         || prev.prevision,
+      diagnostico:      p.diagnostico       || prev.diagnostico,
+    }));
+  }, []);
 
   const pat = (field, value) => {
     if (field === 'fecha_nacimiento') {

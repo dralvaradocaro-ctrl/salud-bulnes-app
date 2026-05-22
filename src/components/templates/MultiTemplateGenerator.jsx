@@ -4,8 +4,56 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { ChevronLeft, ChevronRight, Download, Copy, Check, FileText, Files, Mail } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, Copy, Check, FileText, Files, Mail, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { createPageUrl } from '@/utils';
+import { setMultiPrefill } from '@/lib/multiTemplatePrefill';
+
+// Formularios oficiales externos (páginas dedicadas). Cada uno declara qué
+// campos comunes del paciente sabe prellenar — entran al wizard como una
+// "pseudo-plantilla" que el usuario puede marcar junto con las demás.
+const EXTERNAL_FORMS = [
+  {
+    id: 'ext-solicitud-examenes',
+    name: 'Solicitud de Exámenes — Hospital de Bulnes',
+    type: 'Formulario Oficial',
+    route: 'SolicitudExamenes',
+    shared_fields: [
+      { field_name: 'patient_name',      field_label: 'Nombre del paciente (Apellidos, Nombres)', field_type: 'text' },
+      { field_name: 'patient_rut',       field_label: 'RUT del paciente',                          field_type: 'text' },
+      { field_name: 'patient_fecha_nac', field_label: 'Fecha de nacimiento',                       field_type: 'date' },
+      { field_name: 'n_ficha',           field_label: 'N° de ficha',                               field_type: 'text' },
+      { field_name: 'prevision',         field_label: 'Previsión (Fonasa, Isapre, etc.)',          field_type: 'text' },
+      { field_name: 'diagnostico',       field_label: 'Diagnóstico',                               field_type: 'textarea' },
+    ],
+  },
+  {
+    id: 'ext-formulario-ges',
+    name: 'Formulario de Constancia GES',
+    type: 'Formulario Oficial',
+    route: 'FormularioGES',
+    shared_fields: [
+      { field_name: 'patient_name',      field_label: 'Nombre del paciente (Apellidos, Nombres)', field_type: 'text' },
+      { field_name: 'patient_rut',       field_label: 'RUT del paciente',                          field_type: 'text' },
+      { field_name: 'patient_fecha_nac', field_label: 'Fecha de nacimiento',                       field_type: 'date' },
+      { field_name: 'patient_direccion', field_label: 'Dirección',                                 field_type: 'text' },
+      { field_name: 'patient_comuna',    field_label: 'Comuna',                                    field_type: 'text' },
+      { field_name: 'patient_telefono',  field_label: 'Teléfono',                                  field_type: 'text' },
+      { field_name: 'patient_correo',    field_label: 'Correo electrónico',                        field_type: 'text' },
+    ],
+  },
+  {
+    id: 'ext-informe-biomedico',
+    name: 'Informe Biomédico Funcional',
+    type: 'Formulario Oficial',
+    route: 'InformeBiomedico',
+    shared_fields: [
+      { field_name: 'patient_name',      field_label: 'Nombre del paciente (Apellidos, Nombres)', field_type: 'text' },
+      { field_name: 'patient_rut',       field_label: 'RUT del paciente',                          field_type: 'text' },
+      { field_name: 'patient_fecha_nac', field_label: 'Fecha de nacimiento',                       field_type: 'date' },
+    ],
+  },
+];
 
 // Genera un .doc (HTML-Word) descargable a partir de un texto plano. Cada
 // salto de linea se convierte en parrafo. Mismo motor que RequestForm.
@@ -66,8 +114,15 @@ export default function MultiTemplateGenerator({ open, templates, onClose }) {
     [eligibleTemplates, selectedIds]
   );
 
-  // Union de required_fields, dedup por field_name. Conserva la primera
-  // definicion (field_label / field_type) que aparece.
+  const selectedExternal = useMemo(
+    () => EXTERNAL_FORMS.filter(f => selectedIds.includes(f.id)),
+    [selectedIds]
+  );
+
+  const anySelected = selectedTemplates.length + selectedExternal.length;
+
+  // Union de required_fields (templates DB) + shared_fields (formularios
+  // externos), dedup por field_name. Conserva la primera definicion vista.
   const unionFields = useMemo(() => {
     const seen = new Map();
     selectedTemplates.forEach(t => {
@@ -75,8 +130,13 @@ export default function MultiTemplateGenerator({ open, templates, onClose }) {
         if (!seen.has(f.field_name)) seen.set(f.field_name, f);
       });
     });
+    selectedExternal.forEach(ext => {
+      (ext.shared_fields || []).forEach(f => {
+        if (!seen.has(f.field_name)) seen.set(f.field_name, f);
+      });
+    });
     return Array.from(seen.values());
-  }, [selectedTemplates]);
+  }, [selectedTemplates, selectedExternal]);
 
   const toggle = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
 
@@ -98,6 +158,11 @@ export default function MultiTemplateGenerator({ open, templates, onClose }) {
       content: renderTemplate(t, formData),
     }));
     setGenerated(out);
+    // Disponibiliza los datos compartidos para los formularios oficiales
+    // externos: cuando el usuario abra Solicitud de Exámenes / GES / Informe
+    // Biomedico desde la sección de resultados, esas paginas leen el payload
+    // y prellenan sus campos.
+    if (selectedExternal.length > 0) setMultiPrefill(formData);
     setStep(3);
   };
 
@@ -151,7 +216,7 @@ export default function MultiTemplateGenerator({ open, templates, onClose }) {
             <div className="flex-1">
               <h2 className="text-xl font-bold">Generar varias solicitudes para el mismo paciente</h2>
               <p className="text-violet-100 text-sm">
-                Paso {step} de 3 · {step === 1 ? 'Elegí las plantillas' : step === 2 ? 'Completá los datos una sola vez' : 'Documentos generados'}
+                Paso {step} de 3 · {step === 1 ? 'Elige las plantillas' : step === 2 ? 'Completa los datos una sola vez' : 'Documentos generados'}
               </p>
             </div>
           </div>
@@ -160,37 +225,66 @@ export default function MultiTemplateGenerator({ open, templates, onClose }) {
         {/* Body */}
         <div className="p-6 overflow-y-auto flex-1">
           {step === 1 && (
-            <div className="space-y-3">
-              <p className="text-sm text-slate-600 mb-3">
-                Marcá las plantillas que querés generar. Después llenás los datos del paciente una sola vez y se rellenan todas.
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600 mb-2">
+                Marca las plantillas que quieres generar. Luego llenas los datos del paciente una sola vez y se rellenan todas.
               </p>
-              {eligibleTemplates.length === 0 ? (
-                <p className="text-sm text-slate-500 italic">No hay plantillas con campos disponibles.</p>
-              ) : eligibleTemplates.map(t => {
-                const checked = selectedIds.includes(t.id);
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => toggle(t.id)}
-                    className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all ${
-                      checked ? 'border-violet-400 bg-violet-50' : 'border-slate-200 bg-white hover:border-violet-200'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
-                        checked ? 'border-violet-500 bg-violet-600 text-white' : 'border-slate-300 bg-white text-transparent'
-                      }`}>✓</span>
-                      <div className="flex-1">
-                        <p className={`font-semibold ${checked ? 'text-violet-800' : 'text-slate-900'}`}>{t.name}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{t.type} · {t.required_fields?.length || 0} campos</p>
+
+              {/* Formularios oficiales (paginas externas con prefill) */}
+              <div className="space-y-2">
+                <p className="text-[11px] uppercase tracking-wide font-bold text-cyan-700">Formularios oficiales</p>
+                {EXTERNAL_FORMS.map(ext => {
+                  const checked = selectedIds.includes(ext.id);
+                  return (
+                    <button
+                      key={ext.id}
+                      onClick={() => toggle(ext.id)}
+                      className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all ${
+                        checked ? 'border-cyan-400 bg-cyan-50' : 'border-slate-200 bg-white hover:border-cyan-200'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+                          checked ? 'border-cyan-500 bg-cyan-600 text-white' : 'border-slate-300 bg-white text-transparent'
+                        }`}>✓</span>
+                        <div className="flex-1">
+                          <p className={`font-semibold ${checked ? 'text-cyan-800' : 'text-slate-900'}`}>{ext.name}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Formulario Oficial · se abre prellenado en pestaña nueva</p>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                );
-              })}
-              <p className="text-[11px] text-slate-500 leading-relaxed pt-2">
-                Los formularios oficiales (GES, Solicitud de Exámenes, Informe Biomédico) son páginas dedicadas y no se incluyen en este modo — abrílos individualmente.
-              </p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Plantillas DB tradicionales */}
+              <div className="space-y-2 pt-2">
+                <p className="text-[11px] uppercase tracking-wide font-bold text-violet-700">Plantillas de solicitud</p>
+                {eligibleTemplates.length === 0 ? (
+                  <p className="text-sm text-slate-500 italic">No hay plantillas con campos disponibles.</p>
+                ) : eligibleTemplates.map(t => {
+                  const checked = selectedIds.includes(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => toggle(t.id)}
+                      className={`w-full text-left rounded-xl border-2 px-4 py-3 transition-all ${
+                        checked ? 'border-violet-400 bg-violet-50' : 'border-slate-200 bg-white hover:border-violet-200'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+                          checked ? 'border-violet-500 bg-violet-600 text-white' : 'border-slate-300 bg-white text-transparent'
+                        }`}>✓</span>
+                        <div className="flex-1">
+                          <p className={`font-semibold ${checked ? 'text-violet-800' : 'text-slate-900'}`}>{t.name}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{t.type} · {t.required_fields?.length || 0} campos</p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -229,14 +323,40 @@ export default function MultiTemplateGenerator({ open, templates, onClose }) {
 
           {step === 3 && (
             <div className="space-y-4">
-              <div className="flex flex-wrap gap-2 pb-3 border-b border-slate-100">
-                <Button onClick={downloadAll} className="bg-blue-600 hover:bg-blue-700 gap-2">
-                  <Download className="h-4 w-4" /> Descargar todos (.doc)
-                </Button>
-                <Button onClick={copyAll} variant="outline" className="gap-2">
-                  <Copy className="h-4 w-4" /> Copiar todo
-                </Button>
-              </div>
+              {generated.length > 0 && (
+                <div className="flex flex-wrap gap-2 pb-3 border-b border-slate-100">
+                  <Button onClick={downloadAll} className="bg-blue-600 hover:bg-blue-700 gap-2">
+                    <Download className="h-4 w-4" /> Descargar todos (.doc)
+                  </Button>
+                  <Button onClick={copyAll} variant="outline" className="gap-2">
+                    <Copy className="h-4 w-4" /> Copiar todo
+                  </Button>
+                </div>
+              )}
+
+              {selectedExternal.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[11px] uppercase tracking-wide font-bold text-cyan-700">Formularios oficiales prellenados</p>
+                  {selectedExternal.map(ext => (
+                    <a
+                      key={ext.id}
+                      href={createPageUrl(ext.route)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-xl border border-cyan-200 bg-cyan-50/40 hover:bg-cyan-50 px-4 py-3 transition-colors"
+                    >
+                      <div className="p-2 rounded-lg bg-cyan-600">
+                        <FileText className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm text-slate-900">{ext.name}</p>
+                        <p className="text-xs text-slate-600">Se abre en una pestaña nueva con los datos del paciente ya completados.</p>
+                      </div>
+                      <ExternalLink className="h-4 w-4 text-cyan-700" />
+                    </a>
+                  ))}
+                </div>
+              )}
 
               {generated.map(g => (
                 <div key={g.template.id} className="rounded-xl border border-slate-200 overflow-hidden">
@@ -291,15 +411,19 @@ export default function MultiTemplateGenerator({ open, templates, onClose }) {
             {step === 1 && (
               <Button
                 onClick={() => setStep(2)}
-                disabled={selectedIds.length === 0}
+                disabled={anySelected === 0}
                 className="bg-violet-600 hover:bg-violet-700 gap-1"
               >
-                Siguiente ({selectedIds.length} elegidas) <ChevronRight className="h-4 w-4" />
+                Siguiente ({anySelected} {anySelected === 1 ? 'elegida' : 'elegidas'}) <ChevronRight className="h-4 w-4" />
               </Button>
             )}
             {step === 2 && (
               <Button onClick={generateAll} className="bg-blue-600 hover:bg-blue-700 gap-2">
-                Generar {selectedTemplates.length} documentos
+                {selectedTemplates.length > 0 && selectedExternal.length > 0
+                  ? `Generar ${selectedTemplates.length} + abrir ${selectedExternal.length}`
+                  : selectedTemplates.length > 0
+                    ? `Generar ${selectedTemplates.length} documentos`
+                    : `Continuar a formularios`}
               </Button>
             )}
             {step === 3 && (

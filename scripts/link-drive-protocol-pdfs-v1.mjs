@@ -136,7 +136,20 @@ for (const entry of PDF_MAPPING) {
   } else if (matches.length === 1) {
     updates.push({ entry, topic: matches[0].topic, by: matches[0].by });
   } else {
-    ambiguous.push({ entry, matches });
+    // Desempate: priorizar match por code; si no, el topic que tenga
+    // protocol_code seteado (version canonica). Si igual queda mas de uno,
+    // dejarlo como ambiguo.
+    const byCode = matches.filter(m => m.by === 'code');
+    if (byCode.length === 1) {
+      updates.push({ entry, topic: byCode[0].topic, by: byCode[0].by + ' [tie-break]' });
+    } else {
+      const withCode = matches.filter(m => m.topic.protocol_code);
+      if (withCode.length === 1) {
+        updates.push({ entry, topic: withCode[0].topic, by: withCode[0].by + ' [tie-break code-set]' });
+      } else {
+        ambiguous.push({ entry, matches });
+      }
+    }
   }
 }
 

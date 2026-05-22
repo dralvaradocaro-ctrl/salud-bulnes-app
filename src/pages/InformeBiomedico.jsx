@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 import { ChevronLeft, Printer, RotateCcw, AlertCircle } from 'lucide-react';
 import { Button as ButtonBase } from '@/components/ui/button';
 /** @type {any} */
@@ -453,6 +454,27 @@ function SectionHead({ label }) {
 // ── Página principal ──────────────────────────────────────────────────
 export default function InformeBiomedico() {
   const [f, setF] = useState(EMPTY);
+
+  // Prefill desde el wizard multi-plantilla. patient_name puede venir como
+  // "Apellidos, Nombres" — partimos por la coma cuando esté presente.
+  useEffect(() => {
+    const p = getMultiPrefill();
+    if (!p) return;
+    let apellidos = '';
+    let nombre = '';
+    if (p.patient_name) {
+      const parts = p.patient_name.split(',');
+      if (parts.length >= 2) { apellidos = parts[0].trim(); nombre = parts.slice(1).join(',').trim(); }
+      else { nombre = p.patient_name.trim(); }
+    }
+    setF(prev => ({
+      ...prev,
+      apellidos: apellidos || prev.apellidos,
+      nombre:    nombre    || prev.nombre,
+      rut:       p.patient_rut ? formatRut(p.patient_rut) : prev.rut,
+      fechaNac:  p.patient_fecha_nac || prev.fechaNac,
+    }));
+  }, []);
   const u = useCallback((/** @type {string} */ key, /** @type {unknown} */ val) =>
     setF(prev => ({ ...prev, [key]: val })), []);
   const clear = () => setF({ ...EMPTY, fechaInforme: getTodayISO() });

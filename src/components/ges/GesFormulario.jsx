@@ -4,6 +4,7 @@ import GesBuscador from '@/components/ges/GesBuscador';
 import DireccionAutocomplete from '@/components/ges/DireccionAutocomplete';
 import FirmaDigital from '@/components/ges/FirmaDigital';
 import FormToolbar from '@/components/ges/FormToolbar';
+import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 
 const defaultForm = {
   institucion: 'Hospital Comunitario de Salud Familiar de Bulnes',
@@ -83,6 +84,23 @@ export default function GesFormulario() {
     const updateBeforePrint = () => setForm(prev => ({ ...prev, fechaNotificacion: getNow() }));
     window.addEventListener('beforeprint', updateBeforePrint);
     return () => window.removeEventListener('beforeprint', updateBeforePrint);
+  }, []);
+
+  // Prefill desde el wizard multi-plantilla.
+  useEffect(() => {
+    const p = getMultiPrefill();
+    if (!p) return;
+    setForm(prev => ({
+      ...prev,
+      nombreLegal:        p.patient_name      || prev.nombreLegal,
+      nombreSocial:       p.patient_name      || prev.nombreSocial,
+      pacienteRun:        p.patient_rut       ? formatRut(p.patient_rut) : prev.pacienteRun,
+      pacienteDireccion:  p.patient_direccion || prev.pacienteDireccion,
+      pacienteComuna:     p.patient_comuna    || prev.pacienteComuna,
+      pacienteTelefono:   p.patient_telefono  || prev.pacienteTelefono,
+      pacienteCorreo:     p.patient_correo    || prev.pacienteCorreo,
+    }));
+    if (p.patient_name) setSocialModified(false); // permite override automático del nombreSocial
   }, []);
 
   const handleRut = (key, val) => {

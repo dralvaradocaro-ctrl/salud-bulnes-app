@@ -144,7 +144,7 @@ export default function Templates() {
                 Solicitar varias plantillas para el mismo paciente
               </h3>
               <p className="text-sm text-slate-600 mt-0.5">
-                Elegí 2 o más plantillas, llená los datos del paciente una sola vez y descargá todos los documentos juntos.
+                Elige 2 o más plantillas, llena los datos del paciente una sola vez y descarga todos los documentos juntos.
               </p>
             </div>
             <span className="text-xs font-medium text-violet-700 group-hover:translate-x-1 transition-transform shrink-0">

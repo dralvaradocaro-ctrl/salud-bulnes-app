@@ -2,7 +2,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Calendar, User, Target, Download, FolderOpen } from 'lucide-react';
+import { FileText, Calendar, User, Target, Download } from 'lucide-react';
 
 // Carpeta institucional compartida con los PDF originales de los protocolos
 // del HCSFB. Si el topic no tiene protocol_file_url propio, "Descargar
@@ -38,28 +38,16 @@ export default function ProtocolHeader({ topic }) {
             </div>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <Button
-            onClick={handleDownload}
-            className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
-            title={isFolderFallback
-              ? 'Abrir la carpeta institucional de protocolos en Google Drive'
-              : 'Descargar el PDF del protocolo'}
-          >
-            {isFolderFallback ? <FolderOpen className="h-4 w-4" /> : <Download className="h-4 w-4" />}
-            {isFolderFallback ? 'Ver en Drive institucional' : 'Descargar Protocolo'}
-          </Button>
-          {!isFolderFallback && (
-            <a
-              href={INSTITUTIONAL_PROTOCOLS_FOLDER_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] text-blue-700 hover:underline"
-            >
-              Ver carpeta institucional
-            </a>
-          )}
-        </div>
+        <Button
+          onClick={handleDownload}
+          className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+          title={isFolderFallback
+            ? 'Abre la carpeta institucional en Google Drive (PDF directo no asociado todavía)'
+            : 'Descarga el PDF del protocolo'}
+        >
+          <Download className="h-4 w-4" />
+          Descargar Protocolo
+        </Button>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4 mb-6">
