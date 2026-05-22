@@ -64,6 +64,13 @@ const EXTERNAL_TEMPLATES = [
     instructions: 'Informe biomédico y funcional para credencial de discapacidad / pensión.',
     external_route: 'InformeBiomedico',
   },
+  {
+    id: 'ext-ira-grave',
+    name: 'Formulario IRA grave y 2019-nCoV (ISP)',
+    type: 'Formulario Oficial',
+    instructions: 'PR-244.00-007 — Notificación inmediata y envío de muestras al ISP. Genera PDF imprimible.',
+    external_route: 'FormularioIRAGrave',
+  },
 ];
 
 export default function Templates() {

@@ -619,6 +619,21 @@ export default function Category() {
               </Link>
             )}
 
+            {/* Formulario IRA grave / 2019-nCoV (ISP) – solo en Hospitalizados */}
+            {hasHospitalizados && (
+              <Link to={createPageUrl('FormularioIRAGrave')}>
+                <div className="flex items-center gap-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 transition-all hover:border-rose-300 hover:shadow-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-600">
+                    <FlaskConical className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">Formulario IRA grave y 2019-nCoV (ISP)</p>
+                    <p className="text-sm text-slate-500">PR-244.00-007 — Notificación inmediata y envío de muestras al ISP. Imprime PDF.</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+
             {/* Informe Biomédico Funcional – solo en Policlínico */}
             {hasPolicinico && (
               <Link to={createPageUrl('InformeBiomedico')}>

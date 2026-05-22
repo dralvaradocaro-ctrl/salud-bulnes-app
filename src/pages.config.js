@@ -67,6 +67,7 @@ import SolicitudExamenes from './pages/SolicitudExamenes';
 import InformeBiomedico from './pages/InformeBiomedico';
 import PrescripcionInteligente from './pages/PrescripcionInteligente';
 import SubdireccionMedica from './pages/SubdireccionMedica';
+import FormularioIRAGrave from './pages/FormularioIRAGrave';
 import __Layout from './Layout.jsx';
 
 export const PAGES = {
@@ -90,6 +91,7 @@ export const PAGES = {
     "InformeBiomedico": InformeBiomedico,
     "PrescripcionInteligente": PrescripcionInteligente,
     "SubdireccionMedica": SubdireccionMedica,
+    "FormularioIRAGrave": FormularioIRAGrave,
 }
 
 export const pagesConfig = {

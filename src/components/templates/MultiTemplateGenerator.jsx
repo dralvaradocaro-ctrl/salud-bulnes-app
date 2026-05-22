@@ -53,6 +53,21 @@ const EXTERNAL_FORMS = [
       { field_name: 'patient_fecha_nac', field_label: 'Fecha de nacimiento',                       field_type: 'date' },
     ],
   },
+  {
+    id: 'ext-ira-grave',
+    name: 'Formulario IRA grave y 2019-nCoV (ISP)',
+    type: 'Formulario Oficial',
+    route: 'FormularioIRAGrave',
+    shared_fields: [
+      { field_name: 'patient_name',      field_label: 'Nombre del paciente (Apellidos, Nombres)', field_type: 'text' },
+      { field_name: 'patient_rut',       field_label: 'RUT del paciente',                          field_type: 'text' },
+      { field_name: 'patient_fecha_nac', field_label: 'Fecha de nacimiento',                       field_type: 'date' },
+      { field_name: 'patient_direccion', field_label: 'Dirección',                                 field_type: 'text' },
+      { field_name: 'patient_comuna',    field_label: 'Comuna',                                    field_type: 'text' },
+      { field_name: 'patient_telefono',  field_label: 'Teléfono',                                  field_type: 'text' },
+      { field_name: 'prevision',         field_label: 'Previsión (Fonasa, Isapre, etc.)',          field_type: 'text' },
+    ],
+  },
 ];
 
 // Genera un .doc (HTML-Word) descargable a partir de un texto plano. Cada

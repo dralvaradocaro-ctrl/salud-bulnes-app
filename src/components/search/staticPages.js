@@ -66,6 +66,18 @@ export const staticPages = [
     ],
   },
   {
+    id: 'formulario-ira-grave',
+    page: 'FormularioIRAGrave',
+    name: 'Formulario IRA grave y 2019-nCoV (ISP)',
+    description: 'PR-244.00-007 — Notificación inmediata y envío de muestras al ISP. Imprime PDF.',
+    keywords: [
+      'ira', 'ira grave', 'ira-grave', 'irag', 'covid', 'coronavirus', '2019-ncov', 'ncov',
+      'isp', 'instituto de salud pública', 'instituto de salud publica',
+      'influenza', 'vigilancia', 'epivigila', 'pr-244', 'pr244',
+      'notificación inmediata', 'notificacion inmediata',
+    ],
+  },
+  {
     id: 'templates',
     page: 'Templates',
     name: 'Plantillas e Interconsultas',
