@@ -8,14 +8,16 @@ import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import RequestForm from '@/components/templates/RequestForm';
-import { 
+import MultiTemplateGenerator from '@/components/templates/MultiTemplateGenerator';
+import {
   ChevronLeft,
   ClipboardList,
   Image,
   FlaskConical,
   Microscope,
   FileText,
-  MessageSquare
+  MessageSquare,
+  Files
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -70,6 +72,7 @@ export default function Templates() {
   
   const [activeTemplate, setActiveTemplate] = useState(null);
   const [activeType, setActiveType] = useState('all');
+  const [showMultiGen, setShowMultiGen] = useState(false);
 
   const HIDDEN_TYPES = ['Estudio Endoscópico'];
 
@@ -127,6 +130,29 @@ export default function Templates() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* Multi-template generator launcher */}
+        <button
+          onClick={() => setShowMultiGen(true)}
+          className="w-full mb-6 group rounded-2xl border-2 border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-indigo-50 hover:from-violet-100 hover:to-indigo-100 hover:border-violet-400 p-5 text-left transition-all"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 shadow-lg shrink-0">
+              <Files className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-slate-900 group-hover:text-violet-700 transition-colors">
+                Solicitar varias plantillas para el mismo paciente
+              </h3>
+              <p className="text-sm text-slate-600 mt-0.5">
+                Elegí 2 o más plantillas, llená los datos del paciente una sola vez y descargá todos los documentos juntos.
+              </p>
+            </div>
+            <span className="text-xs font-medium text-violet-700 group-hover:translate-x-1 transition-transform shrink-0">
+              Abrir →
+            </span>
+          </div>
+        </button>
+
         {/* Type Filters */}
         <div className="mb-8 overflow-x-auto pb-2">
           <div className="flex gap-2 min-w-max">
@@ -262,6 +288,13 @@ export default function Templates() {
           onClose={() => setActiveTemplate(null)}
         />
       )}
+
+      {/* Multi-template generator */}
+      <MultiTemplateGenerator
+        open={showMultiGen}
+        templates={templates}
+        onClose={() => setShowMultiGen(false)}
+      />
     </div>
   );
 }
