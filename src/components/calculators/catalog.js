@@ -16,6 +16,8 @@ import PediatricDoseCalculator from '@/components/calculators/PediatricDoseCalcu
 import MaddreyCalculator from '@/components/calculators/MaddreyCalculator';
 import LilleCalculator from '@/components/calculators/LilleCalculator';
 import SadPersonsCalculator from '@/components/calculators/SadPersonsCalculator';
+import GlasgowCalculator from '@/components/calculators/GlasgowCalculator';
+import GDSCalculator from '@/components/calculators/GDSCalculator';
 
 export const calculatorsByCategory = {
   'Urgencias': [
@@ -29,7 +31,9 @@ export const calculatorsByCategory = {
   'Neurología': [
     { id: 'nihss', name: 'NIHSS - Escala ACV', component: NIHSSCalculator, icon: Brain },
     { id: 'moca', name: 'MoCA - Cognición', component: MOCACalculator, icon: Brain },
-    { id: 'abcd2', name: 'ABCD² — Riesgo ACV post-AIT', component: ABCD2Calculator, icon: Brain }
+    { id: 'abcd2', name: 'ABCD² — Riesgo ACV post-AIT', component: ABCD2Calculator, icon: Brain },
+    { id: 'glasgow', name: 'Glasgow (GCS) — Coma / TEC', component: GlasgowCalculator, icon: Brain },
+    { id: 'gds', name: 'GDS Reisberg — Estadío de Demencia', component: GDSCalculator, icon: Brain }
   ],
   'Pediatría': [
     { id: 'pediatric-dose', name: 'Dosis Pediátricas por Peso', component: PediatricDoseCalculator, icon: Baby }
