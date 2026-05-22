@@ -17,6 +17,29 @@ function formatRut(raw) {
   return `${bodyDotted}-${dv}`;
 }
 
+// Logo ISP — se carga vía http al cliente al imprimir (Wikipedia Commons).
+const ISP_LOGO = 'https://upload.wikimedia.org/wikipedia/commons/0/02/Logotipo_del_Instituto_de_Salud_P%C3%BAblica_de_Chile.png';
+
+// Defaults institucionales HCSFB / Bulnes — pre-rellenan el formulario para
+// agilizar el llenado. Las casillas de Inmunofluorescencia vienen marcadas
+// (excepto "Negativo"), tórula nasofaríngea como tipo de muestra y el
+// paciente se asume hospitalizado por defecto.
+const HCSFB_DEFAULTS = {
+  laboratorio: 'Hospital Comunitario de Salud Familiar de Bulnes',
+  procRegion:   'Ñuble',
+  procProvincia:'Diguillín',
+  procComuna:   'Bulnes',
+  procDireccion:'Manuel Bulnes 432',
+  unidad:       'Medicina',
+  // Inmuno Fluorescencia: todas menos negativo
+  ifInfluenzaA: true, ifInfluenzaB: true, ifVRS: true, ifAdenovirus: true,
+  ifParainfluenza: true, ifMetapneumovirus: true, ifNegativo: false,
+  // Tipo de muestra: tórula nasofaríngea
+  mTorulasNF: true,
+  // Paciente asumido hospitalizado
+  hospitalizado: true,
+};
+
 const EMPTY = {
   nEpivigila: '',
   // Información del Paciente
@@ -67,6 +90,43 @@ const EMPTY = {
   fallece: false, fFechaDia: '', fFechaMes: '', fFechaAno: '',
   diagFallecimiento: '',
 };
+
+// Calcula edad en años/meses/días desde una fecha ISO YYYY-MM-DD.
+function calcAgeFromIso(iso) {
+  if (!iso) return { y: '', m: '', d: '' };
+  const today = new Date();
+  const birth = new Date(iso);
+  if (isNaN(birth.getTime())) return { y: '', m: '', d: '' };
+  let y = today.getFullYear() - birth.getFullYear();
+  let m = today.getMonth() - birth.getMonth();
+  let d = today.getDate() - birth.getDate();
+  if (d < 0) {
+    m -= 1;
+    const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    d += prevMonth.getDate();
+  }
+  if (m < 0) { y -= 1; m += 12; }
+  if (y < 0) return { y: '', m: '', d: '' };
+  return { y: String(y), m: String(m), d: String(d) };
+}
+
+function isoFromDma(dia, mes, ano) {
+  if (!dia || !mes || !ano) return '';
+  const d = String(dia).padStart(2, '0');
+  const m = String(mes).padStart(2, '0');
+  const y = String(ano).length === 2 ? '20' + ano : ano;
+  return `${y}-${m}-${d}`;
+}
+
+function todayDma() {
+  const t = new Date();
+  return { dia: String(t.getDate()), mes: String(t.getMonth() + 1), ano: String(t.getFullYear()) };
+}
+
+function nowHHMM() {
+  const t = new Date();
+  return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+}
 
 // Constantes de impresión
 const F = "'Calibri','Candara','Segoe UI',Arial,sans-serif";
@@ -160,15 +220,28 @@ function DateDMA({ dia, mes, ano, onChange }) {
 }
 
 export default function FormularioIRAGrave() {
-  const [f, setF] = useState(EMPTY);
+  const [f, setF] = useState({ ...EMPTY, ...HCSFB_DEFAULTS });
   const u = useCallback((k, v) => setF(prev => ({ ...prev, [k]: v })), []);
   const setDate = (prefix) => (changes) => {
-    setF(prev => ({
-      ...prev,
-      [`${prefix}Dia`]: changes.dia ?? prev[`${prefix}Dia`],
-      [`${prefix}Mes`]: changes.mes ?? prev[`${prefix}Mes`],
-      [`${prefix}Ano`]: changes.ano ?? prev[`${prefix}Ano`],
-    }));
+    setF(prev => {
+      const next = {
+        ...prev,
+        [`${prefix}Dia`]: changes.dia ?? prev[`${prefix}Dia`],
+        [`${prefix}Mes`]: changes.mes ?? prev[`${prefix}Mes`],
+        [`${prefix}Ano`]: changes.ano ?? prev[`${prefix}Ano`],
+      };
+      // Cuando cambia fecha de nacimiento, recalcular edad.
+      if (prefix === 'fechaNac') {
+        const iso = isoFromDma(next.fechaNacDia, next.fechaNacMes, next.fechaNacAno);
+        const age = calcAgeFromIso(iso);
+        if (age.y !== '') {
+          next.edadAnos = age.y;
+          next.edadMeses = age.m;
+          next.edadDias = age.d;
+        }
+      }
+      return next;
+    });
   };
 
   // Prefill desde el wizard multi-plantilla.
@@ -194,23 +267,76 @@ export default function FormularioIRAGrave() {
       const [y, m, d] = p.patient_fecha_nac.split('-');
       dia = d || ''; mes = m || ''; ano = y || '';
     }
-    setF(prev => ({
-      ...prev,
-      rut:        p.patient_rut ? formatRut(p.patient_rut) : prev.rut,
-      nombres:    nombres   || prev.nombres,
-      apPaterno:  apPaterno || prev.apPaterno,
-      apMaterno:  apMaterno || prev.apMaterno,
-      fechaNacDia: dia || prev.fechaNacDia,
-      fechaNacMes: mes || prev.fechaNacMes,
-      fechaNacAno: ano || prev.fechaNacAno,
-      direccion:  p.patient_direccion || prev.direccion,
-      comuna:     p.patient_comuna    || prev.comuna,
-      telefono:   p.patient_telefono  || prev.telefono,
-      prevision:  p.prevision         || prev.prevision,
-    }));
+    setF(prev => {
+      const next = {
+        ...prev,
+        rut:        p.patient_rut ? formatRut(p.patient_rut) : prev.rut,
+        nombres:    nombres   || prev.nombres,
+        apPaterno:  apPaterno || prev.apPaterno,
+        apMaterno:  apMaterno || prev.apMaterno,
+        fechaNacDia: dia || prev.fechaNacDia,
+        fechaNacMes: mes || prev.fechaNacMes,
+        fechaNacAno: ano || prev.fechaNacAno,
+        direccion:  p.patient_direccion || prev.direccion,
+        comuna:     p.patient_comuna    || prev.comuna,
+        telefono:   p.patient_telefono  || prev.telefono,
+        prevision:  p.prevision         || prev.prevision,
+      };
+      if (p.patient_fecha_nac) {
+        const age = calcAgeFromIso(p.patient_fecha_nac);
+        if (age.y !== '') {
+          next.edadAnos = age.y;
+          next.edadMeses = age.m;
+          next.edadDias = age.d;
+        }
+      }
+      return next;
+    });
   }, []);
 
-  const clear = () => setF(EMPTY);
+  const clear = () => setF({ ...EMPTY, ...HCSFB_DEFAULTS });
+
+  // ── Panel "Datos previos" (solo pantalla) ─────────────────────────────
+  // Captura los campos críticos en una sola UI compacta. Los cambios fluyen
+  // al mismo state que el PDF imprimible — la edad se autocalcula desde la
+  // fecha de nacimiento. Fecha de obtención / hora se pueden setear "ahora"
+  // con un click.
+  const fechaNacIso = isoFromDma(f.fechaNacDia, f.fechaNacMes, f.fechaNacAno);
+  const fechaInicioIso = isoFromDma(f.inicioSintDia, f.inicioSintMes, f.inicioSintAno);
+  const fechaPrimConsIso = isoFromDma(f.primConsultaDia, f.primConsultaMes, f.primConsultaAno);
+  const fechaHospIso = isoFromDma(f.hFechaDia, f.hFechaMes, f.hFechaAno);
+  const fechaObtIso = isoFromDma(f.fechaObtDia, f.fechaObtMes, f.fechaObtAno);
+
+  const setIsoDate = (prefix) => (iso) => {
+    if (!iso) {
+      setDate(prefix)({ dia: '', mes: '', ano: '' });
+      return;
+    }
+    const [y, m, d] = iso.split('-');
+    setDate(prefix)({ dia: d, mes: m, ano: y });
+  };
+
+  const marcarMuestraAhora = () => {
+    const t = todayDma();
+    setF(prev => ({
+      ...prev,
+      fechaObtDia: t.dia, fechaObtMes: t.mes, fechaObtAno: t.ano,
+      horaObt: nowHHMM(),
+    }));
+  };
+
+  const QuickField = ({ label, children, span = 'col-span-1' }) => (
+    <div className={span}>
+      <label className="block text-[11px] font-medium text-slate-600 mb-1">{label}</label>
+      {children}
+    </div>
+  );
+  const QuickInput = (props) => (
+    <input
+      {...props}
+      className={`w-full h-9 rounded-md border border-slate-300 px-2.5 text-sm focus:border-blue-400 focus:outline-none ${props.className || ''}`}
+    />
+  );
 
   return (
     <>
@@ -238,12 +364,18 @@ export default function FormularioIRAGrave() {
           input[type="checkbox"], input[type="radio"] {
             -webkit-print-color-adjust: exact; print-color-adjust: exact;
           }
+          .ira-header-band img {
+            -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+          }
         }
         .ira-header-band {
           display: flex; align-items: flex-start; gap: 12pt;
           border-bottom: 1pt solid #000; padding-bottom: 4pt; margin-bottom: 6pt;
         }
-        .ira-header-band img { height: 56px; width: auto; }
+        .ira-header-band img {
+          height: 60px; width: auto; object-fit: contain;
+          flex-shrink: 0;
+        }
       `}</style>
 
       {/* ── Toolbar (solo pantalla) ─────────────────────────────────── */}
@@ -265,9 +397,105 @@ export default function FormularioIRAGrave() {
         </div>
       </div>
 
+      {/* ── Panel "Datos previos" (solo pantalla) ───────────────────── */}
+      <div className="ira-screen-only max-w-4xl mx-auto px-4 mt-4">
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">Datos previos del paciente</h2>
+              <p className="text-xs text-slate-600">Llena lo principal acá — los campos del formulario se rellenan automáticamente. La edad se calcula desde la fecha de nacimiento.</p>
+            </div>
+            <Button size="sm" variant="outline" onClick={marcarMuestraAhora} className="text-xs whitespace-nowrap">
+              Muestra tomada ahora
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <QuickField label="Nombres">
+              <QuickInput value={f.nombres} onChange={e => u('nombres', e.target.value)} placeholder="Juan Pedro" />
+            </QuickField>
+            <QuickField label="Apellido paterno">
+              <QuickInput value={f.apPaterno} onChange={e => u('apPaterno', e.target.value)} placeholder="Pérez" />
+            </QuickField>
+            <QuickField label="Apellido materno">
+              <QuickInput value={f.apMaterno} onChange={e => u('apMaterno', e.target.value)} placeholder="Soto" />
+            </QuickField>
+            <QuickField label="RUT">
+              <QuickInput value={f.rut} onChange={e => u('rut', formatRut(e.target.value))} placeholder="12.345.678-9" />
+            </QuickField>
+
+            <QuickField label="Sexo">
+              <select
+                value={f.sexo}
+                onChange={e => u('sexo', e.target.value)}
+                className="w-full h-9 rounded-md border border-slate-300 px-2 text-sm focus:border-blue-400 focus:outline-none bg-white"
+              >
+                <option value="">—</option>
+                <option value="F">Femenino</option>
+                <option value="M">Masculino</option>
+              </select>
+            </QuickField>
+            <QuickField label="Fecha nacimiento">
+              <QuickInput type="date" value={fechaNacIso} onChange={e => setIsoDate('fechaNac')(e.target.value)} />
+            </QuickField>
+            <QuickField label="Edad (auto)">
+              <QuickInput
+                value={f.edadAnos ? `${f.edadAnos} a · ${f.edadMeses || 0} m · ${f.edadDias || 0} d` : ''}
+                onChange={() => {}}
+                placeholder="Se calcula al ingresar fecha"
+                readOnly
+                className="bg-slate-50 text-slate-600"
+              />
+            </QuickField>
+            <QuickField label="Previsión">
+              <QuickInput value={f.prevision} onChange={e => u('prevision', e.target.value)} placeholder="Fonasa A/B/C/D" />
+            </QuickField>
+
+            <QuickField label="Dirección" span="col-span-2">
+              <QuickInput value={f.direccion} onChange={e => u('direccion', e.target.value)} />
+            </QuickField>
+            <QuickField label="Comuna">
+              <QuickInput value={f.comuna} onChange={e => u('comuna', e.target.value)} />
+            </QuickField>
+            <QuickField label="Teléfono">
+              <QuickInput value={f.telefono} onChange={e => u('telefono', e.target.value)} placeholder="+56 9 …" />
+            </QuickField>
+
+            <QuickField label="Inicio síntomas">
+              <QuickInput type="date" value={fechaInicioIso} onChange={e => setIsoDate('inicioSint')(e.target.value)} />
+            </QuickField>
+            <QuickField label="Primera consulta">
+              <QuickInput type="date" value={fechaPrimConsIso} onChange={e => setIsoDate('primConsulta')(e.target.value)} />
+            </QuickField>
+            <QuickField label="Fecha hospitalización">
+              <QuickInput type="date" value={fechaHospIso} onChange={e => setIsoDate('hFecha')(e.target.value)} />
+            </QuickField>
+            <QuickField label="Fecha obtención muestra">
+              <QuickInput type="date" value={fechaObtIso} onChange={e => setIsoDate('fechaObt')(e.target.value)} />
+            </QuickField>
+
+            <QuickField label="Diagnóstico de ingreso" span="col-span-2 md:col-span-4">
+              <QuickInput value={f.diagIngreso} onChange={e => u('diagIngreso', e.target.value)} placeholder="Ej. Neumonía adquirida en comunidad, sospecha viral" />
+            </QuickField>
+
+            <QuickField label="Profesional responsable" span="col-span-2">
+              <QuickInput value={f.profResponsable} onChange={e => u('profResponsable', e.target.value)} />
+            </QuickField>
+            <QuickField label="Correo electrónico (lab)" span="col-span-2">
+              <QuickInput value={f.correo} onChange={e => u('correo', e.target.value)} placeholder="lab@hospitalbulnes.cl" />
+            </QuickField>
+          </div>
+
+          <p className="text-[11px] text-slate-500 italic mt-3 leading-relaxed">
+            Defaults aplicados: laboratorio Hospital Comunitario de Bulnes, dirección Manuel Bulnes 432, unidad Medicina, región Ñuble · provincia Diguillín · comuna Bulnes; inmunofluorescencia A/B/VRS/Adenovirus/Parainfluenza/Metapneumovirus marcadas; tipo muestra Tórula Nasofaríngea; paciente Hospitalizado. Los puedes desmarcar abajo si no corresponden.
+          </p>
+        </div>
+      </div>
+
       {/* ── Página 1 ────────────────────────────────────────────────── */}
       <div className="ira-print-page mx-auto bg-white" style={{ maxWidth: '210mm', padding: '8mm 10mm', fontFamily: F, color: '#000' }}>
         <div className="ira-header-band">
+          <img src={ISP_LOGO} alt="Instituto de Salud Pública de Chile" crossOrigin="anonymous" />
           <div style={{ flex: 1 }}>
             <p style={{ fontWeight: 'bold', fontSize: '13pt', margin: 0 }}>
               Formulario notificación inmediata y envío de muestras a confirmación IRA grave y 2019-nCoV
@@ -450,6 +678,7 @@ export default function FormularioIRAGrave() {
       {/* ── Página 2 ────────────────────────────────────────────────── */}
       <div className="ira-print-page mx-auto bg-white mt-6" style={{ maxWidth: '210mm', padding: '8mm 10mm', fontFamily: F, color: '#000' }}>
         <div className="ira-header-band">
+          <img src={ISP_LOGO} alt="Instituto de Salud Pública de Chile" crossOrigin="anonymous" />
           <div style={{ flex: 1 }}>
             <p style={{ fontWeight: 'bold', fontSize: '13pt', margin: 0 }}>
               Formulario notificación inmediata y envío de muestras a confirmación IRA grave y 2019-nCoV
