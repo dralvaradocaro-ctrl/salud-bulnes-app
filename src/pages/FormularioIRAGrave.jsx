@@ -25,7 +25,7 @@ const ISP_LOGO = 'https://upload.wikimedia.org/wikipedia/commons/0/02/Logotipo_d
 // (excepto "Negativo"), tórula nasofaríngea como tipo de muestra y el
 // paciente se asume hospitalizado por defecto.
 const HCSFB_DEFAULTS = {
-  laboratorio: 'Hospital Comunitario de Salud Familiar de Bulnes',
+  laboratorio: 'Hospital de Bulnes',
   procRegion:   'Ñuble',
   procProvincia:'Diguillín',
   procComuna:   'Bulnes',
@@ -558,7 +558,7 @@ export default function FormularioIRAGrave() {
           </div>
 
           <p className="text-[11px] text-slate-500 italic mt-3 leading-relaxed">
-            Defaults aplicados: laboratorio Hospital Comunitario de Bulnes, dirección Manuel Bulnes 432, unidad Medicina, región Ñuble · provincia Diguillín · comuna Bulnes; inmunofluorescencia A/B/VRS/Adenovirus/Parainfluenza/Metapneumovirus marcadas; tipo muestra Tórula Nasofaríngea; paciente Hospitalizado. Los puedes ajustar al ver el documento generado.
+            Defaults aplicados: laboratorio Hospital de Bulnes, dirección Manuel Bulnes 432, unidad Medicina, región Ñuble · provincia Diguillín · comuna Bulnes; inmunofluorescencia A/B/VRS/Adenovirus/Parainfluenza/Metapneumovirus marcadas; tipo muestra Tórula Nasofaríngea; paciente Hospitalizado. Los puedes ajustar al ver el documento generado.
           </p>
 
           <div className="mt-4 flex items-center justify-end gap-2">
