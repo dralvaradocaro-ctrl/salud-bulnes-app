@@ -128,8 +128,9 @@ function nowHHMM() {
   return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
 }
 
-// Constantes de impresión
-const F = "'Calibri','Candara','Segoe UI',Arial,sans-serif";
+// Constantes de impresión — el PDF original ISP usa una sans-serif tipo
+// Arial. Mantenemos esa familia para fidelidad visual al imprimir.
+const F = "Arial, 'Helvetica Neue', Helvetica, sans-serif";
 const FS = '9pt';
 const B = '0.4pt solid #000';
 
@@ -221,6 +222,7 @@ function DateDMA({ dia, mes, ano, onChange }) {
 
 export default function FormularioIRAGrave() {
   const [f, setF] = useState({ ...EMPTY, ...HCSFB_DEFAULTS });
+  const [showPreview, setShowPreview] = useState(false);
   const u = useCallback((k, v) => setF(prev => ({ ...prev, [k]: v })), []);
   const setDate = (prefix) => (changes) => {
     setF(prev => {
@@ -341,15 +343,17 @@ export default function FormularioIRAGrave() {
   return (
     <>
       <style>{`
-        @page { size: A4 portrait; margin: 8mm 10mm; }
+        @page { size: A4 portrait; margin: 6mm 8mm; }
         html, body, #root { background: #fff !important; }
         @media print {
           html, body, #root, body > div, body > div > div {
             background: #fff !important;
             background-color: #fff !important;
           }
-          body { margin: 0 !important; padding: 0 !important; }
-          .ira-screen-only { display: none !important; }
+          body { margin: 0 !important; padding: 0 !important; font-family: Arial, Helvetica, sans-serif !important; }
+          /* Imprimir SOLO las dos páginas A4. El toolbar, panel de datos y
+             cualquier otra UI quedan ocultos. */
+          .ira-screen-only, .ira-no-print { display: none !important; }
           .ira-print-page {
             box-shadow: none !important;
             margin: 0 !important;
@@ -357,9 +361,9 @@ export default function FormularioIRAGrave() {
             max-width: none !important;
             width: 100% !important;
             page-break-after: always;
+            page-break-inside: avoid;
           }
           .ira-print-page:last-child { page-break-after: auto; }
-          .ira-no-print { display: none !important; }
           input { border: 0.4pt solid #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           input[type="checkbox"], input[type="radio"] {
             -webkit-print-color-adjust: exact; print-color-adjust: exact;
@@ -391,14 +395,22 @@ export default function FormularioIRAGrave() {
           <Button variant="outline" size="sm" onClick={clear} className="gap-1.5">
             <RotateCcw className="h-4 w-4" /> Limpiar
           </Button>
-          <Button size="sm" onClick={() => window.print()} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
-            <Printer className="h-4 w-4" /> Imprimir / PDF
-          </Button>
+          {showPreview && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setShowPreview(false)} className="gap-1.5">
+                Volver a datos
+              </Button>
+              <Button size="sm" onClick={() => window.print()} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
+                <Printer className="h-4 w-4" /> Imprimir / PDF
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* ── Panel "Datos previos" (solo pantalla) ───────────────────── */}
-      <div className="ira-screen-only max-w-4xl mx-auto px-4 mt-4">
+      {/* ── Panel "Datos previos" (solo pantalla, sólo si no se generó) ─ */}
+      {!showPreview && (
+      <div className="ira-screen-only max-w-4xl mx-auto px-4 mt-4 pb-12">
         <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div>
@@ -487,11 +499,21 @@ export default function FormularioIRAGrave() {
           </div>
 
           <p className="text-[11px] text-slate-500 italic mt-3 leading-relaxed">
-            Defaults aplicados: laboratorio Hospital Comunitario de Bulnes, dirección Manuel Bulnes 432, unidad Medicina, región Ñuble · provincia Diguillín · comuna Bulnes; inmunofluorescencia A/B/VRS/Adenovirus/Parainfluenza/Metapneumovirus marcadas; tipo muestra Tórula Nasofaríngea; paciente Hospitalizado. Los puedes desmarcar abajo si no corresponden.
+            Defaults aplicados: laboratorio Hospital Comunitario de Bulnes, dirección Manuel Bulnes 432, unidad Medicina, región Ñuble · provincia Diguillín · comuna Bulnes; inmunofluorescencia A/B/VRS/Adenovirus/Parainfluenza/Metapneumovirus marcadas; tipo muestra Tórula Nasofaríngea; paciente Hospitalizado. Los puedes ajustar al ver el documento generado.
           </p>
+
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <Button variant="outline" onClick={clear}>Limpiar datos</Button>
+            <Button onClick={() => setShowPreview(true)} className="bg-blue-600 hover:bg-blue-700 gap-2">
+              Generar formulario →
+            </Button>
+          </div>
         </div>
       </div>
+      )}
 
+      {/* ── Documento generado: dos páginas A4 ──────────────────────── */}
+      {showPreview && (<>
       {/* ── Página 1 ────────────────────────────────────────────────── */}
       <div className="ira-print-page mx-auto bg-white" style={{ maxWidth: '210mm', padding: '8mm 10mm', fontFamily: F, color: '#000' }}>
         <div className="ira-header-band">
@@ -764,6 +786,7 @@ export default function FormularioIRAGrave() {
           <li>En caso de dudas consultar a <strong>Unidad de Recepción de Muestras (02) 5755187</strong>.</li>
         </ol>
       </div>
+      </>)}
     </>
   );
 }
