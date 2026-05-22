@@ -128,12 +128,11 @@ function nowHHMM() {
   return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
 }
 
-// Tipografía institucional del Gobierno de Chile. El sistema de diseño
-// gob.cl usa "Mont" (propietaria); como sustituto libre con métricas y
-// trazo muy similares (humanista geométrica) usamos Lato cargada desde
-// Google Fonts. Fallbacks a Roboto / Arial / sans-serif por si la red
-// falla al imprimir.
-const F = "'Lato','Mont','Roboto',Arial,Helvetica,sans-serif";
+// Tipografía oficial del Gobierno de Chile (gobCL, desarrollada por
+// FrescoType en 2010 para la identidad visual del Estado). Los OTF se
+// sirven desde /public/fonts (descargados de kitdigital.gob.cl). Fallback
+// a Lato / Arial por si los archivos no carguen.
+const F = "'gobCL','Lato',Arial,Helvetica,sans-serif";
 const FS = '9pt';
 const B = '0.4pt solid #000';
 
@@ -347,6 +346,26 @@ export default function FormularioIRAGrave() {
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
+        @font-face {
+          font-family: 'gobCL';
+          src: url('/fonts/gobCL_Light.otf') format('opentype');
+          font-weight: 300; font-style: normal; font-display: swap;
+        }
+        @font-face {
+          font-family: 'gobCL';
+          src: url('/fonts/gobCL_Regular.otf') format('opentype');
+          font-weight: 400; font-style: normal; font-display: swap;
+        }
+        @font-face {
+          font-family: 'gobCL';
+          src: url('/fonts/gobCL_Bold.otf') format('opentype');
+          font-weight: 700; font-style: normal; font-display: swap;
+        }
+        @font-face {
+          font-family: 'gobCL';
+          src: url('/fonts/gobCL_Heavy.otf') format('opentype');
+          font-weight: 900; font-style: normal; font-display: swap;
+        }
         @page { size: A4 portrait; margin: 6mm 8mm; }
         html, body, #root { background: #fff !important; }
         @media print {
@@ -354,7 +373,7 @@ export default function FormularioIRAGrave() {
             background: #fff !important;
             background-color: #fff !important;
           }
-          body { margin: 0 !important; padding: 0 !important; font-family: 'Lato','Mont','Roboto',Arial,Helvetica,sans-serif !important; }
+          body { margin: 0 !important; padding: 0 !important; font-family: 'gobCL','Lato',Arial,Helvetica,sans-serif !important; }
           /* Imprimir SOLO las dos páginas A4. El toolbar, panel de datos y
              cualquier otra UI quedan ocultos. */
           .ira-screen-only, .ira-no-print { display: none !important; }
