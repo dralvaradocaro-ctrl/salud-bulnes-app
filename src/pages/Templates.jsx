@@ -24,6 +24,7 @@ const typeIcons = {
   'Laboratorio Especial': FlaskConical,
   'Estudio Endoscópico': Microscope,
   'Interconsulta': MessageSquare,
+  'Formulario Oficial': FileText,
   'Otro': FileText
 };
 
@@ -32,8 +33,36 @@ const typeColors = {
   'Laboratorio Especial': 'from-violet-500 to-violet-600',
   'Estudio Endoscópico': 'from-emerald-500 to-emerald-600',
   'Interconsulta': 'from-amber-500 to-amber-600',
+  'Formulario Oficial': 'from-cyan-500 to-blue-600',
   'Otro': 'from-slate-500 to-slate-600'
 };
+
+// Formularios que viven como paginas standalone (no en RequestTemplate). Se
+// inyectan en la grilla con external_route — al hacer click se navega al
+// page builder dedicado en vez de abrir el RequestForm generico.
+const EXTERNAL_TEMPLATES = [
+  {
+    id: 'ext-solicitud-examenes',
+    name: 'Solicitud de Exámenes — Hospital de Bulnes',
+    type: 'Formulario Oficial',
+    instructions: 'Selecciona exámenes con buscador e imprime el formulario oficial (COD. 32).',
+    external_route: 'SolicitudExamenes',
+  },
+  {
+    id: 'ext-formulario-ges',
+    name: 'Formulario de Constancia GES',
+    type: 'Formulario Oficial',
+    instructions: 'Artículo 24° Ley 19.966 — Constancia GES para patologías cubiertas.',
+    external_route: 'FormularioGES',
+  },
+  {
+    id: 'ext-informe-biomedico',
+    name: 'Informe Biomédico Funcional',
+    type: 'Formulario Oficial',
+    instructions: 'Informe biomédico y funcional para credencial de discapacidad / pensión.',
+    external_route: 'InformeBiomedico',
+  },
+];
 
 export default function Templates() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -48,7 +77,10 @@ export default function Templates() {
     queryKey: ['templates'],
     queryFn: () => db.entities.RequestTemplate.list('type'),
   });
-  const templates = rawTemplates.filter(t => !HIDDEN_TYPES.includes(t.type));
+  const templates = [
+    ...rawTemplates.filter(t => !HIDDEN_TYPES.includes(t.type)),
+    ...EXTERNAL_TEMPLATES,
+  ];
 
   // Open template from URL param
   useEffect(() => {
@@ -155,15 +187,8 @@ export default function Templates() {
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4">
-                    {typeTemplates.map((template, index) => (
-                      <motion.button
-                        key={template.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
-                        onClick={() => setActiveTemplate(template)}
-                        className="group bg-white rounded-2xl p-5 border border-slate-100 hover:border-violet-200 hover:shadow-lg transition-all text-left"
-                      >
+                    {typeTemplates.map((template, index) => {
+                      const cardInner = (
                         <div className="flex items-start gap-4">
                           <div className={`p-3 rounded-xl bg-gradient-to-br ${colorClass} shadow-lg`}>
                             <Icon className="h-6 w-6 text-white" />
@@ -182,10 +207,34 @@ export default function Templates() {
                                 {template.required_fields.length} campos requeridos
                               </p>
                             )}
+                            {template.external_route && (
+                              <p className="text-xs text-cyan-700 mt-2 font-medium">Abrir formulario oficial →</p>
+                            )}
                           </div>
                         </div>
-                      </motion.button>
-                    ))}
+                      );
+                      const motionProps = {
+                        initial: { opacity: 0, y: 10 },
+                        animate: { opacity: 1, y: 0 },
+                        transition: { delay: index * 0.05 },
+                        className: 'group bg-white rounded-2xl p-5 border border-slate-100 hover:border-violet-200 hover:shadow-lg transition-all text-left block',
+                      };
+                      return template.external_route ? (
+                        <motion.div key={template.id} {...motionProps}>
+                          <Link to={createPageUrl(template.external_route)} className="block">
+                            {cardInner}
+                          </Link>
+                        </motion.div>
+                      ) : (
+                        <motion.button
+                          key={template.id}
+                          {...motionProps}
+                          onClick={() => setActiveTemplate(template)}
+                        >
+                          {cardInner}
+                        </motion.button>
+                      );
+                    })}
                   </div>
                 </div>
               );
