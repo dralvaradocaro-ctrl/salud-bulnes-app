@@ -128,9 +128,12 @@ function nowHHMM() {
   return `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
 }
 
-// Constantes de impresión — el PDF original ISP usa una sans-serif tipo
-// Arial. Mantenemos esa familia para fidelidad visual al imprimir.
-const F = "Arial, 'Helvetica Neue', Helvetica, sans-serif";
+// Tipografía institucional del Gobierno de Chile. El sistema de diseño
+// gob.cl usa "Mont" (propietaria); como sustituto libre con métricas y
+// trazo muy similares (humanista geométrica) usamos Lato cargada desde
+// Google Fonts. Fallbacks a Roboto / Arial / sans-serif por si la red
+// falla al imprimir.
+const F = "'Lato','Mont','Roboto',Arial,Helvetica,sans-serif";
 const FS = '9pt';
 const B = '0.4pt solid #000';
 
@@ -343,6 +346,7 @@ export default function FormularioIRAGrave() {
   return (
     <>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap');
         @page { size: A4 portrait; margin: 6mm 8mm; }
         html, body, #root { background: #fff !important; }
         @media print {
@@ -350,7 +354,7 @@ export default function FormularioIRAGrave() {
             background: #fff !important;
             background-color: #fff !important;
           }
-          body { margin: 0 !important; padding: 0 !important; font-family: Arial, Helvetica, sans-serif !important; }
+          body { margin: 0 !important; padding: 0 !important; font-family: 'Lato','Mont','Roboto',Arial,Helvetica,sans-serif !important; }
           /* Imprimir SOLO las dos páginas A4. El toolbar, panel de datos y
              cualquier otra UI quedan ocultos. */
           .ira-screen-only, .ira-no-print { display: none !important; }
