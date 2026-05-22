@@ -1,7 +1,7 @@
 const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, Stethoscope, ArrowRight, Calculator, Sparkles } from 'lucide-react';
+import { Search, X, Stethoscope, ArrowRight, Calculator, Sparkles, FileText } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 import { Link } from 'react-router-dom';
@@ -9,13 +9,15 @@ import { createPageUrl } from '@/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isHiddenClinicalTool } from '@/components/utils/hiddenContent';
 import { calculatorReferences } from '@/components/calculators/catalog';
+import { filterStaticPages, staticPages } from '@/components/search/staticPages';
 import { getTopicVisual } from '@/lib/topicVisuals';
 import { invokeLLM } from '@/lib/gemini';
 
 // ── AI search ──────────────────────────────────────────────────────────────
-async function fetchAISuggestions(query, topics, calculators) {
+async function fetchAISuggestions(query, topics, calculators, pages = []) {
   const topicList = topics.map(t => `${t.name}${t.subcategory ? ' (' + t.subcategory + ')' : ''}`).join('\n');
   const calcList = calculators.map(c => c.name).join('\n');
+  const pageList = pages.map(p => `${p.name} — ${p.description || ''}`).join('\n');
 
   const prompt = `Eres un asistente clínico hospitalario. El usuario buscó: "${query}"
 
@@ -24,6 +26,9 @@ ${topicList}
 
 Calculadoras disponibles:
 ${calcList}
+
+Páginas/Herramientas disponibles:
+${pageList}
 
 Devuelve un JSON array con hasta 4 elementos que sean semánticamente relevantes para la consulta del usuario, considerando sinónimos, síntomas, nombres coloquiales o términos alternativos. Solo incluye ítems que existan exactamente en las listas anteriores.
 
@@ -113,10 +118,14 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
           .filter(calc => calc.name.toLowerCase().includes(queryLower))
           .map(calc => ({ ...calc, type: 'calculator' }));
 
+        const filteredPages = filterStaticPages(queryLower)
+          .map(p => ({ ...p, type: 'page' }));
+
         exactResults = [
           ...filteredTopics.slice(0, 5),
           ...filteredTools.slice(0, 3),
-          ...filteredCalculators.slice(0, 3)
+          ...filteredCalculators.slice(0, 3),
+          ...filteredPages.slice(0, 4)
         ];
         resultsRef.current = exactResults;
         setResults(exactResults);
@@ -130,15 +139,17 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
         setIsAiLoading(true);
         try {
           const { topics } = await loadData();
-          const suggestions = await fetchAISuggestions(query, topics, calculatorReferences);
+          const suggestions = await fetchAISuggestions(query, topics, calculatorReferences, staticPages);
 
           const matched = suggestions
             .filter(s => s.name)
             .map(s => {
               const topic = topics.find(t => t.name?.toLowerCase() === s.name.toLowerCase());
               const calc = calculatorReferences.find(c => c.name?.toLowerCase() === s.name.toLowerCase());
+              const page = staticPages.find(p => p.name?.toLowerCase() === s.name.toLowerCase());
               if (topic) return { ...topic, type: 'topic', aiReason: s.reason };
               if (calc) return { ...calc, type: 'calculator', aiReason: s.reason };
+              if (page) return { ...page, type: 'page', aiReason: s.reason };
               return null;
             })
             .filter(Boolean)
@@ -269,7 +280,9 @@ function ResultRow({ item, aiReason, onClose, onNavigate }) {
       ? `TopicDetail?id=${item.id}`
       : item.type === 'calculator'
         ? `AllCalculators?calc=${item.id}`
-        : `ClinicalTools?tool=${item.id}`
+        : item.type === 'page'
+          ? item.page
+          : `ClinicalTools?tool=${item.id}`
   );
 
   return (
@@ -283,12 +296,16 @@ function ResultRow({ item, aiReason, onClose, onNavigate }) {
           ? `${topicVisual.bg} ring-1 ${topicVisual.ring}`
           : item.type === 'calculator'
             ? 'bg-purple-100'
-            : 'bg-emerald-100'
+            : item.type === 'page'
+              ? 'bg-blue-100'
+              : 'bg-emerald-100'
       }`}>
         {item.type === 'topic' ? (
           <TopicIcon className={`h-5 w-5 ${topicVisual.text}`} />
         ) : item.type === 'calculator' ? (
           <Calculator className="h-5 w-5 text-purple-600" />
+        ) : item.type === 'page' ? (
+          <FileText className="h-5 w-5 text-blue-600" />
         ) : (
           <Stethoscope className="h-5 w-5 text-emerald-600" />
         )}
@@ -302,7 +319,9 @@ function ResultRow({ item, aiReason, onClose, onNavigate }) {
               ? item.subcategory || 'Patología'
               : item.type === 'calculator'
                 ? 'Calculadora'
-                : item.specialty}
+                : item.type === 'page'
+                  ? item.description || 'Página'
+                  : item.specialty}
         </p>
       </div>
       {item.has_local_protocol && (
