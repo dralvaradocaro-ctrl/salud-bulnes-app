@@ -6,7 +6,7 @@ import GesFormulario from '@/components/ges/GesFormulario';
 
 export default function FormularioGES() {
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-100 print:bg-white print:min-h-0">
       {/* Header */}
       <div className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-slate-200 print:hidden">
         <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
