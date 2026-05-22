@@ -1,0 +1,158 @@
+[
+  {
+    "weekStart": "2026-02-02",
+    "label": "Semana 2-6 Febrero",
+    "source": "2. AGENDA MENSUAL FEBRERO.pdf · pg 1",
+    "reinforcements": {
+      "2026-02-02": { "am": "santibanez", "pm": "valenzuela" },
+      "2026-02-03": { "am": "san_martin",  "pm": "alvarado"    },
+      "2026-02-04": { "am": "sandoval",    "pm": "enriquez"    },
+      "2026-02-05": { "am": "ceballos",    "pm": "santibanez"  },
+      "2026-02-06": { "am": "molina",      "pm": "bustos"      }
+    }
+  },
+  {
+    "weekStart": "2026-02-09",
+    "label": "Semana 9-13 Febrero",
+    "source": "2. AGENDA MENSUAL FEBRERO.pdf · pg 2",
+    "reinforcements": {
+      "2026-02-09": { "am": "sbarbaro", "pm": "ihl"      },
+      "2026-02-10": { "am": "cordero",  "pm": "troncoso" },
+      "2026-02-11": { "am": "molina",   "pm": "r_aguilera"  },
+      "2026-02-12": { "am": "troncoso", "pm": "acuna"    },
+      "2026-02-13": { "am": null,       "pm": "molina"   }
+    }
+  },
+  {
+    "weekStart": "2026-02-16",
+    "label": "Semana 16-20 Febrero",
+    "source": "2. AGENDA MENSUAL FEBRERO.pdf · pg 3",
+    "reinforcements": {
+      "2026-02-16": { "am": "ruf",        "pm": "enriquez"   },
+      "2026-02-17": { "am": "santibanez", "pm": "molina"     },
+      "2026-02-18": { "am": "sandoval",   "pm": "inostroza"  },
+      "2026-02-19": { "am": "molina",     "pm": "san_martin" },
+      "2026-02-20": { "am": "ruf",        "pm": "troncoso"   }
+    }
+  },
+  {
+    "weekStart": "2026-02-23",
+    "label": "Semana 23-27 Febrero",
+    "source": "2. AGENDA MENSUAL FEBRERO.pdf · pg 4",
+    "reinforcements": {
+      "2026-02-23": { "am": "ihl",        "pm": "sandoval"   },
+      "2026-02-24": { "am": "valdivia",   "pm": "santibanez" },
+      "2026-02-25": { "am": "r_aguilera", "pm": "troncoso"   },
+      "2026-02-26": { "am": "troncoso",   "pm": "valenzuela" },
+      "2026-02-27": { "am": "molina",     "pm": "santibanez" }
+    }
+  },
+  {
+    "weekStart": "2026-03-02",
+    "label": "Semana 2-6 Marzo",
+    "source": "3. AGENDA MENSUAL MARZO.pdf · pg 1",
+    "reinforcements": {
+      "2026-03-02": { "am": "valdivia",   "pm": "r_aguilera"  },
+      "2026-03-03": { "am": "molina",     "pm": "sandoval"    },
+      "2026-03-04": { "am": "santibanez", "pm": "valenzuela"  },
+      "2026-03-05": { "am": "ruf",        "pm": "santibanez"  },
+      "2026-03-06": { "am": "cordero",    "pm": "san_martin"  }
+    }
+  },
+  {
+    "weekStart": "2026-03-09",
+    "label": "Semana 9-13 Marzo",
+    "source": "3. AGENDA MENSUAL MARZO.pdf · pg 2",
+    "reinforcements": {
+      "2026-03-09": { "am": "enriquez",   "pm": "inostroza" },
+      "2026-03-10": { "am": "san_martin", "pm": "molina"    },
+      "2026-03-11": { "am": "santibanez", "pm": "cordero"   },
+      "2026-03-12": { "am": "enriquez",   "pm": "ruf"       },
+      "2026-03-13": { "am": "sbarbaro",   "pm": "enriquez"  }
+    }
+  },
+  {
+    "weekStart": "2026-03-16",
+    "label": "Semana 16-20 Marzo",
+    "source": "3. AGENDA MENSUAL MARZO.pdf · pg 3",
+    "reinforcements": {
+      "2026-03-16": { "am": "inostroza", "pm": "troncoso"   },
+      "2026-03-17": { "am": "troncoso",  "pm": "sandoval"   },
+      "2026-03-18": { "am": "enriquez",  "pm": "ruf"        },
+      "2026-03-19": { "am": "inostroza", "pm": "alvarado"   },
+      "2026-03-20": { "am": "ceballos",  "pm": "r_aguilera" }
+    }
+  },
+  {
+    "weekStart": "2026-03-23",
+    "label": "Semana 23-27 Marzo",
+    "source": "3. AGENDA MENSUAL MARZO.pdf · pg 4",
+    "reinforcements": {
+      "2026-03-23": { "am": "valenzuela", "pm": "troncoso"  },
+      "2026-03-24": { "am": "inostroza",  "pm": "enriquez"  },
+      "2026-03-25": { "am": "ruf",        "pm": "valenzuela"},
+      "2026-03-26": { "am": "ceballos",   "pm": "molina"    },
+      "2026-03-27": { "am": "molina",     "pm": "troncoso"  }
+    }
+  },
+  {
+    "weekStart": "2026-03-30",
+    "label": "Semana 30 Marzo - 3 Abril",
+    "source": "4. AGENDA MENSUAL ABRIL.pdf · pg 1",
+    "reinforcements": {
+      "2026-03-30": { "am": "santibanez", "pm": "san_martin" },
+      "2026-03-31": { "am": "ruf",        "pm": "troncoso"   },
+      "2026-04-01": { "am": "ruf",        "pm": "enriquez"   },
+      "2026-04-02": { "am": "sbarbaro",   "pm": "santibanez" },
+      "2026-04-03": { "am": null,         "pm": null,         "feriado": true }
+    }
+  },
+  {
+    "weekStart": "2026-04-06",
+    "label": "Semana 6-12 Abril",
+    "source": "4. AGENDA MENSUAL ABRIL.pdf · pg 2",
+    "reinforcements": {
+      "2026-04-06": { "am": "enriquez",   "pm": "sbarbaro"   },
+      "2026-04-07": { "am": "santibanez", "pm": "troncoso"   },
+      "2026-04-08": { "am": "enriquez",   "pm": "santibanez" },
+      "2026-04-09": { "am": "rubilar",    "pm": "santibanez" },
+      "2026-04-10": { "am": "troncoso",   "pm": "alvarado"   }
+    }
+  },
+  {
+    "weekStart": "2026-04-13",
+    "label": "Semana 13-17 Abril",
+    "source": "4. AGENDA MENSUAL ABRIL.pdf · pg 3",
+    "reinforcements": {
+      "2026-04-13": { "am": "santibanez", "pm": "ruf"       },
+      "2026-04-14": { "am": "gil",        "pm": "troncoso"  },
+      "2026-04-15": { "am": "v_aguilera", "pm": "enriquez"  },
+      "2026-04-16": { "am": "rivas",      "pm": "santibanez"},
+      "2026-04-17": { "am": "v_aguilera", "pm": "cordero"   }
+    }
+  },
+  {
+    "weekStart": "2026-04-20",
+    "label": "Semana 20-24 Abril",
+    "source": "4. AGENDA MENSUAL ABRIL.pdf · pg 4",
+    "reinforcements": {
+      "2026-04-20": { "am": "toledo",     "pm": "sbarbaro"  },
+      "2026-04-21": { "am": "v_aguilera", "pm": "cordero"   },
+      "2026-04-22": { "am": "santibanez", "pm": "san_martin"},
+      "2026-04-23": { "am": "rubilar",    "pm": "santibanez"},
+      "2026-04-24": { "am": "rubilar",    "pm": "ruf"       }
+    }
+  },
+  {
+    "weekStart": "2026-04-27",
+    "label": "Semana 27 Abril - 1 Mayo",
+    "source": "4. AGENDA MENSUAL ABRIL.pdf · pg 6",
+    "reinforcements": {
+      "2026-04-27": { "am": "santibanez", "pm": "v_aguilera"},
+      "2026-04-28": { "am": "alvarado",   "pm": "carreno"   },
+      "2026-04-29": { "am": "r_aguilera", "pm": "toledo"    },
+      "2026-04-30": { "am": "rivas",      "pm": "gil"       },
+      "2026-05-01": { "am": null,         "pm": null,        "feriado": true }
+    }
+  }
+]
