@@ -29,7 +29,7 @@ const HCSFB_DEFAULTS = {
   procRegion:   'Ñuble',
   procProvincia:'Diguillín',
   procComuna:   'Bulnes',
-  procDireccion:'Manuel Bulnes 432',
+  procDireccion:'Manuel Bulnes 431',
   unidad:       'Medicina',
   // Inmuno Fluorescencia: todas menos negativo
   ifInfluenzaA: true, ifInfluenzaB: true, ifVRS: true, ifAdenovirus: true,
@@ -558,7 +558,7 @@ export default function FormularioIRAGrave() {
           </div>
 
           <p className="text-[11px] text-slate-500 italic mt-3 leading-relaxed">
-            Defaults aplicados: laboratorio Hospital de Bulnes, dirección Manuel Bulnes 432, unidad Medicina, región Ñuble · provincia Diguillín · comuna Bulnes; inmunofluorescencia A/B/VRS/Adenovirus/Parainfluenza/Metapneumovirus marcadas; tipo muestra Tórula Nasofaríngea; paciente Hospitalizado. Los puedes ajustar al ver el documento generado.
+            Defaults aplicados: laboratorio Hospital de Bulnes, dirección Manuel Bulnes 431, unidad Medicina, región Ñuble · provincia Diguillín · comuna Bulnes; inmunofluorescencia A/B/VRS/Adenovirus/Parainfluenza/Metapneumovirus marcadas; tipo muestra Tórula Nasofaríngea; paciente Hospitalizado. Los puedes ajustar al ver el documento generado.
           </p>
 
           <div className="mt-4 flex items-center justify-end gap-2">
