@@ -3,7 +3,7 @@ import { sdmSupabase as supabase, explainSdmWriteError } from './lib/sdmSupabase
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, X, Minus, Combine, Save, Clock, AlertTriangle } from 'lucide-react';
+import { Plus, X, Minus, Combine, Save, AlertTriangle, GripHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { getBuildPriorityOrder, priorityFor } from './lib/buildPriorityOrder';
 
@@ -16,7 +16,6 @@ const DAYS = [
   { key: 'sab', label: 'Sáb' },
 ];
 
-// HH:MM → minutos del día
 function toMin(hhmm) {
   if (!hhmm || typeof hhmm !== 'string') return 0;
   const [h, m] = hhmm.split(':').map(n => parseInt(n, 10) || 0);
@@ -31,11 +30,11 @@ function slotMinutes(slot) {
   if (!slot?.from || !slot?.to) return 0;
   return Math.max(0, toMin(slot.to) - toMin(slot.from));
 }
+function dayMinutes(slots) {
+  return (slots || []).reduce((s, sl) => s + slotMinutes(sl), 0);
+}
 function totalWeekMinutes(pattern) {
-  return DAYS.reduce((sum, d) => {
-    const slots = pattern?.[d.key] || [];
-    return sum + slots.reduce((s, sl) => s + slotMinutes(sl), 0);
-  }, 0);
+  return DAYS.reduce((sum, d) => sum + dayMinutes(pattern?.[d.key]), 0);
 }
 function dayCount(pattern) {
   return DAYS.reduce((c, d) => c + ((pattern?.[d.key] || []).length > 0 ? 1 : 0), 0);
@@ -43,36 +42,52 @@ function dayCount(pattern) {
 function fmtHours(min) {
   const h = Math.floor(min / 60);
   const m = min % 60;
-  if (m === 0) return `${h} h`;
-  return `${h}h ${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h${m}`;
 }
 
-// "Unificar" — si un día tiene múltiples slots, los junta en uno desde
-// el min(from) al max(to).
+// Une todos los slots de un día en uno solo desde el inicio mas temprano
+// al final mas tardio. Si los slots no se solapan deja huecos: alarga el
+// tramo final para cubrir el total. Heurística simple: usa min(from) y
+// (from + suma_de_minutos) como nuevo from-to.
 function unifyDay(slots) {
-  if (!Array.isArray(slots) || slots.length <= 1) return slots || [];
+  if (!Array.isArray(slots) || slots.length === 0) return [];
+  if (slots.length === 1) return slots;
   const from = slots.reduce((min, s) => Math.min(min, toMin(s.from)), Infinity);
-  const to   = slots.reduce((max, s) => Math.max(max, toMin(s.to)),   -Infinity);
-  if (!isFinite(from) || !isFinite(to)) return slots;
-  return [{ from: fromMin(from), to: fromMin(to) }];
+  const total = dayMinutes(slots);
+  return [{ from: fromMin(from), to: fromMin(from + total) }];
+}
+
+// Merge: copia los slots de srcDay al dstDay y elimina srcDay. Si autoUnify
+// es true (default), unifica el día destino al final.
+function mergeDays(pattern, srcDay, dstDay, autoUnify = true) {
+  if (srcDay === dstDay) return pattern;
+  const out = { ...pattern };
+  const srcSlots = out[srcDay] || [];
+  const dstSlots = out[dstDay] || [];
+  if (srcSlots.length === 0) return out;
+  const merged = [...dstSlots, ...srcSlots];
+  out[dstDay] = autoUnify ? unifyDay(merged) : merged;
+  delete out[srcDay];
+  return out;
 }
 
 export default function BlockScheduleEditor({ onApplied }) {
   const [blocks, setBlocks] = useState([]);
-  const [edits, setEdits] = useState({}); // { blockId: newWeekdayPattern }
+  const [edits, setEdits] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState('');
+  const [drag, setDrag] = useState(null); // { blockId, day }
+  const [dragOver, setDragOver] = useState(null); // { blockId, day }
 
   useEffect(() => {
     let alive = true;
     (async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('sdm_block_templates')
-        .select('*');
+      const { data, error } = await supabase.from('sdm_block_templates').select('*');
       if (!alive) return;
-      if (error) toast.error('Error cargando bloques: ' + (explainSdmWriteError(error) || error.message));
+      if (error) toast.error('Error: ' + (explainSdmWriteError(error) || error.message));
       else setBlocks(data || []);
       setLoading(false);
     })();
@@ -85,48 +100,35 @@ export default function BlockScheduleEditor({ onApplied }) {
     const matched = f
       ? blocks.filter(b => b.name.toLowerCase().includes(f) || b.id.includes(f))
       : blocks;
-    // Solo bloques con weekday_pattern definido (regulares).
     return matched
-      .filter(b => {
-        const wp = b.weekday_pattern || {};
-        return Object.values(wp).some(slots => Array.isArray(slots) && slots.length > 0);
-      })
+      .filter(b => Object.values(b.weekday_pattern || {}).some(s => Array.isArray(s) && s.length > 0))
       .sort((a, b) => priorityFor(a.id, order) - priorityFor(b.id, order));
   }, [blocks, filter, order]);
 
   const dirtyCount = Object.keys(edits).length;
-
-  // ── helpers para mutar el pattern de un bloque ─────────────────────────
   const getPattern = (block) => edits[block.id] || block.weekday_pattern || {};
-  const setPattern = (blockId, newPattern) => {
-    setEdits(prev => ({ ...prev, [blockId]: newPattern }));
-  };
+  const setPattern = (blockId, newPattern) => setEdits(prev => ({ ...prev, [blockId]: newPattern }));
 
   const removeSlot = (block, day, idx) => {
     const wp = { ...getPattern(block) };
     const slots = (wp[day] || []).slice();
     slots.splice(idx, 1);
-    if (slots.length === 0) delete wp[day];
-    else wp[day] = slots;
+    if (slots.length === 0) delete wp[day]; else wp[day] = slots;
     setPattern(block.id, wp);
   };
-
   const removeDay = (block, day) => {
     const wp = { ...getPattern(block) };
     delete wp[day];
     setPattern(block.id, wp);
   };
-
   const addDay = (block, day) => {
     const wp = { ...getPattern(block) };
-    if (wp[day]?.length) return; // ya existe
-    // Default: copia el primer slot de cualquier otro día con datos.
+    if (wp[day]?.length) return;
     const sample = Object.values(wp).find(s => Array.isArray(s) && s.length > 0)?.[0]
       || { from: '14:00', to: '17:00' };
     wp[day] = [{ ...sample }];
     setPattern(block.id, wp);
   };
-
   const updateSlot = (block, day, idx, field, value) => {
     const wp = { ...getPattern(block) };
     const slots = (wp[day] || []).slice();
@@ -134,35 +136,55 @@ export default function BlockScheduleEditor({ onApplied }) {
     wp[day] = slots;
     setPattern(block.id, wp);
   };
-
-  // "Reducir duración" — corta 30 min al final de cada slot.
   const shortenAllSlots = (block) => {
     const wp = { ...getPattern(block) };
     Object.keys(wp).forEach(d => {
       wp[d] = (wp[d] || []).map(s => {
         const to = toMin(s.to) - 30;
         const from = toMin(s.from);
-        if (to <= from + 15) return s; // mínimo 15min, no recorto más
+        if (to <= from + 15) return s;
         return { ...s, to: fromMin(to) };
       });
     });
     setPattern(block.id, wp);
   };
-
-  // "Unificar" — todos los días que tengan múltiples slots se condensan a uno.
-  const unifyAll = (block) => {
+  const unifyAllDays = (block) => {
     const wp = { ...getPattern(block) };
     Object.keys(wp).forEach(d => { wp[d] = unifyDay(wp[d]); });
     setPattern(block.id, wp);
   };
-
   const resetBlock = (block) => {
-    setEdits(prev => {
-      const cp = { ...prev };
-      delete cp[block.id];
-      return cp;
-    });
+    setEdits(prev => { const cp = { ...prev }; delete cp[block.id]; return cp; });
   };
+
+  // ── Drag & drop entre días del mismo bloque ────────────────────────────
+  const onDragStart = (e, blockId, day) => {
+    setDrag({ blockId, day });
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', `${blockId}|${day}`); } catch { /* noop */ }
+  };
+  const onDragOver = (e, blockId, day) => {
+    if (!drag || drag.blockId !== blockId || drag.day === day) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!dragOver || dragOver.blockId !== blockId || dragOver.day !== day) {
+      setDragOver({ blockId, day });
+    }
+  };
+  const onDragLeave = (blockId, day) => {
+    if (dragOver?.blockId === blockId && dragOver?.day === day) setDragOver(null);
+  };
+  const onDrop = (e, block, dstDay) => {
+    e.preventDefault();
+    if (!drag || drag.blockId !== block.id || drag.day === dstDay) return;
+    const wp = getPattern(block);
+    const merged = mergeDays(wp, drag.day, dstDay, true);
+    setPattern(block.id, merged);
+    setDrag(null);
+    setDragOver(null);
+    toast.success(`${drag.day.toUpperCase()} fusionado en ${dstDay.toUpperCase()} — ${block.name}`);
+  };
+  const onDragEnd = () => { setDrag(null); setDragOver(null); };
 
   const saveAll = async () => {
     const ids = Object.keys(edits);
@@ -174,17 +196,13 @@ export default function BlockScheduleEditor({ onApplied }) {
     setSaving(true);
     let okCount = 0, fail = 0;
     for (const id of ids) {
-      const { error } = await supabase
-        .from('sdm_block_templates')
-        .update({ weekday_pattern: edits[id] })
-        .eq('id', id);
+      const { error } = await supabase.from('sdm_block_templates').update({ weekday_pattern: edits[id] }).eq('id', id);
       if (error) { fail++; toast.error(`✗ ${id}: ${error.message}`); }
       else okCount++;
     }
     setSaving(false);
     if (okCount) toast.success(`${okCount} bloque(s) actualizado(s).`);
     setEdits({});
-    // recarga local + propaga al agenda
     const { data } = await supabase.from('sdm_block_templates').select('*');
     setBlocks(data || []);
     await onApplied?.();
@@ -199,8 +217,8 @@ export default function BlockScheduleEditor({ onApplied }) {
           <div>
             <CardTitle className="text-base">Frecuencia y duración de bloques</CardTitle>
             <CardDescription>
-              Edita cuántas veces por semana se repite cada bloqueo, sus horarios, y unifica múltiples slots
-              de un mismo día en uno solo más corto.
+              Edita días, horarios y duración. <strong>Arrastra un día sobre otro</strong> para fusionarlos
+              (la suma de tiempo queda en el día destino, el origen desaparece). Los demás días no se tocan.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -216,7 +234,7 @@ export default function BlockScheduleEditor({ onApplied }) {
         {sortedBlocks.length === 0 ? (
           <p className="text-sm text-slate-500 italic">No hay bloques con horario regular.</p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {sortedBlocks.map(block => {
               const pattern = getPattern(block);
               const days = dayCount(pattern);
@@ -227,99 +245,114 @@ export default function BlockScheduleEditor({ onApplied }) {
                   key={block.id}
                   className={`rounded-lg border px-3 py-2.5 ${isDirty ? 'border-violet-300 bg-violet-50/50' : 'border-slate-200 bg-white'}`}
                 >
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="min-w-0">
+                  {/* Linea 1: nombre + stats + acciones */}
+                  <div className="flex items-center gap-3 flex-wrap mb-2">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-slate-900 truncate">{block.name}</p>
                       <p className="text-[10px] text-slate-400 font-mono">{block.id}</p>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                        {days} {days === 1 ? 'día' : 'días'}/sem
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 shrink-0">
+                      {days} {days === 1 ? 'día' : 'días'}
+                    </span>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full border shrink-0 ${
+                      week > 8 * 60
+                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    }`}>
+                      {fmtHours(week)}/sem
+                    </span>
+                    {week > 8 * 60 && (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-amber-700">
+                        <AlertTriangle className="h-3 w-3" /> carga alta
                       </span>
-                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                        {fmtHours(week)}/sem
-                      </span>
-                      {isDirty && (
-                        <button onClick={() => resetBlock(block)} className="text-[10px] text-slate-500 hover:text-red-600 underline underline-offset-2">
-                          deshacer
-                        </button>
-                      )}
-                    </div>
+                    )}
+                    <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={() => shortenAllSlots(block)}>
+                      <Minus className="h-3 w-3" /> −30min
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={() => unifyAllDays(block)}>
+                      <Combine className="h-3 w-3" /> Unificar slots
+                    </Button>
+                    {isDirty && (
+                      <button onClick={() => resetBlock(block)} className="text-[10px] text-slate-500 hover:text-red-600 underline underline-offset-2">
+                        deshacer
+                      </button>
+                    )}
                   </div>
 
-                  {/* Días + slots */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {/* Linea 2: chips de dias (draggable) */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {DAYS.map(d => {
                       const slots = pattern[d.key] || [];
                       const present = slots.length > 0;
+                      if (!present) {
+                        return (
+                          <button
+                            key={d.key}
+                            onClick={() => addDay(block, d.key)}
+                            className="inline-flex items-center gap-1 rounded border border-dashed border-slate-300 text-slate-400 hover:text-violet-700 hover:border-violet-300 px-2 py-1 text-[11px]"
+                            title={`Agregar ${d.label}`}
+                          >
+                            <Plus className="h-3 w-3" /> {d.label}
+                          </button>
+                        );
+                      }
+                      const isDragging = drag?.blockId === block.id && drag?.day === d.key;
+                      const isDropTarget = dragOver?.blockId === block.id && dragOver?.day === d.key;
                       return (
                         <div
                           key={d.key}
-                          className={`rounded border px-2 py-1.5 ${present ? 'border-slate-200 bg-slate-50/60' : 'border-dashed border-slate-200 bg-white'}`}
+                          draggable
+                          onDragStart={(e) => onDragStart(e, block.id, d.key)}
+                          onDragOver={(e) => onDragOver(e, block.id, d.key)}
+                          onDragLeave={() => onDragLeave(block.id, d.key)}
+                          onDrop={(e) => onDrop(e, block, d.key)}
+                          onDragEnd={onDragEnd}
+                          className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] transition-colors cursor-grab active:cursor-grabbing ${
+                            isDragging
+                              ? 'opacity-40 border-violet-300 bg-violet-50'
+                              : isDropTarget
+                                ? 'border-violet-500 bg-violet-100 ring-2 ring-violet-300'
+                                : 'border-slate-300 bg-slate-50 hover:border-slate-400'
+                          }`}
+                          title="Arrastra sobre otro día para fusionar"
                         >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className={`text-[11px] font-bold ${present ? 'text-slate-800' : 'text-slate-400'}`}>
-                              {d.label}
+                          <GripHorizontal className="h-3 w-3 text-slate-400 shrink-0" />
+                          <span className="font-bold text-slate-700">{d.label}</span>
+                          {slots.map((sl, i) => (
+                            <span key={i} className="inline-flex items-center gap-0.5">
+                              <Input
+                                value={sl.from || ''}
+                                onChange={e => updateSlot(block, d.key, i, 'from', e.target.value)}
+                                className="h-5 text-[10px] px-1 py-0 w-12 font-mono border-slate-200"
+                                onClick={e => e.stopPropagation()}
+                                onMouseDown={e => e.stopPropagation()}
+                              />
+                              <span className="text-slate-400">–</span>
+                              <Input
+                                value={sl.to || ''}
+                                onChange={e => updateSlot(block, d.key, i, 'to', e.target.value)}
+                                className="h-5 text-[10px] px-1 py-0 w-12 font-mono border-slate-200"
+                                onClick={e => e.stopPropagation()}
+                                onMouseDown={e => e.stopPropagation()}
+                              />
+                              {slots.length > 1 && (
+                                <button
+                                  onClick={(ev) => { ev.stopPropagation(); removeSlot(block, d.key, i); }}
+                                  className="text-slate-300 hover:text-red-500"
+                                  title="Quitar este slot"
+                                ><X className="h-3 w-3" /></button>
+                              )}
                             </span>
-                            {present ? (
-                              <button onClick={() => removeDay(block, d.key)} className="text-slate-400 hover:text-red-600" title="Quitar día completo">
-                                <X className="h-3 w-3" />
-                              </button>
-                            ) : (
-                              <button onClick={() => addDay(block, d.key)} className="text-slate-400 hover:text-violet-700" title="Agregar día">
-                                <Plus className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                          {present && (
-                            <div className="space-y-1">
-                              {slots.map((sl, i) => (
-                                <div key={i} className="flex items-center gap-1">
-                                  <Input
-                                    value={sl.from || ''}
-                                    onChange={e => updateSlot(block, d.key, i, 'from', e.target.value)}
-                                    placeholder="HH:MM"
-                                    className="h-6 text-[11px] px-1 py-0 w-16 font-mono"
-                                  />
-                                  <span className="text-slate-400 text-xs">–</span>
-                                  <Input
-                                    value={sl.to || ''}
-                                    onChange={e => updateSlot(block, d.key, i, 'to', e.target.value)}
-                                    placeholder="HH:MM"
-                                    className="h-6 text-[11px] px-1 py-0 w-16 font-mono"
-                                  />
-                                  <button
-                                    onClick={() => removeSlot(block, d.key, i)}
-                                    className="text-slate-400 hover:text-red-600 ml-auto"
-                                    title="Quitar slot"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              ))}
-                              <span className="text-[10px] text-slate-400 block">
-                                {fmtHours(slots.reduce((s, sl) => s + slotMinutes(sl), 0))}
-                              </span>
-                            </div>
-                          )}
+                          ))}
+                          <span className="text-[10px] text-slate-500 ml-0.5">{fmtHours(dayMinutes(slots))}</span>
+                          <button
+                            onClick={(ev) => { ev.stopPropagation(); removeDay(block, d.key); }}
+                            className="text-slate-300 hover:text-red-600 ml-0.5"
+                            title="Quitar día"
+                          ><X className="h-3.5 w-3.5" /></button>
                         </div>
                       );
                     })}
-                  </div>
-
-                  {/* Acciones rápidas */}
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={() => shortenAllSlots(block)}>
-                      <Minus className="h-3 w-3" /> Reducir 30 min
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-7 gap-1 text-[11px]" onClick={() => unifyAll(block)}>
-                      <Combine className="h-3 w-3" /> Unificar slots del día
-                    </Button>
-                    {week > 8 * 60 && (
-                      <span className="text-[10px] inline-flex items-center gap-1 text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded ml-auto">
-                        <AlertTriangle className="h-3 w-3" /> Carga alta ({fmtHours(week)})
-                      </span>
-                    )}
                   </div>
                 </div>
               );
