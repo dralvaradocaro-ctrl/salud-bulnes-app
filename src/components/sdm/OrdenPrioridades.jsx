@@ -11,6 +11,7 @@ import {
   resetBuildPriorityOrder,
 } from './lib/buildPriorityOrder';
 import { toast } from 'sonner';
+import BlockScheduleEditor from './BlockScheduleEditor';
 
 // Agrupa items por phase preservando el orden original.
 function groupByPhase(order) {
@@ -234,6 +235,9 @@ export default function OrdenPrioridades({ onApplied }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Editor de frecuencia y duración por bloque */}
+      <BlockScheduleEditor onApplied={onApplied} />
     </div>
   );
 }

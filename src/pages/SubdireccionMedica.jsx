@@ -144,7 +144,10 @@ export default function SubdireccionMedica() {
               <TabsContent value="prioridades">
                 <PrioridadesPanel
                   onApplied={async () => {
-                    await weeklyAgenda.reloadProgramAssignments?.();
+                    await Promise.all([
+                      weeklyAgenda.reloadProgramAssignments?.(),
+                      weeklyAgenda.reloadBlockTemplates?.(),
+                    ]);
                   }}
                 />
               </TabsContent>

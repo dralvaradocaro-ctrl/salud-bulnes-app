@@ -158,6 +158,13 @@ export function useSdmWeeklyAgenda(monday) {
     setProgramAssignments(data || []);
   }, []);
 
+  // Recarga las plantillas de bloqueos (weekday_pattern, monthly_rule, etc.)
+  // — usado por el editor de frecuencia/duración de bloques.
+  const reloadBlockTemplates = useCallback(async () => {
+    const { data } = await supabase.from('sdm_block_templates').select('*');
+    setBlockTemplates(data || []);
+  }, []);
+
   const saveAgenda = useCallback(async ({ hasErrors = false, editorName = null } = {}) => {
     const payload = {
       week_start: weekStart,
@@ -255,6 +262,7 @@ export function useSdmWeeklyAgenda(monday) {
     blockSuggestions,
     reloadOneoff,
     reloadProgramAssignments,
+    reloadBlockTemplates,
     reloadWeek: loadWeek,
     saveAgenda,
   };
