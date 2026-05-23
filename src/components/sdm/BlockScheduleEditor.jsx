@@ -346,13 +346,13 @@ export default function BlockScheduleEditor({ onApplied }) {
                       return (
                         <div
                           key={d.key}
-                          draggable
-                          onDragStart={(e) => onDragStart(e, block.id, d.key)}
+                          // El chip completo es la dropzone, pero NO es draggable.
+                          // Sólo el "handle" interno (gripón ancho con la etiqueta del día) inicia el drag.
+                          // Eso evita el problema de que los <Input> capturen el mousedown y bloqueen el drag.
                           onDragOver={(e) => onDragOver(e, block.id, d.key)}
                           onDragLeave={() => onDragLeave(block.id, d.key)}
                           onDrop={(e) => onDrop(e, block, d.key)}
-                          onDragEnd={onDragEnd}
-                          className={`relative inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] transition-colors cursor-grab active:cursor-grabbing ${
+                          className={`relative inline-flex items-center gap-1 rounded border pr-1.5 py-0.5 text-[11px] transition-colors overflow-hidden ${
                             isDragging
                               ? 'opacity-40 border-violet-300 bg-violet-50'
                               : isDropTarget
@@ -361,31 +361,38 @@ export default function BlockScheduleEditor({ onApplied }) {
                                   ? 'border-slate-400 bg-white shadow-sm'
                                   : 'border-slate-300 bg-slate-50 hover:border-slate-400'
                           }`}
-                          title={dragActiveHere ? `Fusionar en ${d.label}` : 'Arrastra a otro día'}
+                          title={dragActiveHere ? `Fusionar en ${d.label}` : ''}
                         >
                           {dragActiveHere && !isDragging && (
-                            <span className="absolute -top-2 left-1 text-[8px] font-bold tracking-wide bg-violet-600 text-white rounded px-1 py-px leading-none pointer-events-none">
+                            <span className="absolute -top-2 left-1 text-[8px] font-bold tracking-wide bg-violet-600 text-white rounded px-1 py-px leading-none pointer-events-none z-10">
                               ⊕ fusionar
                             </span>
                           )}
-                          <GripHorizontal className="h-3 w-3 text-slate-400 shrink-0" />
-                          <span className="font-bold text-slate-700">{d.label}</span>
+                          {/* Drag handle ancho — solo este elemento es draggable.
+                              Cubre toda la zona del nombre del día y el grip,
+                              da ~52px de superficie agarrable garantizada. */}
+                          <div
+                            draggable
+                            onDragStart={(e) => onDragStart(e, block.id, d.key)}
+                            onDragEnd={onDragEnd}
+                            className="inline-flex items-center gap-1 self-stretch px-1.5 mr-1 bg-slate-200/70 hover:bg-slate-300/70 active:bg-slate-300 cursor-grab active:cursor-grabbing select-none"
+                            title="Arrastra para mover o fusionar"
+                          >
+                            <GripHorizontal className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+                            <span className="font-bold text-slate-800 text-[11px]">{d.label}</span>
+                          </div>
                           {slots.map((sl, i) => (
                             <span key={i} className="inline-flex items-center gap-0.5">
                               <Input
                                 value={sl.from || ''}
                                 onChange={e => updateSlot(block, d.key, i, 'from', e.target.value)}
                                 className="h-5 text-[10px] px-1 py-0 w-12 font-mono border-slate-200"
-                                onClick={e => e.stopPropagation()}
-                                onMouseDown={e => e.stopPropagation()}
                               />
                               <span className="text-slate-400">–</span>
                               <Input
                                 value={sl.to || ''}
                                 onChange={e => updateSlot(block, d.key, i, 'to', e.target.value)}
                                 className="h-5 text-[10px] px-1 py-0 w-12 font-mono border-slate-200"
-                                onClick={e => e.stopPropagation()}
-                                onMouseDown={e => e.stopPropagation()}
                               />
                               {slots.length > 1 && (
                                 <button
