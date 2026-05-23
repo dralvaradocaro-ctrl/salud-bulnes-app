@@ -3,7 +3,7 @@ import { sdmSupabase as supabase, explainSdmWriteError } from './lib/sdmSupabase
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, X, Minus, Combine, Save, AlertTriangle, GripHorizontal } from 'lucide-react';
+import { Plus, X, Minus, Combine, Save, AlertTriangle, GripHorizontal, MoveRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { getBuildPriorityOrder, priorityFor } from './lib/buildPriorityOrder';
 
@@ -68,6 +68,19 @@ function mergeDays(pattern, srcDay, dstDay, autoUnify = true) {
   if (srcSlots.length === 0) return out;
   const merged = [...dstSlots, ...srcSlots];
   out[dstDay] = autoUnify ? unifyDay(merged) : merged;
+  delete out[srcDay];
+  return out;
+}
+
+// Move: traslada los slots de srcDay tal cual a dstDay (asume vacío) y
+// elimina srcDay. No concatena ni unifica — preserva los slots
+// exactamente como estaban.
+function moveDay(pattern, srcDay, dstDay) {
+  if (srcDay === dstDay) return pattern;
+  const out = { ...pattern };
+  const srcSlots = out[srcDay] || [];
+  if (srcSlots.length === 0) return out;
+  out[dstDay] = srcSlots.map(s => ({ ...s }));
   delete out[srcDay];
   return out;
 }
@@ -178,11 +191,18 @@ export default function BlockScheduleEditor({ onApplied }) {
     e.preventDefault();
     if (!drag || drag.blockId !== block.id || drag.day === dstDay) return;
     const wp = getPattern(block);
-    const merged = mergeDays(wp, drag.day, dstDay, true);
-    setPattern(block.id, merged);
+    const dstHasSlots = (wp[dstDay] || []).length > 0;
+    const next = dstHasSlots
+      ? mergeDays(wp, drag.day, dstDay, true)
+      : moveDay(wp, drag.day, dstDay);
+    setPattern(block.id, next);
     setDrag(null);
     setDragOver(null);
-    toast.success(`${drag.day.toUpperCase()} fusionado en ${dstDay.toUpperCase()} — ${block.name}`);
+    toast.success(
+      dstHasSlots
+        ? `${drag.day.toUpperCase()} fusionado en ${dstDay.toUpperCase()} — ${block.name}`
+        : `${drag.day.toUpperCase()} movido a ${dstDay.toUpperCase()} — ${block.name}`
+    );
   };
   const onDragEnd = () => { setDrag(null); setDragOver(null); };
 
@@ -217,8 +237,9 @@ export default function BlockScheduleEditor({ onApplied }) {
           <div>
             <CardTitle className="text-base">Frecuencia y duración de bloques</CardTitle>
             <CardDescription>
-              Edita días, horarios y duración. <strong>Arrastra un día sobre otro</strong> para fusionarlos
-              (la suma de tiempo queda en el día destino, el origen desaparece). Los demás días no se tocan.
+              Edita días, horarios y duración. Arrastra un día <strong>sobre otro con horario</strong> para
+              <strong> fusionarlos</strong> (suma de tiempo). Arrástralo <strong>sobre un día vacío</strong> para
+              <strong> moverlo</strong> allí sin sumar. Los demás días no se tocan.
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -279,25 +300,49 @@ export default function BlockScheduleEditor({ onApplied }) {
                     )}
                   </div>
 
-                  {/* Linea 2: chips de dias (draggable) */}
+                  {/* Hint contextual durante drag: explica las dos operaciones disponibles */}
+                  {drag?.blockId === block.id && (
+                    <div className="mb-1.5 text-[10px] text-violet-700 font-medium inline-flex items-center gap-2 bg-violet-50 border border-violet-200 rounded px-2 py-1">
+                      <MoveRight className="h-3 w-3" /> soltar en día vacío → <strong>mover</strong>
+                      <span className="text-violet-400">·</span>
+                      <Combine className="h-3 w-3" /> soltar en día con horario → <strong>fusionar</strong>
+                    </div>
+                  )}
+
+                  {/* Linea 2: chips de dias (draggable + dropzones) */}
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {DAYS.map(d => {
                       const slots = pattern[d.key] || [];
                       const present = slots.length > 0;
+                      const dragActiveHere = drag?.blockId === block.id && drag?.day !== d.key;
+                      const isDropTarget = dragOver?.blockId === block.id && dragOver?.day === d.key;
+
                       if (!present) {
+                        // Chip vacío. En estado normal funciona como botón "+ día".
+                        // Durante drag activo del MISMO bloque, se convierte en dropzone
+                        // visual de "MOVER aquí".
                         return (
-                          <button
+                          <div
                             key={d.key}
-                            onClick={() => addDay(block, d.key)}
-                            className="inline-flex items-center gap-1 rounded border border-dashed border-slate-300 text-slate-400 hover:text-violet-700 hover:border-violet-300 px-2 py-1 text-[11px]"
-                            title={`Agregar ${d.label}`}
+                            onClick={() => { if (!drag) addDay(block, d.key); }}
+                            onDragOver={(e) => onDragOver(e, block.id, d.key)}
+                            onDragLeave={() => onDragLeave(block.id, d.key)}
+                            onDrop={(e) => onDrop(e, block, d.key)}
+                            className={`inline-flex items-center gap-1 rounded border-dashed border px-2 py-1 text-[11px] transition-colors ${
+                              dragActiveHere
+                                ? (isDropTarget
+                                    ? 'border-violet-500 bg-violet-100 ring-2 ring-violet-400 text-violet-800 border-solid cursor-copy'
+                                    : 'border-violet-400 bg-violet-50/60 text-violet-700 cursor-copy')
+                                : 'border-slate-300 text-slate-400 hover:text-violet-700 hover:border-violet-300 cursor-pointer'
+                            }`}
+                            title={dragActiveHere ? `Mover a ${d.label}` : `Agregar ${d.label}`}
                           >
-                            <Plus className="h-3 w-3" /> {d.label}
-                          </button>
+                            {dragActiveHere ? <MoveRight className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                            {d.label}
+                          </div>
                         );
                       }
                       const isDragging = drag?.blockId === block.id && drag?.day === d.key;
-                      const isDropTarget = dragOver?.blockId === block.id && dragOver?.day === d.key;
                       return (
                         <div
                           key={d.key}
@@ -307,15 +352,22 @@ export default function BlockScheduleEditor({ onApplied }) {
                           onDragLeave={() => onDragLeave(block.id, d.key)}
                           onDrop={(e) => onDrop(e, block, d.key)}
                           onDragEnd={onDragEnd}
-                          className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] transition-colors cursor-grab active:cursor-grabbing ${
+                          className={`relative inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] transition-colors cursor-grab active:cursor-grabbing ${
                             isDragging
                               ? 'opacity-40 border-violet-300 bg-violet-50'
                               : isDropTarget
                                 ? 'border-violet-500 bg-violet-100 ring-2 ring-violet-300'
-                                : 'border-slate-300 bg-slate-50 hover:border-slate-400'
+                                : dragActiveHere
+                                  ? 'border-slate-400 bg-white shadow-sm'
+                                  : 'border-slate-300 bg-slate-50 hover:border-slate-400'
                           }`}
-                          title="Arrastra sobre otro día para fusionar"
+                          title={dragActiveHere ? `Fusionar en ${d.label}` : 'Arrastra a otro día'}
                         >
+                          {dragActiveHere && !isDragging && (
+                            <span className="absolute -top-2 left-1 text-[8px] font-bold tracking-wide bg-violet-600 text-white rounded px-1 py-px leading-none pointer-events-none">
+                              ⊕ fusionar
+                            </span>
+                          )}
                           <GripHorizontal className="h-3 w-3 text-slate-400 shrink-0" />
                           <span className="font-bold text-slate-700">{d.label}</span>
                           {slots.map((sl, i) => (
