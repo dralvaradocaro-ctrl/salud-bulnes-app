@@ -4,6 +4,7 @@
  */
 import { BLOCK_SPECS, isDailyBlock } from './blockSpec';
 import { PROTECTED_PRIORITY_BLOCK_IDS, STRICT_TITULAR_BLOCKS, FLEXIBLE_BLOCKS, buildEffectiveProgramAssignments } from './programPriorityDefaults';
+import { priorityFor as buildPriorityFor } from './buildPriorityOrder';
 
 const DAYS = ['lun', 'mar', 'mie', 'jue', 'vie'];
 const DAY_LABELS = { lun: 'LUNES', mar: 'MARTES', mie: 'MIÉRCOLES', jue: 'JUEVES', vie: 'VIERNES' };
@@ -498,7 +499,13 @@ export function generateAgenda({
       return register(null, false);
     };
 
-    for (const bt of blockTemplates) {
+    // Orden de construcción: el usuario lo configura en la pestaña
+    // "Ordenar prioridades". Los bloques con priority menor se resuelven
+    // primero y se quedan con el médico preferido cuando hay overlap.
+    const sortedBlockTemplates = [...blockTemplates].sort((a, b) =>
+      buildPriorityFor(a.id) - buildPriorityFor(b.id)
+    );
+    for (const bt of sortedBlockTemplates) {
       // semanal regular
       const slots = bt.weekday_pattern?.[dayKey];
       if (slots && slots.length) {

@@ -13,6 +13,7 @@ import Distribucion from '@/components/sdm/Distribucion';
 import RevisarBloqueosSemanales from '@/components/sdm/RevisarBloqueosSemanales';
 import SimpleOneoffBlocks from '@/components/sdm/SimpleOneoffBlocks';
 import SdmCalendar from '@/components/sdm/SdmCalendar';
+import OrdenPrioridades from '@/components/sdm/OrdenPrioridades';
 import { getMondayOfWeek, fmtDate } from '@/components/sdm/lib/generateAgenda';
 import { useSdmWeeklyAgenda } from '@/components/sdm/lib/useSdmWeeklyAgenda';
 
@@ -173,78 +174,11 @@ export default function SubdireccionMedica() {
   );
 }
 
-// Panel envoltorio para la pestaña "Ordenar prioridades": expone el editor
-// de program assignments y un botón "Aplicar a la agenda" que pregunta el
-// alcance temporal (semana actual / desde la próxima semana). Cualquiera de
-// las dos opciones recarga los program assignments del hook para que la
-// agenda se re-renderice; la diferencia es a partir de qué lunes cuenta.
+// Pestaña "Ordenar prioridades" — reordena las FASES de construcción de la
+// agenda y los bloqueos individuales. El orden se persiste en localStorage
+// (sdm_build_priority_v1) y generateAgenda lo consume para decidir qué
+// bloques resuelven primero al competir por un médico en horarios
+// superpuestos.
 function PrioridadesPanel({ onApplied }) {
-  const [scope, setScope] = useState('current'); // 'current' | 'next'
-  const [scheduledFor, setScheduledFor] = useState(null);
-
-  const apply = async () => {
-    if (scope === 'current') {
-      const ok = window.confirm(
-        '¿Aplicar las nuevas prioridades a la agenda DE ESTA SEMANA?\n\n' +
-        'Los bloques se reasignarán inmediatamente respetando los nuevos titulares ' +
-        'y subrogantes. Las edicions manuales que ya hiciste se mantienen.'
-      );
-      if (!ok) return;
-      await onApplied?.();
-      setScheduledFor(null);
-      window.alert('Prioridades aplicadas. La agenda se recalcula al volver a verla.');
-    } else {
-      const ok = window.confirm(
-        '¿Aplicar las nuevas prioridades DESDE LA PRÓXIMA SEMANA?\n\n' +
-        'La agenda en curso queda intacta. La próxima semana (y posteriores) usarán ' +
-        'la nueva distribución de titulares.'
-      );
-      if (!ok) return;
-      // Marca el lunes de la semana siguiente como "entrada en vigor". No hay
-      // bloqueo técnico: las edits ya están en DB; lo que cambia es que NO
-      // recargamos la agenda activa, sólo guardamos el marker visible.
-      const today = new Date();
-      const nextMonday = new Date(today);
-      const dow = today.getDay(); // 0=Dom..6=Sab
-      const offset = dow === 0 ? 1 : (8 - dow);
-      nextMonday.setDate(today.getDate() + offset);
-      setScheduledFor(nextMonday.toISOString().slice(0, 10));
-      window.alert('Las nuevas prioridades quedan agendadas para entrar en vigor el lunes ' +
-        nextMonday.toLocaleDateString('es-CL') + '. La agenda actual no se modificará.');
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-3 text-violet-900">
-        <div className="flex items-start gap-2 mb-2">
-          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-          <div className="text-xs leading-relaxed">
-            <p className="font-semibold mb-1">¿Estos cambios de prioridad van a afectar la estructura de la agenda?</p>
-            <p>Sí. Elige desde cuándo entran en vigor:</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 mt-2">
-          <label className="inline-flex items-center gap-2 text-xs cursor-pointer">
-            <input type="radio" name="scope" value="current" checked={scope === 'current'} onChange={() => setScope('current')} />
-            <span><strong>Desde esta agenda</strong> (cambia la semana en curso)</span>
-          </label>
-          <label className="inline-flex items-center gap-2 text-xs cursor-pointer">
-            <input type="radio" name="scope" value="next" checked={scope === 'next'} onChange={() => setScope('next')} />
-            <span><strong>Desde la próxima semana</strong> (la actual queda igual)</span>
-          </label>
-          <Button size="sm" onClick={apply} className="ml-auto bg-violet-600 hover:bg-violet-700">
-            Aplicar a la agenda
-          </Button>
-        </div>
-        {scheduledFor && (
-          <p className="text-[11px] mt-2">
-            Programado para entrar en vigor el lunes <strong>{new Date(scheduledFor + 'T12:00').toLocaleDateString('es-CL')}</strong>.
-          </p>
-        )}
-      </div>
-
-      <ProgramAssignments />
-    </div>
-  );
+  return <OrdenPrioridades onApplied={onApplied} />;
 }
