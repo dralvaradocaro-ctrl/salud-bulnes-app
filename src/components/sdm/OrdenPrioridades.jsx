@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, RotateCcw, AlertCircle, ListOrdered, Save } from 'lucide-react';
+import { ArrowUp, ArrowDown, RotateCcw, AlertCircle, ListOrdered, Save, GripVertical } from 'lucide-react';
 import {
   DEFAULT_BLOCK_ORDER,
   PHASE_LABELS,
@@ -27,6 +27,8 @@ export default function OrdenPrioridades({ onApplied }) {
   const [order, setOrder] = useState(() => getBuildPriorityOrder());
   const [dirty, setDirty] = useState(false);
   const [scope, setScope] = useState('current'); // 'current' | 'next'
+  const [draggingIdx, setDraggingIdx] = useState(null);
+  const [dragOverIdx, setDragOverIdx] = useState(null);
 
   useEffect(() => { setOrder(getBuildPriorityOrder()); }, []);
 
@@ -39,6 +41,41 @@ export default function OrdenPrioridades({ onApplied }) {
     next[target] = tmp;
     setOrder(next);
     setDirty(true);
+  };
+
+  // Mueve el item desde fromIdx insertándolo en toIdx (drag&drop).
+  const reorder = (fromIdx, toIdx) => {
+    if (fromIdx === toIdx || fromIdx == null || toIdx == null) return;
+    const next = order.slice();
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    setOrder(next);
+    setDirty(true);
+  };
+
+  const handleDragStart = (e, idx) => {
+    setDraggingIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+    // Necesario para que Firefox active el drag
+    try { e.dataTransfer.setData('text/plain', String(idx)); } catch { /* noop */ }
+  };
+  const handleDragOver = (e, idx) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIdx !== idx) setDragOverIdx(idx);
+  };
+  const handleDragLeave = (idx) => {
+    if (dragOverIdx === idx) setDragOverIdx(null);
+  };
+  const handleDrop = (e, toIdx) => {
+    e.preventDefault();
+    if (draggingIdx != null) reorder(draggingIdx, toIdx);
+    setDraggingIdx(null);
+    setDragOverIdx(null);
+  };
+  const handleDragEnd = () => {
+    setDraggingIdx(null);
+    setDragOverIdx(null);
   };
 
   const handleReset = () => {
@@ -143,8 +180,8 @@ export default function OrdenPrioridades({ onApplied }) {
           <CardTitle className="text-base">Orden de bloqueos / programas</CardTitle>
           <CardDescription>
             El bloque que está más arriba se resuelve primero cuando dos bloques compiten por un mismo médico en
-            horarios superpuestos. Usa las flechas para subir/bajar. Las categorías son referenciales — puedes
-            mover ítems entre ellas (cambia el orden global).
+            horarios superpuestos. <strong>Arrástralo</strong> usando el handle (⋮⋮) o usa las flechas ↑↓.
+            Las categorías son referenciales — puedes mover ítems entre ellas (cambia el orden global).
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -155,24 +192,42 @@ export default function OrdenPrioridades({ onApplied }) {
                   {PHASE_LABELS[phaseKey] || phaseKey}
                 </h3>
                 <div className="space-y-1">
-                  {groups[phaseKey].map((it) => (
-                    <div
-                      key={it.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-slate-100 hover:border-slate-300 hover:bg-slate-50/60 transition-colors"
-                    >
-                      <span className="inline-flex h-6 w-7 items-center justify-center rounded bg-slate-100 text-slate-600 text-[11px] font-mono font-bold">
-                        {it._idx + 1}
-                      </span>
-                      <span className="flex-1 text-sm text-slate-800">{it.label}</span>
-                      <span className="text-[10px] text-slate-400 font-mono">{it.id}</span>
-                      <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => move(it._idx, -1)} disabled={it._idx === 0}>
-                        <ArrowUp className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => move(it._idx, 1)} disabled={it._idx === order.length - 1}>
-                        <ArrowDown className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
+                  {groups[phaseKey].map((it) => {
+                    const isDragging = draggingIdx === it._idx;
+                    const isOver = dragOverIdx === it._idx && draggingIdx !== it._idx;
+                    return (
+                      <div
+                        key={it.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, it._idx)}
+                        onDragOver={(e) => handleDragOver(e, it._idx)}
+                        onDragLeave={() => handleDragLeave(it._idx)}
+                        onDrop={(e) => handleDrop(e, it._idx)}
+                        onDragEnd={handleDragEnd}
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md border transition-colors cursor-grab active:cursor-grabbing ${
+                          isDragging
+                            ? 'opacity-40 border-violet-300 bg-violet-50'
+                            : isOver
+                              ? 'border-violet-400 bg-violet-50/70 ring-1 ring-violet-300'
+                              : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50/60'
+                        }`}
+                        title="Arrastra para reordenar"
+                      >
+                        <GripVertical className="h-4 w-4 text-slate-400 shrink-0" />
+                        <span className="inline-flex h-6 w-7 items-center justify-center rounded bg-slate-100 text-slate-600 text-[11px] font-mono font-bold">
+                          {it._idx + 1}
+                        </span>
+                        <span className="flex-1 text-sm text-slate-800">{it.label}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">{it.id}</span>
+                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => move(it._idx, -1)} disabled={it._idx === 0}>
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => move(it._idx, 1)} disabled={it._idx === order.length - 1}>
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
