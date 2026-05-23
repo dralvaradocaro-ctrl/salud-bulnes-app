@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { sdmSupabase as supabase, explainSdmWriteError } from './lib/sdmSupabase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -93,6 +93,9 @@ export default function BlockScheduleEditor({ onApplied }) {
   const [filter, setFilter] = useState('');
   const [drag, setDrag] = useState(null); // { blockId, day }
   const [dragOver, setDragOver] = useState(null); // { blockId, day }
+  // ref espejo del drag — bypasea el lag de setState para que los handlers
+  // de onDragOver/onDrop accedan al valor inmediatamente después de onDragStart.
+  const dragRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
@@ -172,12 +175,14 @@ export default function BlockScheduleEditor({ onApplied }) {
 
   // ── Drag & drop entre días del mismo bloque ────────────────────────────
   const onDragStart = (e, blockId, day) => {
+    dragRef.current = { blockId, day };
     setDrag({ blockId, day });
     e.dataTransfer.effectAllowed = 'move';
     try { e.dataTransfer.setData('text/plain', `${blockId}|${day}`); } catch { /* noop */ }
   };
   const onDragOver = (e, blockId, day) => {
-    if (!drag || drag.blockId !== blockId || drag.day === day) return;
+    const d = dragRef.current;
+    if (!d || d.blockId !== blockId || d.day === day) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     if (!dragOver || dragOver.blockId !== blockId || dragOver.day !== day) {
@@ -189,22 +194,25 @@ export default function BlockScheduleEditor({ onApplied }) {
   };
   const onDrop = (e, block, dstDay) => {
     e.preventDefault();
-    if (!drag || drag.blockId !== block.id || drag.day === dstDay) return;
+    const d = dragRef.current;
+    if (!d || d.blockId !== block.id || d.day === dstDay) return;
     const wp = getPattern(block);
     const dstHasSlots = (wp[dstDay] || []).length > 0;
     const next = dstHasSlots
-      ? mergeDays(wp, drag.day, dstDay, true)
-      : moveDay(wp, drag.day, dstDay);
+      ? mergeDays(wp, d.day, dstDay, true)
+      : moveDay(wp, d.day, dstDay);
     setPattern(block.id, next);
+    const srcDayLabel = d.day;
+    dragRef.current = null;
     setDrag(null);
     setDragOver(null);
     toast.success(
       dstHasSlots
-        ? `${drag.day.toUpperCase()} fusionado en ${dstDay.toUpperCase()} — ${block.name}`
-        : `${drag.day.toUpperCase()} movido a ${dstDay.toUpperCase()} — ${block.name}`
+        ? `${srcDayLabel.toUpperCase()} fusionado en ${dstDay.toUpperCase()} — ${block.name}`
+        : `${srcDayLabel.toUpperCase()} movido a ${dstDay.toUpperCase()} — ${block.name}`
     );
   };
-  const onDragEnd = () => { setDrag(null); setDragOver(null); };
+  const onDragEnd = () => { dragRef.current = null; setDrag(null); setDragOver(null); };
 
   const saveAll = async () => {
     const ids = Object.keys(edits);
@@ -372,10 +380,12 @@ export default function BlockScheduleEditor({ onApplied }) {
                               Cubre toda la zona del nombre del día y el grip,
                               da ~52px de superficie agarrable garantizada. */}
                           <div
-                            draggable
+                            draggable="true"
                             onDragStart={(e) => onDragStart(e, block.id, d.key)}
                             onDragEnd={onDragEnd}
-                            className="inline-flex items-center gap-1 self-stretch px-1.5 mr-1 bg-slate-200/70 hover:bg-slate-300/70 active:bg-slate-300 cursor-grab active:cursor-grabbing select-none"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 self-stretch px-2 py-1 mr-1 bg-slate-200/70 hover:bg-slate-300/70 active:bg-slate-300 cursor-grab active:cursor-grabbing select-none"
+                            style={{ WebkitUserDrag: 'element', userSelect: 'none' }}
                             title="Arrastra para mover o fusionar"
                           >
                             <GripHorizontal className="h-3.5 w-3.5 text-slate-500 shrink-0" />
