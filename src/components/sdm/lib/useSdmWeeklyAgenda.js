@@ -149,6 +149,15 @@ export function useSdmWeeklyAgenda(monday) {
     setOneoffBlocks(data || []);
   }, [weekStart]);
 
+  // Recarga los assignments de programas/bloqueos (titular/subrogantes y su
+  // priority) desde la DB. Se llama cuando el usuario edita prioridades en
+  // la pestaña 'Ordenar prioridades' para que la agenda se reactualice
+  // sin necesidad de recargar la página.
+  const reloadProgramAssignments = useCallback(async () => {
+    const { data } = await supabase.from('sdm_program_assignments').select('*');
+    setProgramAssignments(data || []);
+  }, []);
+
   const saveAgenda = useCallback(async ({ hasErrors = false, editorName = null } = {}) => {
     const payload = {
       week_start: weekStart,
@@ -245,6 +254,7 @@ export function useSdmWeeklyAgenda(monday) {
     agenda,
     blockSuggestions,
     reloadOneoff,
+    reloadProgramAssignments,
     reloadWeek: loadWeek,
     saveAgenda,
   };
