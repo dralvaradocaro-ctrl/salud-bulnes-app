@@ -1393,7 +1393,7 @@ ${table}
 
                     // % PM y PM-viernes acumulado del año por médico — solo
                     // se aplica al dropdown del slot PM (no al AM). Si supera
-                    // 15% del total anual se marca en rojo con tag de alerta.
+                    // 10% del total anual se marca en rojo con tag de alerta.
                     const pmPctFor = (id) => {
                       const stats = yearReinfStats.perDoctor[id];
                       if (!stats || yearReinfStats.totalPM === 0) return 0;
@@ -1410,7 +1410,7 @@ ${table}
                       const pmPct = isPM ? pmPctFor(d.id) : 0;
                       const pmViePct = isPM && isVie ? pmViePctFor(d.id) : 0;
                       const refPct = Math.max(pmPct, pmViePct);
-                      const overloaded = refPct > 15;
+                      const overloaded = refPct > 10;
                       const hasNominal = nominalDocs.has(d.id);
                       const itemClass = overloaded
                         ? 'text-red-700 font-medium'
