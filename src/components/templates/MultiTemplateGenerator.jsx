@@ -68,6 +68,19 @@ const EXTERNAL_FORMS = [
       { field_name: 'prevision',         field_label: 'Previsión (Fonasa, Isapre, etc.)',          field_type: 'text' },
     ],
   },
+  {
+    id: 'ext-solicitud-microbio',
+    name: 'Solicitud de Exámenes Microbiológicos (C 162)',
+    type: 'Formulario Oficial',
+    route: 'SolicitudMicrobiologia',
+    shared_fields: [
+      { field_name: 'patient_name',      field_label: 'Nombre del paciente',  field_type: 'text' },
+      { field_name: 'patient_rut',       field_label: 'RUT del paciente',     field_type: 'text' },
+      { field_name: 'patient_fecha_nac', field_label: 'Fecha de nacimiento',  field_type: 'date' },
+      { field_name: 'prevision',         field_label: 'Previsión',            field_type: 'text' },
+      { field_name: 'diagnostico',       field_label: 'Diagnóstico probable', field_type: 'textarea' },
+    ],
+  },
 ];
 
 // Genera un .doc (HTML-Word) descargable a partir de un texto plano. Cada

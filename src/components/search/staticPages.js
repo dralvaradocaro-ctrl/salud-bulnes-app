@@ -66,6 +66,20 @@ export const staticPages = [
     ],
   },
   {
+    id: 'solicitud-microbiologia',
+    page: 'SolicitudMicrobiologia',
+    name: 'Solicitud de Exámenes Microbiológicos (C 162)',
+    description: 'Formulario C 162 — Cultivos, directos al fresco, virológicos. Hospital de Bulnes.',
+    keywords: [
+      'microbiologia', 'microbiología', 'microbiologicos', 'microbiológicos',
+      'urocultivo', 'coprocultivo', 'cultivo', 'gram', 'tinción gram',
+      'directo fresco', 'streptococcus', 'gonorrhoeae', 'gonorrea',
+      'ureaplasma', 'mycoplasma', 'clamidia', 'chlamydia',
+      'hongos', 'micologico', 'micológico', 'acarotest',
+      'virus respiratorio', 'vrs', 'sincicial', 'c 162', 'c162',
+    ],
+  },
+  {
     id: 'formulario-ira-grave',
     page: 'FormularioIRAGrave',
     name: 'Formulario IRA grave y 2019-nCoV (ISP)',

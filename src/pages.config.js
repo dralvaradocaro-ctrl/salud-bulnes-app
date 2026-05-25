@@ -68,6 +68,7 @@ import InformeBiomedico from './pages/InformeBiomedico';
 import PrescripcionInteligente from './pages/PrescripcionInteligente';
 import SubdireccionMedica from './pages/SubdireccionMedica';
 import FormularioIRAGrave from './pages/FormularioIRAGrave';
+import SolicitudMicrobiologia from './pages/SolicitudMicrobiologia';
 import __Layout from './Layout.jsx';
 
 export const PAGES = {
@@ -92,6 +93,7 @@ export const PAGES = {
     "PrescripcionInteligente": PrescripcionInteligente,
     "SubdireccionMedica": SubdireccionMedica,
     "FormularioIRAGrave": FormularioIRAGrave,
+    "SolicitudMicrobiologia": SolicitudMicrobiologia,
 }
 
 export const pagesConfig = {

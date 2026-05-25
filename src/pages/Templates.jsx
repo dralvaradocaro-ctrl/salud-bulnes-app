@@ -71,6 +71,13 @@ export const EXTERNAL_TEMPLATES = [
     instructions: 'PR-244.00-007 — Notificación inmediata y envío de muestras al ISP. Genera PDF imprimible.',
     external_route: 'FormularioIRAGrave',
   },
+  {
+    id: 'ext-solicitud-microbio',
+    name: 'Solicitud de Exámenes Microbiológicos',
+    type: 'Formulario Oficial',
+    instructions: 'Formulario C 162 — Cultivos, directos al fresco, virológicos. Imprime PDF.',
+    external_route: 'SolicitudMicrobiologia',
+  },
 ];
 
 export default function Templates() {

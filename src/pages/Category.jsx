@@ -655,6 +655,21 @@ export default function Category() {
               </Link>
             )}
 
+            {/* Solicitud de Exámenes Microbiológicos – solo en Hospitalizados */}
+            {hasHospitalizados && (
+              <Link to={createPageUrl('SolicitudMicrobiologia')}>
+                <div className="flex items-center gap-4 rounded-2xl border border-cyan-200 bg-cyan-50 p-4 transition-all hover:border-cyan-300 hover:shadow-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-600">
+                    <FlaskConical className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">Solicitud de Exámenes Microbiológicos</p>
+                    <p className="text-sm text-slate-500">Formulario C 162 — Cultivos, directos, virológicos. Imprime PDF.</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+
             {/* Informe Biomédico Funcional – solo en Policlínico */}
             {hasPolicinico && (
               <Link to={createPageUrl('InformeBiomedico')}>
