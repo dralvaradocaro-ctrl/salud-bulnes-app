@@ -898,6 +898,11 @@ export function generateAgenda({
       !turnoSet.has(d.id) && !postSet.has(d.id) && !ausSet.has(d.id) &&
       !hierarchicalSet.has(d.id)
     );
+    // Médicos con al menos 1 bloque clínico no-jerárquico ese día — los
+    // dejamos como fallback, pero solo si no hay libres.
+    const busyToday = (id) => (day.bloqueos || []).some(b =>
+      !HIERARCHICAL_BLOCK_IDS.has(b.block_id) && blockHasDoctor(b, id)
+    );
     ['am', 'pm'].forEach(slot => {
       const current = day.refuerzos[slot];
       // Si el valor guardado ya no es elegible (médico quedó en turno, posturno,
@@ -912,8 +917,12 @@ export function generateAgenda({
       const otherSlot = slot === 'am' ? day.refuerzos.pm : day.refuerzos.am;
       const pool = eligible.filter(d => d.id !== otherSlot);
       if (pool.length === 0) return;
-      pool.sort((a, b) => (refuerzoLoad[a.id] || 0) - (refuerzoLoad[b.id] || 0));
-      const chosen = pool[0].id;
+      // Regla dura: si hay médicos libres (sin bloqueos ese día), elegir solo
+      // entre ellos. Si nadie está libre, fallback al pool completo.
+      const freePool = pool.filter(d => !busyToday(d.id));
+      const usePool = freePool.length > 0 ? freePool : pool;
+      usePool.sort((a, b) => (refuerzoLoad[a.id] || 0) - (refuerzoLoad[b.id] || 0));
+      const chosen = usePool[0].id;
       day.refuerzos[slot] = chosen;
       refuerzoLoad[chosen] = (refuerzoLoad[chosen] || 0) + 1;
       // Reflejar en policlínico/poli_8am.ref_pm si no está apagado manualmente
@@ -1363,9 +1372,19 @@ export function sortReinforcements({ weeks, doctors, existingReinforcements = {}
         return (carga[a.id] || 0) - (carga[b.id] || 0);
       };
 
+      // Regla dura: nunca elegir como refuerzo a alguien que ya tiene un
+      // bloqueo clínico ese día si hay otros libres. Solo si todos los
+      // elegibles están ocupados se permite el fallback (preferiendo el
+      // de menor carga). Esto evita conflictos del tipo "Cordero tiene
+      // Selector de Demanda 08-11 y aparece como refuerzo AM".
+      const splitFreeBusy = (pool) => {
+        const free = pool.filter(d => blockLoadForDay(day, d.id) === 0);
+        return free.length > 0 ? free : pool;
+      };
+
       // AM
       if (!result[weekKey][day.date].am && eligible.length > 0) {
-        const sorted = eligible.slice().sort(cmpAM);
+        const sorted = splitFreeBusy(eligible).slice().sort(cmpAM);
         const chosen = sorted[0];
         result[weekKey][day.date].am = chosen.id;
         carga[chosen.id]++;
@@ -1376,7 +1395,7 @@ export function sortReinforcements({ weeks, doctors, existingReinforcements = {}
       let pmEligible = eligible.filter(d => d.id !== amChosen && !pmThisWeek.has(d.id));
       if (pmEligible.length === 0) pmEligible = eligible.filter(d => d.id !== amChosen);
       if (!result[weekKey][day.date].pm && pmEligible.length > 0) {
-        const sorted = pmEligible.slice().sort(cmpPM);
+        const sorted = splitFreeBusy(pmEligible).slice().sort(cmpPM);
         const chosen = sorted[0];
         result[weekKey][day.date].pm = chosen.id;
         carga[chosen.id]++;

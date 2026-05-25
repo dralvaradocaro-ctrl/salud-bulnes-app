@@ -25,6 +25,17 @@ export const FLEXIBLE_BLOCKS = new Set([
 ]);
 
 export const DEFAULT_PROGRAM_PRIORITIES = {
+  // Selector de Demanda: rota entre el pool fijo en orden semanal.
+  // El propósito es que ningún médico cargue Selector más de 1 vez por
+  // semana (idealmente), y que la rotación cubra a 6 personas distintas.
+  selector_demanda: [
+    { doctor_id: 'alvarado',   priority: 1 },
+    { doctor_id: 'r_aguilera', priority: 1 },
+    { doctor_id: 'cordero',    priority: 1 },
+    { doctor_id: 'fasani',     priority: 1 },
+    { doctor_id: 'santibanez', priority: 1 },
+    { doctor_id: 'ruf',        priority: 1 },
+  ],
   regulacion_ic: [
     { doctor_id: 'enriquez', priority: 1 },
     { doctor_id: 'sandoval', priority: 1 },
