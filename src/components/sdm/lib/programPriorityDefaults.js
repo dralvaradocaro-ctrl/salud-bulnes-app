@@ -12,13 +12,19 @@ export const PROTECTED_PRIORITY_BLOCK_IDS = new Set([
 
 // Bloqueos donde el TITULAR tiene prioridad absoluta y se respeta estrictamente
 // la priority (paliativos a Santibañez, gestion_ges a R. Aguilera, regulacion
-// de IC a Enriquez/Sandoval/Sbarbaro/Correa). Estos no ceden ante overlap.
+// de IC a Enriquez/Sandoval/Sbarbaro/Correa, gestion_iaas/proa/visita_proa a
+// Sbarbaro). Estos no ceden ante overlap ni ante el filtro 'untouched' del
+// priority pool — el titular vuelve a hacer el bloque aunque ya lo haya hecho
+// esa semana, salvo que esté en turno/posturno/ausencia/jerárquico.
 export const STRICT_TITULAR_BLOCKS = new Set([
   'cp_y_ad',
   'dependencia_severa',
   'gestion_dep_severa',
   'gestion_ges',
   'regulacion_ic',
+  'gestion_iaas',
+  'gestion_proa',
+  'visita_proa',
 ]);
 
 // Bloqueos flexibles: si el candidato preferido ya está en otra cosa al mismo

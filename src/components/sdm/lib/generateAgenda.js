@@ -959,6 +959,65 @@ export function generateAgenda({
   });
   } // end if (useProspectiveRules)
 
+  // ── Post-pass: redistribuir días para STRICT_TITULAR_BLOCKS ────────────
+  // Si un bloque de titular estricto quedó asignado a un subrogante (porque
+  // la titular no estaba libre ese día), buscar otro día de la semana donde
+  // sí esté disponible y MOVER el bloque allí. Aplica solo con reglas
+  // prospectivas, ignora días con bloqueosOverrides manuales (edits del
+  // usuario), y respeta que no se duplique el bloque en el día destino.
+  if (useProspectiveRules) {
+    const titularsByBlock = {};
+    const effective = buildEffectiveProgramAssignments(programAssignments, blockTemplates);
+    effective.forEach(p => {
+      if (p.role_type === 'titular') titularsByBlock[p.block_template_id] = p.doctor_id;
+    });
+    const hasOverlapOnDay = (d, titular, b) => (d.bloqueos || []).some(bb =>
+      !bb.suspended && bb.from && bb.to && b.from && b.to &&
+      blockHasDoctor(bb, titular) && bb.from < b.to && bb.to > b.from
+    );
+    const dayBusy = (d, titular) => {
+      const turnoIds = new Set((d.turnos || []).map(t => t.doctor_id));
+      const postIds  = new Set((d.posturno || []).map(t => t.doctor_id));
+      const ausIds   = new Set((d.ausencias || []).map(a => a.doctor_id));
+      return turnoIds.has(titular) || postIds.has(titular) || ausIds.has(titular);
+    };
+    result.forEach(day => {
+      if (day.is_holiday) return;
+      // No tocar días que el usuario editó manualmente.
+      if (bloqueosOverrides && bloqueosOverrides[day.date]) return;
+      day.bloqueos = day.bloqueos.filter(b => {
+        if (!STRICT_TITULAR_BLOCKS.has(b.block_id)) return true;
+        const titular = titularsByBlock[b.block_id];
+        if (!titular) return true;
+        if (blockHasDoctor(b, titular)) return true; // ya está la titular
+        // Buscar otro día donde la titular esté libre y sin overlap horario.
+        const candidate = result.find(d => {
+          if (d.date === day.date || d.is_holiday) return false;
+          if (bloqueosOverrides && bloqueosOverrides[d.date]) return false;
+          if ((d.bloqueos || []).some(bb => bb.block_id === b.block_id)) return false;
+          if (dayBusy(d, titular)) return false;
+          if (hasOverlapOnDay(d, titular, b)) return false;
+          return true;
+        });
+        if (!candidate) return true; // no se encontró → dejar como está
+        // Mover el bloque al día candidato con el titular asignado.
+        candidate.bloqueos = candidate.bloqueos || [];
+        candidate.bloqueos.push({
+          ...b,
+          doctor_id: titular,
+          doctor_ids: [titular],
+          unassigned: false,
+          auto_assigned: false,
+          reassigned: true,
+          originalDoctor: blockDoctorIds(b)[0] || null,
+          source: 'moved_to_titular',
+          reassigned_from_date: day.date,
+        });
+        return false; // remover del día actual
+      });
+    });
+  }
+
   return result;
 }
 
