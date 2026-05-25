@@ -1,7 +1,13 @@
+// Bloques cuyas asignaciones se manejan FUERA del priority pool del default
+// (vía assignments explícitos en sdm_program_assignments o titular único).
+//
+// Nota: `selector_demanda` SE QUITÓ de aquí (antes estaba) porque queremos que
+// rote entre el pool de 6 médicos definido abajo. Manteniéndolo en este set
+// hacía que el algoritmo lo asignara siempre al primer titular disponible
+// (Cordero, por ser primero alfabéticamente disponible), sin rotación.
 export const PROTECTED_PRIORITY_BLOCK_IDS = new Set([
   'subdireccion_medica',
   'poli_taco',
-  'selector_demanda',
 ]);
 
 // Bloqueos donde el TITULAR tiene prioridad absoluta y se respeta estrictamente
