@@ -128,6 +128,15 @@ export default function SdmCalendar({ onChanged }) {
   const [loading, setLoading] = useState(true);
   const [editingDate, setEditingDate] = useState(null);
   const [view, setView] = useState('turnos'); // 'turnos' | 'ausencias'
+  // ─── Selección múltiple (para ausencias en rango) ─────────────────────
+  // Cuando multiSelectMode=true, los clicks en los días no abren el editor
+  // sino que toggle al date en selectedDates. La barra flotante permite
+  // luego aplicar una ausencia (médico + tipo) a todos los días seleccionados.
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
+  const [selectedDates, setSelectedDates] = useState(new Set());
+  const [dragSelecting, setDragSelecting] = useState(false); // boolean — true mientras user arrastra
+  const [showBatchDialog, setShowBatchDialog] = useState(false);
+  const [batchForm, setBatchForm] = useState({ doctor_id: '', type: 'A' });
 
   const rangeStart = fmt(startOfMonth(monthDate));
   const rangeEnd   = fmt(endOfMonth(monthDate));
@@ -286,8 +295,69 @@ export default function SdmCalendar({ onChanged }) {
     notifyChanged();
   }
 
-  const [absForm, setAbsForm] = useState({ doctor_id: '', type: 'A' });
-  useEffect(() => { setAbsForm({ doctor_id: '', type: 'A' }); }, [editingDate]);
+  // Insert masivo: una ausencia (doctor + tipo) en cada fecha del array.
+  async function addAbsenceBatch(dates, doctorId, type) {
+    if (!doctorId || !type || !dates.length) return;
+    const rows = dates.map(date => ({ doctor_id: doctorId, date, type }));
+    const { error } = await supabase.from('sdm_absences').insert(rows);
+    if (error) { toast.error('Error: ' + (explainSdmWriteError(error) || error.message)); return; }
+    toast.success(`${rows.length} día(s) marcados con ${type} para ${doctorName(doctorId)}.`);
+    await loadAll();
+    notifyChanged();
+  }
+
+  // Devuelve [from..to] inclusive como ISO strings (YYYY-MM-DD).
+  function expandDateRange(fromIso, toIso) {
+    if (!fromIso || !toIso) return [fromIso].filter(Boolean);
+    const a = new Date(fromIso + 'T12:00:00');
+    const b = new Date(toIso + 'T12:00:00');
+    if (b < a) return [];
+    const out = [];
+    for (const d = new Date(a); d <= b; d.setDate(d.getDate() + 1)) {
+      out.push(d.toISOString().slice(0, 10));
+    }
+    return out;
+  }
+
+  // Toggle un date en selectedDates (selección múltiple).
+  function toggleDateSelection(iso) {
+    setSelectedDates(prev => {
+      const next = new Set(prev);
+      if (next.has(iso)) next.delete(iso); else next.add(iso);
+      return next;
+    });
+  }
+
+  // Drag select: extender la selección desde el último día clickeado al
+  // actual mientras el usuario arrastra con el botón presionado.
+  function extendSelectionDuringDrag(iso) {
+    if (!dragSelecting) return;
+    setSelectedDates(prev => {
+      const next = new Set(prev);
+      next.add(iso);
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedDates(new Set());
+  }
+
+  function exitMultiSelect() {
+    setMultiSelectMode(false);
+    setSelectedDates(new Set());
+    setShowBatchDialog(false);
+    setBatchForm({ doctor_id: '', type: 'A' });
+  }
+
+  async function applyBatchAbsence() {
+    const dates = Array.from(selectedDates).sort();
+    await addAbsenceBatch(dates, batchForm.doctor_id, batchForm.type);
+    exitMultiSelect();
+  }
+
+  const [absForm, setAbsForm] = useState({ doctor_id: '', type: 'A', until: '' });
+  useEffect(() => { setAbsForm({ doctor_id: '', type: 'A', until: '' }); }, [editingDate]);
 
   return (
     <Card className="sdm-print-hide">
@@ -296,9 +366,21 @@ export default function SdmCalendar({ onChanged }) {
           <CalendarDays className="h-5 w-5" />
           {MONTH_NAMES[monthDate.getMonth()]} {monthDate.getFullYear()}
         </CardTitle>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={applyRotationToMonth} title="Crea/actualiza las entradas del mes según la rotación oficial (base 2026-04-16 = T1, sábados AM/PM)">
             Aplicar rotación al mes
+          </Button>
+          <Button
+            variant={multiSelectMode ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => {
+              if (multiSelectMode) exitMultiSelect();
+              else setMultiSelectMode(true);
+            }}
+            className={multiSelectMode ? 'bg-violet-600 hover:bg-violet-700' : ''}
+            title="Selecciona varios días con click/arrastre para aplicar una ausencia a todos a la vez"
+          >
+            {multiSelectMode ? `Seleccionando (${selectedDates.size})` : 'Seleccionar varios días'}
           </Button>
           <Button variant="outline" size="sm" onClick={() => shiftMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
           <Button variant="outline" size="sm" onClick={() => setMonthDate(startOfMonth(new Date()))}>Hoy</Button>
@@ -343,12 +425,24 @@ export default function SdmCalendar({ onChanged }) {
               const dayAbsences = absencesByDate[cell.iso] || [];
               const turnoColor = TURNO_COLOR[effAmTurno] || TURNO_COLOR[0];
               const showTurnos = view === 'turnos';
+              const isSelected = multiSelectMode && selectedDates.has(cell.iso);
               return (
                 <button
                   key={cell.iso}
-                  onClick={() => setEditingDate(cell.iso)}
-                  className={`text-left rounded-md border p-1.5 min-h-[110px] hover:ring-2 hover:ring-blue-300 hover:ring-inset transition-shadow ${cell.inMonth ? '' : 'opacity-40'} ${isWeekend ? 'bg-slate-50' : ''} ${showTurnos ? turnoColor : 'bg-white border-slate-200'}`}
-                  title="Click para editar este día"
+                  onClick={() => {
+                    if (multiSelectMode) toggleDateSelection(cell.iso);
+                    else setEditingDate(cell.iso);
+                  }}
+                  onMouseDown={() => {
+                    if (multiSelectMode) {
+                      setDragSelecting(true);
+                      toggleDateSelection(cell.iso);
+                    }
+                  }}
+                  onMouseEnter={() => extendSelectionDuringDrag(cell.iso)}
+                  onMouseUp={() => setDragSelecting(false)}
+                  className={`text-left rounded-md border p-1.5 min-h-[110px] hover:ring-2 hover:ring-blue-300 hover:ring-inset transition-shadow ${cell.inMonth ? '' : 'opacity-40'} ${isWeekend ? 'bg-slate-50' : ''} ${showTurnos ? turnoColor : 'bg-white border-slate-200'} ${isSelected ? 'ring-2 ring-violet-500 ring-inset bg-violet-50/70' : ''}`}
+                  title={multiSelectMode ? 'Click o arrastra para seleccionar varios días' : 'Click para editar este día'}
                 >
                   <div className="flex items-center justify-between">
                     <span className={`text-xs font-bold ${cell.inMonth ? 'text-slate-900' : 'text-slate-400'}`}>{cell.date.getDate()}</span>
@@ -564,39 +658,131 @@ export default function SdmCalendar({ onChanged }) {
                     ))}
                   </div>
                 )}
-                <div className="flex items-end gap-2 rounded-lg border border-dashed border-slate-300 p-2 bg-slate-50">
-                  <div className="flex-1">
-                    <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Médico</label>
-                    <Select value={absForm.doctor_id} onValueChange={v => setAbsForm({ ...absForm, doctor_id: v })}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Elegir…" /></SelectTrigger>
-                      <SelectContent>
-                        {doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                <div className="rounded-lg border border-dashed border-slate-300 p-2 bg-slate-50 space-y-2">
+                  <div className="flex items-end gap-2 flex-wrap">
+                    <div className="flex-1 min-w-[160px]">
+                      <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Médico</label>
+                      <Select value={absForm.doctor_id} onValueChange={v => setAbsForm({ ...absForm, doctor_id: v })}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Elegir…" /></SelectTrigger>
+                        <SelectContent>
+                          {doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Tipo</label>
+                      <Select value={absForm.type} onValueChange={v => setAbsForm({ ...absForm, type: v })}>
+                        <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {ABSENCE_TYPES.map(t => <SelectItem key={t} value={t}>{t} — {ABSENCE_LABELS[t]}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">Tipo</label>
-                    <Select value={absForm.type} onValueChange={v => setAbsForm({ ...absForm, type: v })}>
-                      <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {ABSENCE_TYPES.map(t => <SelectItem key={t} value={t}>{t} — {ABSENCE_LABELS[t]}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                  <div className="flex items-end gap-2 flex-wrap">
+                    <div className="flex-1 min-w-[160px]">
+                      <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-0.5">
+                        Hasta (opcional) — para rangos
+                      </label>
+                      <input
+                        type="date"
+                        value={absForm.until}
+                        min={editingDate || undefined}
+                        onChange={e => setAbsForm({ ...absForm, until: e.target.value })}
+                        className="w-full h-8 rounded-md border border-slate-300 px-2 text-xs"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={async () => {
+                        const dates = absForm.until && absForm.until > editingDate
+                          ? expandDateRange(editingDate, absForm.until)
+                          : [editingDate];
+                        if (dates.length > 1) {
+                          await addAbsenceBatch(dates, absForm.doctor_id, absForm.type);
+                        } else {
+                          await addAbsence(editingDate, absForm.doctor_id, absForm.type);
+                        }
+                        setAbsForm({ doctor_id: '', type: 'A', until: '' });
+                      }}
+                      disabled={!absForm.doctor_id}
+                      className="gap-1.5"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      {absForm.until && absForm.until > editingDate
+                        ? `Agregar ${expandDateRange(editingDate, absForm.until).length} días`
+                        : 'Agregar'}
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => { addAbsence(editingDate, absForm.doctor_id, absForm.type); setAbsForm({ doctor_id: '', type: 'A' }); }}
-                    disabled={!absForm.doctor_id}
-                    className="gap-1.5"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Agregar
-                  </Button>
+                  <p className="text-[11px] text-slate-500 italic">
+                    Para feriados legales o pasantías largas: ingresa fecha "hasta" y se aplicará la ausencia a cada día del rango.
+                  </p>
                 </div>
               </div>
             </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingDate(null)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Barra flotante de selección múltiple */}
+      {multiSelectMode && selectedDates.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-2xl border border-violet-300 bg-white shadow-2xl px-4 py-2.5 flex items-center gap-3 flex-wrap max-w-[95vw]">
+          <span className="text-sm font-semibold text-violet-800">
+            {selectedDates.size} día{selectedDates.size === 1 ? '' : 's'} seleccionado{selectedDates.size === 1 ? '' : 's'}
+          </span>
+          <Button size="sm" variant="outline" onClick={clearSelection}>Limpiar</Button>
+          <Button
+            size="sm"
+            className="bg-violet-600 hover:bg-violet-700 gap-1.5"
+            onClick={() => setShowBatchDialog(true)}
+          >
+            <Plus className="h-3.5 w-3.5" /> Aplicar ausencia
+          </Button>
+          <Button size="sm" variant="ghost" onClick={exitMultiSelect}>Salir del modo</Button>
+        </div>
+      )}
+
+      {/* Diálogo para aplicar ausencia a los días seleccionados */}
+      <Dialog open={showBatchDialog} onOpenChange={open => !open && setShowBatchDialog(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Aplicar ausencia a {selectedDates.size} día{selectedDates.size === 1 ? '' : 's'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="rounded-lg bg-violet-50 border border-violet-200 px-3 py-2 text-[11px] text-violet-800 max-h-32 overflow-y-auto">
+              <strong>Días: </strong>
+              {Array.from(selectedDates).sort().map(d => d.slice(5)).join(', ')}
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-1">Médico</label>
+              <Select value={batchForm.doctor_id} onValueChange={v => setBatchForm({ ...batchForm, doctor_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Elegir…" /></SelectTrigger>
+                <SelectContent>
+                  {doctors.map(d => <SelectItem key={d.id} value={d.id}>{d.display_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-[10px] uppercase tracking-wide text-slate-500 mb-1">Tipo de ausencia</label>
+              <Select value={batchForm.type} onValueChange={v => setBatchForm({ ...batchForm, type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {ABSENCE_TYPES.map(t => <SelectItem key={t} value={t}>{t} — {ABSENCE_LABELS[t]}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-[11px] text-slate-500 italic">
+              Se creará una entrada en cada día seleccionado. Para feriados legales largos, pasantías o licencias prolongadas.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBatchDialog(false)}>Cancelar</Button>
+            <Button onClick={applyBatchAbsence} disabled={!batchForm.doctor_id} className="bg-violet-600 hover:bg-violet-700">
+              Aplicar a {selectedDates.size} día{selectedDates.size === 1 ? '' : 's'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
