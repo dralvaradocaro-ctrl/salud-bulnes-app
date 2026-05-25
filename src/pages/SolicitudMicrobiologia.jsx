@@ -3,45 +3,51 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ChevronLeft, Printer, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 
-// Exámenes microbiológicos del Hospital Comunitario de Salud Familiar de Bulnes
-// (formato oficial — formulario C 162).
-const SECTIONS = [
-  {
-    id: 'bacteriologicos',
-    title: 'A. EXÁMENES BACTERIOLÓGICOS',
-    exams: [
-      { code: '03.06.011', name: 'UROCULTIVO' },
-      { code: '03.06.007', name: 'COPROCULTIVO' },
-      { code: '03.06.008', name: 'CULTIVO CORRIENTE DE (especificar tipo de secreción y sitio anatómico)', hasNote: true },
-      { code: '03.06.099', name: 'BÚSQUEDA DE STREPTOCOCCUS GRUPO B' },
-      { code: '03.06.016', name: 'NEISSERIA GONORRHOEAE' },
-      { code: '03.06.023', name: 'UREAPLASMA Y MYCOPLASMA' },
-      { code: '03.06.034', name: 'CLAMIDIA' },
-      { code: '03.08.044', name: 'CULTIVO DE SECRECIÓN URETRAL' },
-      { code: '03.08.045', name: 'CULTIVO DE FLUJO VAGINAL (incluye directo al fresco y tinción Gram)' },
-    ],
-  },
-  {
-    id: 'microbiologicos',
-    title: 'B. EXÁMENES MICROBIOLÓGICOS',
-    exams: [
-      { code: '03.08.011', name: 'DIRECTO AL FRESCO' },
-      { code: '03.06.005', name: 'TINCIÓN DE GRAM' },
-      { code: '03.06.004', name: 'ACAROTEST' },
-      { code: '03.06.117', name: 'CULTIVO DE HONGOS' },
-      { code: '03.06.004b', name: 'MICOLÓGICO DIRECTO' },
-    ],
-  },
-  {
-    id: 'virologicos',
-    title: 'C. EXÁMENES VIROLÓGICOS',
-    exams: [
-      { code: '03.06.270', name: 'VIRUS RESPIRATORIO SINCICIAL' },
-    ],
-  },
-];
+// Formulario oficial C 162 — Hospital Comunitario de Salud Familiar de Bulnes.
+// Estructura por secciones en DOS COLUMNAS preservando el layout del original
+// y dejando "líneas en blanco" libres para anotar exámenes especiales que no
+// están en la lista codificada.
+const SECTION_A = {
+  title: 'A. EXÁMENES BACTERIOLÓGICOS',
+  left: [
+    { code: '03.06.011', name: 'UROCULTIVO' },
+    { code: '03.06.007', name: 'COPROCULTIVO' },
+    { code: '03.06.008', name: 'CULTIVO CORRIENTE DE (especificar tipo de secreción y sitio anatómico):', hasNote: true },
+  ],
+  right: [
+    { code: '03.06.099', name: 'BÚSQUEDA DE STREPTOCOCCUS GRUPO B' },
+    { code: '03.06.016', name: 'NEISSERIA GONORRHOEAE' },
+    { code: '03.06.023', name: 'UREAPLASMA Y MYCOPLASMA' },
+    { code: '03.06.034', name: 'CLAMIDIA' },
+    { code: '03.08.044', name: 'CULTIVO DE SECRECIÓN URETRAL' },
+    { code: '03.08.045', name: 'CULTIVO DE FLUJO VAGINAL (incluye directo al fresco y tinción Gram)' },
+  ],
+};
+
+const SECTION_B = {
+  title: 'B. EXÁMENES MICROBIOLÓGICOS',
+  left: [
+    { code: '03.08.011', name: 'DIRECTO AL FRESCO' },
+    { code: '03.06.005', name: 'TINCIÓN DE GRAM' },
+    { code: '03.06.004', name: 'ACAROTEST' },
+  ],
+  right: [
+    { code: '03.06.117', name: 'CULTIVO DE HONGOS' },
+    { code: '03.06.004b', name: 'MICOLÓGICO DIRECTO' },
+  ],
+};
+
+const SECTION_C = {
+  title: 'C. EXÁMENES VIROLÓGICOS',
+  left: [
+    { code: '03.06.270', name: 'VIRUS RESPIRATORIO SINCICIAL' },
+  ],
+  right: [],
+};
 
 function formatRut(raw) {
   if (!raw) return '';
@@ -53,47 +59,94 @@ function formatRut(raw) {
   return `${body.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}-${dv}`;
 }
 
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 const EMPTY = {
   nombre: '', rut: '', fecha_nacimiento: '', prevision: '',
   servicio: '', sala: '', cama: '',
   diagnostico: '', tratamiento_antibiotico: '',
   tipo_muestra: '', sitio_anatomico: '',
-  fecha_hora_toma: '',
+  fecha_toma: '', // se setea a hoy al montar
   cultivo_corriente_detalle: '',
+  examenes_libres: '', // texto libre para exámenes especiales no listados
   profesional: '',
-  selected: {}, // { '03.06.011': true, ... }
+  selected: {},
 };
 
-function HospitalLogo({ printMode = false }) {
+function HospitalLogo() {
   const [failed, setFailed] = useState(false);
-  const h = printMode ? '60px' : '64px';
   if (!failed) {
     return (
       <img
         src="/logo-hospital.png"
         alt="Hospital Comunitario de Salud Familiar de Bulnes"
-        style={{ height: h, width: 'auto', objectFit: 'contain', display: 'block' }}
+        style={{ height: '54px', width: 'auto', objectFit: 'contain', display: 'block' }}
         onError={() => setFailed(true)}
       />
     );
   }
   return (
-    <div style={{ height: h, width: '72px', background: '#1565c0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}>
+    <div style={{ height: '54px', width: '64px', background: '#1565c0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}>
       <span style={{ color: 'white', fontWeight: 'bold', fontSize: '11px' }}>HCSFB</span>
     </div>
   );
 }
 
+// ── Render de un examen como item de columna (estilo formulario oficial) ──
+function ExamRow({ exam, selected, onToggle, noteValue, onNoteChange }) {
+  return (
+    <div style={{ marginBottom: '6pt' }}>
+      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '5pt', cursor: 'pointer', fontSize: '10pt' }}>
+        <input
+          type="checkbox"
+          checked={!!selected}
+          onChange={onToggle}
+          style={{ marginTop: '2pt', width: '12pt', height: '12pt', cursor: 'pointer', flexShrink: 0 }}
+        />
+        <span style={{ flex: 1, lineHeight: 1.3 }}>
+          <span style={{ fontFamily: 'monospace', fontSize: '9pt', color: '#444', marginRight: '6pt' }}>{exam.code}</span>
+          {exam.name}
+        </span>
+      </label>
+      {exam.hasNote && (
+        <div style={{ marginLeft: '17pt', marginTop: '3pt' }}>
+          <input
+            value={noteValue || ''}
+            onChange={(e) => onNoteChange?.(e.target.value)}
+            placeholder="(escribir secreción y sitio anatómico)"
+            style={{
+              display: 'block',
+              width: '95%',
+              border: 'none',
+              borderBottom: '1pt solid #000',
+              fontSize: '9.5pt',
+              padding: '0 2pt',
+              background: 'transparent',
+              outline: 'none',
+              marginBottom: '2pt',
+            }}
+          />
+          <div style={{ width: '95%', borderBottom: '1pt solid #000', height: '12pt' }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SolicitudMicrobiologia() {
-  const [f, setF] = useState(EMPTY);
+  const [f, setF] = useState({ ...EMPTY, fecha_toma: todayIso() });
+  const [showPreview, setShowPreview] = useState(false);
+
   const u = (k, v) => setF(prev => ({ ...prev, [k]: v }));
   const toggleExam = (code) => setF(prev => ({
     ...prev,
     selected: { ...prev.selected, [code]: !prev.selected[code] },
   }));
-  const clear = () => setF(EMPTY);
+  const clear = () => setF({ ...EMPTY, fecha_toma: todayIso() });
 
-  // Prefill desde el wizard multi-plantilla.
+  // Prefill desde wizard multi-plantilla
   useEffect(() => {
     const p = getMultiPrefill();
     if (!p) return;
@@ -107,33 +160,12 @@ export default function SolicitudMicrobiologia() {
     }));
   }, []);
 
-  const F_LINE = ({ label, value, onChange, w, type = 'text' }) => (
-    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '4pt', flexWrap: 'nowrap' }}>
-      <span style={{ fontSize: '10.5pt', whiteSpace: 'nowrap' }}>{label}</span>
-      <input
-        type={type}
-        value={value || ''}
-        onChange={e => onChange(e.target.value)}
-        style={{
-          flex: w ? `0 0 ${w}` : '1 1 auto',
-          minWidth: '40pt',
-          border: 'none',
-          borderBottom: '1pt solid #000',
-          padding: '0 2pt',
-          fontSize: '10.5pt',
-          background: 'transparent',
-          outline: 'none',
-        }}
-      />
-    </span>
-  );
-
   return (
     <>
       <style>{`
         @page { size: A4 portrait; margin: 12mm; }
         @media print {
-          html, body, #root { background: #fff !important; }
+          html, body, #root, body > div { background: #fff !important; }
           .micro-screen-only { display: none !important; }
           .micro-print-page {
             box-shadow: none !important;
@@ -143,9 +175,24 @@ export default function SolicitudMicrobiologia() {
             width: 100% !important;
           }
         }
+        .micro-pdf-viewer {
+          background: #525659;
+          padding: 24px 16px;
+          min-height: calc(100vh - 60px);
+        }
+        .micro-pdf-viewer .micro-print-page {
+          background: #fff;
+          box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+          width: 210mm;
+          margin: 0 auto;
+        }
+        @media print {
+          .micro-pdf-viewer { background: #fff !important; padding: 0 !important; min-height: 0 !important; }
+          .micro-pdf-viewer .micro-print-page { box-shadow: none !important; }
+        }
       `}</style>
 
-      {/* Toolbar — solo pantalla */}
+      {/* Toolbar */}
       <div className="micro-screen-only sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link to={createPageUrl('Category?id=696ea6ff245ef362de4f431c')}>
@@ -158,136 +205,283 @@ export default function SolicitudMicrobiologia() {
           <Button variant="outline" size="sm" onClick={clear} className="gap-1.5">
             <RotateCcw className="h-4 w-4" /> Limpiar
           </Button>
-          <Button size="sm" onClick={() => window.print()} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
-            <Printer className="h-4 w-4" /> Imprimir / PDF
-          </Button>
+          {showPreview && (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setShowPreview(false)}>Volver a datos</Button>
+              <Button size="sm" onClick={() => window.print()} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
+                <Printer className="h-4 w-4" /> Imprimir / PDF
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Página A4 imprimible */}
-      <div
-        className="micro-print-page mx-auto bg-white shadow"
-        style={{
-          maxWidth: '210mm',
-          minHeight: '297mm',
-          padding: '12mm',
-          fontFamily: "Arial, Helvetica, sans-serif",
-          fontSize: '10.5pt',
-          color: '#000',
-        }}
-      >
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12pt', marginBottom: '8pt' }}>
-          <HospitalLogo printMode />
-          <div style={{ flex: 1, paddingTop: '4pt' }}>
-            <p style={{ fontSize: '11pt', fontWeight: 'bold', margin: 0 }}>
-              HOSPITAL COMUNITARIO DE SALUD FAMILIAR DE BULNES
-            </p>
-            <p style={{ fontSize: '13pt', fontWeight: 'bold', textDecoration: 'underline', textAlign: 'center', marginTop: '6pt', marginBottom: 0 }}>
-              FORMULARIO DE EXÁMENES MICROBIOLÓGICOS
-            </p>
-          </div>
-        </div>
+      {/* Panel de datos previos (solo si no se generó el documento) */}
+      {!showPreview && (
+        <div className="micro-screen-only max-w-4xl mx-auto px-4 mt-4 pb-12">
+          <div className="rounded-2xl border border-cyan-200 bg-cyan-50/40 p-4">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900">Datos del paciente y muestra</h2>
+                <p className="text-xs text-slate-600">Llena los datos y marca los exámenes. La fecha de toma de muestra viene seteada al día de hoy por defecto.</p>
+              </div>
+            </div>
 
-        {/* Caja de datos del paciente */}
-        <div style={{ border: '1pt solid #000', padding: '6pt 8pt', marginBottom: '8pt' }}>
-          <p style={{ fontSize: '9.5pt', fontStyle: 'italic', textAlign: 'center', margin: '0 0 6pt 0' }}>
-            (Es de su responsabilidad completar todos los datos con letra legible o causará el rechazo de las muestras)
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6pt 14pt', marginBottom: '6pt' }}>
-            <F_LINE label="Nombre" value={f.nombre} onChange={v => u('nombre', v)} />
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6pt 14pt', marginBottom: '6pt' }}>
-            <F_LINE label="Fecha de Nacimiento" value={f.fecha_nacimiento} onChange={v => u('fecha_nacimiento', v)} type="date" w="120pt" />
-            <F_LINE label="RUT" value={f.rut} onChange={v => u('rut', formatRut(v))} w="120pt" />
-            <F_LINE label="Previsión" value={f.prevision} onChange={v => u('prevision', v)} w="120pt" />
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6pt 14pt', marginBottom: '6pt' }}>
-            <F_LINE label="Diagnóstico Probable" value={f.diagnostico} onChange={v => u('diagnostico', v)} />
-            <F_LINE label="Servicio" value={f.servicio} onChange={v => u('servicio', v)} w="120pt" />
-            <F_LINE label="Sala" value={f.sala} onChange={v => u('sala', v)} w="60pt" />
-            <F_LINE label="Cama" value={f.cama} onChange={v => u('cama', v)} w="60pt" />
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6pt 14pt', marginBottom: '6pt' }}>
-            <F_LINE label="Tratamiento Antibiótico" value={f.tratamiento_antibiotico} onChange={v => u('tratamiento_antibiotico', v)} />
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6pt 14pt', marginBottom: '6pt' }}>
-            <F_LINE label="Tipo de Muestra" value={f.tipo_muestra} onChange={v => u('tipo_muestra', v)} />
-            <F_LINE label="Sitio Anatómico" value={f.sitio_anatomico} onChange={v => u('sitio_anatomico', v)} />
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6pt 14pt' }}>
-            <F_LINE label="Fecha y hora de toma de muestra" value={f.fecha_hora_toma} onChange={v => u('fecha_hora_toma', v)} type="datetime-local" w="220pt" />
-          </div>
-        </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <Field label="Nombre paciente" span="col-span-2 md:col-span-4">
+                <Input value={f.nombre} onChange={e => u('nombre', e.target.value)} className="h-9" />
+              </Field>
+              <Field label="RUT">
+                <Input value={f.rut} onChange={e => u('rut', formatRut(e.target.value))} className="h-9" placeholder="12.345.678-9" />
+              </Field>
+              <Field label="Fecha nacimiento">
+                <Input type="date" value={f.fecha_nacimiento} onChange={e => u('fecha_nacimiento', e.target.value)} className="h-9" />
+              </Field>
+              <Field label="Previsión">
+                <Input value={f.prevision} onChange={e => u('prevision', e.target.value)} className="h-9" placeholder="Fonasa A/B/C/D" />
+              </Field>
+              <Field label="Servicio">
+                <Input value={f.servicio} onChange={e => u('servicio', e.target.value)} className="h-9" placeholder="Medicina, MQ…" />
+              </Field>
+              <Field label="Sala">
+                <Input value={f.sala} onChange={e => u('sala', e.target.value)} className="h-9" />
+              </Field>
+              <Field label="Cama">
+                <Input value={f.cama} onChange={e => u('cama', e.target.value)} className="h-9" />
+              </Field>
+              <Field label="Fecha toma de muestra">
+                <Input type="date" value={f.fecha_toma} onChange={e => u('fecha_toma', e.target.value)} className="h-9" />
+              </Field>
 
-        {/* Secciones de exámenes */}
-        {SECTIONS.map(section => (
-          <div key={section.id} style={{ marginBottom: '8pt' }}>
-            <p style={{ fontWeight: 'bold', fontSize: '10.5pt', margin: '4pt 0' }}>{section.title}</p>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt' }}>
-              <thead>
-                <tr style={{ background: '#f5f5f5' }}>
-                  <th style={{ border: '1pt solid #ccc', padding: '2pt 4pt', textAlign: 'left', fontWeight: 'bold', width: '14%' }}>CÓDIGO</th>
-                  <th style={{ border: '1pt solid #ccc', padding: '2pt 4pt', textAlign: 'left', fontWeight: 'bold' }}>PRESTACIÓN</th>
-                  <th style={{ border: '1pt solid #ccc', padding: '2pt 4pt', textAlign: 'center', width: '8%' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {section.exams.map(exam => {
-                  const isSelected = !!f.selected[exam.code];
-                  return (
-                    <tr key={exam.code} style={isSelected ? { background: '#e0f2fe' } : null}>
-                      <td style={{ border: '1pt solid #ccc', padding: '2pt 4pt', fontFamily: 'monospace' }}>{exam.code}</td>
-                      <td style={{ border: '1pt solid #ccc', padding: '2pt 4pt' }}>
-                        {exam.name}
-                        {exam.hasNote && isSelected && (
-                          <input
-                            value={f.cultivo_corriente_detalle}
-                            onChange={e => u('cultivo_corriente_detalle', e.target.value)}
-                            placeholder="Especificar…"
-                            style={{
-                              display: 'block',
-                              width: '100%',
-                              marginTop: '2pt',
-                              border: 'none',
-                              borderBottom: '1pt solid #999',
-                              fontSize: '9.5pt',
-                              padding: '0 2pt',
-                              background: 'transparent',
-                              outline: 'none',
-                            }}
-                          />
-                        )}
-                      </td>
-                      <td style={{ border: '1pt solid #ccc', padding: '2pt 4pt', textAlign: 'center' }}>
+              <Field label="Diagnóstico probable" span="col-span-2 md:col-span-4">
+                <Textarea value={f.diagnostico} onChange={e => u('diagnostico', e.target.value)} className="min-h-[60px]" />
+              </Field>
+              <Field label="Tratamiento antibiótico" span="col-span-2 md:col-span-4">
+                <Input value={f.tratamiento_antibiotico} onChange={e => u('tratamiento_antibiotico', e.target.value)} className="h-9" placeholder="(opcional)" />
+              </Field>
+              <Field label="Tipo de muestra" span="col-span-2">
+                <Input value={f.tipo_muestra} onChange={e => u('tipo_muestra', e.target.value)} className="h-9" placeholder="Orina, esputo, secreción…" />
+              </Field>
+              <Field label="Sitio anatómico" span="col-span-2">
+                <Input value={f.sitio_anatomico} onChange={e => u('sitio_anatomico', e.target.value)} className="h-9" />
+              </Field>
+              <Field label="Profesional solicitante" span="col-span-2 md:col-span-4">
+                <Input value={f.profesional} onChange={e => u('profesional', e.target.value)} className="h-9" />
+              </Field>
+            </div>
+
+            {/* Selector de exámenes */}
+            <div className="space-y-3">
+              <p className="text-sm font-bold text-slate-900">Exámenes solicitados</p>
+              {[SECTION_A, SECTION_B, SECTION_C].map(section => (
+                <div key={section.title} className="rounded-lg border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-bold uppercase text-slate-700 mb-2">{section.title}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                    {[...section.left, ...section.right].map(exam => (
+                      <label key={exam.code} className="flex items-start gap-2 px-1 py-1 rounded hover:bg-slate-50 cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={isSelected}
+                          checked={!!f.selected[exam.code]}
                           onChange={() => toggleExam(exam.code)}
-                          style={{ width: '14px', height: '14px', cursor: 'pointer' }}
+                          className="mt-1"
                         />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ))}
+                        <span className="text-xs leading-snug">
+                          <span className="font-mono text-[10px] text-slate-500 mr-1">{exam.code}</span>
+                          {exam.name}
+                          {exam.hasNote && f.selected[exam.code] && (
+                            <Input
+                              value={f.cultivo_corriente_detalle}
+                              onChange={e => u('cultivo_corriente_detalle', e.target.value)}
+                              placeholder="Especificar secreción y sitio anatómico"
+                              className="h-7 text-xs mt-1"
+                              onClick={e => e.stopPropagation()}
+                            />
+                          )}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
 
-        {/* Firma */}
-        <div style={{ border: '1pt solid #000', padding: '8pt', marginTop: '10pt' }}>
-          <div style={{ marginBottom: '12pt' }}>
-            <F_LINE label="PROFESIONAL SOLICITANTE:" value={f.profesional} onChange={v => u('profesional', v)} />
-          </div>
-          <div>
-            <span style={{ fontSize: '10.5pt' }}>FIRMA Y TIMBRE</span>
-            <span style={{ display: 'inline-block', borderBottom: '1pt solid #000', width: '70%', marginLeft: '6pt', height: '14pt' }} />
+              {/* Exámenes especiales (texto libre) */}
+              <Field label="Otros exámenes / texto libre (se imprime al final del formulario)">
+                <Textarea
+                  value={f.examenes_libres}
+                  onChange={e => u('examenes_libres', e.target.value)}
+                  className="min-h-[60px]"
+                  placeholder="Ej: PCR multiplex respiratoria, panel meníngeo, etc."
+                />
+              </Field>
+            </div>
+
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <Button variant="outline" onClick={clear}>Limpiar datos</Button>
+              <Button onClick={() => setShowPreview(true)} className="bg-cyan-600 hover:bg-cyan-700 gap-2">
+                Generar formulario →
+              </Button>
+            </div>
           </div>
         </div>
+      )}
 
-        <p style={{ textAlign: 'right', fontSize: '9.5pt', marginTop: '6pt', fontWeight: 'bold' }}>C 162</p>
-      </div>
+      {/* Documento generado — vista previa estilo PDF */}
+      {showPreview && (
+        <div className="micro-pdf-viewer">
+          <div
+            className="micro-print-page"
+            style={{
+              padding: '12mm',
+              fontFamily: "Arial, Helvetica, sans-serif",
+              fontSize: '10pt',
+              color: '#000',
+              minHeight: '273mm',
+            }}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12pt', marginBottom: '8pt' }}>
+              <HospitalLogo />
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '10pt', fontWeight: 'bold', margin: 0 }}>HOSPITAL COMUNITARIO DE SALUD</p>
+                <p style={{ fontSize: '10pt', fontWeight: 'bold', margin: 0 }}>FAMILIAR DE BULNES</p>
+                <p style={{ fontSize: '12.5pt', fontWeight: 'bold', textDecoration: 'underline', textAlign: 'right', marginTop: '6pt', marginBottom: 0 }}>
+                  FORMULARIO DE EXÁMENES MICROBIOLÓGICOS
+                </p>
+              </div>
+            </div>
+
+            {/* Caja datos paciente */}
+            <div style={{ border: '1pt solid #000', padding: '6pt 8pt', marginBottom: '6pt', fontSize: '10pt' }}>
+              <p style={{ fontStyle: 'italic', textAlign: 'center', margin: '0 0 6pt 0', fontSize: '9pt' }}>
+                (Es de su responsabilidad completar todos los datos con letra legible o causará el rechazo de las muestras)
+              </p>
+              <FieldLine label="Nombre" value={f.nombre} />
+              <div style={{ display: 'flex', gap: '8pt', flexWrap: 'wrap' }}>
+                <FieldLine label="Fecha de Nacimiento" value={f.fecha_nacimiento ? formatDateLocal(f.fecha_nacimiento) : ''} w="38%" />
+                <FieldLine label="RUT" value={f.rut} w="28%" />
+                <FieldLine label="Previsión" value={f.prevision} w="28%" />
+              </div>
+              <div style={{ display: 'flex', gap: '8pt', flexWrap: 'wrap' }}>
+                <FieldLine label="Diagnóstico Probable" value={f.diagnostico} w="38%" />
+                <FieldLine label="Servicio" value={f.servicio} w="22%" />
+                <FieldLine label="Sala" value={f.sala} w="15%" />
+                <FieldLine label="Cama" value={f.cama} w="15%" />
+              </div>
+              <FieldLine label="Tratamiento Antibiótico" value={f.tratamiento_antibiotico} />
+              <div style={{ display: 'flex', gap: '8pt', flexWrap: 'wrap' }}>
+                <FieldLine label="Tipo de Muestra" value={f.tipo_muestra} w="48%" />
+                <FieldLine label="Sitio Anatómico" value={f.sitio_anatomico} w="48%" />
+              </div>
+              <FieldLine label="Fecha y hora de toma de muestra" value={f.fecha_toma ? formatDateLocal(f.fecha_toma) : ''} />
+            </div>
+
+            {/* Sección A — dos columnas */}
+            <TwoColSection section={SECTION_A} f={f} toggleExam={toggleExam} onNoteChange={(v) => u('cultivo_corriente_detalle', v)} />
+
+            {/* Sección B */}
+            <TwoColSection section={SECTION_B} f={f} toggleExam={toggleExam} />
+
+            {/* Sección C + cuadro firma a la derecha */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12pt', marginTop: '6pt' }}>
+              <div>
+                <p style={{ fontWeight: 'bold', textDecoration: 'underline', fontSize: '10.5pt', margin: '4pt 0' }}>{SECTION_C.title}</p>
+                <ColumnHeader />
+                {SECTION_C.left.map(exam => (
+                  <ExamRow key={exam.code} exam={exam} selected={f.selected[exam.code]} onToggle={() => toggleExam(exam.code)} />
+                ))}
+              </div>
+              <div style={{ border: '1pt solid #000', padding: '8pt' }}>
+                <p style={{ fontSize: '10pt', fontWeight: 'bold', margin: '0 0 8pt 0' }}>PROFESIONAL SOLICITANTE:</p>
+                <div style={{ borderBottom: '1pt solid #000', minHeight: '14pt', marginBottom: '14pt', padding: '0 2pt', fontSize: '10pt' }}>
+                  {f.profesional || ''}
+                </div>
+                <p style={{ fontSize: '10pt', margin: 0 }}>
+                  FIRMA Y TIMBRE
+                  <span style={{ display: 'inline-block', borderBottom: '1pt solid #000', minWidth: '60%', marginLeft: '6pt', height: '14pt' }} />
+                </p>
+              </div>
+            </div>
+
+            {/* Texto libre — exámenes especiales */}
+            {f.examenes_libres && (
+              <div style={{ marginTop: '8pt', borderTop: '1pt dashed #999', paddingTop: '6pt' }}>
+                <p style={{ fontSize: '10pt', fontWeight: 'bold', margin: '0 0 4pt 0' }}>Otros exámenes solicitados:</p>
+                <p style={{ fontSize: '10pt', whiteSpace: 'pre-wrap', margin: 0, lineHeight: 1.4 }}>{f.examenes_libres}</p>
+              </div>
+            )}
+
+            <p style={{ textAlign: 'right', fontSize: '9pt', marginTop: '8pt', fontWeight: 'bold' }}>C 162</p>
+          </div>
+        </div>
+      )}
     </>
   );
+}
+
+// ── Componentes auxiliares ─────────────────────────────────────────────
+function Field({ label, children, span = 'col-span-1' }) {
+  return (
+    <div className={span}>
+      <label className="block text-[11px] font-medium text-slate-600 mb-1">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function FieldLine({ label, value, w }) {
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'baseline', gap: '4pt', flex: w ? `0 0 ${w}` : '1 1 auto', marginRight: '6pt', marginBottom: '4pt', minWidth: '40%' }}>
+      <span style={{ fontSize: '10pt', whiteSpace: 'nowrap' }}>{label}</span>
+      <span style={{ flex: 1, borderBottom: '1pt solid #000', fontSize: '10pt', padding: '0 2pt', minHeight: '14pt' }}>{value}</span>
+    </div>
+  );
+}
+
+function ColumnHeader() {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '70pt 1fr', borderBottom: '1pt solid #000', paddingBottom: '2pt', marginBottom: '4pt', fontSize: '9pt', fontWeight: 'bold' }}>
+      <span>CÓDIGO</span>
+      <span>PRESTACIÓN</span>
+    </div>
+  );
+}
+
+function TwoColSection({ section, f, toggleExam, onNoteChange }) {
+  return (
+    <div style={{ marginTop: '6pt' }}>
+      <p style={{ fontWeight: 'bold', textDecoration: 'underline', fontSize: '10.5pt', margin: '4pt 0' }}>{section.title}</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14pt' }}>
+        <div>
+          <ColumnHeader />
+          {section.left.map(exam => (
+            <ExamRow
+              key={exam.code}
+              exam={exam}
+              selected={f.selected[exam.code]}
+              onToggle={() => toggleExam(exam.code)}
+              noteValue={exam.hasNote ? f.cultivo_corriente_detalle : null}
+              onNoteChange={onNoteChange}
+            />
+          ))}
+        </div>
+        <div>
+          <ColumnHeader />
+          {section.right.map(exam => (
+            <ExamRow
+              key={exam.code}
+              exam={exam}
+              selected={f.selected[exam.code]}
+              onToggle={() => toggleExam(exam.code)}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatDateLocal(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  return `${d}-${m}-${y}`;
 }
