@@ -20,6 +20,7 @@ import {
   FlaskConical,
   Sparkles,
   UserCheck,
+  Files,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -328,6 +329,14 @@ export default function Category() {
           >
             <Sparkles className="h-4 w-4" />
             Prescripción Inteligente
+          </Link>
+          <Link
+            to={createPageUrl('Templates') + '?multi=1'}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all bg-white border border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300 shadow-sm"
+            title="Genera varias plantillas para un mismo paciente — llena los datos una sola vez"
+          >
+            <Files className="h-4 w-4" />
+            Solicitud múltiple
           </Link>
         </div>
 

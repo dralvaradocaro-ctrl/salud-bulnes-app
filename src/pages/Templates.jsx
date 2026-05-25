@@ -76,10 +76,11 @@ const EXTERNAL_TEMPLATES = [
 export default function Templates() {
   const urlParams = new URLSearchParams(window.location.search);
   const selectedTemplateId = urlParams.get('id');
-  
+  const openMultiOnLoad = urlParams.get('multi') === '1';
+
   const [activeTemplate, setActiveTemplate] = useState(null);
   const [activeType, setActiveType] = useState('all');
-  const [showMultiGen, setShowMultiGen] = useState(false);
+  const [showMultiGen, setShowMultiGen] = useState(openMultiOnLoad);
 
   const HIDDEN_TYPES = ['Estudio Endoscópico'];
 
