@@ -805,6 +805,28 @@ export function generateAgenda({
       visitaFinal.push({ doctor_id: docId, capacity: cap, manual: true });
     });
 
+    // Cap operacional: idealmente 5-7 médicos haciendo visita por día. Prioridad
+    // para conservar (en orden de no-tocar): manual, externo (Rubilar),
+    // urgentólogo, mayor capacidad. Solo se aplica en semanas con reglas
+    // prospectivas para no alterar agendas históricas ya construidas.
+    const VISITA_CAP = 7;
+    if (useProspectiveRules && visitaFinal.length > VISITA_CAP) {
+      const keepPriority = (v) => {
+        if (v.manual) return 0;
+        if (v.external_default) return 1; // Rubilar
+        const doc = doctorById[v.doctor_id];
+        if (doc?.is_urgentologist) return 2;
+        return 3;
+      };
+      visitaFinal.sort((a, b) => {
+        const pa = keepPriority(a), pb = keepPriority(b);
+        if (pa !== pb) return pa - pb;
+        // dentro del mismo nivel: capacidad descendente (más útil para visita)
+        return (b.capacity ?? 0) - (a.capacity ?? 0);
+      });
+      visitaFinal = visitaFinal.slice(0, VISITA_CAP);
+    }
+
     // (poliFullDay ya se calculó arriba — antes de bloqueos/visita — para usarlo en exclusiones)
 
     // Refuerzo PM: lun-jue 11-13, viernes 12-13 (jornada acortada)
