@@ -1225,17 +1225,30 @@ export function optimizeForTitulars({ agenda, blockTemplates, programAssignments
 export function sortReinforcements({ weeks, doctors, existingReinforcements = {} }) {
   const SUBDIRECTOR = 'alvarado';
   const POLI_FULLDAY = 'beltran';
-  const carga = {};
-  const cargaViernesPM = {};
-  doctors.forEach(d => { carga[d.id] = 0; cargaViernesPM[d.id] = 0; });
+  // Doctores excluidos de la rotación de refuerzos por política operativa:
+  // Fasani siempre está en SDM (no se la asigna a refuerzo); el SUBDIRECTOR
+  // y POLI_FULLDAY también quedan fuera por defecto. Cuando Cordero o
+  // Alvarado están de Subdirección Médica ese día, quedan excluidos vía
+  // hierarchicalSet por día (más abajo).
+  const EXCLUIDOS_REFUERZO = new Set(['fasani']);
 
-  // Pre-contar carga de los existentes (manual asignados)
+  const carga = {};        // total de refuerzos por médico (AM+PM acumulado)
+  const cargaPM = {};      // total PM (para equidad PM específica)
+  const cargaViernesPM = {};
+  doctors.forEach(d => {
+    carga[d.id] = 0;
+    cargaPM[d.id] = 0;
+    cargaViernesPM[d.id] = 0;
+  });
+
+  // Pre-contar carga de los existentes (manual asignados o de semanas previas)
   Object.values(existingReinforcements).forEach(weekData => {
     Object.entries(weekData || {}).forEach(([date, slots]) => {
       const isVie = new Date(date).getDay() === 5;
       if (slots?.am) carga[slots.am] = (carga[slots.am] || 0) + 1;
       if (slots?.pm) {
         carga[slots.pm] = (carga[slots.pm] || 0) + 1;
+        cargaPM[slots.pm] = (cargaPM[slots.pm] || 0) + 1;
         if (isVie) cargaViernesPM[slots.pm] = (cargaViernesPM[slots.pm] || 0) + 1;
       }
     });
@@ -1243,36 +1256,62 @@ export function sortReinforcements({ weeks, doctors, existingReinforcements = {}
 
   const result = JSON.parse(JSON.stringify(existingReinforcements));
 
+  // Cantidad de bloqueos clínicos (no jerárquicos) de un médico ese día.
+  // Lo usamos como segundo criterio de orden: a menos bloqueos, mayor
+  // prioridad para refuerzo (libre = ideal). Bloques jerárquicos
+  // (Subdirección, Tribunal) descalifican totalmente (más abajo).
+  const blockLoadForDay = (day, doctorId) => {
+    let n = 0;
+    (day.bloqueos || []).forEach(b => {
+      if (HIERARCHICAL_BLOCK_IDS.has(b.block_id)) return;
+      if (blockHasDoctor(b, doctorId)) n++;
+    });
+    return n;
+  };
+
+  // Doctores que ese día tienen un bloque jerárquico (SDM, Tribunal).
+  // Quedan fuera del pool de refuerzo automáticamente.
+  const hierarchicalSetForDay = (day) => {
+    const s = new Set();
+    (day.bloqueos || []).forEach(b => {
+      if (!HIERARCHICAL_BLOCK_IDS.has(b.block_id)) return;
+      blockDoctorIds(b).forEach(id => s.add(id));
+    });
+    return s;
+  };
+
   for (const w of weeks) {
     const weekKey = w.weekStart;
     result[weekKey] = result[weekKey] || {};
 
-    // Saneamiento previo: descartar refuerzos guardados que pisen turno/posturno/ausencia,
-    // así sortReinforcements los re-asigna en vez de preservar entradas obsoletas.
+    // Saneamiento previo: descartar refuerzos guardados que pisen turno/posturno/ausencia
+    // o que estén en jerárquico ese día (incluye Cordero/Alvarado cuando asumen SDM).
     for (const day of w.days) {
       const slot = result[weekKey][day.date];
       if (!slot) continue;
       const turnoIds = new Set((day.turnos || []).map(t => t.doctor_id));
       const postIds = new Set((day.posturno || []).map(t => t.doctor_id));
       const ausIds = new Set((day.ausencias || []).map(a => a.doctor_id));
+      const hierSet = hierarchicalSetForDay(day);
       const invalido = id => id && (
         turnoIds.has(id) || postIds.has(id) || ausIds.has(id) ||
+        hierSet.has(id) || EXCLUIDOS_REFUERZO.has(id) ||
         id === SUBDIRECTOR || id === POLI_FULLDAY
       );
+      const isVie = new Date(day.date).getDay() === 5;
       if (invalido(slot.am)) {
         carga[slot.am] = Math.max(0, (carga[slot.am] || 0) - 1);
         slot.am = null;
       }
       if (invalido(slot.pm)) {
         carga[slot.pm] = Math.max(0, (carga[slot.pm] || 0) - 1);
-        if (new Date(day.date).getDay() === 5) {
-          cargaViernesPM[slot.pm] = Math.max(0, (cargaViernesPM[slot.pm] || 0) - 1);
-        }
+        cargaPM[slot.pm] = Math.max(0, (cargaPM[slot.pm] || 0) - 1);
+        if (isVie) cargaViernesPM[slot.pm] = Math.max(0, (cargaViernesPM[slot.pm] || 0) - 1);
         slot.pm = null;
       }
     }
 
-    // PM ya asignados en esta semana (manuales o de pasadas previas) — para evitar 2 PM/semana
+    // PM ya asignados en esta semana (manuales o ya re-sorteados) — para evitar 2 PM/semana
     const pmThisWeek = new Set();
     Object.values(result[weekKey]).forEach(s => { if (s?.pm) pmThisWeek.add(s.pm); });
 
@@ -1282,22 +1321,51 @@ export function sortReinforcements({ weeks, doctors, existingReinforcements = {}
       const turnoIds = new Set((day.turnos || []).map(t => t.doctor_id));
       const postIds = new Set((day.posturno || []).map(t => t.doctor_id));
       const ausIds = new Set((day.ausencias || []).map(a => a.doctor_id));
+      const hierSet = hierarchicalSetForDay(day);
 
       const eligible = doctors.filter(d =>
         d.is_reinforcement_eligible !== false &&
         d.active !== false &&
+        !d.is_urgentologist &&
+        !EXCLUIDOS_REFUERZO.has(d.id) &&
         d.id !== SUBDIRECTOR &&
         d.id !== POLI_FULLDAY &&
         !turnoIds.has(d.id) &&
         !postIds.has(d.id) &&
-        !ausIds.has(d.id)
+        !ausIds.has(d.id) &&
+        !hierSet.has(d.id) // ← Cordero/Alvarado quedan excluidos cuando asumen SDM
       );
 
       const isVie = day.day === 'vie';
 
+      // Comparador con equidad ponderada:
+      //   1) Quienes tienen MENOS bloqueos clínicos ese día (= más libres).
+      //   2) Quienes tienen MENOS carga total acumulada.
+      // En PM se agrega además: menos cargaPM previo (equidad de PM
+      // específica para que nadie se cargue de PMs); en viernes PM también
+      // se pondera la cargaViernesPM (carga sensible).
+      const cmpAM = (a, b) => {
+        const bA = blockLoadForDay(day, a.id);
+        const bB = blockLoadForDay(day, b.id);
+        if (bA !== bB) return bA - bB;
+        return (carga[a.id] || 0) - (carga[b.id] || 0);
+      };
+      const cmpPM = (a, b) => {
+        const bA = blockLoadForDay(day, a.id);
+        const bB = blockLoadForDay(day, b.id);
+        if (bA !== bB) return bA - bB;
+        if (isVie) {
+          const dv = (cargaViernesPM[a.id] || 0) - (cargaViernesPM[b.id] || 0);
+          if (dv !== 0) return dv;
+        }
+        const dp = (cargaPM[a.id] || 0) - (cargaPM[b.id] || 0);
+        if (dp !== 0) return dp;
+        return (carga[a.id] || 0) - (carga[b.id] || 0);
+      };
+
       // AM
       if (!result[weekKey][day.date].am && eligible.length > 0) {
-        const sorted = eligible.slice().sort((a, b) => carga[a.id] - carga[b.id]);
+        const sorted = eligible.slice().sort(cmpAM);
         const chosen = sorted[0];
         result[weekKey][day.date].am = chosen.id;
         carga[chosen.id]++;
@@ -1306,20 +1374,13 @@ export function sortReinforcements({ weeks, doctors, existingReinforcements = {}
       // PM (excluir AM del día y a quien YA tenga PM esta semana)
       const amChosen = result[weekKey][day.date].am;
       let pmEligible = eligible.filter(d => d.id !== amChosen && !pmThisWeek.has(d.id));
-      // Si nadie quedó libre (semana muy ajustada), permitir repetir
       if (pmEligible.length === 0) pmEligible = eligible.filter(d => d.id !== amChosen);
       if (!result[weekKey][day.date].pm && pmEligible.length > 0) {
-        const sorted = pmEligible.slice().sort((a, b) => {
-          // Para viernes PM, priorizar quienes menos viernes PM han hecho
-          if (isVie) {
-            const dv = cargaViernesPM[a.id] - cargaViernesPM[b.id];
-            if (dv !== 0) return dv;
-          }
-          return carga[a.id] - carga[b.id];
-        });
+        const sorted = pmEligible.slice().sort(cmpPM);
         const chosen = sorted[0];
         result[weekKey][day.date].pm = chosen.id;
         carga[chosen.id]++;
+        cargaPM[chosen.id]++;
         pmThisWeek.add(chosen.id);
         if (isVie) cargaViernesPM[chosen.id]++;
       }
