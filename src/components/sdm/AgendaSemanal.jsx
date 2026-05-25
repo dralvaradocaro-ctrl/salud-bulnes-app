@@ -119,6 +119,9 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   const [expandedAddDay, setExpandedAddDay] = useState(null);   // fecha del día con el form (+) expandido
   const [showHistory, setShowHistory] = useState(false);        // modal de historial de ediciones
   const [editingVisitor, setEditingVisitor] = useState(null);   // { name } — pill clickeado para editar semana
+  // Stats de refuerzos del año en curso, para alertar en el dropdown cuando un médico
+  // supera 15% del total acumulado. Se carga una vez al montar/cambiar de semana.
+  const [yearReinfStats, setYearReinfStats] = useState({ totalPM: 0, totalPMVie: 0, perDoctor: {} });
 
   const confirmIfDirty = (msg = 'Tenés cambios sin guardar en esta semana. ¿Continuar y descartarlos?') => {
     if (!isDirty) return true;
@@ -205,6 +208,40 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       setShowDismissed(false);
     }
   }, [totalIssues]);
+
+  // Carga el histórico anual de refuerzos para calcular porcentajes por
+  // médico (PM y PM viernes). Se usa en el dropdown del refuerzo para
+  // marcar en rojo los que ya superan 15% del total.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const yearStart = `${monday.getFullYear()}-01-01`;
+      const yearEnd = `${monday.getFullYear()}-12-31`;
+      const { data, error } = await supabase
+        .from('sdm_weekly_agendas')
+        .select('week_start, data')
+        .gte('week_start', yearStart)
+        .lte('week_start', yearEnd);
+      if (!alive || error) return;
+      let totalPM = 0;
+      let totalPMVie = 0;
+      const perDoctor = {};
+      (data || []).forEach(row => {
+        const reinf = row?.data?.reinforcements || {};
+        Object.entries(reinf).forEach(([date, slots]) => {
+          if (!slots?.pm) return;
+          const isVie = new Date(date + 'T12:00:00').getDay() === 5;
+          totalPM++;
+          if (isVie) totalPMVie++;
+          if (!perDoctor[slots.pm]) perDoctor[slots.pm] = { pm: 0, pmVie: 0 };
+          perDoctor[slots.pm].pm++;
+          if (isVie) perDoctor[slots.pm].pmVie++;
+        });
+      });
+      setYearReinfStats({ totalPM, totalPMVie, perDoctor });
+    })();
+    return () => { alive = false; };
+  }, [weekStart, monday]);
 
   function shiftWeek(deltaDays) {
     if (!confirmIfDirty()) return;
@@ -1352,26 +1389,60 @@ ${table}
                     // AM/PM mutuamente excluyentes: el médico ya elegido en un slot no aparece en el otro.
                     const eligibleAM = eligible.filter(d => d.id !== day.refuerzos.pm);
                     const eligiblePM = eligible.filter(d => d.id !== day.refuerzos.am);
-                    const renderItem = d => (
-                      <SelectItem key={d.id} value={d.id} className={nominalDocs.has(d.id) ? 'text-amber-700' : ''}>
-                        {d.display_name}
-                        {nominalDocs.has(d.id) && <span className="text-[10px] ml-2 text-amber-600">(tiene {nominalDocs.get(d.id)})</span>}
-                      </SelectItem>
-                    );
+                    const isVie = day.day === 'vie';
+
+                    // % PM y PM-viernes acumulado del año por médico — solo
+                    // se aplica al dropdown del slot PM (no al AM). Si supera
+                    // 15% del total anual se marca en rojo con tag de alerta.
+                    const pmPctFor = (id) => {
+                      const stats = yearReinfStats.perDoctor[id];
+                      if (!stats || yearReinfStats.totalPM === 0) return 0;
+                      return (stats.pm / yearReinfStats.totalPM) * 100;
+                    };
+                    const pmViePctFor = (id) => {
+                      const stats = yearReinfStats.perDoctor[id];
+                      if (!stats || yearReinfStats.totalPMVie === 0) return 0;
+                      return (stats.pmVie / yearReinfStats.totalPMVie) * 100;
+                    };
+
+                    const renderItem = (slot) => (d) => {
+                      const isPM = slot === 'pm';
+                      const pmPct = isPM ? pmPctFor(d.id) : 0;
+                      const pmViePct = isPM && isVie ? pmViePctFor(d.id) : 0;
+                      const refPct = Math.max(pmPct, pmViePct);
+                      const overloaded = refPct > 15;
+                      const hasNominal = nominalDocs.has(d.id);
+                      const itemClass = overloaded
+                        ? 'text-red-700 font-medium'
+                        : (hasNominal ? 'text-amber-700' : '');
+                      return (
+                        <SelectItem key={d.id} value={d.id} className={itemClass}>
+                          {d.display_name}
+                          {overloaded && (
+                            <span className="text-[10px] ml-2 text-red-600">
+                              ⚠ {refPct.toFixed(0)}% refuerzos {pmViePct > pmPct ? 'PM vie' : 'PM'} — revisar
+                            </span>
+                          )}
+                          {!overloaded && hasNominal && (
+                            <span className="text-[10px] ml-2 text-amber-600">(tiene {nominalDocs.get(d.id)})</span>
+                          )}
+                        </SelectItem>
+                      );
+                    };
                     return (
                       <>
                         <div className="flex items-center gap-1 sdm-print-hide">
                           <span className="text-[9px] font-bold text-slate-500 w-5">AM</span>
                           <Select value={day.refuerzos.am || ''} onValueChange={v => updateReinforcement(day.date, 'am', v)}>
                             <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-28"><SelectValue placeholder="—" /></SelectTrigger>
-                            <SelectContent>{eligibleAM.map(renderItem)}</SelectContent>
+                            <SelectContent>{eligibleAM.map(renderItem('am'))}</SelectContent>
                           </Select>
                         </div>
                         <div className="flex items-center gap-1 sdm-print-hide">
                           <span className="text-[9px] font-bold text-slate-500 w-5">PM</span>
                           <Select value={day.refuerzos.pm || ''} onValueChange={v => updateReinforcement(day.date, 'pm', v)}>
                             <SelectTrigger className="h-6 text-[10px] px-1.5 py-0 w-28"><SelectValue placeholder="—" /></SelectTrigger>
-                            <SelectContent>{eligiblePM.map(renderItem)}</SelectContent>
+                            <SelectContent>{eligiblePM.map(renderItem('pm'))}</SelectContent>
                           </Select>
                         </div>
                         {/* Versión print: solo texto */}
