@@ -42,7 +42,7 @@ const typeColors = {
 // Formularios que viven como paginas standalone (no en RequestTemplate). Se
 // inyectan en la grilla con external_route — al hacer click se navega al
 // page builder dedicado en vez de abrir el RequestForm generico.
-const EXTERNAL_TEMPLATES = [
+export const EXTERNAL_TEMPLATES = [
   {
     id: 'ext-solicitud-examenes',
     name: 'Solicitud de Exámenes — Hospital de Bulnes',

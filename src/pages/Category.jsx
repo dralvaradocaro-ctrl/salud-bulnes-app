@@ -27,6 +27,8 @@ import { Badge } from '@/components/ui/badge';
 import { isHiddenClinicalTool } from '@/components/utils/hiddenContent';
 import { getProtocolValidityStatus } from '@/lib/protocolUtils';
 import { getTopicProtocolStatus } from '@/lib/topicStatus';
+import MultiTemplateGenerator from '@/components/templates/MultiTemplateGenerator';
+import { EXTERNAL_TEMPLATES } from '@/pages/Templates';
 import {
   Tooltip,
   TooltipContent,
@@ -41,6 +43,7 @@ export default function Category() {
   const initialSubcategory = urlParams.get('topicArea') || 'all';
 
   const [activeTab, setActiveTab] = useState('topics');
+  const [showMultiGen, setShowMultiGen] = useState(false);
   const [activeSubcategory, setActiveSubcategory] = useState(initialSubcategory);
   const [activeTopicFilter, setActiveTopicFilter] = useState(initialTopicFilter);
 
@@ -79,6 +82,15 @@ export default function Category() {
     queryFn: () => db.entities.RequestTemplate.filter({ category_id: categoryId }),
     enabled: !!categoryId
   });
+
+  // Lista completa para el multi-template (no filtrada por categoría) + los
+  // formularios oficiales externos (GES, Examenes ISP, IRA grave, Biomédico).
+  const { data: allTemplatesRaw = [] } = useQuery({
+    queryKey: ['templates-all-for-multi'],
+    queryFn: () => db.entities.RequestTemplate.list('type'),
+    enabled: showMultiGen,
+  });
+  const multiTemplates = [...allTemplatesRaw, ...EXTERNAL_TEMPLATES];
 
   const matchesTopicFilter = (topic) => {
     if (activeTopicFilter === 'local') return getTopicProtocolStatus(topic) === 'local';
@@ -330,14 +342,14 @@ export default function Category() {
             <Sparkles className="h-4 w-4" />
             Prescripción Inteligente
           </Link>
-          <Link
-            to={createPageUrl('Templates') + '?multi=1'}
+          <button
+            onClick={() => setShowMultiGen(true)}
             className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all bg-white border border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300 shadow-sm"
-            title="Genera varias plantillas para un mismo paciente — llena los datos una sola vez"
+            title="Genera varias solicitudes o documentos para un mismo paciente — llena los datos una sola vez"
           >
             <Files className="h-4 w-4" />
-            Solicitud múltiple
-          </Link>
+            Solicitud de Exámenes / Documentos
+          </button>
         </div>
 
         {/* Topics Tab */}
@@ -688,6 +700,13 @@ export default function Category() {
           </div>
         )}
       </div>
+
+      {/* Wizard multi-plantilla: se abre desde el botón en el tab bar */}
+      <MultiTemplateGenerator
+        open={showMultiGen}
+        templates={multiTemplates}
+        onClose={() => setShowMultiGen(false)}
+      />
     </div>
   );
 }
