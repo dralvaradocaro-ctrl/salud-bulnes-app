@@ -613,16 +613,23 @@ export function generateAgenda({
               || titularState.find(s => currentIds.includes(s.id));
           }
           if (chosenTitular && chosenTitular.kind === 'turno') {
-            const targetTurno = turnos.find(t => t.doctor_id === chosenTitular.id);
-            if (targetTurno && !targetTurno.replaced) {
+            // El titular SDM sigue en su turno (ej. Fasani queda en turnos[]),
+            // pero de 08:00 a 17:00 cubre SDM. Se crea un bloqueo "Urgencias"
+            // 08:00–17:00 asignado a otro médico para cubrir la jornada de
+            // urgencias del titular. Tras las 17:00 el titular vuelve a turno.
+            const urgenciasFrom = sdmBlk.from || '08:00';
+            const urgenciasTo   = sdmBlk.to   || '17:00';
+            const alreadyHasUrgencias = bloqueos.some(b =>
+              b.block_id === 'urgencias_cobertura_sdm' && !b.suspended
+            );
+            if (!alreadyHasUrgencias) {
               const candidates = doctors.filter(doc =>
                 doc.active !== false &&
                 !turnoIds_inner.has(doc.id) &&
                 !postIds_inner.has(doc.id) &&
                 !ausIds_inner.has(doc.id) &&
                 !poliIds.has(doc.id) &&
-                !SDM_TITULARES.includes(doc.id) &&
-                doc.id !== chosenTitular.id
+                !SDM_TITULARES.includes(doc.id)
               );
               candidates.sort((a, b) => {
                 const aU = a.is_urgentologist ? 0 : 1;
@@ -630,13 +637,20 @@ export function generateAgenda({
                 if (aU !== bU) return aU - bU;
                 return (weeklyDoctorLoad[a.id] || 0) - (weeklyDoctorLoad[b.id] || 0);
               });
-              if (candidates.length > 0) {
-                targetTurno.replaced = true;
-                targetTurno.original_doctor_id = chosenTitular.id;
-                targetTurno.doctor_id = candidates[0].id;
-                targetTurno.reason = 'cubriendo SDM';
-                turnoIds_inner.delete(chosenTitular.id);
-                turnoIds_inner.add(candidates[0].id);
+              const coverDoc = candidates[0];
+              bloqueos.push(normalizeBlock({
+                block_id: 'urgencias_cobertura_sdm',
+                name: `Urgencias (cubre a ${(doctorById[chosenTitular.id]?.display_name) || chosenTitular.id} en SDM)`,
+                from: urgenciasFrom,
+                to: urgenciasTo,
+                doctor_ids: coverDoc ? [coverDoc.id] : [],
+                unassigned: !coverDoc,
+                auto_assigned: false,
+                category: 'urgencias',
+                source: 'sdm_coverage',
+              }));
+              if (coverDoc) {
+                weeklyDoctorLoad[coverDoc.id] = (weeklyDoctorLoad[coverDoc.id] || 0) + 1;
               }
             }
           }
