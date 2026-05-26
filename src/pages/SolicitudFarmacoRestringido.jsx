@@ -189,14 +189,19 @@ export default function SolicitudFarmacoRestringido() {
       <style>{`
         @page { size: A4 portrait; margin: 12mm; }
         @media print {
+          /* Anular padding global de body (1.2cm 1.5cm) que se sumaba al @page
+             y empujaba el documento a una segunda página. */
+          html, body { padding: 0 !important; margin: 0 !important; }
           html, body, #root, body > div { background: #fff !important; }
           .farm-screen-only { display: none !important; }
+          .farm-pdf-viewer { padding: 0 !important; min-height: 0 !important; background: #fff !important; }
           .farm-print-page {
             box-shadow: none !important;
             margin: 0 !important;
             padding: 0 !important;
             max-width: none !important;
             width: 100% !important;
+            min-height: 0 !important; /* el minHeight de pantalla rompe la paginación */
           }
         }
         .farm-pdf-viewer {

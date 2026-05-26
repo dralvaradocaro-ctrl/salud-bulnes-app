@@ -310,6 +310,8 @@ export default function SolicitudMicrobiologia() {
       <style>{`
         @page { size: A4 portrait; margin: 12mm; }
         @media print {
+          /* Anular padding global de body que se sumaba al @page y empujaba a 2da página. */
+          html, body { padding: 0 !important; margin: 0 !important; }
           html, body, #root, body > div { background: #fff !important; }
           .micro-screen-only { display: none !important; }
           .micro-print-page {
@@ -318,6 +320,7 @@ export default function SolicitudMicrobiologia() {
             padding: 0 !important;
             max-width: none !important;
             width: 100% !important;
+            min-height: 0 !important;
           }
         }
         .micro-pdf-viewer {
