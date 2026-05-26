@@ -27,8 +27,10 @@ export default function NRS2002Calculator() {
   const [medicalHighRisk, setMedicalHighRisk] = useState(null); // null | true | false
   const [medicalReasons, setMedicalReasons] = useState([]);
 
-  // Mini calculadora de IMC para la pregunta 1 del tamizaje.
-  const [imcCalcOpen, setImcCalcOpen] = useState(false);
+  // Mini calculadora de IMC: aparece en dos lugares (Q1 del tamizaje y en la
+  // evaluación formal). `imcCalcTarget` marca quién la abrió para que el botón
+  // "Usar resultado" sepa a dónde aplicar.
+  const [imcCalcTarget, setImcCalcTarget] = useState(null); // null | 'q1' | 'estado'
   const [imcWeight, setImcWeight] = useState(''); // kg
   const [imcHeight, setImcHeight] = useState(''); // cm
   const imcValue = (() => {
@@ -38,10 +40,85 @@ export default function NRS2002Calculator() {
     const hM = hCm > 3 ? hCm / 100 : hCm; // tolera ingreso en metros
     return +(w / (hM * hM)).toFixed(1);
   })();
+  // Sugerencia de categoría de Estado Nutricional según IMC (cuando se calcula
+  // desde la evaluación formal). El usuario igual puede confirmar/cambiar.
+  const suggestedNutritionalCategory = (() => {
+    if (imcValue == null) return null;
+    if (imcValue < 18.5)  return { value: 3, label: 'Desnutrición Grave (3 pts)' };
+    if (imcValue < 20.5)  return { value: 2, label: 'Desnutrición Moderada (2 pts)' };
+    return { value: 0, label: 'Normal (0 pts) — combinar con pérdida de peso e ingesta' };
+  })();
   const applyImcResult = () => {
     if (imcValue == null) return;
-    setScreeningAnswers(prev => ({ ...prev, lowIMC: imcValue < 20.5 }));
-    setImcCalcOpen(false);
+    if (imcCalcTarget === 'q1') {
+      // Q1 del tamizaje + propagar la categoría de Estado Nutricional sugerida
+      // al paso 2 (evaluación formal) para no obligar a recalcular después.
+      setScreeningAnswers(prev => ({ ...prev, lowIMC: imcValue < 20.5 }));
+      if (suggestedNutritionalCategory) {
+        setFullScore(prev => ({ ...prev, nutritionalStatus: suggestedNutritionalCategory.value }));
+      }
+    } else if (imcCalcTarget === 'estado' && suggestedNutritionalCategory) {
+      setFullScore(prev => ({ ...prev, nutritionalStatus: suggestedNutritionalCategory.value }));
+    }
+    setImcCalcTarget(null);
+  };
+
+  // Panel reutilizable de mini-calculadora IMC.
+  const renderImcPanel = (target) => {
+    if (imcCalcTarget !== target) return null;
+    return (
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto] gap-2 items-end bg-white border border-blue-200 rounded-lg p-3">
+        <div>
+          <Label className="text-[11px] text-slate-600">Peso (kg)</Label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={imcWeight}
+            onChange={e => setImcWeight(e.target.value)}
+            placeholder="Ej: 68"
+            className="mt-0.5 w-full h-8 rounded-md border border-slate-200 px-2 text-sm focus:border-blue-400 focus:outline-none"
+          />
+        </div>
+        <div>
+          <Label className="text-[11px] text-slate-600">Talla (cm)</Label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={imcHeight}
+            onChange={e => setImcHeight(e.target.value)}
+            placeholder="Ej: 170"
+            className="mt-0.5 w-full h-8 rounded-md border border-slate-200 px-2 text-sm focus:border-blue-400 focus:outline-none"
+          />
+        </div>
+        <div className={`px-2 py-1.5 rounded-md text-center min-w-[90px] ${
+          imcValue == null ? 'bg-slate-100 text-slate-400' :
+          imcValue < 18.5 ? 'bg-red-100 text-red-800 border border-red-300' :
+          imcValue < 20.5 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+          'bg-emerald-100 text-emerald-800 border border-emerald-300'
+        }`}>
+          <div className="text-[9px] uppercase tracking-wide opacity-70">IMC</div>
+          <div className="text-base font-bold leading-tight">{imcValue ?? '—'}</div>
+          <div className="text-[9px] opacity-80">
+            {imcValue == null ? '' : imcValue < 18.5 ? '< 18,5' : imcValue < 20.5 ? '< 20,5' : '≥ 20,5'}
+          </div>
+        </div>
+        <Button
+          size="sm"
+          onClick={applyImcResult}
+          disabled={imcValue == null}
+          className="h-9"
+          title={target === 'q1' ? 'Aplica el resultado a la pregunta 1' : 'Aplica la categoría sugerida al Estado Nutricional'}
+        >Usar resultado</Button>
+        {suggestedNutritionalCategory && (
+          <p className="sm:col-span-4 text-[11px] text-slate-600 italic">
+            {target === 'q1'
+              ? <>Al aplicar también se prefija el Estado Nutricional del paso 2 como <strong>{suggestedNutritionalCategory.label}</strong>. Validá considerando pérdida de peso e ingesta.</>
+              : <>Sugerencia para Estado Nutricional: <strong>{suggestedNutritionalCategory.label}</strong>. Validá considerando pérdida de peso e ingesta antes de aplicar.</>
+            }
+          </p>
+        )}
+      </div>
+    );
   };
 
   const [screeningAnswers, setScreeningAnswers] = useState({
@@ -308,7 +385,7 @@ export default function NRS2002Calculator() {
                 </Button>
                 <button
                   type="button"
-                  onClick={() => setImcCalcOpen(o => !o)}
+                  onClick={() => setImcCalcTarget(t => t === 'q1' ? null : 'q1')}
                   className="ml-1 inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700 hover:text-blue-900 hover:bg-blue-100 border border-blue-300 rounded px-2 py-1"
                   title="Mini calculadora de IMC con peso y talla"
                 >
@@ -317,48 +394,7 @@ export default function NRS2002Calculator() {
                 </button>
               </div>
 
-              {imcCalcOpen && (
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto] gap-2 items-end bg-white border border-blue-200 rounded-lg p-3">
-                  <div>
-                    <Label className="text-[11px] text-slate-600">Peso (kg)</Label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={imcWeight}
-                      onChange={e => setImcWeight(e.target.value)}
-                      placeholder="Ej: 68"
-                      className="mt-0.5 w-full h-8 rounded-md border border-slate-200 px-2 text-sm focus:border-blue-400 focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-[11px] text-slate-600">Talla (cm)</Label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={imcHeight}
-                      onChange={e => setImcHeight(e.target.value)}
-                      placeholder="Ej: 170"
-                      className="mt-0.5 w-full h-8 rounded-md border border-slate-200 px-2 text-sm focus:border-blue-400 focus:outline-none"
-                    />
-                  </div>
-                  <div className={`px-2 py-1.5 rounded-md text-center min-w-[90px] ${
-                    imcValue == null ? 'bg-slate-100 text-slate-400' :
-                    imcValue < 20.5 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                    'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                  }`}>
-                    <div className="text-[9px] uppercase tracking-wide opacity-70">IMC</div>
-                    <div className="text-base font-bold leading-tight">{imcValue ?? '—'}</div>
-                    <div className="text-[9px] opacity-80">{imcValue == null ? '' : imcValue < 20.5 ? '< 20,5' : '≥ 20,5'}</div>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={applyImcResult}
-                    disabled={imcValue == null}
-                    className="h-9"
-                    title="Aplica el resultado del IMC a la pregunta 1"
-                  >Usar resultado</Button>
-                </div>
-              )}
+              {renderImcPanel('q1')}
             </div>
 
             <div className="p-4 bg-slate-50 rounded-lg">
@@ -467,8 +503,20 @@ export default function NRS2002Calculator() {
             <div className="space-y-6">
               {/* Estado Nutricional */}
               <div>
-                <Label className="font-semibold mb-3 block">Estado Nutricional</Label>
-                <div className="space-y-2">
+                <div className="flex items-center justify-between mb-3">
+                  <Label className="font-semibold">Estado Nutricional</Label>
+                  <button
+                    type="button"
+                    onClick={() => setImcCalcTarget(t => t === 'estado' ? null : 'estado')}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700 hover:text-blue-900 hover:bg-blue-100 border border-blue-300 rounded px-2 py-1"
+                    title="Mini calculadora de IMC — sugiere categoría según resultado"
+                  >
+                    <Calculator className="h-3 w-3" />
+                    Calcular IMC
+                  </button>
+                </div>
+                {renderImcPanel('estado')}
+                <div className="space-y-2 mt-3">
                   <button
                     onClick={() => setFullScore({...fullScore, nutritionalStatus: 0})}
                     className={`w-full text-left p-3 rounded-lg border-2 transition-colors ${
