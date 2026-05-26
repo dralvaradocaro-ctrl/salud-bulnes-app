@@ -245,7 +245,7 @@ ${JSON.stringify(principalAvailability, null, 2)}
 1) EVITAR SUPERPOSICIÓN es preferible a cambiar al titular. Si el conflicto es porque el TITULAR está ocupado este día y otro día de la semana SÍ está libre, la acción correcta es "swap" hacia ese día con el titular — NO "assign" a otra persona el día del conflicto.
 2) Sólo si el bloqueo es inamovible (horario fijo institucional, reunión con calendario propio) o ningún día alterno tiene al titular libre, se acepta dejarlo el día original y "assign" a otra persona.
 3) COMPLETAR LA DISTRIBUCIÓN SEMANAL: no "suspend" mientras quede un día hábil viable. Sólo suspender cuando ningún día razonable lo permita.
-4) Un médico no puede estar en turno/posturno/ausencia y simultáneamente en un bloqueo.
+4) Un médico no puede estar en turno/posturno/ausencia y simultáneamente en un bloqueo, CON UNA EXCEPCIÓN: si el bloqueo es "subdireccion_medica" y el conflicto es con TURNO (urgencias) — no posturno ni ausencia — y el médico es uno de los titulares SDM (Alvarado/Cordero/Fasani), entonces SE PUEDE dejar al titular en SDM y reasignar su turno a otro médico libre y habilitado para urgencias. SDM tiene prioridad sobre el turno de urgencias en ese escenario.
 5) Quien hace "poli_full_day" cubre policlínico 08:00–17:00 y NO puede tomar bloqueos.
 6) Urgenciólogos solo participan en VISITA con cupos fijos, no en bloqueos.
 7) Preferir médicos con menor carga semanal para balancear.
