@@ -207,7 +207,24 @@ export default function NRS2002Calculator() {
       age: 0
     });
     setShowFullAssessment(false);
+    setImcWeight('');
+    setImcHeight('');
+    setImcCalcTarget(null);
   };
+
+  // Datos antropométricos para el impreso — sólo aparecen si el clínico
+  // ingresó peso y talla en la mini-calc IMC.
+  const anthroForPrint = (() => {
+    const w = parseFloat(String(imcWeight).replace(',', '.'));
+    const hCm = parseFloat(String(imcHeight).replace(',', '.'));
+    if (!w || !hCm || w <= 0 || hCm <= 0) return null;
+    const hM = hCm > 3 ? hCm / 100 : hCm;
+    return {
+      'Peso de ingreso': `${w} kg`,
+      'Talla de ingreso': hCm > 3 ? `${hCm} cm` : `${hCm} m`,
+      'IMC calculado': `${(w / (hM * hM)).toFixed(1)} kg/m²`,
+    };
+  })();
 
   const toggleReason = (reason) => {
     setMedicalReasons(prev => prev.includes(reason)
@@ -270,6 +287,7 @@ export default function NRS2002Calculator() {
       return {
         'Alto riesgo por indicación médica': 'Sí',
         'Justificaciones': medicalReasons.join(' · '),
+        ...(anthroForPrint || {}),
       };
     }
 
@@ -277,7 +295,8 @@ export default function NRS2002Calculator() {
       return {
         'Alto riesgo por indicación médica': 'No',
         ...screeningSummary,
-        'Resultado tamizaje': 'Normal'
+        'Resultado tamizaje': 'Normal',
+        ...(anthroForPrint || {}),
       };
     }
 
@@ -288,7 +307,8 @@ export default function NRS2002Calculator() {
         'Resultado tamizaje': 'Alterado',
         'Estado nutricional': `${fullScore.nutritionalStatus} puntos`,
         'Severidad enfermedad': `${fullScore.diseaseSeverity} puntos`,
-        'Edad': fullScore.age === 1 ? '≥ 70 años' : '< 70 años'
+        'Edad': fullScore.age === 1 ? '≥ 70 años' : '< 70 años',
+        ...(anthroForPrint || {}),
       };
     }
 

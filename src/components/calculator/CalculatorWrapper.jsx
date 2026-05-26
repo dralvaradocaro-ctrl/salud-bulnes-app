@@ -6,6 +6,18 @@ import { Label } from '@/components/ui/label';
 import { Calculator, Printer, RotateCcw, User } from 'lucide-react';
 import PrintableResult from './PrintableResult';
 
+// Formato RUT chileno: 12345678K → 12.345.678-K.
+// Acepta dígitos y "k"/"K". El último carácter es el dígito verificador.
+function formatRut(raw) {
+  if (!raw) return '';
+  const clean = String(raw).replace(/[^0-9kK]/g, '').toUpperCase();
+  if (!clean) return '';
+  const body = clean.slice(0, -1);
+  const dv = clean.slice(-1);
+  if (!body) return dv;
+  return `${body.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}-${dv}`;
+}
+
 export default function CalculatorWrapper({ 
   title, 
   description,
@@ -112,8 +124,10 @@ export default function CalculatorWrapper({
               <Label className="text-xs">RUT <span className="text-rose-600">*</span></Label>
               <Input
                 value={patientInfo.rut}
-                onChange={(e) => setPatientInfo({...patientInfo, rut: e.target.value})}
-                placeholder="Obligatorio"
+                onChange={(e) => setPatientInfo({...patientInfo, rut: formatRut(e.target.value)})}
+                placeholder="12.345.678-9"
+                maxLength={12}
+                inputMode="text"
                 className={`mt-1 ${!patientInfo.rut.trim() ? 'border-rose-300 focus:border-rose-500' : ''}`}
               />
             </div>
