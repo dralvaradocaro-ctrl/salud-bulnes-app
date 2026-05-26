@@ -578,13 +578,17 @@ export function generateAgenda({
     const useSdmCoverageRules = weekStartIso >= SDM_COVERAGE_CUTOFF;
     if (useSdmCoverageRules && !bloqueosOverrides[d.date]) {
       const SDM_TITULARES = ['alvarado', 'cordero', 'fasani'];
+      // La salvedad "titular en turno cubre SDM + bloque Urgencias" SÓLO
+      // aplica a Fasani y Cordero. Alvarado en turno NO asume SDM —
+      // queda como "unavailable" igual que si estuviera en posturno.
+      const TURNO_COVERS_SDM = new Set(['fasani', 'cordero']);
       const sdmBlk = bloqueos.find(b => b.block_id === 'subdireccion_medica');
       if (sdmBlk && !sdmBlk.suspended) {
         const ausById = Object.fromEntries((absencesByDate[d.date] || []).map(a => [a.doctor_id, a]));
         const titularState = SDM_TITULARES.map(id => {
           if (ausById[id])              return { id, kind: 'unavailable' }; // ausencia (FL/A/P/LM/CAP…)
           if (postIds_inner.has(id))    return { id, kind: 'unavailable' }; // posturno
-          if (turnoIds_inner.has(id))   return { id, kind: 'turno' };
+          if (turnoIds_inner.has(id))   return { id, kind: TURNO_COVERS_SDM.has(id) ? 'turno' : 'unavailable' };
           return { id, kind: 'free' };
         });
         const allUnavailable = titularState.every(s => s.kind === 'unavailable');
