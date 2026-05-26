@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { ChevronLeft, ChevronRight, RefreshCw, Save, Printer, Plus, Trash2, Edit3, Sparkles, Download, FileText } from 'lucide-react';
 import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, dayKeyForDate, sortReinforcements, optimizeForTitulars, balanceLoad, HIERARCHICAL_BLOCK_IDS, findReplacementForBlock, blockDoctorIds, blockHasDoctor } from './lib/generateAgenda';
 import AIFixModal from './AIFixModal';
+import SdmCoverageDialog from './SdmCoverageDialog';
 import { suggestFixForError } from './lib/aiAssistant';
 import { Shuffle, Wand2, Scale } from 'lucide-react';
 import CellEditor from './CellEditor';
@@ -114,6 +115,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   const [aiError, setAiError] = useState(null); // error que se está corrigiendo con IA
   const [aiAutoRunning, setAiAutoRunning] = useState(false); // hay un autofix IA en vuelo
   const [aiAutoPending, setAiAutoPending] = useState(false); // disparar autofix cuando la próxima validación lo permita
+  const [sdmCoverageDay, setSdmCoverageDay] = useState(null); // día cuyo SDM suspendido se está revisando
   const [showIssuePanel, setShowIssuePanel] = useState(false);
   const [showDismissed, setShowDismissed] = useState(false);   // mostrar las descartadas con opción de restaurar
   const [dragOverDate, setDragOverDate] = useState(null);      // celda BLOQUEOS resaltada durante drag
@@ -854,6 +856,80 @@ ${table}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aiAutoPending, validation]);
 
+  // Handler del modal "Sin Subdirección Médica": forzar a un titular en SDM
+  // (opcionalmente agregando el bloque Urgencias de cobertura) o mantener el
+  // día sin SDM.
+  function applySdmCoverage(date, { doctor_id, addUrgenciasCover }) {
+    const day = agenda.find(d => d.date === date);
+    if (!day) return;
+    const current = bloqueosOverrides[date] ?? day.bloqueos;
+    const idx = current.findIndex(b => b.block_id === 'subdireccion_medica');
+    const sdmTemplate = blockTemplates.find(bt => bt.id === 'subdireccion_medica');
+    const sdmFrom = current[idx]?.from || sdmTemplate?.weekday_pattern?.[dayKeyForDate(date)]?.[0]?.from || '08:00';
+    const sdmTo   = current[idx]?.to   || sdmTemplate?.weekday_pattern?.[dayKeyForDate(date)]?.[0]?.to   || '17:00';
+    let next = [...current];
+    const baseSdm = {
+      block_id: 'subdireccion_medica',
+      name: sdmTemplate?.name || 'Subdirección Médica',
+      from: sdmFrom,
+      to: sdmTo,
+      doctor_ids: [doctor_id],
+      doctor_id,
+      unassigned: false,
+      suspended: false,
+      suspended_reason: null,
+      auto_assigned: false,
+      reassigned: true,
+      category: sdmTemplate?.category || 'jerarquico',
+      source: 'manual',
+    };
+    if (idx >= 0) next[idx] = { ...next[idx], ...baseSdm };
+    else next.push(baseSdm);
+
+    if (addUrgenciasCover) {
+      const hasCover = next.some(b => b.block_id === 'urgencias_cobertura_sdm' && !b.suspended);
+      if (!hasCover) {
+        const turnoIds = new Set((day.turnos || []).map(t => t.doctor_id));
+        const postIds = new Set((day.posturno || []).map(t => t.doctor_id));
+        const ausIds = new Set((day.ausencias || []).map(a => a.doctor_id));
+        const poliFull = day.poli_8am?.full_day?.doctor_id;
+        const SDM_TITULARES = new Set(['alvarado', 'cordero', 'fasani']);
+        const cand = doctors
+          .filter(doc => doc.active !== false &&
+            !turnoIds.has(doc.id) && !postIds.has(doc.id) && !ausIds.has(doc.id) &&
+            doc.id !== poliFull && !SDM_TITULARES.has(doc.id))
+          .sort((a, b) => (a.is_urgentologist ? 0 : 1) - (b.is_urgentologist ? 0 : 1));
+        const coverId = cand[0]?.id || null;
+        next.push({
+          block_id: 'urgencias_cobertura_sdm',
+          name: `Urgencias (cubre a ${doctorName(doctor_id)} en SDM)`,
+          from: sdmFrom,
+          to: sdmTo,
+          doctor_ids: coverId ? [coverId] : [],
+          doctor_id: coverId,
+          unassigned: !coverId,
+          category: 'urgencias',
+          source: 'manual',
+        });
+      }
+    }
+    setBloqueosOverrides(prev => ({ ...prev, [date]: next }));
+    toast.success(`SDM asignada a ${doctorName(doctor_id)}. Guardá la agenda para persistir.`);
+  }
+
+  function keepSdmSuspended(date) {
+    const day = agenda.find(d => d.date === date);
+    if (!day) return;
+    const current = bloqueosOverrides[date] ?? day.bloqueos;
+    const idx = current.findIndex(b => b.block_id === 'subdireccion_medica');
+    if (idx < 0) return;
+    const next = current.map((b, i) =>
+      i === idx ? { ...b, suspended: true, suspended_reason: b.suspended_reason || 'Sin titular SDM', doctor_ids: [], doctor_id: null, unassigned: false } : b
+    );
+    setBloqueosOverrides(prev => ({ ...prev, [date]: next }));
+    toast.info('SDM se mantiene sin asignar ese día.');
+  }
+
   // Agregar bloqueo manual rápido desde el form (+) inline.
   function addBlockInline(date, blk) {
     const day = agenda.find(d => d.date === date);
@@ -1562,6 +1638,20 @@ ${table}
                         <span className="inline-block rounded px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide bg-slate-200 text-slate-700">FERIADO</span>
                       ) : day.bloqueos.length === 0 ? <span className="text-slate-400 italic">Sin bloqueos · click para agregar</span> :
                         day.bloqueos.slice().sort((x, y) => (x.from || '').localeCompare(y.from || '')).map((b, i) => {
+                          // Chip especial para SDM suspendida (regla prospectiva ≥ 2026-06-01).
+                          if (b.block_id === 'subdireccion_medica' && b.suspended) {
+                            return (
+                              <button
+                                key={i}
+                                onClick={(e) => { e.stopPropagation(); setSdmCoverageDay(day); }}
+                                className="sdm-print-hide flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide bg-rose-100 text-rose-800 border border-rose-300 rounded px-1.5 py-0.5 hover:bg-rose-200 transition-colors"
+                                title={b.suspended_reason || 'Sin titular SDM — click para ver alternativas'}
+                              >
+                                ⚠ Sin Subdirección Médica
+                                <span className="text-[9px] text-rose-600 font-normal">(click para alternativas)</span>
+                              </button>
+                            );
+                          }
                           const colorClass = b.sdm_internal
                             ? 'text-violet-700'
                             : b.suspended
@@ -1828,6 +1918,16 @@ ${table}
         doctors={doctors}
         blockSuggestions={blockSuggestions}
         onSave={nuevos => onCellSave(editingDay.date, nuevos)}
+      />
+
+      {/* Modal SDM — Sin Subdirección Médica: alternativas para cubrir el día */}
+      <SdmCoverageDialog
+        open={!!sdmCoverageDay}
+        onOpenChange={open => { if (!open) setSdmCoverageDay(null); }}
+        day={sdmCoverageDay}
+        doctors={doctors}
+        onAssign={(opt) => applySdmCoverage(sdmCoverageDay.date, opt)}
+        onKeep={() => keepSdmSuspended(sdmCoverageDay.date)}
       />
 
       {/* Modal IA — Sugerencias para corregir errores */}
