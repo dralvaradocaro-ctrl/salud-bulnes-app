@@ -27,6 +27,23 @@ export default function NRS2002Calculator() {
   const [medicalHighRisk, setMedicalHighRisk] = useState(null); // null | true | false
   const [medicalReasons, setMedicalReasons] = useState([]);
 
+  // Mini calculadora de IMC para la pregunta 1 del tamizaje.
+  const [imcCalcOpen, setImcCalcOpen] = useState(false);
+  const [imcWeight, setImcWeight] = useState(''); // kg
+  const [imcHeight, setImcHeight] = useState(''); // cm
+  const imcValue = (() => {
+    const w = parseFloat(String(imcWeight).replace(',', '.'));
+    const hCm = parseFloat(String(imcHeight).replace(',', '.'));
+    if (!w || !hCm || w <= 0 || hCm <= 0) return null;
+    const hM = hCm > 3 ? hCm / 100 : hCm; // tolera ingreso en metros
+    return +(w / (hM * hM)).toFixed(1);
+  })();
+  const applyImcResult = () => {
+    if (imcValue == null) return;
+    setScreeningAnswers(prev => ({ ...prev, lowIMC: imcValue < 20.5 }));
+    setImcCalcOpen(false);
+  };
+
   const [screeningAnswers, setScreeningAnswers] = useState({
     lowIMC: null,
     weightLoss: null,
@@ -274,7 +291,7 @@ export default function NRS2002Calculator() {
           <div className="space-y-4">
             <div className="p-4 bg-slate-50 rounded-lg">
               <Label className="text-sm font-semibold mb-2 block">1. ¿IMC &lt; 20,5 kg/m²?</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant={screeningAnswers.lowIMC === true ? 'default' : 'outline'}
                   size="sm"
@@ -289,7 +306,59 @@ export default function NRS2002Calculator() {
                 >
                   No
                 </Button>
+                <button
+                  type="button"
+                  onClick={() => setImcCalcOpen(o => !o)}
+                  className="ml-1 inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700 hover:text-blue-900 hover:bg-blue-100 border border-blue-300 rounded px-2 py-1"
+                  title="Mini calculadora de IMC con peso y talla"
+                >
+                  <Calculator className="h-3 w-3" />
+                  Calcular IMC
+                </button>
               </div>
+
+              {imcCalcOpen && (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto] gap-2 items-end bg-white border border-blue-200 rounded-lg p-3">
+                  <div>
+                    <Label className="text-[11px] text-slate-600">Peso (kg)</Label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={imcWeight}
+                      onChange={e => setImcWeight(e.target.value)}
+                      placeholder="Ej: 68"
+                      className="mt-0.5 w-full h-8 rounded-md border border-slate-200 px-2 text-sm focus:border-blue-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[11px] text-slate-600">Talla (cm)</Label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={imcHeight}
+                      onChange={e => setImcHeight(e.target.value)}
+                      placeholder="Ej: 170"
+                      className="mt-0.5 w-full h-8 rounded-md border border-slate-200 px-2 text-sm focus:border-blue-400 focus:outline-none"
+                    />
+                  </div>
+                  <div className={`px-2 py-1.5 rounded-md text-center min-w-[90px] ${
+                    imcValue == null ? 'bg-slate-100 text-slate-400' :
+                    imcValue < 20.5 ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                    'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  }`}>
+                    <div className="text-[9px] uppercase tracking-wide opacity-70">IMC</div>
+                    <div className="text-base font-bold leading-tight">{imcValue ?? '—'}</div>
+                    <div className="text-[9px] opacity-80">{imcValue == null ? '' : imcValue < 20.5 ? '< 20,5' : '≥ 20,5'}</div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={applyImcResult}
+                    disabled={imcValue == null}
+                    className="h-9"
+                    title="Aplica el resultado del IMC a la pregunta 1"
+                  >Usar resultado</Button>
+                </div>
+              )}
             </div>
 
             <div className="p-4 bg-slate-50 rounded-lg">
