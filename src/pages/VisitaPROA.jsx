@@ -129,6 +129,56 @@ const PATOGENOS = [
 
 const SENSIBILIDAD_OPCIONES = ['Pendiente', 'Sensible al esquema actual', 'Resistente al esquema actual', 'Multidrogo-resistente', 'No aplica'];
 
+// Diagnósticos infectológicos típicos del adulto hospitalizado. Lista cerrada
+// para autocomplete; el campo igual permite escribir libre si no está aquí.
+const DIAGNOSTICOS_INFECTO = [
+  'Neumonía adquirida en la comunidad (NAC)',
+  'Neumonía nosocomial / asociada al cuidado de salud',
+  'Neumonía asociada a ventilación mecánica (NAVM)',
+  'ITU baja / cistitis',
+  'Pielonefritis aguda / ITU complicada',
+  'ITU asociada a catéter (CAUTI)',
+  'Prostatitis aguda',
+  'Bacteriemia primaria',
+  'Bacteriemia asociada a catéter (BACAT)',
+  'Sepsis sin foco / shock séptico',
+  'Endocarditis infecciosa',
+  'Celulitis / erisipela',
+  'Infección de tejidos blandos complicada',
+  'Pie diabético infectado',
+  'Infección de sitio quirúrgico',
+  'Absceso intraabdominal',
+  'Colangitis aguda',
+  'Colecistitis aguda complicada',
+  'Peritonitis bacteriana espontánea (PBE)',
+  'Apendicitis perforada con peritonitis',
+  'Diverticulitis complicada',
+  'Colitis por Clostridioides difficile',
+  'Meningitis bacteriana',
+  'Encefalitis',
+  'Osteomielitis',
+  'Artritis séptica',
+  'Empiema pleural',
+  'Neutropenia febril',
+  'COVID-19',
+  'Influenza',
+  'Candidemia / candidiasis invasora',
+  'Aspergilosis invasora',
+  'Otro',
+];
+
+// Parámetros inflamatorios que se rellenan en la planilla curva.
+const PARAM_COLS = [
+  { key: 'fecha', label: 'Fecha', type: 'date', width: '11ch' },
+  { key: 'pcr',   label: 'PCR (mg/dL)',  type: 'text', width: '8ch' },
+  { key: 'blancos', label: 'Leucos (×10³)', type: 'text', width: '8ch' },
+  { key: 'crea',  label: 'Crea (mg/dL)', type: 'text', width: '8ch' },
+  { key: 'vhs',   label: 'VHS (mm/h)',   type: 'text', width: '8ch' },
+  { key: 'pct',   label: 'PCT (ng/mL)',  type: 'text', width: '8ch' },
+  { key: 'temp',  label: 'T° (°C)',      type: 'text', width: '7ch' },
+];
+const EMPTY_PARAM_ROW = { fecha: '', pcr: '', blancos: '', crea: '', vhs: '', pct: '', temp: '' };
+
 const RECOMENDACIONES = [
   'Continuar mismo esquema',
   'Desescalar según antibiograma',
@@ -162,17 +212,20 @@ function formatDateLocal(iso) {
   return `${d}-${m}-${y}`;
 }
 // Día de tratamiento calculado desde la fecha de inicio hasta la fecha de visita.
+// Si fechaVisita viene vacía, se usa la fecha de hoy como fallback para que el
+// usuario vea inmediatamente el día calculado al ingresar la fecha de inicio.
 function calcDiaTto(inicio, fechaVisita) {
-  if (!inicio || !fechaVisita) return null;
+  if (!inicio) return null;
+  const fv = fechaVisita || todayIso();
   const a = new Date(inicio + 'T12:00:00');
-  const b = new Date(fechaVisita + 'T12:00:00');
+  const b = new Date(fv + 'T12:00:00');
   if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
   const diff = Math.floor((b - a) / 86400000);
   return diff >= 0 ? diff + 1 : null; // día 1 = mismo día de inicio
 }
 
 const EMPTY_ATB    = { nombre: '', via: 'EV', dosis: '', inicio: '' };
-const EMPTY_CULT   = { tipo_muestra: '', fecha: '', patogeno: '', sensibilidad: 'Pendiente' };
+const EMPTY_CULT   = { tipo_muestra: '', fecha: '', patogeno: '', sensibilidad: 'Pendiente', antibiograma: '' };
 
 const EMPTY = {
   fecha: '',
@@ -185,9 +238,10 @@ const EMPTY = {
   alergias: '',
   comorbilidades: '',
   funcion_renal: '',
-  parametros_inflamatorios: '',
+  parametros_inflamatorios: [{ ...EMPTY_PARAM_ROW }], // ahora es una planilla curva
   diagnostico_actual: '',
   diagnostico_microbiologico: '',
+  diag_micro_auto: true, // si true, el campo se autocompleta desde estudios_micro
   estudios_micro: [{ ...EMPTY_CULT }],
   estudios_imagen: '',
   antibioticos: [{ ...EMPTY_ATB }],
@@ -201,6 +255,18 @@ const EMPTY = {
   medico_firma: '',
   equipo_proa: '',
 };
+
+// Construye el texto del diagnóstico microbiológico a partir de los estudios
+// (ej: "Urocultivo + S. aureus (MSSA); Hemocultivo + E. coli BLEE").
+function buildDiagMicro(estudios) {
+  const partes = (estudios || [])
+    .filter(c => c.patogeno && c.patogeno !== 'Pendiente' && c.patogeno !== 'Sin desarrollo')
+    .map(c => {
+      const muestra = c.tipo_muestra || 'Cultivo';
+      return `${muestra} + ${c.patogeno}`;
+    });
+  return partes.join('; ');
+}
 
 function HospitalLogo({ height = 46 }) {
   const [failed, setFailed] = useState(false);
@@ -254,6 +320,19 @@ export default function VisitaPROA() {
   const removeAtb = (idx) => setF(prev => ({
     ...prev,
     antibioticos: prev.antibioticos.length > 1 ? prev.antibioticos.filter((_, i) => i !== idx) : prev.antibioticos,
+  }));
+
+  // Parámetros inflamatorios (planilla curva)
+  const updateParamRow = (idx, key, value) => {
+    setF(prev => ({
+      ...prev,
+      parametros_inflamatorios: prev.parametros_inflamatorios.map((r, i) => i === idx ? { ...r, [key]: value } : r),
+    }));
+  };
+  const addParamRow = () => setF(prev => ({ ...prev, parametros_inflamatorios: [...prev.parametros_inflamatorios, { ...EMPTY_PARAM_ROW }] }));
+  const removeParamRow = (idx) => setF(prev => ({
+    ...prev,
+    parametros_inflamatorios: prev.parametros_inflamatorios.length > 1 ? prev.parametros_inflamatorios.filter((_, i) => i !== idx) : prev.parametros_inflamatorios,
   }));
 
   // Estudios microbiológicos
@@ -372,15 +451,77 @@ export default function VisitaPROA() {
             <Section title="Diagnósticos">
               <Grid>
                 <Field label="Diagnóstico actual" span="md:col-span-2">
-                  <Input value={f.diagnostico_actual} onChange={e => u('diagnostico_actual', e.target.value)} className="h-9" placeholder="Ej: Neumonía nosocomial" />
+                  <input
+                    value={f.diagnostico_actual}
+                    onChange={e => u('diagnostico_actual', e.target.value)}
+                    list="proa-diag-suggestions"
+                    className="w-full h-9 rounded-md border border-slate-200 px-2 text-sm focus:border-teal-400 focus:outline-none"
+                    placeholder="Buscá: NAC, Bacteriemia, ITU, Sepsis…"
+                  />
                 </Field>
-                <Field label="Diagnóstico microbiológico" span="md:col-span-2">
-                  <Input value={f.diagnostico_microbiologico} onChange={e => u('diagnostico_microbiologico', e.target.value)} className="h-9" placeholder="Ej: Bacteriemia por S. aureus MRSA" />
-                </Field>
-                <Field label="Parámetros inflamatorios" span="md:col-span-4">
-                  <Input value={f.parametros_inflamatorios} onChange={e => u('parametros_inflamatorios', e.target.value)} placeholder="PCR, Leucos, PCT, fiebre 24-48h…" className="h-9" />
+                <Field label={f.diag_micro_auto ? 'Diagnóstico microbiológico (auto — deducido de estudios)' : 'Diagnóstico microbiológico'} span="md:col-span-2">
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      value={f.diag_micro_auto ? (buildDiagMicro(f.estudios_micro) || '— pendiente / sin desarrollo') : f.diagnostico_microbiologico}
+                      onChange={e => u('diagnostico_microbiologico', e.target.value)}
+                      className="h-9 flex-1"
+                      placeholder="Ej: Hemocultivo + S. aureus MRSA"
+                      readOnly={f.diag_micro_auto}
+                      title={f.diag_micro_auto ? 'Auto-deducido — desactivá para editar' : ''}
+                    />
+                    <label className="flex items-center gap-1 text-[11px] text-slate-600 shrink-0 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={f.diag_micro_auto}
+                        onChange={e => u('diag_micro_auto', e.target.checked)}
+                        className="accent-teal-600"
+                      />
+                      Auto
+                    </label>
+                  </div>
                 </Field>
               </Grid>
+            </Section>
+
+            {/* Parámetros inflamatorios — planilla curva */}
+            <Section title="Parámetros inflamatorios (curva por día)" right={
+              <Button size="sm" variant="outline" onClick={addParamRow} className="gap-1 text-xs h-7"><Plus className="h-3 w-3" /> Agregar día</Button>
+            }>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-teal-50">
+                      {PARAM_COLS.map(c => (
+                        <th key={c.key} className="border border-slate-200 px-2 py-1.5 text-left font-semibold text-slate-700">{c.label}</th>
+                      ))}
+                      <th className="border border-slate-200 px-2 py-1.5 w-8" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {f.parametros_inflamatorios.map((row, i) => (
+                      <tr key={i}>
+                        {PARAM_COLS.map(c => (
+                          <td key={c.key} className="border border-slate-200 p-0.5">
+                            <input
+                              type={c.type}
+                              value={row[c.key]}
+                              onChange={e => updateParamRow(i, c.key, e.target.value)}
+                              className="w-full h-8 px-2 text-sm bg-transparent border-0 focus:bg-white focus:ring-1 focus:ring-teal-400 outline-none rounded"
+                              style={{ minWidth: c.width }}
+                            />
+                          </td>
+                        ))}
+                        <td className="border border-slate-200 text-center">
+                          <Button variant="ghost" size="icon" onClick={() => removeParamRow(i)} className="h-7 w-7 text-rose-600 hover:bg-rose-50" title="Quitar fila">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5 italic">Dejá vacío lo que no se midió ese día. Agregá una fila por cada control.</p>
             </Section>
 
             {/* Estudios microbiológicos */}
@@ -428,6 +569,16 @@ export default function VisitaPROA() {
                       <Button variant="ghost" size="icon" onClick={() => removeCult(i)} className="h-8 w-8 text-rose-600 hover:bg-rose-50" title="Quitar">
                         <Trash2 className="h-4 w-4" />
                       </Button>
+                    </div>
+                    {/* Antibiograma / resistencias específicas */}
+                    <div className="col-span-12">
+                      <label className="block text-[11px] text-slate-600 mb-0.5">Antibiograma / resistencias específicas</label>
+                      <Textarea
+                        value={c.antibiograma || ''}
+                        onChange={e => updateCult(i, 'antibiograma', e.target.value)}
+                        className="min-h-[44px] text-sm"
+                        placeholder="Ej: Resistente a oxacilina, eritromicina, clindamicina. Sensible a vancomicina, linezolid, daptomicina."
+                      />
                     </div>
                   </div>
                 ))}
@@ -581,6 +732,9 @@ export default function VisitaPROA() {
           <datalist id="proa-patogenos-suggestions">
             {PATOGENOS.map(s => <option key={s} value={s} />)}
           </datalist>
+          <datalist id="proa-diag-suggestions">
+            {DIAGNOSTICOS_INFECTO.map(s => <option key={s} value={s} />)}
+          </datalist>
         </div>
       )}
 
@@ -628,9 +782,31 @@ export default function VisitaPROA() {
             <PrintBlock title="Diagnósticos">
               <PrintGrid>
                 <PrintField label="Diagnóstico actual" value={f.diagnostico_actual} flex={2} />
-                <PrintField label="Diagnóstico microbiológico" value={f.diagnostico_microbiologico} flex={2} />
+                <PrintField label="Diagnóstico microbiológico" value={f.diag_micro_auto ? (buildDiagMicro(f.estudios_micro) || '— pendiente / sin desarrollo') : f.diagnostico_microbiologico} flex={2} />
               </PrintGrid>
-              <PrintField label="Parámetros inflamatorios" value={f.parametros_inflamatorios} flex={1} />
+            </PrintBlock>
+
+            {/* Parámetros inflamatorios — planilla curva */}
+            <PrintBlock title="Parámetros inflamatorios (curva)">
+              <table style={tbl}>
+                <thead>
+                  <tr style={{ background: '#e6f4f1' }}>
+                    {PARAM_COLS.map(c => <th key={c.key} style={cellHead}>{c.label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {f.parametros_inflamatorios.filter(r => Object.values(r).some(v => v)).map((r, i) => (
+                    <tr key={i}>
+                      {PARAM_COLS.map(c => (
+                        <td key={c.key} style={cell}>{c.key === 'fecha' ? formatDateLocal(r[c.key]) : r[c.key]}</td>
+                      ))}
+                    </tr>
+                  ))}
+                  {f.parametros_inflamatorios.filter(r => Object.values(r).some(v => v)).length === 0 && (
+                    <tr><td colSpan={PARAM_COLS.length} style={{ ...cell, fontStyle: 'italic', color: '#666' }}>— sin parámetros registrados —</td></tr>
+                  )}
+                </tbody>
+              </table>
             </PrintBlock>
 
             <PrintBlock title="Estudios microbiológicos">
@@ -645,12 +821,21 @@ export default function VisitaPROA() {
                 </thead>
                 <tbody>
                   {f.estudios_micro.filter(c => c.tipo_muestra || c.patogeno).map((c, i) => (
-                    <tr key={i}>
-                      <td style={cell}>{c.tipo_muestra}</td>
-                      <td style={cell}>{formatDateLocal(c.fecha)}</td>
-                      <td style={cell}>{c.patogeno}</td>
-                      <td style={cell}>{c.sensibilidad}</td>
-                    </tr>
+                    <>
+                      <tr key={`r-${i}`}>
+                        <td style={cell}>{c.tipo_muestra}</td>
+                        <td style={cell}>{formatDateLocal(c.fecha)}</td>
+                        <td style={cell}>{c.patogeno}</td>
+                        <td style={cell}>{c.sensibilidad}</td>
+                      </tr>
+                      {c.antibiograma && (
+                        <tr key={`a-${i}`}>
+                          <td colSpan={4} style={{ ...cell, background: '#f9fafb', fontSize: '9pt' }}>
+                            <strong>Antibiograma:</strong> {c.antibiograma}
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   ))}
                   {f.estudios_micro.filter(c => c.tipo_muestra || c.patogeno).length === 0 && (
                     <tr><td colSpan={4} style={{ ...cell, fontStyle: 'italic', color: '#666' }}>— sin estudios registrados —</td></tr>
