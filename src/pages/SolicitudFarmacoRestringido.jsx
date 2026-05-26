@@ -257,7 +257,7 @@ export default function SolicitudFarmacoRestringido() {
                 <Input value={f.edad} onChange={e => u('edad', e.target.value)} className="h-9" placeholder="años" />
               </Field>
 
-              <Field label="Previsión" span="col-span-2 md:col-span-2">
+              <Field label="Previsión" span="col-span-2 md:col-span-4">
                 <div className="flex flex-wrap gap-1.5">
                   {PREVISION_OPTIONS.map(opt => (
                     <button
@@ -274,14 +274,19 @@ export default function SolicitudFarmacoRestringido() {
                 </div>
               </Field>
 
+              {/* N° Ficha + Diagnóstico en la misma fila */}
               <Field label="N° Ficha">
                 <Input value={f.n_ficha} onChange={e => u('n_ficha', e.target.value)} className="h-9" />
               </Field>
-              <Field label="Comuna de origen">
-                <Input value={f.comuna} onChange={e => u('comuna', e.target.value)} className="h-9" placeholder="Bulnes, Quillón…" />
+              <Field label="Diagnóstico" span="col-span-2 md:col-span-3">
+                <Input value={f.diagnostico} onChange={e => u('diagnostico', e.target.value)} className="h-9" />
               </Field>
 
-              <Field label="Servicio clínico" span="col-span-2">
+              {/* Comuna + Servicio clínico en la misma fila */}
+              <Field label="Comuna de origen" span="col-span-1 md:col-span-2">
+                <Input value={f.comuna} onChange={e => u('comuna', e.target.value)} className="h-9" placeholder="Bulnes, Quillón…" />
+              </Field>
+              <Field label="Servicio clínico" span="col-span-1 md:col-span-2">
                 <input
                   value={f.servicio}
                   onChange={e => u('servicio', e.target.value)}
@@ -290,11 +295,9 @@ export default function SolicitudFarmacoRestringido() {
                   placeholder="MQ1, MQ2, Urgencias…"
                 />
               </Field>
-              <Field label="Diagnóstico" span="col-span-2 md:col-span-4">
-                <Textarea value={f.diagnostico} onChange={e => u('diagnostico', e.target.value)} className="min-h-[50px]" />
-              </Field>
 
-              <Field label="Nombre del fármaco" span="col-span-2 md:col-span-2">
+              {/* Nombre del fármaco + Vía en la misma fila */}
+              <Field label="Nombre del fármaco" span="col-span-2 md:col-span-3">
                 <input
                   value={f.farmaco}
                   onChange={e => u('farmaco', e.target.value)}
@@ -303,7 +306,18 @@ export default function SolicitudFarmacoRestringido() {
                   placeholder="Empieza a escribir, las sugerencias aparecen abajo"
                 />
               </Field>
-              <Field label="Presentación">
+              <Field label="Vía">
+                <select
+                  value={f.via}
+                  onChange={e => u('via', e.target.value)}
+                  className="w-full h-9 rounded-md border border-slate-200 px-2 text-sm focus:border-blue-400 focus:outline-none bg-white"
+                >
+                  {VIAS.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </Field>
+
+              {/* Presentación a fila completa */}
+              <Field label="Presentación" span="col-span-2 md:col-span-4">
                 {presentaciones.length > 0 ? (
                   <select
                     value={f.presentacion}
@@ -321,17 +335,8 @@ export default function SolicitudFarmacoRestringido() {
                   />
                 )}
               </Field>
-              <Field label="Vía">
-                <select
-                  value={f.via}
-                  onChange={e => u('via', e.target.value)}
-                  className="w-full h-9 rounded-md border border-slate-200 px-2 text-sm focus:border-blue-400 focus:outline-none bg-white"
-                >
-                  {VIAS.map(v => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </Field>
 
-              <Field label={`${unidad === 'comprimidos' || unidad === 'cápsulas' ? 'Unidades' : 'Ampollas / frascos'} por día`}>
+              <Field label="Dosis diaria">
                 <Input
                   value={f.ampollas_dia}
                   onChange={e => u('ampollas_dia', e.target.value)}
@@ -340,16 +345,15 @@ export default function SolicitudFarmacoRestringido() {
                   inputMode="decimal"
                 />
               </Field>
-              <Field label="Duración del tto (días)">
+              <Field label="Duración del tto">
                 <Input
                   value={f.dias_tto}
                   onChange={e => u('dias_tto', e.target.value)}
                   className="h-9"
-                  placeholder="Ej: 7"
-                  inputMode="numeric"
+                  placeholder="Ej: 7 días"
                 />
               </Field>
-              <Field label="Dosis total solicitada (auto)" span="col-span-2">
+              <Field label="Dosis total solicitada" span="col-span-2">
                 <Input
                   value={f.dosis_total}
                   onChange={e => u('dosis_total', e.target.value)}
@@ -463,8 +467,8 @@ export default function SolicitudFarmacoRestringido() {
             <FieldLine label="PRESENTACIÓN" value={f.presentacion} />
 
             <div style={{ display: 'flex', gap: '12pt', marginBottom: '12pt', flexWrap: 'wrap' }}>
-              <FieldLine label={`${unidad.toUpperCase()} / DÍA`} value={f.ampollas_dia} w="28%" inline />
-              <FieldLine label="DURACIÓN TTO (DÍAS)" value={f.dias_tto} w="28%" inline />
+              <FieldLine label="DOSIS DIARIA" value={f.ampollas_dia} w="28%" inline />
+              <FieldLine label="DURACIÓN TTO" value={f.dias_tto} w="28%" inline />
               <FieldLine label="DOSIS TOTAL SOLICITADA" value={f.dosis_total} w="40%" inline />
             </div>
 
