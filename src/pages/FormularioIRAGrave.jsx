@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ChevronLeft, Printer, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -224,6 +224,11 @@ function DateDMA({ dia, mes, ano, onChange }) {
 }
 
 export default function FormularioIRAGrave() {
+  const navigate = useNavigate();
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate(createPageUrl('Home'));
+  };
   const [f, setF] = useState({ ...EMPTY, ...HCSFB_DEFAULTS });
   const [showPreview, setShowPreview] = useState(false);
   const u = useCallback((k, v) => setF(prev => ({ ...prev, [k]: v })), []);
@@ -444,9 +449,9 @@ export default function FormularioIRAGrave() {
       {/* ── Toolbar (solo pantalla) ─────────────────────────────────── */}
       <div className="ira-screen-only sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link to={createPageUrl('Category?id=696ea6ff245ef362de4f431c')}>
-            <Button variant="ghost" size="icon" className="rounded-xl"><ChevronLeft className="h-5 w-5" /></Button>
-          </Link>
+          <Button variant="ghost" size="icon" className="rounded-xl" onClick={goBack} title="Volver">
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
           <div className="flex-1">
             <h1 className="text-base font-bold text-slate-900">Formulario IRA grave y 2019-nCoV (ISP)</h1>
             <p className="text-xs text-slate-500">PR-244.00-007 — Notificación inmediata y envío de muestras</p>
