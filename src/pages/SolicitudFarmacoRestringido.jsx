@@ -417,11 +417,14 @@ export default function SolicitudFarmacoRestringido() {
               SOLICITUD DE FÁRMACO DE USO RESTRINGIDO Y OCASIONAL.
             </h1>
 
-            {/* Datos paciente — formato línea por línea estilo formulario */}
-            <FieldLine label="PACIENTE" value={f.paciente} extra={<><span style={{ marginLeft: '18pt' }}>EDAD:</span><LineValue value={f.edad} w="60pt" /></>} />
+            {/* Datos paciente — formato línea por línea estilo formulario original */}
+            <PrintRow>
+              <PrintField label="PACIENTE" value={f.paciente} flex={4} />
+              <PrintField label="EDAD"     value={f.edad}     flex={1} />
+            </PrintRow>
 
             {/* Previsión — opciones encerrando la elegida en círculo */}
-            <div style={{ marginBottom: '10pt', fontSize: '10.5pt' }}>
+            <div style={{ marginBottom: '10pt', fontSize: '10.5pt', whiteSpace: 'nowrap', overflow: 'hidden' }}>
               <strong>PREVISIÓN:</strong>
               <span style={{ marginLeft: '6pt' }}>
                 {PREVISION_OPTIONS.map(opt => (
@@ -440,37 +443,42 @@ export default function SolicitudFarmacoRestringido() {
               </span>
             </div>
 
-            <FieldLine label="COMUNA DE ORIGEN" value={f.comuna} extra={<><span style={{ marginLeft: '14pt' }}>SERVICIO CLÍNICO:</span><LineValue value={f.servicio} w="38%" /></>} />
-            <FieldLine label="N° FICHA" value={f.n_ficha} w="28%" extra={<><span style={{ marginLeft: '14pt' }}>DIAGNÓSTICO:</span><LineValue value={f.diagnostico} w="50%" /></>} />
-            <FieldLine
-              label="NOMBRE DEL FÁRMACO"
-              value={f.farmaco}
-              extra={
-                <span style={{ marginLeft: '14pt' }}>
-                  <strong>VÍA:</strong>{' '}
-                  {VIAS.map(v => (
-                    <span
-                      key={v}
-                      style={{
-                        display: 'inline-block',
-                        marginRight: '6pt',
-                        padding: f.via === v ? '0 4pt' : '0 2pt',
-                        border: f.via === v ? '1.5pt solid #000' : 'none',
-                        borderRadius: f.via === v ? '10pt' : '0',
-                        fontWeight: f.via === v ? 'bold' : 'normal',
-                      }}
-                    >{v}</span>
-                  ))}
-                </span>
-              }
-            />
-            <FieldLine label="PRESENTACIÓN" value={f.presentacion} />
-
-            <div style={{ display: 'flex', gap: '12pt', marginBottom: '12pt', flexWrap: 'wrap' }}>
-              <FieldLine label="DOSIS DIARIA" value={f.ampollas_dia} w="28%" inline />
-              <FieldLine label="DURACIÓN TTO" value={f.dias_tto} w="28%" inline />
-              <FieldLine label="DOSIS TOTAL SOLICITADA" value={f.dosis_total} w="40%" inline />
-            </div>
+            <PrintRow>
+              <PrintField label="COMUNA DE ORIGEN" value={f.comuna} flex={3} />
+              <PrintField label="SERVICIO CLÍNICO" value={f.servicio} flex={2} />
+            </PrintRow>
+            <PrintRow>
+              <PrintField label="N° FICHA"    value={f.n_ficha}     flex={1} />
+              <PrintField label="DIAGNÓSTICO" value={f.diagnostico} flex={4} />
+            </PrintRow>
+            <PrintRow>
+              <PrintField label="NOMBRE DEL FÁRMACO" value={f.farmaco} flex={3} />
+              <div style={{ flex: 2, display: 'flex', alignItems: 'baseline', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                <span style={{ fontWeight: 'bold', marginRight: '4pt' }}>VÍA:</span>
+                {VIAS.map(v => (
+                  <span
+                    key={v}
+                    style={{
+                      display: 'inline-block',
+                      marginRight: '4pt',
+                      padding: f.via === v ? '0 3pt' : '0 1pt',
+                      border: f.via === v ? '1.5pt solid #000' : 'none',
+                      borderRadius: f.via === v ? '10pt' : '0',
+                      fontWeight: f.via === v ? 'bold' : 'normal',
+                      fontSize: '9.5pt',
+                    }}
+                  >{v}</span>
+                ))}
+              </div>
+            </PrintRow>
+            <PrintRow>
+              <PrintField label="PRESENTACIÓN" value={f.presentacion} flex={1} />
+            </PrintRow>
+            <PrintRow>
+              <PrintField label="DOSIS DIARIA"   value={f.ampollas_dia} flex={1} />
+              <PrintField label="DURACIÓN TTO"   value={f.dias_tto}     flex={1} />
+              <PrintField label="DOSIS TOTAL SOLICITADA" value={f.dosis_total} flex={2} />
+            </PrintRow>
 
             {/* Justificación */}
             <div style={{ marginTop: '12pt', marginBottom: '14pt' }}>
@@ -486,25 +494,28 @@ export default function SolicitudFarmacoRestringido() {
             </div>
 
             {/* Firma médico */}
-            <FieldLine label="NOMBRE Y FIRMA MÉDICO SOLICITANTE" value={f.medico} />
-            <FieldLine label="FECHA" value={formatDateLocal(f.fecha)} w="30%" />
+            <PrintRow>
+              <PrintField label="NOMBRE Y FIRMA MÉDICO SOLICITANTE" value={f.medico} flex={3} />
+              <PrintField label="FECHA" value={formatDateLocal(f.fecha)} flex={1} />
+            </PrintRow>
 
             {/* Línea divisoria */}
             <hr style={{ border: 'none', borderTop: '1pt solid #000', margin: '14pt 0 8pt 0' }} />
 
             {/* USO EXCLUSIVO DE FARMACIA */}
             <p style={{ fontWeight: 'bold', margin: '0 0 6pt 0', textDecoration: 'underline' }}>USO EXCLUSIVO DE FARMACIA</p>
-            <div style={{ display: 'flex', gap: '12pt', marginBottom: '6pt', flexWrap: 'wrap' }}>
-              <FieldLine label="FECHA RECEPCIÓN SOLICITUD" value="" w="48%" inline />
-            </div>
-            <div style={{ display: 'flex', gap: '12pt', marginBottom: '14pt', flexWrap: 'wrap' }}>
-              <FieldLine label="VALOR DOSIS DIARIA: $" value="" w="32%" inline />
-              <FieldLine label="VALOR DOSIS TOTAL SOLICITADA: $" value="" w="48%" inline />
-            </div>
-
-            <div style={{ display: 'flex', gap: '12pt', marginTop: '20pt', flexWrap: 'wrap' }}>
-              <FieldLine label="V°B° SUB-DIRECTOR MÉDICO" value="" w="40%" inline />
-              <FieldLine label="FECHA V°B° SUB-DIRECTOR MÉDICO" value="" w="48%" inline />
+            <PrintRow>
+              <PrintField label="FECHA RECEPCIÓN SOLICITUD" value="" flex={1} />
+            </PrintRow>
+            <PrintRow>
+              <PrintField label="VALOR DOSIS DIARIA: $" value="" flex={1} />
+              <PrintField label="VALOR DOSIS TOTAL SOLICITADA: $" value="" flex={2} />
+            </PrintRow>
+            <div style={{ marginTop: '20pt' }}>
+              <PrintRow>
+                <PrintField label="V°B° SUB-DIRECTOR MÉDICO" value="" flex={2} />
+                <PrintField label="FECHA V°B° SUB-DIRECTOR MÉDICO" value="" flex={2} />
+              </PrintRow>
             </div>
           </div>
         </div>
@@ -542,6 +553,36 @@ function LineValue({ value, w }) {
       minHeight: '14pt',
       fontSize: '10.5pt',
     }}>{value}</span>
+  );
+}
+
+// PrintRow / PrintField — layout fiel al formulario impreso original:
+// fila horizontal con anchos relativos (flex) y cada campo formado por su
+// label en negrita + línea continua. Sin wrap: cada fila es UNA línea.
+function PrintRow({ children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: '14pt', marginBottom: '8pt', fontSize: '10.5pt' }}>
+      {children}
+    </div>
+  );
+}
+
+function PrintField({ label, value, flex = 1 }) {
+  return (
+    <div style={{ flex, display: 'flex', alignItems: 'baseline', minWidth: 0 }}>
+      <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap', marginRight: '4pt' }}>{label}:</span>
+      <span
+        style={{
+          flex: 1,
+          borderBottom: '1pt solid #000',
+          minHeight: '14pt',
+          padding: '0 4pt',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >{value}</span>
+    </div>
   );
 }
 
