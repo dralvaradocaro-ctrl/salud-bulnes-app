@@ -566,6 +566,84 @@ export function generateAgenda({
     // esté como visitante (incluido cuando se corre por feriado).
 
 
+    // Post-pass SDM (regla prospectiva ≥ 2026-06-01):
+    //  - Titulares SDM = Alvarado · Cordero · Fasani.
+    //  - Si los 3 están en posturno/feriado/ausencia/admin/licencia, se SUSPENDE
+    //    el bloque "subdireccion_medica" ese día (no se reasigna a subrogantes).
+    //  - Si SDM quedó asignado a un no-titular pero al menos un titular SDM
+    //    tiene SÓLO turno (no posturno/ausencia), se reasigna SDM al titular y
+    //    se busca un reemplazante para su turno (preferentemente urgentólogo,
+    //    si no, médico con menor carga semanal).
+    const SDM_COVERAGE_CUTOFF = '2026-06-01';
+    const useSdmCoverageRules = weekStartIso >= SDM_COVERAGE_CUTOFF;
+    if (useSdmCoverageRules && !bloqueosOverrides[d.date]) {
+      const SDM_TITULARES = ['alvarado', 'cordero', 'fasani'];
+      const sdmBlk = bloqueos.find(b => b.block_id === 'subdireccion_medica');
+      if (sdmBlk && !sdmBlk.suspended) {
+        const ausById = Object.fromEntries((absencesByDate[d.date] || []).map(a => [a.doctor_id, a]));
+        const titularState = SDM_TITULARES.map(id => {
+          if (ausById[id])              return { id, kind: 'unavailable' }; // ausencia (FL/A/P/LM/CAP…)
+          if (postIds_inner.has(id))    return { id, kind: 'unavailable' }; // posturno
+          if (turnoIds_inner.has(id))   return { id, kind: 'turno' };
+          return { id, kind: 'free' };
+        });
+        const allUnavailable = titularState.every(s => s.kind === 'unavailable');
+        if (allUnavailable) {
+          sdmBlk.suspended = true;
+          sdmBlk.suspended_reason = 'Sin titular SDM (todos en posturno/feriado/admin)';
+          sdmBlk.unassigned = false;
+        } else {
+          const currentIds = blockDoctorIds(sdmBlk);
+          const currentIsTitular = currentIds.some(id => SDM_TITULARES.includes(id));
+          const freeTitular = titularState.find(s => s.kind === 'free');
+          const turnoTitular = titularState.find(s => s.kind === 'turno');
+          let chosenTitular = null;
+          if (!currentIsTitular) {
+            chosenTitular = freeTitular || turnoTitular;
+            if (chosenTitular) {
+              sdmBlk.originalDoctor = currentIds[0] || null;
+              sdmBlk.doctor_ids = [chosenTitular.id];
+              sdmBlk.doctor_id = chosenTitular.id;
+              sdmBlk.unassigned = false;
+              sdmBlk.auto_assigned = false;
+              sdmBlk.reassigned = true;
+            }
+          } else {
+            chosenTitular = titularState.find(s => currentIds.includes(s.id) && s.kind !== 'unavailable')
+              || titularState.find(s => currentIds.includes(s.id));
+          }
+          if (chosenTitular && chosenTitular.kind === 'turno') {
+            const targetTurno = turnos.find(t => t.doctor_id === chosenTitular.id);
+            if (targetTurno && !targetTurno.replaced) {
+              const candidates = doctors.filter(doc =>
+                doc.active !== false &&
+                !turnoIds_inner.has(doc.id) &&
+                !postIds_inner.has(doc.id) &&
+                !ausIds_inner.has(doc.id) &&
+                !poliIds.has(doc.id) &&
+                !SDM_TITULARES.includes(doc.id) &&
+                doc.id !== chosenTitular.id
+              );
+              candidates.sort((a, b) => {
+                const aU = a.is_urgentologist ? 0 : 1;
+                const bU = b.is_urgentologist ? 0 : 1;
+                if (aU !== bU) return aU - bU;
+                return (weeklyDoctorLoad[a.id] || 0) - (weeklyDoctorLoad[b.id] || 0);
+              });
+              if (candidates.length > 0) {
+                targetTurno.replaced = true;
+                targetTurno.original_doctor_id = chosenTitular.id;
+                targetTurno.doctor_id = candidates[0].id;
+                targetTurno.reason = 'cubriendo SDM';
+                turnoIds_inner.delete(chosenTitular.id);
+                turnoIds_inner.add(candidates[0].id);
+              }
+            }
+          }
+        }
+      }
+    }
+
     // Post-pass: Poli TACO toma por default al médico de Subdirección Médica del día,
     // salvo que tenga otro bloqueo conflictivo en el horario de TACO.
     // Si SDM tiene varios médicos, se toma el primero como "principal".
