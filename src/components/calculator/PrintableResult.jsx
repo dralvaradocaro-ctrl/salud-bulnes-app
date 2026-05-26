@@ -74,12 +74,18 @@ export default function PrintableResult({ title, inputs, result, patientInfo, ge
           <p className="text-[9pt] text-slate-500">{printDate}</p>
         </div>
 
-        {/* Paciente — fila inline si hay datos */}
-        {patientInfo && (patientInfo.name || patientInfo.rut || patientInfo.record) && (
-          <div className="grid grid-cols-12 gap-2 text-[10pt] mb-3 border border-slate-300 rounded px-2 py-1.5">
+        {/* Paciente — bloque inline con campos clínicos */}
+        {patientInfo && (patientInfo.name || patientInfo.rut || patientInfo.record || patientInfo.servicio || patientInfo.cama) && (
+          <div className="grid grid-cols-12 gap-x-3 gap-y-0.5 text-[10pt] mb-3 border border-slate-300 rounded px-2 py-1.5">
             <div className="col-span-6"><span className="text-slate-500">Paciente: </span><span className="font-semibold">{patientInfo.name || '—'}</span></div>
             <div className="col-span-3"><span className="text-slate-500">RUT: </span><span className="font-semibold">{patientInfo.rut || '—'}</span></div>
             <div className="col-span-3"><span className="text-slate-500">N° Ficha: </span><span className="font-semibold">{patientInfo.record || '—'}</span></div>
+            {(patientInfo.servicio || patientInfo.cama) && (
+              <>
+                <div className="col-span-6"><span className="text-slate-500">Servicio: </span><span className="font-semibold">{patientInfo.servicio || '—'}</span></div>
+                <div className="col-span-6"><span className="text-slate-500">Cama: </span><span className="font-semibold">{patientInfo.cama || '—'}</span></div>
+              </>
+            )}
           </div>
         )}
 

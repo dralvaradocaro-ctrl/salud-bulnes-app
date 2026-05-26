@@ -22,13 +22,22 @@ export default function CalculatorWrapper({
   const [patientInfo, setPatientInfo] = useState({
     name: '',
     rut: '',
-    record: ''
+    record: '',
+    servicio: '',
+    cama: '',
   });
-  const [showPatient, setShowPatient] = useState(false);
   const [isPrintMode, setIsPrintMode] = useState(false);
   const [printTimestamp, setPrintTimestamp] = useState(null);
+  const [printError, setPrintError] = useState('');
+
+  const patientValid = patientInfo.name.trim() !== '' && patientInfo.rut.trim() !== '';
 
   const handlePrint = () => {
+    if (!patientValid) {
+      setPrintError('Para imprimir es obligatorio anotar nombre y RUT del paciente.');
+      return;
+    }
+    setPrintError('');
     setPrintTimestamp(new Date().toISOString());
     setIsPrintMode(true);
     setTimeout(() => {
@@ -36,6 +45,9 @@ export default function CalculatorWrapper({
       setIsPrintMode(false);
     }, 100);
   };
+
+  // Servicios sugeridos para el datalist del campo "Servicio".
+  const SERVICIO_SUGGESTIONS = ['MQ1', 'MQ2', 'Pediatría', 'Urgencia', 'Ginecología/Obstetricia'];
 
   const saveToHistory = (calculation) => {
     const history = JSON.parse(localStorage.getItem(`calc_history_${title}`) || '[]');
@@ -60,7 +72,7 @@ export default function CalculatorWrapper({
         title={title}
         inputs={inputs}
         result={result}
-        patientInfo={showPatient ? patientInfo : null}
+        patientInfo={patientInfo}
         generatedAt={printTimestamp}
       />
     );
@@ -78,46 +90,68 @@ export default function CalculatorWrapper({
         </div>
       </div>
 
-      {/* Patient Info (Optional) */}
+      {/* Datos del paciente — Nombre y RUT obligatorios para imprimir */}
       {showPatientInfo && (
         <div className="mb-6">
-          <button
-            onClick={() => setShowPatient(!showPatient)}
-            className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-2"
-          >
+          <div className="flex items-center gap-2 text-sm text-slate-700 mb-2 font-semibold">
             <User className="h-4 w-4" />
-            {showPatient ? 'Ocultar' : 'Agregar'} información del paciente (opcional)
-          </button>
-          
-          {showPatient && (
-            <div className="grid md:grid-cols-3 gap-3 p-4 bg-white rounded-lg border border-slate-200">
-              <div>
-                <Label className="text-xs">Nombre Paciente</Label>
-                <Input
-                  value={patientInfo.name}
-                  onChange={(e) => setPatientInfo({...patientInfo, name: e.target.value})}
-                  placeholder="Opcional"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-xs">RUT</Label>
-                <Input
-                  value={patientInfo.rut}
-                  onChange={(e) => setPatientInfo({...patientInfo, rut: e.target.value})}
-                  placeholder="Opcional"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label className="text-xs">Nº Ficha</Label>
-                <Input
-                  value={patientInfo.record}
-                  onChange={(e) => setPatientInfo({...patientInfo, record: e.target.value})}
-                  placeholder="Opcional"
-                  className="mt-1"
-                />
-              </div>
+            Información del paciente
+            <span className="text-[10px] uppercase tracking-wide text-rose-600 font-bold ml-1">Nombre y RUT obligatorios para imprimir</span>
+          </div>
+          <div className="grid md:grid-cols-3 gap-3 p-4 bg-white rounded-lg border border-slate-200">
+            <div>
+              <Label className="text-xs">Nombre Paciente <span className="text-rose-600">*</span></Label>
+              <Input
+                value={patientInfo.name}
+                onChange={(e) => setPatientInfo({...patientInfo, name: e.target.value})}
+                placeholder="Obligatorio"
+                className={`mt-1 ${!patientInfo.name.trim() ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">RUT <span className="text-rose-600">*</span></Label>
+              <Input
+                value={patientInfo.rut}
+                onChange={(e) => setPatientInfo({...patientInfo, rut: e.target.value})}
+                placeholder="Obligatorio"
+                className={`mt-1 ${!patientInfo.rut.trim() ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Nº Ficha</Label>
+              <Input
+                value={patientInfo.record}
+                onChange={(e) => setPatientInfo({...patientInfo, record: e.target.value})}
+                placeholder="Opcional"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Servicio</Label>
+              <input
+                value={patientInfo.servicio}
+                onChange={(e) => setPatientInfo({...patientInfo, servicio: e.target.value})}
+                list="calc-servicio-suggestions"
+                placeholder="MQ1, MQ2, Pediatría, Urgencia…"
+                className="mt-1 w-full h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-blue-400 focus:outline-none"
+              />
+              <datalist id="calc-servicio-suggestions">
+                {SERVICIO_SUGGESTIONS.map(s => <option key={s} value={s} />)}
+              </datalist>
+            </div>
+            <div>
+              <Label className="text-xs">Cama</Label>
+              <Input
+                value={patientInfo.cama}
+                onChange={(e) => setPatientInfo({...patientInfo, cama: e.target.value})}
+                placeholder="Ej: 12, B-3"
+                className="mt-1"
+              />
+            </div>
+          </div>
+          {printError && (
+            <div className="mt-2 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded px-2 py-1.5">
+              {printError}
             </div>
           )}
         </div>
@@ -134,7 +168,13 @@ export default function CalculatorWrapper({
         </Button>
         {result && (
           <>
-            <Button variant="outline" onClick={handlePrint}>
+            <Button
+              variant="outline"
+              onClick={handlePrint}
+              disabled={!patientValid}
+              title={!patientValid ? 'Para imprimir hay que anotar nombre y RUT del paciente' : 'Imprimir resultado'}
+              className={!patientValid ? 'opacity-50 cursor-not-allowed' : ''}
+            >
               <Printer className="h-4 w-4 mr-2" />
               Imprimir
             </Button>
