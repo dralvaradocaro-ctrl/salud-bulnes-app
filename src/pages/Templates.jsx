@@ -78,6 +78,13 @@ export const EXTERNAL_TEMPLATES = [
     instructions: 'Formulario C 162 — Cultivos, directos al fresco, virológicos. Imprime PDF.',
     external_route: 'SolicitudMicrobiologia',
   },
+  {
+    id: 'ext-farmaco-restringido',
+    name: 'Solicitud de Fármaco de Uso Restringido',
+    type: 'Formulario Oficial',
+    instructions: 'Comité de Farmacia / MPJC — Antibióticos amplio espectro, fármacos de uso ocasional.',
+    external_route: 'SolicitudFarmacoRestringido',
+  },
 ];
 
 export default function Templates() {

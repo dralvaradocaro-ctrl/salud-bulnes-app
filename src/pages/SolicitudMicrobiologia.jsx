@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import { SERVICIOS, SALAS, PREVISIONES } from '@/lib/hospitalSuggestions';
 
 // Formulario oficial C 162 — Hospital Comunitario de Salud Familiar de Bulnes.
 // Estructura por secciones en DOS COLUMNAS preservando el layout del original
@@ -62,6 +63,150 @@ function formatRut(raw) {
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
+
+// ── Sugerencias precargadas (autocomplete con datalist) ─────────────────
+// El usuario puede escribir cualquier cosa pero ve sugerencias coincidentes.
+const SAMPLE_TYPES = [
+  'Orina (chorro medio)',
+  'Orina (sondeo)',
+  'Orina (recolector pediátrico)',
+  'Esputo',
+  'Esputo inducido',
+  'Aspirado bronquial',
+  'Aspirado traqueal',
+  'Lavado broncoalveolar (BAL)',
+  'Hemocultivo periférico',
+  'Hemocultivo central (catéter)',
+  'Sangre (EDTA)',
+  'LCR',
+  'Líquido pleural',
+  'Líquido peritoneal / ascítico',
+  'Líquido sinovial',
+  'Pus',
+  'Secreción uretral',
+  'Secreción vaginal',
+  'Secreción endocervical',
+  'Tórula faríngea',
+  'Tórula nasofaríngea',
+  'Tórula orofaríngea',
+  'Deposición',
+  'Biopsia',
+  'Tejido pulmonar',
+  'Punta de catéter',
+  'Raspado de piel / uña',
+  'Otoscopía (oído medio)',
+];
+
+const ANTIBIOTICS = [
+  // Penicilinas
+  'Penicilina G',
+  'Penicilina V',
+  'Amoxicilina',
+  'Amoxicilina + ácido clavulánico',
+  'Ampicilina',
+  'Ampicilina + sulbactam',
+  'Cloxacilina',
+  // Cefalosporinas
+  'Cefadroxilo',
+  'Cefalexina',
+  'Cefazolina',
+  'Cefuroxima',
+  'Cefotaxima',
+  'Ceftriaxona',
+  'Ceftazidima',
+  'Cefepime',
+  // Carbapenemes
+  'Ertapenem',
+  'Meropenem',
+  'Imipenem',
+  // β-lactámicos amplio espectro
+  'Piperacilina + tazobactam',
+  // Glucopéptidos / oxazolidinonas
+  'Vancomicina',
+  'Teicoplanina',
+  'Linezolid',
+  'Daptomicina',
+  // Lincosamidas / nitroimidazoles
+  'Clindamicina',
+  'Metronidazol',
+  // Macrólidos
+  'Azitromicina',
+  'Claritromicina',
+  'Eritromicina',
+  // Quinolonas
+  'Ciprofloxacino',
+  'Levofloxacino',
+  'Moxifloxacino',
+  // Otros
+  'Cotrimoxazol (trimetoprim/sulfametoxazol)',
+  'Nitrofurantoína',
+  'Fosfomicina',
+  'Doxiciclina',
+  'Tigeciclina',
+  // Aminoglucósidos
+  'Gentamicina',
+  'Amikacina',
+  // Polimixinas
+  'Colistina',
+  // Antimicóticos
+  'Fluconazol',
+  'Itraconazol',
+  'Voriconazol',
+  'Anfotericina B',
+  // Antivirales
+  'Aciclovir',
+  'Oseltamivir',
+  // Sin antibiótico
+  'Sin tratamiento antibiótico',
+];
+
+const ANATOMICAL_SITES = [
+  'Tracto urinario',
+  'Vejiga',
+  'Riñón',
+  'Próstata',
+  'Uretra',
+  'Vagina',
+  'Cérvix',
+  'Vulva',
+  'Pene',
+  'Recto',
+  'Anal',
+  'Faringe',
+  'Amígdalas',
+  'Laringe',
+  'Oído externo',
+  'Oído medio',
+  'Conjuntiva',
+  'Senos paranasales',
+  'Cavidad nasal',
+  'Cavidad oral',
+  'Lengua',
+  'Pulmón derecho',
+  'Pulmón izquierdo',
+  'Bronquios',
+  'Tráquea',
+  'Piel (cara)',
+  'Piel (tronco)',
+  'Piel (extremidad superior)',
+  'Piel (extremidad inferior)',
+  'Tejido subcutáneo',
+  'Herida quirúrgica',
+  'Herida traumática',
+  'Úlcera por presión',
+  'Úlcera vascular',
+  'Pie diabético',
+  'Lecho ungueal',
+  'Uña',
+  'Sangre periférica',
+  'Catéter venoso central',
+  'LCR',
+  'Articulación',
+  'Hueso',
+  'Líquido pleural',
+  'Líquido peritoneal',
+  'Líquido sinovial',
+];
 
 const EMPTY = {
   nombre: '', rut: '', fecha_nacimiento: '', prevision: '',
@@ -238,13 +383,31 @@ export default function SolicitudMicrobiologia() {
                 <Input type="date" value={f.fecha_nacimiento} onChange={e => u('fecha_nacimiento', e.target.value)} className="h-9" />
               </Field>
               <Field label="Previsión">
-                <Input value={f.prevision} onChange={e => u('prevision', e.target.value)} className="h-9" placeholder="Fonasa A/B/C/D" />
+                <input
+                  value={f.prevision}
+                  onChange={e => u('prevision', e.target.value)}
+                  list="prev-suggestions"
+                  className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-blue-400 focus:outline-none"
+                  placeholder="Fonasa A/B/C/D"
+                />
               </Field>
               <Field label="Servicio">
-                <Input value={f.servicio} onChange={e => u('servicio', e.target.value)} className="h-9" placeholder="Medicina, MQ…" />
+                <input
+                  value={f.servicio}
+                  onChange={e => u('servicio', e.target.value)}
+                  list="serv-suggestions"
+                  className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-blue-400 focus:outline-none"
+                  placeholder="MQ1, MQ2, Pediatría…"
+                />
               </Field>
               <Field label="Sala">
-                <Input value={f.sala} onChange={e => u('sala', e.target.value)} className="h-9" />
+                <input
+                  value={f.sala}
+                  onChange={e => u('sala', e.target.value)}
+                  list="sala-suggestions"
+                  className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-blue-400 focus:outline-none"
+                  placeholder="MQ1 - Sala 3…"
+                />
               </Field>
               <Field label="Cama">
                 <Input value={f.cama} onChange={e => u('cama', e.target.value)} className="h-9" />
@@ -257,13 +420,31 @@ export default function SolicitudMicrobiologia() {
                 <Textarea value={f.diagnostico} onChange={e => u('diagnostico', e.target.value)} className="min-h-[60px]" />
               </Field>
               <Field label="Tratamiento antibiótico" span="col-span-2 md:col-span-4">
-                <Input value={f.tratamiento_antibiotico} onChange={e => u('tratamiento_antibiotico', e.target.value)} className="h-9" placeholder="(opcional)" />
+                <input
+                  value={f.tratamiento_antibiotico}
+                  onChange={e => u('tratamiento_antibiotico', e.target.value)}
+                  list="abx-suggestions"
+                  className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-blue-400 focus:outline-none"
+                  placeholder="Empieza a escribir, sugerencias aparecen abajo (opcional)"
+                />
               </Field>
               <Field label="Tipo de muestra" span="col-span-2">
-                <Input value={f.tipo_muestra} onChange={e => u('tipo_muestra', e.target.value)} className="h-9" placeholder="Orina, esputo, secreción…" />
+                <input
+                  value={f.tipo_muestra}
+                  onChange={e => u('tipo_muestra', e.target.value)}
+                  list="muestra-suggestions"
+                  className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-blue-400 focus:outline-none"
+                  placeholder="Orina, esputo, hemocultivo…"
+                />
               </Field>
               <Field label="Sitio anatómico" span="col-span-2">
-                <Input value={f.sitio_anatomico} onChange={e => u('sitio_anatomico', e.target.value)} className="h-9" />
+                <input
+                  value={f.sitio_anatomico}
+                  onChange={e => u('sitio_anatomico', e.target.value)}
+                  list="sitio-suggestions"
+                  className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-blue-400 focus:outline-none"
+                  placeholder="Tracto urinario, faringe…"
+                />
               </Field>
               <Field label="Profesional solicitante" span="col-span-2 md:col-span-4">
                 <Input value={f.profesional} onChange={e => u('profesional', e.target.value)} className="h-9" />
@@ -414,6 +595,26 @@ export default function SolicitudMicrobiologia() {
           </div>
         </div>
       )}
+
+      {/* Datalists para autocompletado (compartidos entre inputs) */}
+      <datalist id="muestra-suggestions">
+        {SAMPLE_TYPES.map(s => <option key={s} value={s} />)}
+      </datalist>
+      <datalist id="abx-suggestions">
+        {ANTIBIOTICS.map(s => <option key={s} value={s} />)}
+      </datalist>
+      <datalist id="sitio-suggestions">
+        {ANATOMICAL_SITES.map(s => <option key={s} value={s} />)}
+      </datalist>
+      <datalist id="serv-suggestions">
+        {SERVICIOS.map(s => <option key={s} value={s} />)}
+      </datalist>
+      <datalist id="sala-suggestions">
+        {SALAS.map(s => <option key={s} value={s} />)}
+      </datalist>
+      <datalist id="prev-suggestions">
+        {PREVISIONES.map(s => <option key={s} value={s} />)}
+      </datalist>
     </>
   );
 }

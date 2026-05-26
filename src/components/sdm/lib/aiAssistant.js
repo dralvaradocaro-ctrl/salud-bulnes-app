@@ -118,14 +118,14 @@ ${JSON.stringify(availableDays, null, 2)}
 ${principalAvailability ? `TITULAR Y SUBROGANTES DEL BLOQUEO (orden de preferencia para asignación):
 ${JSON.stringify(principalAvailability, null, 2)}
 
-` : ''}REGLAS:
-- Proponé agregar el bloqueo faltante en un día no feriado.
-- Preferí un día donde todavía no exista ese mismo bloqueo.
-- Si el template tiene horario para ese día, usar ese día es mejor.
-- Si hay muchos bloqueos activos ese día, preferí otro día con menos carga.
-- PRIORIDAD MÁXIMA: si el TITULAR del bloqueo está disponible en algún día (ver "disponibilidad_por_dia.titular_disponible: true"), elegir ese día y asignar al titular en doctor_id.
-- Si el titular no está disponible en ningún día razonable, usar el subrogante de menor priority disponible y proponer ese día.
-- Si ningún principal (titular ni subrogantes) está disponible, dejar doctor_id en null y mencionarlo explícitamente en reasoning.
+` : ''}REGLAS (orden estricto de prioridad):
+1) COMPLETAR LA DISTRIBUCIÓN SEMANAL es obligatorio salvo imposibilidad técnica. Si la semana exige más instancias, hay que agregarlas — no se acepta déficit mientras haya un día hábil viable.
+2) EVITAR SUPERPOSICIONES con el titular: preferir el día donde el TITULAR del bloqueo esté disponible (campo "titular_disponible: true" en "disponibilidad_por_dia"); ese día es la solución correcta aunque el template original sugiera otro.
+3) Si el titular no está disponible en ningún día razonable, recién entonces caer al subrogante con menor priority disponible — manteniendo el día del template si el bloqueo es inamovible (horario fijo institucional).
+4) Proponé agregar el bloqueo faltante en un día no feriado.
+5) Preferí un día donde todavía no exista ese mismo bloqueo.
+6) Si hay muchos bloqueos activos ese día y existe otro día con menos carga donde el titular esté libre, elegir ese otro día.
+7) Si ningún principal está disponible en ningún día, dejar doctor_id en null y explicar por qué en reasoning.
 - La acción debe ser "add".
 - Usá swap_with_day para indicar la fecha destino YYYY-MM-DD.
 
@@ -241,15 +241,18 @@ ${JSON.stringify(semana, null, 2)}
 ${principalAvailability ? `TITULAR Y SUBROGANTES DEL BLOQUEO (orden de preferencia):
 ${JSON.stringify(principalAvailability, null, 2)}
 
-` : ''}REGLAS:
-- Un médico no puede estar en turno/posturno/ausencia y simultáneamente en un bloqueo.
-- Quien hace "poli_full_day" cubre policlínico 08:00–17:00 y NO puede tomar bloqueos.
-- Urgenciólogos solo participan en VISITA con cupos fijos, no en bloqueos.
-- Preferir médicos con menor carga semanal para balancear.
+` : ''}REGLAS (orden estricto de prioridad):
+1) EVITAR SUPERPOSICIÓN es preferible a cambiar al titular. Si el conflicto es porque el TITULAR está ocupado este día y otro día de la semana SÍ está libre, la acción correcta es "swap" hacia ese día con el titular — NO "assign" a otra persona el día del conflicto.
+2) Sólo si el bloqueo es inamovible (horario fijo institucional, reunión con calendario propio) o ningún día alterno tiene al titular libre, se acepta dejarlo el día original y "assign" a otra persona.
+3) COMPLETAR LA DISTRIBUCIÓN SEMANAL: no "suspend" mientras quede un día hábil viable. Sólo suspender cuando ningún día razonable lo permita.
+4) Un médico no puede estar en turno/posturno/ausencia y simultáneamente en un bloqueo.
+5) Quien hace "poli_full_day" cubre policlínico 08:00–17:00 y NO puede tomar bloqueos.
+6) Urgenciólogos solo participan en VISITA con cupos fijos, no en bloqueos.
+7) Preferir médicos con menor carga semanal para balancear.
 - PRIORIDAD AL REUBICAR ("swap"): elegir el día donde el TITULAR esté disponible (campo "titular_disponible: true" en "disponibilidad_por_dia"). Si no, el día donde haya algún subrogante de menor priority disponible. Si en ningún día hay titular ni subrogantes disponibles, mencionar esto en "side_effects" y proponer fallback a otro médico con baja carga.
 - OBLIGATORIO: una opción "swap" SIEMPRE debe traer doctor_id NO NULO — el id del médico que hará el bloqueo en el día destino. Tomar el id del array "principales_disponibles" del día propuesto (campo "id"). Si ningún principal está disponible, elegir un médico de la lista "MÉDICOS DISPONIBLES HOY" del día destino con menor carga.
 - PRIORIDAD AL ASIGNAR ("assign") en el mismo día: priorizar titular si está disponible; si no, subrogantes en orden de priority; recién después caer a cualquier médico libre con baja carga.
-- "suspend" difiere el bloqueo a próxima semana (no cubrirlo esta semana).
+- "suspend" SOLO si no hay otra opción viable (último recurso).
 
 Devuelve un JSON con esta forma EXACTA:
 {

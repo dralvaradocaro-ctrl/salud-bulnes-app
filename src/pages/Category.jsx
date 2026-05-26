@@ -670,6 +670,21 @@ export default function Category() {
               </Link>
             )}
 
+            {/* Solicitud de Fármaco Restringido – solo en Hospitalizados */}
+            {hasHospitalizados && (
+              <Link to={createPageUrl('SolicitudFarmacoRestringido')}>
+                <div className="flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 transition-all hover:border-amber-300 hover:shadow-sm">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-600">
+                    <FlaskConical className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">Solicitud de Fármaco de Uso Restringido</p>
+                    <p className="text-sm text-slate-500">Comité de Farmacia / MPJC — Antibióticos amplio espectro, fármacos de uso ocasional. Imprime PDF.</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+
             {/* Informe Biomédico Funcional – solo en Policlínico */}
             {hasPolicinico && (
               <Link to={createPageUrl('InformeBiomedico')}>

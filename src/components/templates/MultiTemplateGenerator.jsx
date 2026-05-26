@@ -81,6 +81,21 @@ const EXTERNAL_FORMS = [
       { field_name: 'diagnostico',       field_label: 'Diagnóstico probable', field_type: 'textarea' },
     ],
   },
+  {
+    id: 'ext-farmaco-restringido',
+    name: 'Solicitud de Fármaco de Uso Restringido',
+    type: 'Formulario Oficial',
+    route: 'SolicitudFarmacoRestringido',
+    shared_fields: [
+      { field_name: 'patient_name',      field_label: 'Nombre del paciente',  field_type: 'text' },
+      { field_name: 'patient_rut',       field_label: 'RUT del paciente',     field_type: 'text' },
+      { field_name: 'patient_fecha_nac', field_label: 'Fecha de nacimiento',  field_type: 'date' },
+      { field_name: 'prevision',         field_label: 'Previsión',            field_type: 'text' },
+      { field_name: 'patient_comuna',    field_label: 'Comuna de origen',     field_type: 'text' },
+      { field_name: 'n_ficha',           field_label: 'N° Ficha',             field_type: 'text' },
+      { field_name: 'diagnostico',       field_label: 'Diagnóstico',          field_type: 'textarea' },
+    ],
+  },
 ];
 
 // Genera un .doc (HTML-Word) descargable a partir de un texto plano. Cada

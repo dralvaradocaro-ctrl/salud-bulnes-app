@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { ChevronLeft, ChevronRight, RefreshCw, Save, Printer, Plus, Trash2, Edit3, Sparkles, Download, FileText } from 'lucide-react';
 import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, dayKeyForDate, sortReinforcements, optimizeForTitulars, balanceLoad, HIERARCHICAL_BLOCK_IDS, findReplacementForBlock, blockDoctorIds, blockHasDoctor } from './lib/generateAgenda';
 import AIFixModal from './AIFixModal';
+import { suggestFixForError } from './lib/aiAssistant';
 import { Shuffle, Wand2, Scale } from 'lucide-react';
 import CellEditor from './CellEditor';
 import SdmInternalMeetings from './SdmInternalMeetings';
@@ -111,6 +112,8 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
   const [newAbs, setNewAbs] = useState({ doctor_id: '', date: '', type: 'A', notes: '' });
   const [editingDay, setEditingDay] = useState(null);
   const [aiError, setAiError] = useState(null); // error que se está corrigiendo con IA
+  const [aiAutoRunning, setAiAutoRunning] = useState(false); // hay un autofix IA en vuelo
+  const [aiAutoPending, setAiAutoPending] = useState(false); // disparar autofix cuando la próxima validación lo permita
   const [showIssuePanel, setShowIssuePanel] = useState(false);
   const [showDismissed, setShowDismissed] = useState(false);   // mostrar las descartadas con opción de restaurar
   const [dragOverDate, setDragOverDate] = useState(null);      // celda BLOQUEOS resaltada durante drag
@@ -549,11 +552,13 @@ ${table}
     setBloqueosOverrides(overrides);
     const summary = moves.slice(0, 5).map(m => `• ${m.block}: ${m.from} → ${m.to}`).join('\n');
     toast.success(`Movidos ${moves.length} bloque(s)`, { description: summary });
+    setAiAutoPending(true);
   }
 
   function regenerarPreliminar() {
     if (!confirm('¿Descartar ediciones manuales de bloqueos y volver al template? Los refuerzos AM/PM se mantienen.')) return;
     setBloqueosOverrides({});
+    setAiAutoPending(true);
   }
 
   // Sortea refuerzos AM/PM SOLO para la semana actual, usando como historial
@@ -588,6 +593,7 @@ ${table}
     setReinforcements(nuevos);
     const semanas = Object.keys(existingReinf).length;
     toast.success(`Refuerzos sorteados para esta semana${semanas ? ` (considerando ${semanas} semana${semanas > 1 ? 's' : ''} previa${semanas > 1 ? 's' : ''} del año)` : ''}. Apretá Guardar para persistir.`);
+    setAiAutoPending(true);
   }
 
   // Persistir external_visitors de una fecha — usado por el editor de pill.
@@ -780,6 +786,74 @@ ${table}
     toast.error("Acción IA no reconocida: " + opt.action);
   }
 
+  // Devuelve true si el error/warning es del tipo que la IA sabe resolver.
+  function isAiFixable(e) {
+    if (!e) return false;
+    return ['unassigned', 'absent_assigned', 'overlap', 'auto_assigned',
+            'weekly_count_short', 'weekly_count_short_unrelocatable',
+            'posturno_assigned', 'outside_jornada'].includes(e.kind);
+  }
+
+  // Motor de auto-corrección IA: itera los errores/warnings actuales que la
+  // IA sabe resolver, pide opciones razonadas y aplica la primera (la
+  // mejor según el prompt). Tras cada aplicación, el render recalcula la
+  // validación, así que arrancamos con los errores de este snapshot y
+  // dejamos que un nuevo ciclo de aiAutoPending (disparado por la operación
+  // que lo originó) lo vuelva a correr si quedaron problemas resolubles.
+  // Tope de 8 correcciones por pasada para no entrar en bucle si la IA
+  // propone fixes que generan otros errores.
+  async function runAiAutofix({ silent = false } = {}) {
+    if (aiAutoRunning) return;
+    const fixable = [...visibleErrors, ...visibleWarnings].filter(isAiFixable);
+    if (fixable.length === 0) {
+      if (!silent) toast.info('La IA no encontró errores resolubles automáticamente.');
+      return;
+    }
+    setAiAutoRunning(true);
+    let applied = 0;
+    let failed = 0;
+    const MAX = Math.min(fixable.length, 8);
+    try {
+      for (let i = 0; i < MAX; i++) {
+        const e = fixable[i];
+        try {
+          const res = await suggestFixForError(e, agenda, doctors, blockTemplates, programAssignments);
+          const opt = Array.isArray(res?.options) ? res.options[0] : null;
+          if (opt) {
+            applyAiOption(e, opt);
+            applied++;
+          } else {
+            failed++;
+          }
+        } catch (err) {
+          console.warn('Auto-fix IA falló para', e?.kind, err);
+          failed++;
+        }
+      }
+    } finally {
+      setAiAutoRunning(false);
+    }
+    if (!silent) {
+      if (applied > 0) {
+        toast.success(`IA corrigió ${applied} alerta(s)${failed ? ` (${failed} sin solución)` : ''}. Guardá la agenda para persistir.`);
+      } else if (failed > 0) {
+        toast.warning(`La IA no pudo proponer fixes (${failed} alerta(s) sin solución).`);
+      }
+    }
+  }
+
+  // Cuando una operación masiva (regenerar/sortear/optimizar/equilibrar)
+  // termina, marca aiAutoPending=true; el efecto siguiente espera al
+  // próximo ciclo de validación y ejecuta el autofix una sola vez.
+  useEffect(() => {
+    if (!aiAutoPending || aiAutoRunning) return;
+    const fixable = [...visibleErrors, ...visibleWarnings].filter(isAiFixable);
+    if (fixable.length === 0) { setAiAutoPending(false); return; }
+    setAiAutoPending(false);
+    runAiAutofix({ silent: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiAutoPending, validation]);
+
   // Agregar bloqueo manual rápido desde el form (+) inline.
   function addBlockInline(date, blk) {
     const day = agenda.find(d => d.date === date);
@@ -936,6 +1010,7 @@ ${table}
       ).join('\n');
       toast.success(`Optimizadas ${moves.length} asignaciones`, { description: summary.split('\n').slice(0, 5).join('\n') });
     }
+    setAiAutoPending(true);
   }
 
   if (loading) return <div className="p-6 text-slate-500">Cargando catálogos...</div>;
@@ -1017,6 +1092,17 @@ ${table}
           <Button variant="outline" size="sm" onClick={optimizarTitulares} className="gap-1.5" title="Reasigna bloques de esta semana al médico titular si está disponible"><Wand2 className="h-4 w-4" /> Optimizar titulares</Button>
           <Button variant="outline" size="sm" onClick={equilibrarCarga} className="gap-1.5" title="Distribuye los bloques de esta semana de forma homogénea entre los días"><Scale className="h-4 w-4" /> Equilibrar carga</Button>
           <Button variant="outline" size="sm" onClick={regenerarPreliminar} className="gap-1.5" title="Descarta las ediciones manuales de esta semana y vuelve al template"><RefreshCw className="h-4 w-4" /> Regenerar</Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => runAiAutofix({ silent: false })}
+            disabled={aiAutoRunning}
+            className="gap-1.5 border-violet-300 text-violet-700 hover:bg-violet-50"
+            title="Aplica automáticamente la mejor opción IA a cada alerta resoluble (unassigned, overlap, absent_assigned, déficit semanal, etc.)"
+          >
+            <Sparkles className="h-4 w-4" />
+            {aiAutoRunning ? 'IA corrigiendo…' : 'Corregir con IA'}
+          </Button>
         </div>
 
         <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">

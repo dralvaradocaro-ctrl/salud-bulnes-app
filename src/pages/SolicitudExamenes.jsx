@@ -4,6 +4,7 @@ import { createPageUrl } from '@/utils';
 import { ChevronLeft, Search, Printer, X, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import { SERVICIOS, SALAS } from '@/lib/hospitalSuggestions';
 
 // ── Datos de exámenes ─────────────────────────────────────────────────
 const SECTIONS = [
@@ -398,10 +399,10 @@ export default function SolicitudExamenes() {
               />
             </Field>
             <Field label="Procedencia">
-              <PatInput field="procedencia" patient={patient} pat={pat} />
+              <PatInput field="procedencia" patient={patient} pat={pat} list="exam-serv-suggestions" placeholder="MQ1, MQ2, Urgencias…" />
             </Field>
             <Field label="Sala / Cama">
-              <PatInput field="sala_cama" patient={patient} pat={pat} />
+              <PatInput field="sala_cama" patient={patient} pat={pat} list="exam-sala-suggestions" placeholder="MQ1 - Sala 3 / Cama 2…" />
             </Field>
             <Field label="Previsión">
               <select
@@ -645,6 +646,13 @@ export default function SolicitudExamenes() {
         </div>
       </div>
 
+      {/* Datalists para autocompletado */}
+      <datalist id="exam-serv-suggestions">
+        {SERVICIOS.map(s => <option key={s} value={s} />)}
+      </datalist>
+      <datalist id="exam-sala-suggestions">
+        {SALAS.map(s => <option key={s} value={s} />)}
+      </datalist>
     </div>
   );
 }
