@@ -5,7 +5,28 @@ import { Badge } from '@/components/ui/badge';
 import { Calculator, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import CalculatorWrapper from '../calculator/CalculatorWrapper';
 
+// Justificaciones de alto riesgo por indicación médica (protocolo local HCSFB).
+// Si el clínico marca al menos una, el paciente se categoriza como alto riesgo
+// con plazo 24–48 h y el resto del NRS-2002 deja de aplicar.
+const MEDICAL_HIGH_RISK_REASONS = [
+  'Cirugía mayor reciente o programada (cabeza/cuello, esofágica, gástrica, pancreática, hepatobiliar)',
+  'Politraumatizado o quemado grave (>20% SCT)',
+  'Sepsis grave o shock séptico',
+  'Pancreatitis aguda grave',
+  'Insuficiencia orgánica aguda descompensada (hepática, renal o respiratoria)',
+  'Cáncer en curso de quimio/radioterapia con compromiso de la ingesta',
+  'ACV agudo con disfagia documentada',
+  'Ayuno o ingesta nula > 5 días',
+  'IMC < 18,5 con descompensación clínica aguda',
+  'Soporte nutricional especializado en curso (nutrición parenteral o enteral)',
+  'Otra indicación médica explícita del clínico tratante',
+];
+
 export default function NRS2002Calculator() {
+  // Paso 0: alto riesgo por indicación médica (corta el protocolo si aplica).
+  const [medicalHighRisk, setMedicalHighRisk] = useState(null); // null | true | false
+  const [medicalReasons, setMedicalReasons] = useState([]);
+
   const [screeningAnswers, setScreeningAnswers] = useState({
     lowIMC: null,
     weightLoss: null,
@@ -78,6 +99,8 @@ export default function NRS2002Calculator() {
   };
 
   const resetCalculator = () => {
+    setMedicalHighRisk(null);
+    setMedicalReasons([]);
     setScreeningAnswers({
       lowIMC: null,
       weightLoss: null,
@@ -92,10 +115,37 @@ export default function NRS2002Calculator() {
     setShowFullAssessment(false);
   };
 
+  const toggleReason = (reason) => {
+    setMedicalReasons(prev => prev.includes(reason)
+      ? prev.filter(r => r !== reason)
+      : [...prev, reason]
+    );
+  };
+
+  // Si hay alto riesgo por indicación médica, exigimos al menos una razón
+  // marcada para considerar el paso completo.
+  const medicalHighRiskComplete = medicalHighRisk === false
+    || (medicalHighRisk === true && medicalReasons.length > 0);
+
   const totalScore = calculateTotalScore();
   const interpretation = showFullAssessment ? getInterpretation(totalScore) : null;
 
   const resultData = (() => {
+    // Caso prioritario: alto riesgo por indicación médica → termina el protocolo.
+    if (medicalHighRisk === true && medicalReasons.length > 0) {
+      return {
+        score: '★',
+        label: 'Alto riesgo por indicación médica',
+        interpretation: 'Alto Riesgo Nutricional (por indicación médica) - Derivación a Nutrición prioritaria. Plazo: 24-48 horas hábiles.',
+        recommendations: [
+          'Evaluación nutricional completa dentro de 24–48 horas hábiles',
+          'Definición de intervención o soporte nutricional especializado',
+          'Monitoreo estrecho de ingesta y tolerancia',
+          ...medicalReasons.map(r => `Justificación: ${r}`),
+        ],
+      };
+    }
+
     if (screeningComplete && !needsFullAssessment) {
       return {
         score: 0,
@@ -122,8 +172,16 @@ export default function NRS2002Calculator() {
   })();
 
   const inputsData = (() => {
+    if (medicalHighRisk === true && medicalReasons.length > 0) {
+      return {
+        'Alto riesgo por indicación médica': 'Sí',
+        'Justificaciones': medicalReasons.join(' · '),
+      };
+    }
+
     if (screeningComplete && !needsFullAssessment) {
       return {
+        'Alto riesgo por indicación médica': 'No',
         ...screeningSummary,
         'Resultado tamizaje': 'Normal'
       };
@@ -131,6 +189,7 @@ export default function NRS2002Calculator() {
 
     if (showFullAssessment) {
       return {
+        'Alto riesgo por indicación médica': 'No',
         ...screeningSummary,
         'Resultado tamizaje': 'Alterado',
         'Estado nutricional': `${fullScore.nutritionalStatus} puntos`,
@@ -155,8 +214,57 @@ export default function NRS2002Calculator() {
       onReset={resetCalculator}
     >
 
-      {/* Etapa 1: Screening Inicial */}
+      {/* Etapa 0: Alto riesgo por indicación médica (corta el protocolo) */}
       <div className="space-y-6">
+        <div className={`rounded-xl p-5 border-2 ${medicalHighRisk === true ? 'bg-red-50 border-red-300' : 'bg-white border-slate-200'}`}>
+          <h4 className="font-bold text-slate-900 mb-3 flex items-center gap-2">
+            <span className="bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">0</span>
+            Alto riesgo por indicación médica
+            <span className="text-[10px] uppercase tracking-wide bg-red-100 text-red-800 px-1.5 py-0.5 rounded border border-red-300">Protocolo local · plazo 24-48 h</span>
+          </h4>
+          <p className="text-xs text-slate-600 mb-3">
+            Si el clínico determina que el paciente tiene <strong>alto riesgo nutricional por indicación médica</strong>,
+            se deriva a Nutrición en 24-48 horas hábiles y el resto del NRS-2002 no se aplica.
+          </p>
+          <div className="flex gap-2 mb-3">
+            <Button
+              variant={medicalHighRisk === true ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setMedicalHighRisk(true)}
+              className={medicalHighRisk === true ? 'bg-red-600 hover:bg-red-700' : ''}
+            >Sí, alto riesgo por indicación médica</Button>
+            <Button
+              variant={medicalHighRisk === false ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => { setMedicalHighRisk(false); setMedicalReasons([]); }}
+            >No, aplicar tamizaje NRS-2002</Button>
+          </div>
+
+          {medicalHighRisk === true && (
+            <div className="bg-white rounded-lg border border-red-200 p-3">
+              <p className="text-sm font-semibold text-slate-800 mb-2">Justificación (marcá al menos una):</p>
+              <div className="space-y-1.5">
+                {MEDICAL_HIGH_RISK_REASONS.map(reason => (
+                  <label key={reason} className="flex items-start gap-2 text-sm text-slate-700 cursor-pointer hover:bg-red-50/40 rounded px-1 py-0.5">
+                    <input
+                      type="checkbox"
+                      checked={medicalReasons.includes(reason)}
+                      onChange={() => toggleReason(reason)}
+                      className="mt-0.5 accent-red-600"
+                    />
+                    <span>{reason}</span>
+                  </label>
+                ))}
+              </div>
+              {medicalReasons.length === 0 && (
+                <p className="text-[11px] text-red-700 mt-2 italic">Tenés que marcar al menos una justificación para que se aplique el alto riesgo por indicación médica.</p>
+              )}
+            </div>
+          )}
+        </div>
+
+      {/* Si hay alto riesgo médico con justificación, no se muestra el resto */}
+      {!(medicalHighRisk === true && medicalReasons.length > 0) && (<>
         <div className="bg-white rounded-xl p-5 border border-slate-200">
           <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
             <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">1</span>
@@ -476,6 +584,14 @@ export default function NRS2002Calculator() {
         )}
 
         {(screeningComplete || showFullAssessment) && (
+          <Button variant="outline" onClick={resetCalculator} className="w-full">
+            Reiniciar Evaluación
+          </Button>
+        )}
+      </>)}
+
+        {/* Botón global para reiniciar también cuando se cortó el protocolo por alto riesgo médico */}
+        {medicalHighRisk === true && medicalReasons.length > 0 && (
           <Button variant="outline" onClick={resetCalculator} className="w-full">
             Reiniciar Evaluación
           </Button>
