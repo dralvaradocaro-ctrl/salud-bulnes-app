@@ -482,9 +482,9 @@ export default function SolicitudFarmacoRestringido() {
 
             {/* Justificación */}
             <div style={{ marginTop: '12pt', marginBottom: '14pt' }}>
-              <p style={{ fontWeight: 'bold', textDecoration: 'underline', margin: '0 0 4pt 0' }}>
-                JUSTIFICACIÓN DEL TRATAMIENTO
-                <span style={{ fontWeight: 'normal', textDecoration: 'none', fontSize: '9.5pt' }}>
+              <p style={{ margin: '0 0 4pt 0' }}>
+                <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>JUSTIFICACIÓN DEL TRATAMIENTO</span>
+                <span style={{ fontWeight: 'normal', fontSize: '9.5pt' }}>
                   {' '}(para solicitudes de antibióticos en infecciones sin documentación microbiológica o si existe un agente patógeno identificado y es sensible a antibióticos más simples, explicar las razones de su elección)
                 </span>
               </p>
