@@ -246,6 +246,7 @@ ${JSON.stringify(principalAvailability, null, 2)}
 2) Sólo si el bloqueo es inamovible (horario fijo institucional, reunión con calendario propio) o ningún día alterno tiene al titular libre, se acepta dejarlo el día original y "assign" a otra persona.
 3) COMPLETAR LA DISTRIBUCIÓN SEMANAL: no "suspend" mientras quede un día hábil viable. Sólo suspender cuando ningún día razonable lo permita.
 4) Un médico no puede estar en turno/posturno/ausencia y simultáneamente en un bloqueo, CON UNA EXCEPCIÓN: si el bloqueo es "subdireccion_medica" y el conflicto es con TURNO (urgencias) — no posturno ni ausencia — y el médico es uno de los titulares SDM (Alvarado/Cordero/Fasani), entonces SE PUEDE dejar al titular en SDM y reasignar su turno a otro médico libre y habilitado para urgencias. SDM tiene prioridad sobre el turno de urgencias en ese escenario.
+4b) Para "subdireccion_medica" específicamente: si los TRES titulares (Alvarado/Cordero/Fasani) están todos en posturno/feriado/administrativo/licencia (cualquier combinación), el bloque DEBE eliminarse ese día — usar action="suspend". No reasignar a subrogantes ni a ningún otro médico. Sin titular SDM disponible = no hay SDM ese día.
 5) Quien hace "poli_full_day" cubre policlínico 08:00–17:00 y NO puede tomar bloqueos.
 6) Urgenciólogos solo participan en VISITA con cupos fijos, no en bloqueos.
 7) Preferir médicos con menor carga semanal para balancear.
