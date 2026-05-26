@@ -21,6 +21,8 @@ import {
   Sparkles,
   UserCheck,
   Files,
+  Activity,
+  ShieldPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -333,6 +335,19 @@ export default function Category() {
             >
               <ClipboardList className="h-4 w-4" />
               Plantillas
+            </button>
+          )}
+          {hasHospitalizados && (
+            <button
+              onClick={() => setActiveTab('gestiones')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                activeTab === 'gestiones'
+                  ? 'bg-white text-teal-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Activity className="h-4 w-4" />
+              Gestiones
             </button>
           )}
           <Link
@@ -727,6 +742,23 @@ export default function Category() {
               </motion.div>
             ))}
             </div>
+          </div>
+        )}
+
+        {/* Gestiones Tab — solo Hospitalizados */}
+        {activeTab === 'gestiones' && hasHospitalizados && (
+          <div className="space-y-4">
+            <Link to={createPageUrl('VisitaPROA')}>
+              <div className="flex items-center gap-4 rounded-2xl border border-teal-200 bg-teal-50 p-4 transition-all hover:border-teal-300 hover:shadow-sm">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-600">
+                  <ShieldPlus className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Visita PROA</p>
+                  <p className="text-sm text-slate-500">Formato para evolucionar la visita del Programa de Optimización del Uso de Antimicrobianos. Imprime PDF.</p>
+                </div>
+              </div>
+            </Link>
           </div>
         )}
       </div>
