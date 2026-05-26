@@ -493,9 +493,11 @@ export default function SolicitudFarmacoRestringido() {
               </div>
             </div>
 
-            {/* Firma médico */}
+            {/* Firma médico — cada campo en su propia fila */}
             <PrintRow>
-              <PrintField label="NOMBRE Y FIRMA MÉDICO SOLICITANTE" value={f.medico} flex={3} />
+              <PrintField label="NOMBRE Y FIRMA MÉDICO SOLICITANTE" value={f.medico} flex={1} />
+            </PrintRow>
+            <PrintRow>
               <PrintField label="FECHA" value={formatDateLocal(f.fecha)} flex={1} />
             </PrintRow>
 
