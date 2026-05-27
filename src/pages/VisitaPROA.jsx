@@ -211,15 +211,31 @@ function formatDateLocal(iso) {
   const [y, m, d] = iso.split('-');
   return `${d}-${m}-${y}`;
 }
+// Convierte una fecha (ISO YYYY-MM-DD, o DD/MM/YYYY, o DD-MM-YYYY) a un objeto
+// Date al mediodía local. Devuelve null si no se puede parsear.
+function parseAnyDate(s) {
+  if (!s) return null;
+  const str = String(s).trim();
+  let y, m, d;
+  let mm = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);        // YYYY-MM-DD
+  if (mm) { y = +mm[1]; m = +mm[2]; d = +mm[3]; }
+  else {
+    mm = str.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/); // DD/MM/YYYY o DD-MM-YYYY
+    if (mm) { d = +mm[1]; m = +mm[2]; y = +mm[3]; }
+    else return null;
+  }
+  const date = new Date(y, m - 1, d, 12, 0, 0);
+  return isNaN(date.getTime()) ? null : date;
+}
+
 // Día de tratamiento calculado desde la fecha de inicio hasta la fecha de visita.
 // Si fechaVisita viene vacía, se usa la fecha de hoy como fallback para que el
 // usuario vea inmediatamente el día calculado al ingresar la fecha de inicio.
 function calcDiaTto(inicio, fechaVisita) {
-  if (!inicio) return null;
-  const fv = fechaVisita || todayIso();
-  const a = new Date(inicio + 'T12:00:00');
-  const b = new Date(fv + 'T12:00:00');
-  if (isNaN(a.getTime()) || isNaN(b.getTime())) return null;
+  const a = parseAnyDate(inicio);
+  if (!a) return null;
+  const b = parseAnyDate(fechaVisita) || parseAnyDate(todayIso());
+  if (!b) return null;
   const diff = Math.floor((b - a) / 86400000);
   return diff >= 0 ? diff + 1 : null; // día 1 = mismo día de inicio
 }
