@@ -71,6 +71,7 @@ import FormularioIRAGrave from './pages/FormularioIRAGrave';
 import SolicitudMicrobiologia from './pages/SolicitudMicrobiologia';
 import SolicitudFarmacoRestringido from './pages/SolicitudFarmacoRestringido';
 import VisitaPROA from './pages/VisitaPROA';
+import AgendaDiaria from './pages/AgendaDiaria';
 import __Layout from './Layout.jsx';
 
 export const PAGES = {
@@ -98,6 +99,7 @@ export const PAGES = {
     "SolicitudMicrobiologia": SolicitudMicrobiologia,
     "SolicitudFarmacoRestringido": SolicitudFarmacoRestringido,
     "VisitaPROA": VisitaPROA,
+    "AgendaDiaria": AgendaDiaria,
 }
 
 export const pagesConfig = {

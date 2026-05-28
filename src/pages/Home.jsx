@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import CategoryCard from '@/components/home/CategoryCard';
 import { createPageUrl } from '@/utils';
-import { Activity, Users, FileText, Sparkles, Calculator, Syringe, ArrowRight } from 'lucide-react';
+import { Activity, Users, FileText, Sparkles, Calculator, Syringe, ArrowRight, CalendarDays } from 'lucide-react';
 import { countedCalculators } from '@/components/calculators/catalog';
 
 export default function Home() {
@@ -279,6 +279,14 @@ export default function Home() {
               >
                 <Users className="inline h-4 w-4 mr-2 -mt-0.5 text-blue-600" />
                 Subdirección Médica
+              </Link>
+              <Link
+                to={createPageUrl('AdminLogin') + '?next=' + encodeURIComponent(createPageUrl('AgendaDiaria'))}
+                className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors text-left border-t border-slate-100"
+                onClick={() => setIngresarOpen(false)}
+              >
+                <CalendarDays className="inline h-4 w-4 mr-2 -mt-0.5 text-blue-600" />
+                Agenda Diaria
               </Link>
             </div>
           )}
