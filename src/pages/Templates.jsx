@@ -94,7 +94,6 @@ export default function Templates() {
 
   const [activeTemplate, setActiveTemplate] = useState(null);
   const [activeType, setActiveType] = useState('all');
-  const [showMultiGen, setShowMultiGen] = useState(openMultiOnLoad);
 
   const HIDDEN_TYPES = ['Estudio Endoscópico'];
 
@@ -131,6 +130,10 @@ export default function Templates() {
     return acc;
   }, {});
 
+  const exitMultiMode = () => {
+    window.history.pushState({}, '', createPageUrl('Templates'));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
       {/* Sticky Header */}
@@ -143,8 +146,8 @@ export default function Templates() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-slate-900">Plantillas de Solicitud</h1>
-              <p className="text-sm text-slate-500">Genera documentos con los datos del paciente</p>
+              <h1 className="text-xl font-bold text-slate-900">Documentos clínicos</h1>
+              <p className="text-sm text-slate-500">Formularios categorizados y generación múltiple</p>
             </div>
           </div>
           <GlobalSearch />
@@ -152,9 +155,18 @@ export default function Templates() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
+        {openMultiOnLoad ? (
+          <MultiTemplateGenerator
+            open
+            embedded
+            templates={templates}
+            onClose={exitMultiMode}
+          />
+        ) : (
+        <>
         {/* Multi-template generator launcher */}
-        <button
-          onClick={() => setShowMultiGen(true)}
+        <Link
+          to={createPageUrl('Templates?multi=1')}
           className="w-full mb-6 group rounded-2xl border-2 border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-indigo-50 hover:from-violet-100 hover:to-indigo-100 hover:border-violet-400 p-5 text-left transition-all"
         >
           <div className="flex items-center gap-4">
@@ -163,17 +175,17 @@ export default function Templates() {
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-slate-900 group-hover:text-violet-700 transition-colors">
-                Solicitar varias plantillas para el mismo paciente
+                Solicitar varios formularios para el mismo paciente
               </h3>
               <p className="text-sm text-slate-600 mt-0.5">
-                Elige 2 o más plantillas, llena los datos del paciente una sola vez y descarga todos los documentos juntos.
+                Elige documentos por categoría, llena los datos una sola vez y revisa una vista previa editable antes de imprimir.
               </p>
             </div>
             <span className="text-xs font-medium text-violet-700 group-hover:translate-x-1 transition-transform shrink-0">
               Abrir →
             </span>
           </div>
-        </button>
+        </Link>
 
         {/* Type Filters */}
         <div className="mb-8 overflow-x-auto pb-2">
@@ -294,12 +306,14 @@ export default function Templates() {
           <div className="text-center py-16 bg-white rounded-3xl border border-slate-200">
             <ClipboardList className="h-16 w-16 text-slate-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-700 mb-2">
-              No hay plantillas disponibles
+              No hay formularios disponibles
             </h3>
             <p className="text-slate-500">
-              Las plantillas están siendo configuradas
+              Los formularios están siendo configurados
             </p>
           </div>
+        )}
+        </>
         )}
       </div>
 
@@ -310,13 +324,6 @@ export default function Templates() {
           onClose={() => setActiveTemplate(null)}
         />
       )}
-
-      {/* Multi-template generator */}
-      <MultiTemplateGenerator
-        open={showMultiGen}
-        templates={templates}
-        onClose={() => setShowMultiGen(false)}
-      />
     </div>
   );
 }

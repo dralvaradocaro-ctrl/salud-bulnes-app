@@ -1,6 +1,6 @@
 const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { Link } from 'react-router-dom';
@@ -23,20 +23,41 @@ import {
   Files,
   Activity,
   ShieldPlus,
+  Image,
+  Pill,
+  Package,
+  Search,
+  ArrowRight,
+  Database,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { isHiddenClinicalTool } from '@/components/utils/hiddenContent';
+import { Input } from '@/components/ui/input';
+import { isHiddenClinicalTool, isHiddenGesConstanciaTool } from '@/components/utils/hiddenContent';
 import { getProtocolValidityStatus } from '@/lib/protocolUtils';
 import { getTopicProtocolStatus } from '@/lib/topicStatus';
-import MultiTemplateGenerator from '@/components/templates/MultiTemplateGenerator';
-import { EXTERNAL_TEMPLATES } from '@/pages/Templates';
+import { supabase } from '@/lib/supabase';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+// Formularios provenientes de la BD (RequestTemplate) que NO deben mostrarse
+// en el tab de Formularios.
+const HIDDEN_TEMPLATE_TYPES = ['Estudio Endoscópico', 'Laboratorio Especial'];
+
+// Estilo de tarjeta por tipo de formulario, para homogenizar con las tarjetas
+// hardcodeadas (tarjeta ancha + icono de color). default cubre tipos sin mapeo.
+const TEMPLATE_TYPE_STYLE = {
+  'Protocolo Imágenes': { border: 'border-indigo-200', bg: 'bg-indigo-50/80', icon: 'bg-indigo-600', Icon: Image },
+  default: { border: 'border-violet-200', bg: 'bg-violet-50/80', icon: 'bg-violet-600', Icon: ClipboardList },
+};
+
+const FORM_CARD_CLASS = 'flex items-center gap-4 rounded-xl border p-4 transition-all hover:shadow-sm hover:-translate-y-0.5';
+const FORM_ICON_CLASS = 'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl';
+const SSN2026_TAG = '[SSÑ-2026]';
 
 export default function Category() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -45,9 +66,10 @@ export default function Category() {
   const initialSubcategory = urlParams.get('topicArea') || 'all';
 
   const [activeTab, setActiveTab] = useState('topics');
-  const [showMultiGen, setShowMultiGen] = useState(false);
   const [activeSubcategory, setActiveSubcategory] = useState(initialSubcategory);
   const [activeTopicFilter, setActiveTopicFilter] = useState(initialTopicFilter);
+  const [gestionesTab, setGestionesTab] = useState('programas');
+  const [arsenalSearch, setArsenalSearch] = useState('');
 
   const { data: category, isLoading: loadingCategory } = useQuery({
     queryKey: ['category', categoryId],
@@ -72,6 +94,11 @@ export default function Category() {
 
   const visibleTools = tools.filter(tool => !isHiddenClinicalTool(tool));
 
+  // El Formulario de Constancia GES llega como ClinicalTool en algunas
+  // categorías; se muestra como formulario (tab Formularios), no como
+  // herramienta.
+  const hasGesConstancia = tools.some(tool => isHiddenGesConstanciaTool(tool?.name));
+
   const hasPolicinico = topics.some(t => t.subcategory === 'Policlínico') ||
     category?.slug?.includes('policlin') ||
     category?.name?.toLowerCase().includes('policl');
@@ -84,15 +111,21 @@ export default function Category() {
     queryFn: () => db.entities.RequestTemplate.filter({ category_id: categoryId }),
     enabled: !!categoryId
   });
+  const visibleTemplates = templates.filter(template => !HIDDEN_TEMPLATE_TYPES.includes(template.type));
 
-  // Lista completa para el multi-template (no filtrada por categoría) + los
-  // formularios oficiales externos (GES, Examenes ISP, IRA grave, Biomédico).
-  const { data: allTemplatesRaw = [] } = useQuery({
-    queryKey: ['templates-all-for-multi'],
-    queryFn: () => db.entities.RequestTemplate.list('type'),
-    enabled: showMultiGen,
+  const { data: medications = [], isLoading: loadingMedications } = useQuery({
+    queryKey: ['category-arsenal-medications'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('medications')
+        .select('id,name,active_ingredient,presentation,dose_value,dose_unit,category,restrictions,is_active')
+        .eq('is_active', true)
+        .order('name');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: activeTab === 'gestiones' && hasHospitalizados,
   });
-  const multiTemplates = [...allTemplatesRaw, ...EXTERNAL_TEMPLATES];
 
   const matchesTopicFilter = (topic) => {
     if (activeTopicFilter === 'local') return getTopicProtocolStatus(topic) === 'local';
@@ -241,6 +274,32 @@ export default function Category() {
   const shouldShowAreaFilters = subcategories.length > 1;
   const shouldShowFilterPanel = shouldShowTopicFilters || shouldShowAreaFilters;
 
+  const filteredMedications = useMemo(() => {
+    const q = arsenalSearch.trim().toLowerCase();
+    if (!q) return medications;
+    return medications.filter((med) => {
+      const haystack = [
+        med.name,
+        med.active_ingredient,
+        med.presentation,
+        med.category,
+        med.restrictions,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [arsenalSearch, medications]);
+
+  const medicationCategories = useMemo(() => {
+    const counts = new Map();
+    medications.forEach((med) => {
+      const key = med.category || 'Sin categoría';
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .sort(([a], [b]) => a.localeCompare(b, 'es'))
+      .slice(0, 8);
+  }, [medications]);
+
   useEffect(() => {
     if (activeSubcategory !== 'all' && (!shouldShowAreaFilters || !subcategories.includes(activeSubcategory))) {
       setActiveSubcategory('all');
@@ -324,7 +383,7 @@ export default function Category() {
               Herramientas ({visibleTools.length})
             </button>
           )}
-          {(templates.length > 0 || hasPolicinico || hasHospitalizados) && (
+          {(templates.length > 0 || hasPolicinico || hasHospitalizados || hasGesConstancia) && (
             <button
               onClick={() => setActiveTab('templates')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
@@ -334,7 +393,7 @@ export default function Category() {
               }`}
             >
               <ClipboardList className="h-4 w-4" />
-              Plantillas
+              Formularios
             </button>
           )}
           {hasHospitalizados && (
@@ -357,14 +416,14 @@ export default function Category() {
             <Sparkles className="h-4 w-4" />
             Prescripción Inteligente
           </Link>
-          <button
-            onClick={() => setShowMultiGen(true)}
+          <Link
+            to={createPageUrl('Templates?multi=1')}
             className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all bg-white border border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300 shadow-sm"
             title="Genera varias solicitudes o documentos para un mismo paciente — llena los datos una sola vez"
           >
             <Files className="h-4 w-4" />
-            Solicitud de Exámenes / Documentos
-          </button>
+            Documentos clínicos
+          </Link>
         </div>
 
         {/* Topics Tab */}
@@ -638,18 +697,34 @@ export default function Category() {
 
         {/* Templates Tab */}
         {activeTab === 'templates' && (
-          <div className="space-y-4">
+          <div className="space-y-7">
+            <div className="space-y-3">
+
+            {/* Formulario de Constancia GES – cuando la categoría lo trae como tool */}
+            {hasGesConstancia && (
+              <Link to={createPageUrl('FormularioGES')} className="block">
+                <div className={`${FORM_CARD_CLASS} border-emerald-200 bg-emerald-50/80 hover:border-emerald-300`}>
+                  <div className={`${FORM_ICON_CLASS} bg-emerald-600`}>
+                    <FileText className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900">Formulario de Constancia — Información al Paciente GES</p>
+                    <p className="text-sm text-slate-500 truncate">Art. 24 Ley 19.966 — Constancia de información de garantías GES. Imprime PDF.</p>
+                  </div>
+                </div>
+              </Link>
+            )}
 
             {/* Solicitud de Exámenes – solo en Hospitalizados */}
             {hasHospitalizados && (
-              <Link to={createPageUrl('SolicitudExamenes')}>
-                <div className="flex items-center gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-4 transition-all hover:border-blue-300 hover:shadow-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600">
+              <Link to={createPageUrl('SolicitudExamenes')} className="block">
+                <div className={`${FORM_CARD_CLASS} border-blue-200 bg-blue-50/80 hover:border-blue-300`}>
+                  <div className={`${FORM_ICON_CLASS} bg-blue-600`}>
                     <FlaskConical className="h-5 w-5 text-white" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-semibold text-slate-900">Solicitud de Exámenes — Hospital de Bulnes</p>
-                    <p className="text-sm text-slate-500">Selecciona exámenes con buscador e imprime el formulario oficial (COD. 32)</p>
+                    <p className="text-sm text-slate-500 truncate">Selecciona exámenes con buscador e imprime el formulario oficial (COD. 32)</p>
                   </div>
                 </div>
               </Link>
@@ -657,14 +732,14 @@ export default function Category() {
 
             {/* Formulario IRA grave / 2019-nCoV (ISP) – solo en Hospitalizados */}
             {hasHospitalizados && (
-              <Link to={createPageUrl('FormularioIRAGrave')}>
-                <div className="flex items-center gap-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 transition-all hover:border-rose-300 hover:shadow-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-600">
+              <Link to={createPageUrl('FormularioIRAGrave')} className="block">
+                <div className={`${FORM_CARD_CLASS} border-rose-200 bg-rose-50/80 hover:border-rose-300`}>
+                  <div className={`${FORM_ICON_CLASS} bg-rose-600`}>
                     <FlaskConical className="h-5 w-5 text-white" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-semibold text-slate-900">Formulario IRA grave y 2019-nCoV (ISP)</p>
-                    <p className="text-sm text-slate-500">PR-244.00-007 — Notificación inmediata y envío de muestras al ISP. Imprime PDF.</p>
+                    <p className="text-sm text-slate-500 truncate">PR-244.00-007 — Notificación inmediata y envío de muestras al ISP. Imprime PDF.</p>
                   </div>
                 </div>
               </Link>
@@ -672,14 +747,14 @@ export default function Category() {
 
             {/* Solicitud de Exámenes Microbiológicos – solo en Hospitalizados */}
             {hasHospitalizados && (
-              <Link to={createPageUrl('SolicitudMicrobiologia')}>
-                <div className="flex items-center gap-4 rounded-2xl border border-cyan-200 bg-cyan-50 p-4 transition-all hover:border-cyan-300 hover:shadow-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cyan-600">
+              <Link to={createPageUrl('SolicitudMicrobiologia')} className="block">
+                <div className={`${FORM_CARD_CLASS} border-cyan-200 bg-cyan-50/80 hover:border-cyan-300`}>
+                  <div className={`${FORM_ICON_CLASS} bg-cyan-600`}>
                     <FlaskConical className="h-5 w-5 text-white" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-semibold text-slate-900">Solicitud de Exámenes Microbiológicos</p>
-                    <p className="text-sm text-slate-500">Formulario C 162 — Cultivos, directos, virológicos. Imprime PDF.</p>
+                    <p className="text-sm text-slate-500 truncate">Formulario C 162 — Cultivos, directos, virológicos. Imprime PDF.</p>
                   </div>
                 </div>
               </Link>
@@ -687,14 +762,14 @@ export default function Category() {
 
             {/* Solicitud de Fármaco Restringido – solo en Hospitalizados */}
             {hasHospitalizados && (
-              <Link to={createPageUrl('SolicitudFarmacoRestringido')}>
-                <div className="flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 transition-all hover:border-amber-300 hover:shadow-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-600">
+              <Link to={createPageUrl('SolicitudFarmacoRestringido')} className="block">
+                <div className={`${FORM_CARD_CLASS} border-amber-200 bg-amber-50/80 hover:border-amber-300`}>
+                  <div className={`${FORM_ICON_CLASS} bg-amber-600`}>
                     <FlaskConical className="h-5 w-5 text-white" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-semibold text-slate-900">Solicitud de Fármaco de Uso Restringido</p>
-                    <p className="text-sm text-slate-500">Comité de Farmacia / MPJC — Antibióticos amplio espectro, fármacos de uso ocasional. Imprime PDF.</p>
+                    <p className="text-sm text-slate-500 truncate">Comité de Farmacia / MPJC — Antibióticos amplio espectro, fármacos de uso ocasional. Imprime PDF.</p>
                   </div>
                 </div>
               </Link>
@@ -702,73 +777,239 @@ export default function Category() {
 
             {/* Informe Biomédico Funcional – solo en Policlínico */}
             {hasPolicinico && (
-              <Link to={createPageUrl('InformeBiomedico')}>
-                <div className="flex items-center gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 transition-all hover:border-amber-300 hover:shadow-sm">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500">
+              <Link to={createPageUrl('InformeBiomedico')} className="block">
+                <div className={`${FORM_CARD_CLASS} border-amber-200 bg-amber-50/80 hover:border-amber-300`}>
+                  <div className={`${FORM_ICON_CLASS} bg-amber-500`}>
                     <UserCheck className="h-5 w-5 text-white" />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-semibold text-slate-900">Informe Biomédico Funcional</p>
-                    <p className="text-sm text-slate-500">Formulario oficial editable con fecha automática, imprimible · Gobierno de Chile / MINSAL</p>
+                    <p className="text-sm text-slate-500 truncate">Formulario oficial editable con fecha automática, imprimible · Gobierno de Chile / MINSAL</p>
                   </div>
                 </div>
               </Link>
             )}
-
-            <div className="grid md:grid-cols-2 gap-4">
-            {templates.map((template, index) => (
-              <motion.div
-                key={template.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <Link
-                  to={createPageUrl(`Templates?id=${template.id}`)}
-                  className="group block bg-white rounded-2xl p-5 border border-slate-100 hover:border-violet-200 hover:shadow-lg transition-all"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-violet-100 rounded-xl">
-                      <ClipboardList className="h-5 w-5 text-violet-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-slate-900 group-hover:text-violet-600 transition-colors">
-                        {template.name}
-                      </h3>
-                      <span className="text-xs text-slate-500">{template.type}</span>
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
             </div>
+
+            {visibleTemplates.length > 0 && (
+              <div className="space-y-3 border-t border-slate-200/80 pt-5">
+                {visibleTemplates.map((template, index) => {
+                const style = TEMPLATE_TYPE_STYLE[template.type] || TEMPLATE_TYPE_STYLE.default;
+                const Icon = style.Icon;
+                return (
+                  <motion.div
+                    key={template.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+	                  >
+	                    <Link to={createPageUrl(`Templates?id=${template.id}`)} className="block">
+	                      <div className={`${FORM_CARD_CLASS} ${style.border} ${style.bg}`}>
+	                        <div className={`${FORM_ICON_CLASS} ${style.icon}`}>
+	                          <Icon className="h-5 w-5 text-white" />
+	                        </div>
+	                        <div className="min-w-0">
+	                          <p className="font-semibold text-slate-900">{template.name}</p>
+	                          <p className="text-sm text-slate-500 truncate">{template.instructions || template.type}</p>
+	                        </div>
+	                      </div>
+	                    </Link>
+	                  </motion.div>
+	                );
+	              })}
+              </div>
+            )}
           </div>
         )}
 
         {/* Gestiones Tab — solo Hospitalizados */}
         {activeTab === 'gestiones' && hasHospitalizados && (
-          <div className="space-y-4">
-            <Link to={createPageUrl('VisitaPROA')}>
-              <div className="flex items-center gap-4 rounded-2xl border border-teal-200 bg-teal-50 p-4 transition-all hover:border-teal-300 hover:shadow-sm">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-600">
-                  <ShieldPlus className="h-5 w-5 text-white" />
+          <motion.div
+            key="gestiones-panel"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+            className="space-y-5"
+          >
+            <div className="flex flex-wrap gap-2 rounded-2xl border border-teal-100 bg-teal-50/70 p-1.5 w-fit">
+              <button
+                type="button"
+                onClick={() => setGestionesTab('programas')}
+                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+                  gestionesTab === 'programas'
+                    ? 'bg-white text-teal-800 shadow-sm'
+                    : 'text-teal-700 hover:bg-white/60'
+                }`}
+              >
+                <Activity className="h-4 w-4" />
+                Programas
+              </button>
+              <button
+                type="button"
+                onClick={() => setGestionesTab('arsenal')}
+                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+                  gestionesTab === 'arsenal'
+                    ? 'bg-white text-teal-800 shadow-sm'
+                    : 'text-teal-700 hover:bg-white/60'
+                }`}
+              >
+                <Pill className="h-4 w-4" />
+                Arsenal farmacológico
+              </button>
+            </div>
+
+            {gestionesTab === 'programas' && (
+              <motion.div
+                key="gestiones-programas"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22 }}
+                className="grid md:grid-cols-2 gap-4"
+              >
+                <Link to={createPageUrl('GestionPROA')} className="group block">
+                  <div className="h-full rounded-2xl border border-teal-200 bg-teal-50/80 p-5 transition-all hover:border-teal-300 hover:bg-teal-50 hover:shadow-md">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal-600 transition-transform group-hover:scale-105">
+                        <ShieldPlus className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-slate-900">PROA</p>
+                          <Badge className="bg-teal-100 text-teal-800 border-teal-200">Disponible</Badge>
+                        </div>
+                        <p className="text-sm text-slate-600 mt-1">
+                          Gestión del Programa de Optimización del Uso de Antimicrobianos: evolución, pacientes, plantillas y seguimiento.
+                        </p>
+                        <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-teal-700">
+                          Abrir gestión <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100">
+                      <Database className="h-5 w-5 text-slate-500" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900">Próximas gestiones</p>
+                      <p className="text-sm text-slate-500 mt-1">
+                        Aquí se podrán sumar tablas de pacientes, planillas Excel y otros flujos administrativos clínicos.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-semibold text-slate-900">Visita PROA</p>
-                  <p className="text-sm text-slate-500">Formato para evolucionar la visita del Programa de Optimización del Uso de Antimicrobianos. Imprime PDF.</p>
+              </motion.div>
+            )}
+
+            {gestionesTab === 'arsenal' && (
+              <motion.div
+                key="gestiones-arsenal"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22 }}
+                className="space-y-4"
+              >
+                <div className="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600">
+                        <Pill className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-lg font-bold text-slate-900">Arsenal farmacológico HCSFB</p>
+                        <p className="text-sm text-slate-500">
+                          {medications.length} medicamentos activos desde la base de datos.
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/PrescripcionInteligente/arsenal"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
+                    >
+                      Administrar arsenal <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr),auto] lg:items-center">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <Input
+                        value={arsenalSearch}
+                        onChange={(event) => setArsenalSearch(event.target.value)}
+                        placeholder="Buscar por medicamento, principio activo, presentación o categoría"
+                        className="pl-10"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {medicationCategories.slice(0, 4).map(([name, count]) => (
+                        <Badge key={name} variant="outline" className="bg-slate-50 text-slate-600">
+                          {name} ({count})
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          </div>
+
+                {loadingMedications ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+                    Cargando arsenal farmacológico...
+                  </div>
+                ) : filteredMedications.length === 0 ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
+                    <Pill className="h-10 w-10 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm text-slate-500">No se encontraron medicamentos con ese filtro.</p>
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {filteredMedications.slice(0, 18).map((med) => {
+                      const cleanRestrictions = (med.restrictions || '').replace(SSN2026_TAG, '').trim();
+                      const isSsn2026 = (med.restrictions || '').includes(SSN2026_TAG);
+                      return (
+                        <div key={med.id} className="rounded-2xl border border-slate-200 bg-white p-4 transition-all hover:border-emerald-200 hover:shadow-sm">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50">
+                              <Pill className="h-4 w-4 text-emerald-700" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-slate-900 leading-snug">{med.name}</p>
+                              <p className="text-xs text-slate-500 truncate">{med.active_ingredient}</p>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <Badge variant="secondary" className="gap-1">
+                              <Package className="h-3 w-3" />
+                              {med.presentation}
+                            </Badge>
+                            <Badge variant="outline">{med.dose_value} {med.dose_unit}</Badge>
+                            {med.category && (
+                              <Badge className="bg-emerald-50 text-emerald-800 border-emerald-200">{med.category}</Badge>
+                            )}
+                            {isSsn2026 && (
+                              <Badge className="bg-amber-100 text-amber-900 border-amber-300">SSÑ-2026</Badge>
+                            )}
+                          </div>
+                          {cleanRestrictions && (
+                            <p className="mt-2 text-xs leading-relaxed text-slate-500">{cleanRestrictions}</p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {filteredMedications.length > 18 && (
+                  <p className="text-xs text-slate-500">
+                    Mostrando 18 de {filteredMedications.length} resultados. Usa el buscador para acotar la lista o abre la administración completa.
+                  </p>
+                )}
+              </motion.div>
+            )}
+          </motion.div>
         )}
       </div>
-
-      {/* Wizard multi-plantilla: se abre desde el botón en el tab bar */}
-      <MultiTemplateGenerator
-        open={showMultiGen}
-        templates={multiTemplates}
-        onClose={() => setShowMultiGen(false)}
-      />
     </div>
   );
 }

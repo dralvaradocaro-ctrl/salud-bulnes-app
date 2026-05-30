@@ -20,25 +20,42 @@
 //   }
 
 const KEY = 'multiTemplatePrefill_v1';
+// Los formularios oficiales se abren en pestañas nuevas con
+// `rel="noopener noreferrer"`. Eso impide que la nueva pestaña vea el
+// sessionStorage del padre, por lo que el payload debe vivir en
+// localStorage (compartido entre pestañas). Lo dejamos expirar pronto
+// para que datos de una tanda anterior no contaminen una sesión nueva.
+const TTL_MS = 30 * 60 * 1000; // 30 min
 
 export function setMultiPrefill(data) {
-  try {
-    sessionStorage.setItem(KEY, JSON.stringify(data || {}));
-  } catch {
-    // sessionStorage puede no estar disponible en modo privado; no es crítico.
-  }
+  const payload = JSON.stringify({ data: data || {}, ts: Date.now() });
+  try { localStorage.setItem(KEY, payload); } catch { /* noop */ }
+  // Mantenemos también sessionStorage por compatibilidad (lecturas en la
+  // misma pestaña que generó el lote).
+  try { sessionStorage.setItem(KEY, payload); } catch { /* noop */ }
 }
 
-export function getMultiPrefill() {
+const readFrom = (storage) => {
   try {
-    const raw = sessionStorage.getItem(KEY);
+    const raw = storage.getItem(KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+    const parsed = JSON.parse(raw);
+    // Compatibilidad con el formato viejo (objeto plano, sin {data,ts}).
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (parsed.data && parsed.ts) {
+      if (Date.now() - parsed.ts > TTL_MS) return null;
+      return parsed.data;
+    }
+    return parsed; // formato legado
+  } catch { return null; }
+};
+
+export function getMultiPrefill() {
+  if (typeof window === 'undefined') return null;
+  return readFrom(window.sessionStorage) || readFrom(window.localStorage);
 }
 
 export function clearMultiPrefill() {
   try { sessionStorage.removeItem(KEY); } catch { /* noop */ }
+  try { localStorage.removeItem(KEY); } catch { /* noop */ }
 }

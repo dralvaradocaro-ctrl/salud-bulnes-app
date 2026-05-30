@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { invokeLLM } from '@/lib/gemini';
+import InflammatoryCurve from '@/components/visita-proa/InflammatoryCurve';
 
 // ── Catálogos ──────────────────────────────────────────────
 const ANTIBIOTICOS = [
@@ -872,45 +873,9 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
               </Grid>
             </Section>
 
-            {/* Parámetros inflamatorios — planilla curva */}
-            <Section title="Parámetros inflamatorios (curva por día)" right={
-              <Button size="sm" variant="outline" onClick={addParamRow} className="gap-1 text-xs h-7"><Plus className="h-3 w-3" /> Agregar día</Button>
-            }>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-teal-50">
-                      {PARAM_COLS.map(c => (
-                        <th key={c.key} className="border border-slate-200 px-2 py-1.5 text-left font-semibold text-slate-700">{c.label}</th>
-                      ))}
-                      <th className="border border-slate-200 px-2 py-1.5 w-8" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {f.parametros_inflamatorios.map((row, i) => (
-                      <tr key={i}>
-                        {PARAM_COLS.map(c => (
-                          <td key={c.key} className="border border-slate-200 p-0.5">
-                            <input
-                              type={c.type}
-                              value={row[c.key]}
-                              onChange={e => updateParamRow(i, c.key, e.target.value)}
-                              className="w-full h-8 px-2 text-sm bg-transparent border-0 focus:bg-white focus:ring-1 focus:ring-teal-400 outline-none rounded"
-                              style={{ minWidth: c.width }}
-                            />
-                          </td>
-                        ))}
-                        <td className="border border-slate-200 text-center">
-                          <Button variant="ghost" size="icon" onClick={() => removeParamRow(i)} className="h-7 w-7 text-rose-600 hover:bg-rose-50" title="Quitar fila">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-1.5 italic">Dejá vacío lo que no se midió ese día. Agregá una fila por cada control.</p>
+            {/* Resumen de caso */}
+            <Section title="Resumen de caso">
+              <Textarea value={f.resumen_caso} onChange={e => u('resumen_caso', e.target.value)} className="min-h-[80px]" placeholder="Resumen breve: ingreso, hospitalización, eventos clave, intervenciones." />
             </Section>
 
             {/* Estudios microbiológicos */}
@@ -976,6 +941,58 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
               </div>
             </Section>
 
+            {/* Estudios imagenológicos */}
+            <Section title="Estudios imagenológicos">
+              <Textarea value={f.estudios_imagen} onChange={e => u('estudios_imagen', e.target.value)} className="min-h-[60px]" placeholder="TAC, Rx, ecografía — fecha y hallazgos relevantes" />
+            </Section>
+
+            {/* Parámetros inflamatorios — planilla curva */}
+            <Section title="Parámetros inflamatorios (curva por día)" right={
+              <Button size="sm" variant="outline" onClick={addParamRow} className="gap-1 text-xs h-7"><Plus className="h-3 w-3" /> Agregar día</Button>
+            }>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-teal-50">
+                      {PARAM_COLS.map(c => (
+                        <th key={c.key} className="border border-slate-200 px-2 py-1.5 text-left font-semibold text-slate-700">{c.label}</th>
+                      ))}
+                      <th className="border border-slate-200 px-2 py-1.5 w-8" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {f.parametros_inflamatorios.map((row, i) => (
+                      <tr key={i}>
+                        {PARAM_COLS.map(c => (
+                          <td key={c.key} className="border border-slate-200 p-0.5">
+                            <input
+                              type={c.type}
+                              value={row[c.key]}
+                              onChange={e => updateParamRow(i, c.key, e.target.value)}
+                              className="w-full h-8 px-2 text-sm bg-transparent border-0 focus:bg-white focus:ring-1 focus:ring-teal-400 outline-none rounded"
+                              style={{ minWidth: c.width }}
+                            />
+                          </td>
+                        ))}
+                        <td className="border border-slate-200 text-center">
+                          <Button variant="ghost" size="icon" onClick={() => removeParamRow(i)} className="h-7 w-7 text-rose-600 hover:bg-rose-50" title="Quitar fila">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5 italic">Dejá vacío lo que no se midió ese día. Agregá una fila por cada control.</p>
+              <div className="mt-3">
+                <InflammatoryCurve
+                  parametros={f.parametros_inflamatorios}
+                  antibioticos={f.antibioticos}
+                />
+              </div>
+            </Section>
+
             {/* Antibioterapia actual */}
             <Section title="Antibioterapia actual" right={
               <Button size="sm" variant="outline" onClick={addAtb} className="gap-1 text-xs h-7"><Plus className="h-3 w-3" /> Agregar</Button>
@@ -983,8 +1000,16 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
               <div className="space-y-2">
                 {f.antibioticos.map((a, i) => {
                   const dia = calcDiaTtoAtb(a, f.fecha);
+                  const vigente = !hasTermino(a);
                   return (
-                    <div key={i} className="grid grid-cols-12 gap-2 items-end">
+                    <div
+                      key={i}
+                      className={`grid grid-cols-12 gap-2 items-end p-2 rounded-lg border transition-colors ${
+                        vigente
+                          ? 'bg-emerald-50/50 border-emerald-200'
+                          : 'bg-rose-50/40 border-rose-200'
+                      }`}
+                    >
                       <div className="col-span-12 md:col-span-3">
                         <label className="block text-[11px] text-slate-600 mb-0.5">Antibiótico</label>
                         <input
@@ -1040,15 +1065,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
               </div>
             </Section>
 
-            {/* Estudios imagenológicos */}
-            <Section title="Estudios imagenológicos">
-              <Textarea value={f.estudios_imagen} onChange={e => u('estudios_imagen', e.target.value)} className="min-h-[60px]" placeholder="TAC, Rx, ecografía — fecha y hallazgos relevantes" />
-            </Section>
-
-            {/* Resumen + Evolución */}
-            <Section title="Resumen de caso">
-              <Textarea value={f.resumen_caso} onChange={e => u('resumen_caso', e.target.value)} className="min-h-[80px]" placeholder="Resumen breve: ingreso, hospitalización, eventos clave, intervenciones." />
-            </Section>
+            {/* Evolución clínica */}
             <Section title="Evolución clínica">
               <Textarea value={f.evolucion} onChange={e => u('evolucion', e.target.value)} className="min-h-[80px]" placeholder="Tendencia, respuesta al tratamiento, eventos de las últimas 24-48 h." />
             </Section>
@@ -1103,10 +1120,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
             <Section title="Firmas">
               <Grid>
                 <Field label="Médico que firma" span="md:col-span-2">
-                  <Input value={f.medico_firma} onChange={e => u('medico_firma', e.target.value)} className="h-9" placeholder="Nombre y apellido" />
-                </Field>
-                <Field label="Equipo PROA" span="md:col-span-2">
-                  <Input value="Equipo PROA Hospital de Bulnes" readOnly className="h-9 bg-slate-100 text-slate-600" />
+                  <Input value={f.medico_firma} onChange={e => u('medico_firma', e.target.value)} className="h-9" placeholder="Nombre y apellido · Equipo PROA" />
                 </Field>
               </Grid>
             </Section>
@@ -1357,28 +1371,11 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
               </PrintGrid>
             </PrintBlock>
 
-            {/* Parámetros inflamatorios — planilla curva */}
-            <PrintBlock title="Parámetros inflamatorios (curva)">
-              <table style={tbl}>
-                <thead>
-                  <tr style={{ background: '#e6f4f1' }}>
-                    {PARAM_COLS.map(c => <th key={c.key} style={cellHead}>{c.label}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {f.parametros_inflamatorios.filter(r => Object.values(r).some(v => v)).map((r, i) => (
-                    <tr key={i}>
-                      {PARAM_COLS.map(c => (
-                        <td key={c.key} style={cell}>{c.key === 'fecha' ? formatDateLocal(r[c.key]) : r[c.key]}</td>
-                      ))}
-                    </tr>
-                  ))}
-                  {f.parametros_inflamatorios.filter(r => Object.values(r).some(v => v)).length === 0 && (
-                    <tr><td colSpan={PARAM_COLS.length} style={{ ...cell, fontStyle: 'italic', color: '#666' }}>— sin parámetros registrados —</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </PrintBlock>
+            {f.resumen_caso && (
+              <PrintBlock title="Resumen de caso">
+                <div style={box}>{f.resumen_caso}</div>
+              </PrintBlock>
+            )}
 
             <PrintBlock title="Estudios microbiológicos">
               <table style={tbl}>
@@ -1415,6 +1412,35 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
               </table>
             </PrintBlock>
 
+            {f.estudios_imagen && (
+              <PrintBlock title="Estudios imagenológicos">
+                <div style={box}>{f.estudios_imagen}</div>
+              </PrintBlock>
+            )}
+
+            {/* Parámetros inflamatorios — planilla curva */}
+            <PrintBlock title="Parámetros inflamatorios (curva)">
+              <table style={tbl}>
+                <thead>
+                  <tr style={{ background: '#e6f4f1' }}>
+                    {PARAM_COLS.map(c => <th key={c.key} style={cellHead}>{c.label}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {f.parametros_inflamatorios.filter(r => Object.values(r).some(v => v)).map((r, i) => (
+                    <tr key={i}>
+                      {PARAM_COLS.map(c => (
+                        <td key={c.key} style={cell}>{c.key === 'fecha' ? formatDateLocal(r[c.key]) : r[c.key]}</td>
+                      ))}
+                    </tr>
+                  ))}
+                  {f.parametros_inflamatorios.filter(r => Object.values(r).some(v => v)).length === 0 && (
+                    <tr><td colSpan={PARAM_COLS.length} style={{ ...cell, fontStyle: 'italic', color: '#666' }}>— sin parámetros registrados —</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </PrintBlock>
+
             <PrintBlock title="Antibioterapia actual">
               <table style={tbl}>
                 <thead>
@@ -1444,18 +1470,6 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                 </tbody>
               </table>
             </PrintBlock>
-
-            {f.estudios_imagen && (
-              <PrintBlock title="Estudios imagenológicos">
-                <div style={box}>{f.estudios_imagen}</div>
-              </PrintBlock>
-            )}
-
-            {f.resumen_caso && (
-              <PrintBlock title="Resumen de caso">
-                <div style={box}>{f.resumen_caso}</div>
-              </PrintBlock>
-            )}
 
             {f.evolucion && (
               <PrintBlock title="Evolución clínica">
@@ -1487,18 +1501,12 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
             </PrintBlock>
 
             <PrintBlock title="Firmas">
-              <div style={{ marginTop: '16pt', display: 'flex', gap: '12pt' }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ marginTop: '16pt', display: 'flex', justifyContent: 'center' }}>
+                <div style={{ width: '58%' }}>
                   <div style={{ borderTop: '0.75pt solid #000', paddingTop: '2pt', textAlign: 'center', fontSize: '9pt' }}>
                     {f.medico_firma || '—'}
                   </div>
-                  <p style={{ margin: 0, fontSize: '8.5pt', textAlign: 'center', color: '#555' }}>Médico que firma</p>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ borderTop: '0.75pt solid #000', paddingTop: '2pt', textAlign: 'center', fontSize: '9pt' }}>
-                    Equipo PROA Hospital de Bulnes
-                  </div>
-                  <p style={{ margin: 0, fontSize: '8.5pt', textAlign: 'center', color: '#555' }}>Equipo PROA</p>
+                  <p style={{ margin: 0, fontSize: '8.5pt', textAlign: 'center', color: '#555' }}>Médico firmante · Equipo PROA Hospital de Bulnes</p>
                 </div>
               </div>
             </PrintBlock>
