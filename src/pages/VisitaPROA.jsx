@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { ChevronLeft, Printer, RotateCcw, Plus, Trash2, ShieldPlus, Sparkles } from 'lucide-react';
+import { ChevronLeft, Printer, RotateCcw, Plus, Trash2, ShieldPlus, Sparkles, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { invokeLLM } from '@/lib/gemini';
 import InflammatoryCurve from '@/components/visita-proa/InflammatoryCurve';
+import DateInputDdmm from '@/components/sdm/DateInputDdmm';
+import { SERVICIOS, CAMAS } from '@/lib/hospitalSuggestions';
+import { saveProaRecord, takePendingProaForm } from '@/lib/proaRegistry';
 
 // ── Catálogos ──────────────────────────────────────────────
 const ANTIBIOTICOS = [
@@ -600,14 +603,39 @@ export default function VisitaPROA() {
     if (window.history.length > 1) navigate(-1);
     else navigate(createPageUrl('Home'));
   };
-  const [f, setF] = useState({ ...EMPTY, fecha: todayIso(), hora: currentTime() });
+  const [f, setF] = useState(() => {
+    const pending = takePendingProaForm();
+    return {
+      ...EMPTY,
+      ...(pending || {}),
+      fecha: todayIso(),
+      hora: currentTime(),
+      paciente: '',
+      rut: '',
+      n_ficha: '',
+    };
+  });
   const [showPreview, setShowPreview] = useState(false);
   const [doseEditorIdx, setDoseEditorIdx] = useState(null);
   const [antibiogramEditorIdx, setAntibiogramEditorIdx] = useState(null);
   const [antibiogramSearch, setAntibiogramSearch] = useState('');
   const [aiSuggesting, setAiSuggesting] = useState(false);
+  const [registryMessage, setRegistryMessage] = useState('');
   const u = (k, v) => setF(prev => ({ ...prev, [k]: v }));
-  const clear = () => setF({ ...EMPTY, fecha: todayIso(), hora: currentTime() });
+  const clear = () => {
+    setRegistryMessage('');
+    setF({ ...EMPTY, fecha: todayIso(), hora: currentTime() });
+  };
+
+  const handleSaveRegistry = () => {
+    if (!f.cama?.trim()) {
+      setRegistryMessage('Selecciona una cama antes de guardar el registro PROA.');
+      return;
+    }
+    const record = saveProaRecord(f, { replaceExisting: f.__proaRegistryMode === 'new_patient' });
+    setF(prev => ({ ...prev, __proaRegistryMode: '' }));
+    setRegistryMessage(`Registro ${record.code} guardado en cama ${record.bedCode}. No se almacenó nombre, RUT ni ficha.`);
+  };
 
   const toggleRec = (rec) => {
     setF(prev => ({
@@ -799,16 +827,28 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
             <Section title="Identificación">
               <Grid>
                 <Field label="Fecha de visita">
-                  <Input type="date" value={f.fecha} onChange={e => u('fecha', e.target.value)} className="h-9" />
+                  <DateInputDdmm value={f.fecha} onChange={v => u('fecha', v)} className="h-9" />
                 </Field>
                 <Field label="Hora">
                   <Input type="time" value={f.hora} onChange={e => u('hora', e.target.value)} className="h-9" />
                 </Field>
                 <Field label="Servicio">
-                  <Input value={f.servicio} onChange={e => u('servicio', e.target.value)} placeholder="MQ1, MQ2, Pediatría, Urgencia…" className="h-9" />
+                  <input
+                    value={f.servicio}
+                    onChange={e => u('servicio', e.target.value)}
+                    list="proa-servicio-suggestions"
+                    placeholder="MQ1, MQ2, Pediatría, Urgencias..."
+                    className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-teal-400 focus:outline-none"
+                  />
                 </Field>
                 <Field label="Cama">
-                  <Input value={f.cama} onChange={e => u('cama', e.target.value)} className="h-9" placeholder="Ej: 12" />
+                  <input
+                    value={f.cama}
+                    onChange={e => u('cama', e.target.value)}
+                    list="proa-cama-suggestions"
+                    className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-teal-400 focus:outline-none"
+                    placeholder="1-1, 2-3, Aisl 5-1..."
+                  />
                 </Field>
                 <Field label="N° Ficha">
                   <Input value={f.n_ficha} onChange={e => u('n_ficha', e.target.value)} className="h-9" />
@@ -897,7 +937,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                     </div>
                     <div className="col-span-6 md:col-span-2">
                       <label className="block text-[11px] text-slate-600 mb-0.5">Fecha</label>
-                      <Input type="date" value={c.fecha} onChange={e => updateCult(i, 'fecha', e.target.value)} className="h-9" />
+                      <DateInputDdmm value={c.fecha} onChange={v => updateCult(i, 'fecha', v)} className="h-9" />
                     </div>
                     <div className="col-span-12 md:col-span-4">
                       <label className="block text-[11px] text-slate-600 mb-0.5">Patógeno</label>
@@ -965,13 +1005,22 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                       <tr key={i}>
                         {PARAM_COLS.map(c => (
                           <td key={c.key} className="border border-slate-200 p-0.5">
-                            <input
-                              type={c.type}
-                              value={row[c.key]}
-                              onChange={e => updateParamRow(i, c.key, e.target.value)}
-                              className="w-full h-8 px-2 text-sm bg-transparent border-0 focus:bg-white focus:ring-1 focus:ring-teal-400 outline-none rounded"
-                              style={{ minWidth: c.width }}
-                            />
+                            {c.key === 'fecha' ? (
+                              <DateInputDdmm
+                                value={row[c.key]}
+                                onChange={v => updateParamRow(i, c.key, v)}
+                                className="w-full h-8 px-2 text-sm bg-transparent border-0 focus:bg-white focus:ring-1 focus:ring-teal-400 outline-none rounded"
+                                style={{ minWidth: c.width }}
+                              />
+                            ) : (
+                              <input
+                                type={c.type}
+                                value={row[c.key]}
+                                onChange={e => updateParamRow(i, c.key, e.target.value)}
+                                className="w-full h-8 px-2 text-sm bg-transparent border-0 focus:bg-white focus:ring-1 focus:ring-teal-400 outline-none rounded"
+                                style={{ minWidth: c.width }}
+                              />
+                            )}
                           </td>
                         ))}
                         <td className="border border-slate-200 text-center">
@@ -1040,11 +1089,11 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                       </div>
                       <div className="col-span-6 md:col-span-1">
                         <label className="block text-[11px] text-slate-600 mb-0.5">Inicio</label>
-                        <Input type="date" value={a.inicio} onChange={e => updateAtb(i, 'inicio', e.target.value)} className="h-9" />
+                        <DateInputDdmm value={a.inicio} onChange={v => updateAtb(i, 'inicio', v)} className="h-9" />
                       </div>
                       <div className="col-span-6 md:col-span-1">
                         <label className="block text-[11px] text-slate-600 mb-0.5">Término</label>
-                        <Input type="date" value={hasTermino(a) ? a.termino : ''} onChange={e => updateAtb(i, 'termino', e.target.value)} className="h-9" />
+                        <DateInputDdmm value={hasTermino(a) ? a.termino : ''} onChange={v => updateAtb(i, 'termino', v)} className="h-9" />
                       </div>
                       <div className="col-span-4 md:col-span-1">
                         <label className="block text-[11px] text-slate-600 mb-0.5">{hasTermino(a) ? 'Duración' : 'Día de tto'}</label>
@@ -1102,7 +1151,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                   <Input value={f.plan_duracion} onChange={e => u('plan_duracion', e.target.value)} className="h-9" placeholder="Ej: completar 7 días totales (hasta 12-06)" />
                 </Field>
                 <Field label="Próxima revisión" span="md:col-span-2">
-                  <Input type="date" value={f.proxima_revision} onChange={e => u('proxima_revision', e.target.value)} className="h-9" />
+                  <DateInputDdmm value={f.proxima_revision} onChange={v => u('proxima_revision', v)} className="h-9" />
                 </Field>
               </Grid>
               <div className="mt-3">
@@ -1125,11 +1174,18 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
               </Grid>
             </Section>
 
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="min-h-5 text-xs font-medium text-teal-700">{registryMessage}</p>
+              <div className="flex items-center justify-end gap-2">
+                <Button variant="outline" onClick={handleSaveRegistry} className="gap-2">
+                  <Save className="h-4 w-4" />
+                  Guardar registro PROA
+                </Button>
               <Button variant="outline" onClick={clear}>Limpiar</Button>
               <Button onClick={() => setShowPreview(true)} className="bg-teal-600 hover:bg-teal-700 gap-2">
                 Generar formulario →
               </Button>
+              </div>
             </div>
           </div>
 
@@ -1319,6 +1375,12 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
           <datalist id="proa-diag-suggestions">
             {DIAGNOSTICOS_INFECTO.map(s => <option key={s} value={s} />)}
           </datalist>
+          <datalist id="proa-servicio-suggestions">
+            {SERVICIOS.map(s => <option key={s} value={s} />)}
+          </datalist>
+          <datalist id="proa-cama-suggestions">
+            {CAMAS.map(s => <option key={s} value={s} />)}
+          </datalist>
         </div>
       )}
 
@@ -1420,6 +1482,12 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
 
             {/* Parámetros inflamatorios — planilla curva */}
             <PrintBlock title="Parámetros inflamatorios (curva)">
+              <div style={{ marginBottom: '6pt', breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+                <InflammatoryCurve
+                  parametros={f.parametros_inflamatorios}
+                  antibioticos={f.antibioticos}
+                />
+              </div>
               <table style={tbl}>
                 <thead>
                   <tr style={{ background: '#e6f4f1' }}>

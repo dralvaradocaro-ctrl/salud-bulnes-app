@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
-import { SERVICIOS, SALAS, PREVISIONES } from '@/lib/hospitalSuggestions';
+import { SERVICIOS, SALAS, CAMAS, PREVISIONES } from '@/lib/hospitalSuggestions';
 
 // Formulario oficial C 162 — Hospital Comunitario de Salud Familiar de Bulnes.
 // Estructura por secciones en DOS COLUMNAS preservando el layout del original
@@ -418,7 +418,13 @@ export default function SolicitudMicrobiologia() {
                 />
               </Field>
               <Field label="Cama">
-                <Input value={f.cama} onChange={e => u('cama', e.target.value)} className="h-9" />
+                <input
+                  value={f.cama}
+                  onChange={e => u('cama', e.target.value)}
+                  list="cama-suggestions"
+                  className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-blue-400 focus:outline-none"
+                  placeholder="1-1, 2-3, Aisl 5-1..."
+                />
               </Field>
               <Field label="Fecha toma de muestra">
                 <Input type="date" value={f.fecha_toma} onChange={e => u('fecha_toma', e.target.value)} className="h-9" />
@@ -619,6 +625,9 @@ export default function SolicitudMicrobiologia() {
       </datalist>
       <datalist id="sala-suggestions">
         {SALAS.map(s => <option key={s} value={s} />)}
+      </datalist>
+      <datalist id="cama-suggestions">
+        {CAMAS.map(s => <option key={s} value={s} />)}
       </datalist>
       <datalist id="prev-suggestions">
         {PREVISIONES.map(s => <option key={s} value={s} />)}

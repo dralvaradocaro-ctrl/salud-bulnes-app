@@ -1,21 +1,97 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PROA_BED_MAP } from '@/lib/hospitalSuggestions';
+import { getLatestProaForm, readProaRegistry, setPendingProaForm } from '@/lib/proaRegistry';
 import {
   ArrowRight,
+  Bed,
   ChevronLeft,
   ClipboardList,
+  Clock3,
   FileSpreadsheet,
+  RotateCw,
   ShieldPlus,
   Users,
 } from 'lucide-react';
 
 const moduleCardClass = 'group block h-full rounded-2xl border bg-white p-5 transition-all hover:-translate-y-0.5 hover:shadow-md';
 
+function formatUpdatedAt(value) {
+  if (!value) return 'Sin fecha';
+  try {
+    return new Intl.DateTimeFormat('es-CL', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(new Date(value));
+  } catch {
+    return 'Sin fecha';
+  }
+}
+
+function summarizeLatest(form) {
+  if (!form) return 'Sin evolución registrada.';
+  const diagnosis = form.diagnostico_actual || 'Sin diagnóstico consignado';
+  const atb = (form.antibioticos || [])
+    .filter((item) => item.nombre)
+    .map((item) => item.nombre)
+    .slice(0, 3)
+    .join(', ');
+  return atb ? `${diagnosis} · ATB: ${atb}` : diagnosis;
+}
+
+function findServiceForBed(bedCode) {
+  return PROA_BED_MAP.find((service) => (
+    service.groups.some((group) => group.beds.includes(bedCode))
+  ))?.servicio || '';
+}
+
 export default function GestionPROA() {
+  const navigate = useNavigate();
+  const [records, setRecords] = useState(() => readProaRegistry());
+  const [selectedBed, setSelectedBed] = useState('');
+  const [activeService, setActiveService] = useState(PROA_BED_MAP[0]?.servicio || '');
+
+  const recordsByBed = useMemo(() => (
+    records.reduce((acc, record) => {
+      acc[record.bedCode] = record;
+      return acc;
+    }, {})
+  ), [records]);
+
+  const selectedRecord = selectedBed ? recordsByBed[selectedBed] : null;
+  const selectedLatest = getLatestProaForm(selectedRecord);
+  const currentService = PROA_BED_MAP.find((service) => service.servicio === activeService) || PROA_BED_MAP[0];
+
+  const refreshRecords = () => setRecords(readProaRegistry());
+
+  const serviceRecordCount = (service) => service.groups.reduce((total, group) => (
+    total + group.beds.filter((bed) => recordsByBed[bed]).length
+  ), 0);
+
+  const handleServiceChange = (serviceName) => {
+    setActiveService(serviceName);
+    const nextService = PROA_BED_MAP.find((service) => service.servicio === serviceName);
+    const selectedIsVisible = nextService?.groups.some((group) => group.beds.includes(selectedBed));
+    if (!selectedIsVisible) setSelectedBed('');
+  };
+
+  const editFromLatest = () => {
+    if (!selectedLatest) return;
+    setPendingProaForm(selectedLatest);
+    navigate(createPageUrl('VisitaPROA'));
+  };
+
+  const createFromBed = () => {
+    if (!selectedBed) return;
+    setPendingProaForm({ cama: selectedBed, servicio: findServiceForBed(selectedBed) });
+    navigate(createPageUrl('VisitaPROA'));
+  };
+
   const modules = [
     {
       title: 'Formato de evolución PROA',
@@ -26,11 +102,11 @@ export default function GestionPROA() {
       to: createPageUrl('VisitaPROA'),
     },
     {
-      title: 'Plantillas de pacientes',
-      description: 'Espacio para listados, plantillas Excel y seguimiento de pacientes PROA.',
+      title: 'Pacientes por cama',
+      description: 'Mapa navegable con código anonimizado, cama y última evolución PROA guardada localmente.',
       icon: Users,
-      color: 'slate',
-      status: 'Próximamente',
+      color: 'teal',
+      status: `${records.length} registros`,
     },
     {
       title: 'Tablas de seguimiento',
@@ -97,7 +173,7 @@ export default function GestionPROA() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50">
       <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur-xl">
-        <div className="mx-auto max-w-5xl px-4 py-4">
+        <div className="mx-auto max-w-6xl px-4 py-4">
           <div className="flex items-center gap-4">
             <Link to={createPageUrl('Home')}>
               <Button variant="ghost" size="icon" className="rounded-xl">
@@ -110,14 +186,14 @@ export default function GestionPROA() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-900">Gestión PROA</h1>
-                <p className="text-sm text-slate-500">Módulos administrativos y clínicos del programa</p>
+                <p className="text-sm text-slate-500">Seguimiento clínico anonimizado por cama</p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <main className="mx-auto max-w-5xl px-4 py-8">
+      <main className="mx-auto max-w-6xl px-4 py-8">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -125,13 +201,149 @@ export default function GestionPROA() {
         >
           <p className="text-lg font-bold text-slate-900">PROA</p>
           <p className="mt-1 text-sm leading-relaxed text-slate-600">
-            Esta gestión agrupa el formato de evolución actual y queda preparada para incorporar plantillas de pacientes, tablas Excel y seguimiento operativo del programa.
+            Los registros se guardan con código anonimizado y número de cama. Nombre, RUT y ficha no quedan almacenados.
           </p>
         </motion.div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           {modules.map(renderCard)}
         </div>
+
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+                <Bed className="h-5 w-5 text-teal-700" />
+                Buscar paciente por cama
+              </h2>
+              <p className="text-sm text-slate-500">Selecciona una cama para revisar el código y retomar la última evolución PROA.</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={refreshRecords} className="gap-2 self-start sm:self-auto">
+              <RotateCw className="h-4 w-4" />
+              Actualizar
+            </Button>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div>
+              <Tabs value={activeService} onValueChange={handleServiceChange} className="space-y-4">
+                <TabsList className="flex h-auto w-full flex-wrap justify-start gap-2 bg-slate-100 p-1.5">
+                  {PROA_BED_MAP.map((service) => (
+                    <TabsTrigger
+                      key={service.servicio}
+                      value={service.servicio}
+                      className="gap-2 rounded-lg px-3 py-2 data-[state=active]:bg-white data-[state=active]:text-teal-800"
+                    >
+                      {service.servicio}
+                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+                        {serviceRecordCount(service)}/{service.groups.reduce((total, group) => total + group.beds.length, 0)}
+                      </span>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+
+                {PROA_BED_MAP.map((service) => (
+                  <TabsContent key={service.servicio} value={service.servicio} className="mt-0">
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="rounded-xl border border-slate-200 bg-slate-50/60 p-3"
+                    >
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="font-bold text-slate-800">{service.servicio}</p>
+                        <Badge className="border-slate-200 bg-white text-slate-600">
+                          {service.groups.reduce((total, group) => total + group.beds.length, 0)} camas
+                        </Badge>
+                      </div>
+                      <div className="space-y-3">
+                        {service.groups.map((group) => (
+                          <div key={`${service.servicio}-${group.label}`}>
+                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{group.label}</p>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+                              {group.beds.map((bed) => {
+                                const record = recordsByBed[bed];
+                                const selected = selectedBed === bed;
+                                return (
+                                  <button
+                                    key={bed}
+                                    type="button"
+                                    onClick={() => setSelectedBed(bed)}
+                                    className={`min-h-[62px] rounded-xl border px-3 py-2 text-left transition ${
+                                      selected
+                                        ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200'
+                                        : record
+                                          ? 'border-emerald-200 bg-emerald-50 hover:border-emerald-300'
+                                          : 'border-slate-200 bg-white hover:border-teal-200 hover:bg-teal-50/40'
+                                    }`}
+                                  >
+                                    <span className="block text-base font-bold text-slate-900">{bed}</span>
+                                    {record ? (
+                                      <>
+                                        <span className="mt-0.5 block truncate text-xs font-semibold text-emerald-800">{record.code}</span>
+                                        <span className="mt-0.5 block text-[10px] text-slate-500">{formatUpdatedAt(record.updatedAt)}</span>
+                                      </>
+                                    ) : (
+                                      <span className="mt-1 block text-xs text-slate-400">Sin registro</span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </div>
+
+            <aside className="rounded-xl border border-slate-200 bg-slate-50 p-4 lg:sticky lg:top-24 lg:self-start">
+              <p className="text-sm font-bold uppercase tracking-wide text-slate-700">Detalle</p>
+              {!selectedBed && (
+                <p className="mt-3 text-sm leading-relaxed text-slate-500">
+                  Elige una cama de {currentService?.servicio} para ver si tiene registro PROA guardado.
+                </p>
+              )}
+
+              {selectedBed && !selectedRecord && (
+                <div className="mt-3 space-y-3">
+                  <Badge className="border-slate-200 bg-white text-slate-700">Cama {selectedBed}</Badge>
+                  <p className="text-sm text-slate-500">No hay registro PROA asociado a esta cama.</p>
+                  <Button onClick={createFromBed} className="w-full bg-teal-600 hover:bg-teal-700">Crear evolución</Button>
+                </div>
+              )}
+
+              {selectedRecord && (
+                <div className="mt-3 space-y-4">
+                  <div className="rounded-lg border border-emerald-200 bg-white p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Código anonimizado</p>
+                    <p className="mt-1 text-2xl font-black text-emerald-800">{selectedRecord.code}</p>
+                    <p className="mt-1 text-sm text-slate-500">Cama {selectedRecord.bedCode}</p>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <p className="flex items-center gap-2 font-medium text-slate-700">
+                      <Clock3 className="h-4 w-4 text-slate-500" />
+                      Última actualización: {formatUpdatedAt(selectedRecord.updatedAt)}
+                    </p>
+                    <p className="leading-relaxed text-slate-600">{summarizeLatest(selectedLatest)}</p>
+                    {selectedLatest?.evolucion && (
+                      <div className="rounded-lg border border-slate-200 bg-white p-3">
+                        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Última evolución</p>
+                        <p className="line-clamp-6 whitespace-pre-wrap text-sm text-slate-700">{selectedLatest.evolucion}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button onClick={editFromLatest} className="w-full bg-teal-600 hover:bg-teal-700">
+                    Editar desde última evolución
+                  </Button>
+                </div>
+              )}
+            </aside>
+          </div>
+        </section>
       </main>
     </div>
   );

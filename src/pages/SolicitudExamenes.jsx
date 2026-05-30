@@ -4,7 +4,7 @@ import { createPageUrl } from '@/utils';
 import { ChevronLeft, Search, Printer, X, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
-import { SERVICIOS, SALAS } from '@/lib/hospitalSuggestions';
+import { SERVICIOS, SALA_CAMA_SUGGESTIONS } from '@/lib/hospitalSuggestions';
 
 // ── Datos de exámenes ─────────────────────────────────────────────────
 const SECTIONS = [
@@ -651,7 +651,7 @@ export default function SolicitudExamenes() {
         {SERVICIOS.map(s => <option key={s} value={s} />)}
       </datalist>
       <datalist id="exam-sala-suggestions">
-        {SALAS.map(s => <option key={s} value={s} />)}
+        {SALA_CAMA_SUGGESTIONS.map(s => <option key={s} value={s} />)}
       </datalist>
     </div>
   );
