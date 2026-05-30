@@ -37,7 +37,7 @@ export default function Layout({ children, currentPageName }) {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Mobile bottom navigation */}
-      <nav className="md:hidden print:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 px-2 py-2 safe-area-pb">
+      <nav className="mobile-bottom-nav md:hidden print:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 px-2 pt-2">
         <div className="flex justify-around">
           {navItems.map((item) => {
             const isActive = item.active ?? currentPageName === item.page;
@@ -60,7 +60,7 @@ export default function Layout({ children, currentPageName }) {
       </nav>
 
       {/* Content with bottom padding for mobile nav */}
-      <main className="pb-20 md:pb-0">
+      <main className="mobile-bottom-content md:pb-0">
         {children}
       </main>
     </div>

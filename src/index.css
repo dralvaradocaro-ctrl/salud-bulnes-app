@@ -83,6 +83,14 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  .mobile-bottom-nav {
+    padding-bottom: calc(0.875rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mobile-bottom-content {
+    padding-bottom: calc(6.25rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @media print {
