@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils/hiddenContent';
 import MermaidDiagram from './MermaidDiagram';
+import LightCriteriaCalculator from '@/components/calculators/LightCriteriaCalculator';
 
 // Renders text with inline clickable links for patterns defined in block.links.
 // block.links value can be:
@@ -154,6 +155,34 @@ const CHECKLIST_SECTION_META = [
   { accent: 'bg-cyan-600',    labelColor: 'text-cyan-700',    headBg: 'bg-cyan-50',    headBorder: 'border-cyan-100'    },
 ];
 
+const SAMPLE_TAGS = [
+  { pattern: /tapa lila/i, label: 'Tapa lila', className: 'border-violet-200 bg-violet-100 text-violet-800' },
+  { pattern: /tapa amarilla/i, label: 'Tapa amarilla', className: 'border-yellow-200 bg-yellow-100 text-yellow-800' },
+  { pattern: /frasco est[ée]ril/i, label: 'Frasco estéril', className: 'border-slate-200 bg-slate-100 text-slate-700' },
+  { pattern: /hemocultivo/i, label: 'Hemocultivo', className: 'border-red-200 bg-red-100 text-red-800' },
+];
+
+function getSampleTags(text) {
+  return SAMPLE_TAGS.filter(tag => tag.pattern.test(text || ''));
+}
+
+function SampleTags({ text }) {
+  const tags = getSampleTags(text);
+  if (tags.length === 0) return null;
+  return (
+    <span className="ml-2 inline-flex flex-wrap gap-1 align-middle">
+      {tags.map(tag => (
+        <span
+          key={tag.label}
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${tag.className}`}
+        >
+          {tag.label}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 const formatDoseNumber = (value) => {
   if (!Number.isFinite(value)) return '';
   if (value >= 100) return Math.round(value).toString();
@@ -268,6 +297,39 @@ function DoseCalculatorBlock({ block }) {
 function ImageGalleryBlock({ block }) {
   const images = block.images || [];
   const [active, setActive] = useState(null);
+
+  if (images.length === 1) {
+    const img = images[0];
+    return (
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        {block.title && (
+          <div className="border-b border-slate-100 bg-slate-50 px-5 py-3.5">
+            <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-600">{block.title}</h3>
+            {block.description && <p className="mt-0.5 text-xs text-slate-500">{block.description}</p>}
+          </div>
+        )}
+        <div className="p-4">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            <img
+              src={img.url}
+              alt={img.alt || img.caption || ''}
+              className="max-h-[520px] w-full object-contain"
+              loading="lazy"
+            />
+            {img.caption && (
+              <p className="border-t border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700">{img.caption}</p>
+            )}
+            {img.description && (
+              <p className="px-4 pb-3 text-xs leading-relaxed text-slate-500">{img.description}</p>
+            )}
+          </div>
+          {block.source && (
+            <p className="mt-3 text-[11px] leading-relaxed text-slate-400">Fuente: {block.source}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -572,6 +634,9 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
       case 'score_calculator':
         return <ScoreCalculatorBlock key={block.id} block={block} />;
 
+      case 'light_criteria_calculator':
+        return <LightCriteriaCalculator key={block.id} />;
+
       case 'image_gallery':
         return <ImageGalleryBlock key={block.id} block={block} />;
 
@@ -618,14 +683,14 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
               {block.details?.length > 0 && (
                 <div className="space-y-2.5">
                   {(() => {
-                    // Group array items: ~ entries attach to the previous step as sub-items
+                    // Group array items: ~ or → entries attach to the previous step as sub-items
                     const groups = [];
                     for (const detail of block.details) {
                       const trimmed = detail.trim();
                       if (trimmed === '') { groups.push({ type: 'spacer' }); continue; }
                       if (/^[━═─]{3}/.test(trimmed)) { groups.push({ type: 'separator', text: trimmed }); continue; }
-                      if (trimmed.startsWith('~')) {
-                        const sub = trimmed.slice(1).trim();
+                      if (trimmed.startsWith('~') || trimmed.startsWith('→')) {
+                        const sub = trimmed.startsWith('~') ? trimmed.slice(1).trim() : trimmed;
                         if (groups.length > 0 && groups[groups.length - 1].type === 'step') {
                           groups[groups.length - 1].subItems.push(sub);
                         } else {
@@ -704,31 +769,43 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
       case 'reference': {
         if (!block.reference_id || !block.reference_label) return null;
         const isCalculator = block.reference_type === 'calculator';
+        const isPage = block.reference_type === 'page';
         if (isCalculator && (
           isHiddenCalculatorId(block.reference_id) ||
           isHiddenCalculatorName(block.reference_label)
         )) return null;
         const linkUrl = isCalculator
           ? createPageUrl(`AllCalculators?calc=${block.reference_id}`)
-          : createPageUrl(`TopicDetail?id=${block.reference_id}`);
+          : isPage
+            ? createPageUrl(block.reference_id)
+            : createPageUrl(`TopicDetail?id=${block.reference_id}`);
         return (
-          <Link key={block.id} to={linkUrl}>
+          <Link
+            key={block.id}
+            to={linkUrl}
+            onClick={rememberReturnPoint}
+            className={isPage ? 'block pt-3' : 'block'}
+          >
             <div className={`rounded-2xl border-2 p-5 transition-all hover:shadow-md ${
               isCalculator
                 ? 'bg-purple-50 border-purple-200 hover:border-purple-300'
-                : 'bg-blue-50 border-blue-200 hover:border-blue-300'
+                : isPage
+                  ? 'bg-teal-50 border-teal-200 hover:border-teal-300'
+                  : 'bg-blue-50 border-blue-200 hover:border-blue-300'
             }`}>
               <div className="mb-2 flex items-center gap-3">
                 {isCalculator
                   ? <Calculator className="h-4 w-4 text-purple-600" />
-                  : <LinkIcon className="h-4 w-4 text-blue-600" />
+                  : isPage
+                    ? <FileText className="h-4 w-4 text-teal-700" />
+                    : <LinkIcon className="h-4 w-4 text-blue-600" />
                 }
                 <h4 className="font-bold text-slate-900">{block.title || 'Referencia'}</h4>
               </div>
               <p className="mb-3 text-sm text-slate-700">{block.reference_label}</p>
               <Button variant="outline" size="sm" className="gap-2">
                 <ExternalLink className="h-3 w-3" />
-                {isCalculator ? 'Abrir calculadora' : 'Ver protocolo'}
+                {isCalculator ? 'Abrir calculadora' : isPage ? 'Abrir solicitud' : 'Ver protocolo'}
               </Button>
             </div>
           </Link>
@@ -831,6 +908,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                       <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${cp.dot}`} />
                       <span className="text-sm leading-relaxed text-slate-800">
                         {renderWithLinks(mainText, block.links)}
+                        <SampleTags text={mainText} />
                       </span>
                     </div>
                     {subItems.length > 0 && (
@@ -940,7 +1018,12 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
   const safeBlocks = blocks || [];
   const tabValues = [...new Set(safeBlocks.map(b => b.tab).filter(Boolean))];
   const hasTabs = tabValues.length > 0;
-  const [activeTab, setActiveTab] = useState(hasTabs ? tabValues[0] : null);
+  const initialTab = (() => {
+    if (!hasTabs) return null;
+    const requested = new URLSearchParams(window.location.search).get('tab');
+    return tabValues.includes(requested) ? requested : tabValues[0];
+  })();
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   // Sub-tabs (un nivel de anidación dentro de la pestaña activa)
   const blocksInActiveTab = hasTabs ? safeBlocks.filter(b => b.tab === activeTab) : [];
@@ -953,6 +1036,48 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     else setActiveSubtab(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, hasSubtabs, subtabValues.join('|')]);
+
+  useEffect(() => {
+    if (!hasTabs || !activeTab) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('tab') !== activeTab) {
+      url.searchParams.set('tab', activeTab);
+      window.history.replaceState(window.history.state, '', url);
+    }
+  }, [activeTab, hasTabs]);
+
+  useEffect(() => {
+    if (!hasTabs || !activeTab) return;
+    const key = `topic-return:${window.location.pathname}${window.location.search}`;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(key) || 'null');
+      if (!saved || saved.tab !== activeTab) return;
+      sessionStorage.removeItem(key);
+      window.setTimeout(() => window.scrollTo({ top: saved.scrollY || 0, behavior: 'auto' }), 80);
+    } catch {
+      sessionStorage.removeItem(key);
+    }
+  }, [activeTab, hasTabs]);
+
+  const updateActiveTab = (tab) => {
+    setActiveTab(tab);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.replaceState(window.history.state, '', url);
+  };
+
+  const rememberReturnPoint = () => {
+    if (!hasTabs || !activeTab) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', activeTab);
+    window.history.replaceState(window.history.state, '', url);
+    const key = `topic-return:${url.pathname}${url.search}`;
+    sessionStorage.setItem(key, JSON.stringify({
+      tab: activeTab,
+      subtab: activeSubtab,
+      scrollY: window.scrollY,
+    }));
+  };
 
   // Auto-tab: when topic has mermaid blocks alongside other content (GES or local protocols)
   const hasProtocolHeader = safeBlocks.some(b => b.type === 'protocol_header');
@@ -1318,7 +1443,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
             {tabValues.map(tab => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => updateActiveTab(tab)}
                 className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all whitespace-nowrap ${
                   activeTab === tab
                     ? 'bg-white text-slate-900 shadow-sm'

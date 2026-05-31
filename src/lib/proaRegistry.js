@@ -69,8 +69,57 @@ export function saveProaRecord(form, options = {}) {
   return record;
 }
 
+export function moveProaRecordToBed(sourceBedCode, targetBedCode, targetService = '') {
+  const existing = readProaRegistry();
+  const source = existing.find((record) => record.bedCode === sourceBedCode);
+  if (!source || !targetBedCode || sourceBedCode === targetBedCode) return null;
+
+  const now = new Date().toISOString();
+  const moved = {
+    ...source,
+    bedCode: targetBedCode,
+    servicio: targetService || source.servicio || '',
+    updatedAt: now,
+    evolutions: (source.evolutions || []).map((evolution) => ({
+      ...evolution,
+      form: sanitizeProaRecord({
+        ...(evolution.form || {}),
+        cama: targetBedCode,
+        servicio: targetService || evolution.form?.servicio || source.servicio || '',
+      }),
+    })),
+  };
+
+  const next = [
+    moved,
+    ...existing.filter((record) => record.id !== source.id && record.bedCode !== targetBedCode),
+  ];
+  writeProaRegistry(next);
+  return moved;
+}
+
 export function getProaRecordByBed(bedCode) {
   return readProaRegistry().find((record) => record.bedCode === bedCode) || null;
+}
+
+export function moveProaRecord(recordId, newBedCode, newServicio = '') {
+  const existing = readProaRegistry();
+  const recordIndex = existing.findIndex((r) => r.id === recordId);
+  if (recordIndex === -1) return null;
+
+  const targetRecord = existing[recordIndex];
+  targetRecord.bedCode = newBedCode;
+  if (newServicio) targetRecord.servicio = newServicio;
+  targetRecord.updatedAt = new Date().toISOString();
+
+  // If there's an existing record in the target bed, it will be overwritten
+  // to avoid having two records in the same bed.
+  const updatedRecords = [
+    targetRecord,
+    ...existing.filter((item) => item.id !== targetRecord.id && item.bedCode !== newBedCode)
+  ];
+  writeProaRegistry(updatedRecords);
+  return targetRecord;
 }
 
 export function getLatestProaForm(record) {

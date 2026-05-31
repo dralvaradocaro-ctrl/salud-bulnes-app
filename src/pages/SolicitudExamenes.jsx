@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ChevronLeft, Search, Printer, X, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -277,6 +277,11 @@ function PatInput({ field, patient, pat, ...rest }) {
 
 // ── Página principal ──────────────────────────────────────────────────
 export default function SolicitudExamenes() {
+  const navigate = useNavigate();
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate(createPageUrl('Templates'));
+  };
   const [search, setSearch]   = useState('');
   const [selected, setSelected] = useState(new Set());
   const [patient, setPatient] = useState(EMPTY_PATIENT);
@@ -336,11 +341,9 @@ export default function SolicitudExamenes() {
       {/* ── Navbar (screen only) ── */}
       <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur print:hidden">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-          <Link to={createPageUrl('Templates')}>
-            <Button variant="ghost" size="icon" className="rounded-xl">
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-          </Link>
+          <Button variant="ghost" size="icon" className="rounded-xl" onClick={goBack} title="Volver">
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
           <div className="flex-1">
             <h1 className="text-base font-bold text-slate-900">Solicitud de Exámenes</h1>
             <p className="text-xs text-slate-500">Hospital de Bulnes · COD. 32</p>

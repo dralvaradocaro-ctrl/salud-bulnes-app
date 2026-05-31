@@ -1,4 +1,4 @@
-import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse } from 'lucide-react';
+import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse, Wind } from 'lucide-react';
 
 import NIHSSCalculator from '@/components/calculators/NIHSSCalculator';
 import HEARTScoreCalculator from '@/components/calculators/HEARTScoreCalculator';
@@ -18,6 +18,7 @@ import LilleCalculator from '@/components/calculators/LilleCalculator';
 import SadPersonsCalculator from '@/components/calculators/SadPersonsCalculator';
 import GlasgowCalculator from '@/components/calculators/GlasgowCalculator';
 import GDSCalculator from '@/components/calculators/GDSCalculator';
+import LightCriteriaCalculator from '@/components/calculators/LightCriteriaCalculator';
 
 export const calculatorsByCategory = {
   'Urgencias': [
@@ -41,6 +42,9 @@ export const calculatorsByCategory = {
   'Nutrición': [
     { id: 'nrs2002', name: 'NRS-2002 - Riesgo Nutricional', component: NRS2002Calculator, icon: Stethoscope }
   ],
+  'Respiratorio': [
+    { id: 'light-criteria', name: 'Criterios de Light — Líquido pleural', component: LightCriteriaCalculator, icon: Wind }
+  ],
   'Salud Mental': [
     { id: 'sad-persons', name: 'SAD PERSONS — Riesgo Suicida', component: SadPersonsCalculator, icon: HeartPulse }
   ],
@@ -60,6 +64,7 @@ export const categoryIcons = {
   'Neurología': Brain,
   'Pediatría': Baby,
   'Nutrición': Stethoscope,
+  'Respiratorio': Wind,
   'Salud Mental': HeartPulse,
   'Gastroenterología': Pill
 };
@@ -70,6 +75,7 @@ export const categoryColors = {
   'Neurología': 'from-violet-500 to-violet-600',
   'Pediatría': 'from-teal-500 to-emerald-600',
   'Nutrición': 'from-green-500 to-green-600',
+  'Respiratorio': 'from-cyan-500 to-blue-600',
   'Salud Mental': 'from-fuchsia-500 to-purple-600',
   'Gastroenterología': 'from-orange-500 to-amber-600'
 };

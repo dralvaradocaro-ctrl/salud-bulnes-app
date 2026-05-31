@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PROA_BED_MAP } from '@/lib/hospitalSuggestions';
-import { getLatestProaForm, readProaRegistry, setPendingProaForm } from '@/lib/proaRegistry';
+import { getLatestProaForm, moveProaRecordToBed, readProaRegistry, setPendingProaForm } from '@/lib/proaRegistry';
 import {
   ArrowRight,
   Bed,
@@ -55,6 +55,7 @@ export default function GestionPROA() {
   const [records, setRecords] = useState(() => readProaRegistry());
   const [selectedBed, setSelectedBed] = useState('');
   const [activeService, setActiveService] = useState(PROA_BED_MAP[0]?.servicio || '');
+  const [sourceBedToMove, setSourceBedToMove] = useState('');
 
   const recordsByBed = useMemo(() => (
     records.reduce((acc, record) => {
@@ -78,6 +79,7 @@ export default function GestionPROA() {
     const nextService = PROA_BED_MAP.find((service) => service.servicio === serviceName);
     const selectedIsVisible = nextService?.groups.some((group) => group.beds.includes(selectedBed));
     if (!selectedIsVisible) setSelectedBed('');
+    setSourceBedToMove('');
   };
 
   const editFromLatest = () => {
@@ -88,8 +90,19 @@ export default function GestionPROA() {
 
   const createFromBed = () => {
     if (!selectedBed) return;
-    setPendingProaForm({ cama: selectedBed, servicio: findServiceForBed(selectedBed) });
+    setPendingProaForm({
+      cama: selectedBed,
+      servicio: findServiceForBed(selectedBed),
+      __proaRegistryMode: selectedRecord ? 'new_patient' : '',
+    });
     navigate(createPageUrl('VisitaPROA'));
+  };
+
+  const movePatientToSelectedBed = () => {
+    if (!selectedBed || !sourceBedToMove) return;
+    moveProaRecordToBed(sourceBedToMove, selectedBed, findServiceForBed(selectedBed));
+    setSourceBedToMove('');
+    setRecords(readProaRegistry());
   };
 
   const modules = [
@@ -267,7 +280,10 @@ export default function GestionPROA() {
                                   <button
                                     key={bed}
                                     type="button"
-                                    onClick={() => setSelectedBed(bed)}
+                                    onClick={() => {
+                                      setSelectedBed(bed);
+                                      setSourceBedToMove('');
+                                    }}
                                     className={`min-h-[62px] rounded-xl border px-3 py-2 text-left transition ${
                                       selected
                                         ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200'
@@ -311,6 +327,13 @@ export default function GestionPROA() {
                   <Badge className="border-slate-200 bg-white text-slate-700">Cama {selectedBed}</Badge>
                   <p className="text-sm text-slate-500">No hay registro PROA asociado a esta cama.</p>
                   <Button onClick={createFromBed} className="w-full bg-teal-600 hover:bg-teal-700">Crear evolución</Button>
+                  <MovePatientControl
+                    records={records}
+                    selectedBed={selectedBed}
+                    sourceBedToMove={sourceBedToMove}
+                    setSourceBedToMove={setSourceBedToMove}
+                    onMove={movePatientToSelectedBed}
+                  />
                 </div>
               )}
 
@@ -336,15 +359,64 @@ export default function GestionPROA() {
                     )}
                   </div>
 
-                  <Button onClick={editFromLatest} className="w-full bg-teal-600 hover:bg-teal-700">
-                    Editar desde última evolución
-                  </Button>
+                  <div className="space-y-2 rounded-lg border border-teal-200 bg-teal-50 p-3">
+                    <p className="text-xs font-bold uppercase tracking-wide text-teal-900">¿Qué quieres hacer con esta cama?</p>
+                    <Button onClick={editFromLatest} className="w-full bg-teal-600 hover:bg-teal-700">
+                      Evolucionar paciente ya registrado ({selectedRecord.code})
+                    </Button>
+                    <Button onClick={createFromBed} variant="outline" className="w-full border-slate-300 bg-white">
+                      Crear nuevo paciente en esta cama
+                    </Button>
+                  </div>
+
+                  <MovePatientControl
+                    records={records}
+                    selectedBed={selectedBed}
+                    sourceBedToMove={sourceBedToMove}
+                    setSourceBedToMove={setSourceBedToMove}
+                    onMove={movePatientToSelectedBed}
+                  />
                 </div>
               )}
             </aside>
           </div>
         </section>
       </main>
+    </div>
+  );
+}
+
+function MovePatientControl({ records, selectedBed, sourceBedToMove, setSourceBedToMove, onMove }) {
+  const movableRecords = records.filter((record) => record.bedCode !== selectedBed);
+  if (!selectedBed || movableRecords.length === 0) return null;
+
+  return (
+    <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Mover paciente desde otra cama</p>
+      <select
+        value={sourceBedToMove}
+        onChange={(event) => setSourceBedToMove(event.target.value)}
+        className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm focus:border-teal-400 focus:outline-none"
+      >
+        <option value="">Seleccionar cama origen...</option>
+        {movableRecords.map((record) => (
+          <option key={record.id} value={record.bedCode}>
+            {record.bedCode} · {record.code}
+          </option>
+        ))}
+      </select>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onMove}
+        disabled={!sourceBedToMove}
+        className="w-full"
+      >
+        Mover a cama {selectedBed}
+                  </Button>
+      <p className="text-[11px] leading-relaxed text-slate-500">
+        El código anonimizado y su historial PROA pasan a esta cama. Si esta cama tenía otro registro, será reemplazado.
+      </p>
     </div>
   );
 }

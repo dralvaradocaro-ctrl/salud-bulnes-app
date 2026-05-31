@@ -167,7 +167,7 @@ export default function Templates() {
         {/* Multi-template generator launcher */}
         <Link
           to={createPageUrl('Templates?multi=1')}
-          className="w-full mb-6 group rounded-2xl border-2 border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-indigo-50 hover:from-violet-100 hover:to-indigo-100 hover:border-violet-400 p-5 text-left transition-all"
+          className="group mb-6 block w-full rounded-2xl border-2 border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-indigo-50 p-5 text-left transition-all hover:border-violet-400 hover:from-violet-100 hover:to-indigo-100"
         >
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 shadow-lg shrink-0">
