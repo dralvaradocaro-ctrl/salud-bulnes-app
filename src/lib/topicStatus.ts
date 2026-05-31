@@ -11,6 +11,8 @@ export type TopicProtocolStatus = 'local' | 'checklist' | 'none';
 interface TopicLike {
   has_local_protocol?: boolean | null;
   content_blocks?: unknown;
+  tags?: unknown;
+  protocol_code?: string | null;
 }
 
 const hasChecklistBlock = (content_blocks: unknown): boolean => {
@@ -25,6 +27,25 @@ export function getTopicProtocolStatus(topic: TopicLike | null | undefined): Top
   if (topic.has_local_protocol === true) return 'local';
   if (hasChecklistBlock(topic.content_blocks)) return 'checklist';
   return 'none';
+}
+
+const normalizeLabel = (value: unknown): string =>
+  typeof value === 'string'
+    ? value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+    : '';
+
+export function hasSsnProtocolBadge(topic: TopicLike | null | undefined): boolean {
+  if (!topic) return false;
+  const labels = [
+    normalizeLabel(topic.protocol_code),
+    ...(Array.isArray(topic.tags) ? topic.tags.map(normalizeLabel) : []),
+  ];
+  return labels.some((label) =>
+    label === 'protocolo ssn' ||
+    label === 'protocolo ssnuble' ||
+    label === 'servicio de salud nuble' ||
+    label === 'ssn'
+  );
 }
 
 export const TOPIC_STATUS_LABELS: Record<TopicProtocolStatus, string> = {

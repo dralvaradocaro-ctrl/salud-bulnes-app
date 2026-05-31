@@ -24,7 +24,7 @@ import { getTopicVisual } from '@/lib/topicVisuals';
 import { hasGuaranteeContent, extractGuaranteeStages } from '@/lib/guarantees';
 import { getProtocolValidityStatus } from '@/lib/protocolUtils';
 import { getGesTopicMeta } from '@/lib/ges';
-import { getTopicProtocolStatus } from '@/lib/topicStatus';
+import { getTopicProtocolStatus, hasSsnProtocolBadge } from '@/lib/topicStatus';
 import ReactMarkdown from 'react-markdown';
 import {
   ChevronLeft,
@@ -554,6 +554,11 @@ export default function TopicDetail() {
                         </Badge>
                       );
                     })()}
+                    {hasSsnProtocolBadge(topic) && (
+                      <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 flex items-center gap-1 px-3 py-1.5 font-semibold">
+                        Protocolo SSÑ
+                      </Badge>
+                    )}
                     {topic.tags?.map((tag, idx) => (
                       <Badge key={idx} variant="outline" className="flex items-center gap-1">
                         <Tag className="h-3 w-3" />

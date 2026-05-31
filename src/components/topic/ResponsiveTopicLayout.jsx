@@ -12,6 +12,7 @@ import {
 import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils/hiddenContent';
 import MermaidDiagram from './MermaidDiagram';
 import LightCriteriaCalculator from '@/components/calculators/LightCriteriaCalculator';
+import OpioidConversionCalculator from '@/components/calculators/OpioidConversionCalculator';
 
 // Renders text with inline clickable links for patterns defined in block.links.
 // block.links value can be:
@@ -636,6 +637,9 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
 
       case 'light_criteria_calculator':
         return <LightCriteriaCalculator key={block.id} />;
+
+      case 'opioid_conversion_calculator':
+        return <OpioidConversionCalculator key={block.id} />;
 
       case 'image_gallery':
         return <ImageGalleryBlock key={block.id} block={block} />;

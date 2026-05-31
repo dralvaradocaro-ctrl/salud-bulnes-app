@@ -35,7 +35,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { isHiddenClinicalTool, isHiddenGesConstanciaTool } from '@/components/utils/hiddenContent';
 import { getProtocolValidityStatus } from '@/lib/protocolUtils';
-import { getTopicProtocolStatus } from '@/lib/topicStatus';
+import { getTopicProtocolStatus, hasSsnProtocolBadge } from '@/lib/topicStatus';
 import { supabase } from '@/lib/supabase';
 import {
   Tooltip,
@@ -562,6 +562,11 @@ export default function Category() {
                                       <Badge className="bg-green-100 text-green-700 border-green-300 flex items-center gap-1 text-xs font-semibold">
                                         <CheckCircle2 className="h-3 w-3" />
                                         Protocolo Local
+                                      </Badge>
+                                    )}
+                                    {hasSsnProtocolBadge(topic) && (
+                                      <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 flex items-center gap-1 text-xs font-semibold">
+                                        Protocolo SSÑ
                                       </Badge>
                                     )}
                                     {getTopicProtocolStatus(topic) === 'checklist' && (

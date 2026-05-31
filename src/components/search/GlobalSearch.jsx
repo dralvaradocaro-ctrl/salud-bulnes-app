@@ -11,6 +11,7 @@ import { isHiddenClinicalTool } from '@/components/utils/hiddenContent';
 import { calculatorReferences } from '@/components/calculators/catalog';
 import { filterStaticPages, staticPages } from '@/components/search/staticPages';
 import { getTopicVisual } from '@/lib/topicVisuals';
+import { hasSsnProtocolBadge } from '@/lib/topicStatus';
 import { invokeLLM } from '@/lib/gemini';
 
 // ── AI search ──────────────────────────────────────────────────────────────
@@ -327,6 +328,11 @@ function ResultRow({ item, aiReason, onClose, onNavigate }) {
       {item.has_local_protocol && (
         <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full flex-shrink-0">
           Protocolo Local
+        </span>
+      )}
+      {item.type === 'topic' && hasSsnProtocolBadge(item) && (
+        <span className="px-2 py-1 text-xs font-medium bg-cyan-50 text-cyan-700 rounded-full flex-shrink-0">
+          Protocolo SSÑ
         </span>
       )}
       <ArrowRight className="h-4 w-4 text-slate-400 flex-shrink-0" />

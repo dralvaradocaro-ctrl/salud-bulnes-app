@@ -64,7 +64,7 @@ export default function CalculatorWrapper({
     history.unshift({
       ...calculation,
       timestamp: new Date().toISOString(),
-      patientInfo: showPatient ? patientInfo : null
+      patientInfo: showPatientInfo ? patientInfo : null
     });
     localStorage.setItem(`calc_history_${title}`, JSON.stringify(history.slice(0, 10)));
   };

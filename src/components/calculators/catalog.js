@@ -1,4 +1,4 @@
-import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse, Wind } from 'lucide-react';
+import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse, Wind, ArrowRightLeft } from 'lucide-react';
 
 import NIHSSCalculator from '@/components/calculators/NIHSSCalculator';
 import HEARTScoreCalculator from '@/components/calculators/HEARTScoreCalculator';
@@ -19,6 +19,7 @@ import SadPersonsCalculator from '@/components/calculators/SadPersonsCalculator'
 import GlasgowCalculator from '@/components/calculators/GlasgowCalculator';
 import GDSCalculator from '@/components/calculators/GDSCalculator';
 import LightCriteriaCalculator from '@/components/calculators/LightCriteriaCalculator';
+import OpioidConversionCalculator from '@/components/calculators/OpioidConversionCalculator';
 
 export const calculatorsByCategory = {
   'Urgencias': [
@@ -55,6 +56,9 @@ export const calculatorsByCategory = {
     { id: 'child-pugh', name: 'Child-Pugh', component: ChildPughCalculator, icon: Pill },
     { id: 'ascitic-fluid', name: 'Interpretación de Líquido Ascítico', component: AsciticFluidCalculator, icon: Pill },
     { id: 'r-factor', name: 'Factor R', component: RFactorCalculator, icon: Pill }
+  ],
+  'Cuidados Paliativos': [
+    { id: 'opioid-conversion', name: 'Equivalencia y rotación de opioides', component: OpioidConversionCalculator, icon: ArrowRightLeft }
   ]
 };
 
@@ -66,7 +70,8 @@ export const categoryIcons = {
   'Nutrición': Stethoscope,
   'Respiratorio': Wind,
   'Salud Mental': HeartPulse,
-  'Gastroenterología': Pill
+  'Gastroenterología': Pill,
+  'Cuidados Paliativos': ArrowRightLeft
 };
 
 export const categoryColors = {
@@ -77,7 +82,8 @@ export const categoryColors = {
   'Nutrición': 'from-green-500 to-green-600',
   'Respiratorio': 'from-cyan-500 to-blue-600',
   'Salud Mental': 'from-fuchsia-500 to-purple-600',
-  'Gastroenterología': 'from-orange-500 to-amber-600'
+  'Gastroenterología': 'from-orange-500 to-amber-600',
+  'Cuidados Paliativos': 'from-indigo-500 to-purple-600'
 };
 
 export const allCalculators = Object.values(calculatorsByCategory).flat();
