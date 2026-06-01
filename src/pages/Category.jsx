@@ -72,6 +72,7 @@ export default function Category() {
   const [activeTopicFilter, setActiveTopicFilter] = useState(initialTopicFilter);
   const [gestionesTab, setGestionesTab] = useState('programas');
   const [arsenalSearch, setArsenalSearch] = useState('');
+  const [arsenalSource, setArsenalSource] = useState('all'); // all | bulnes | ssn
   const didRestoreReturnPoint = useRef(false);
   const pendingRestoreScroll = useRef(null);
 
@@ -278,10 +279,19 @@ export default function Category() {
   const shouldShowAreaFilters = subcategories.length > 1;
   const shouldShowFilterPanel = shouldShowTopicFilters || shouldShowAreaFilters;
 
+  const arsenalCounts = useMemo(() => {
+    let ssn = 0;
+    medications.forEach((med) => { if ((med.restrictions || '').includes(SSN2026_TAG)) ssn += 1; });
+    return { total: medications.length, ssn, bulnes: medications.length - ssn };
+  }, [medications]);
+
   const filteredMedications = useMemo(() => {
     const q = arsenalSearch.trim().toLowerCase();
-    if (!q) return medications;
     return medications.filter((med) => {
+      const isSsn = (med.restrictions || '').includes(SSN2026_TAG);
+      if (arsenalSource === 'bulnes' && isSsn) return false;
+      if (arsenalSource === 'ssn' && !isSsn) return false;
+      if (!q) return true;
       const haystack = [
         med.name,
         med.active_ingredient,
@@ -291,7 +301,7 @@ export default function Category() {
       ].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(q);
     });
-  }, [arsenalSearch, medications]);
+  }, [arsenalSearch, arsenalSource, medications]);
 
   const medicationCategories = useMemo(() => {
     const counts = new Map();
@@ -352,13 +362,14 @@ export default function Category() {
         activeTopicFilter,
         gestionesTab,
         arsenalSearch,
+        arsenalSource,
         scrollY: window.scrollY,
         savedAt: Date.now(),
       }));
     } catch {
       // Best-effort navigation memory.
     }
-  }, [activeTab, activeSubcategory, activeTopicFilter, arsenalSearch, categoryId, gestionesTab]);
+  }, [activeTab, activeSubcategory, activeTopicFilter, arsenalSearch, arsenalSource, categoryId, gestionesTab]);
 
   useEffect(() => {
     if (!categoryId || didRestoreReturnPoint.current) return;
@@ -372,6 +383,7 @@ export default function Category() {
       if (!params.has('topicFilter') && saved.activeTopicFilter) setActiveTopicFilter(saved.activeTopicFilter);
       if (saved.gestionesTab) setGestionesTab(saved.gestionesTab);
       if (saved.arsenalSearch) setArsenalSearch(saved.arsenalSearch);
+      if (saved.arsenalSource) setArsenalSource(saved.arsenalSource);
       pendingRestoreScroll.current = saved.scrollY || 0;
       window.setTimeout(() => window.scrollTo({ top: pendingRestoreScroll.current || 0, behavior: 'auto' }), 120);
     } catch {
@@ -1000,7 +1012,7 @@ export default function Category() {
                       <div>
                         <p className="text-lg font-bold text-slate-900">Arsenal farmacológico HCSFB</p>
                         <p className="text-sm text-slate-500">
-                          {medications.length} medicamentos activos desde la base de datos.
+                          {arsenalCounts.total} medicamentos activos · {arsenalCounts.bulnes} de Bulnes · {arsenalCounts.ssn} de Ñuble (SSÑ-2026).
                         </p>
                       </div>
                     </div>
@@ -1029,6 +1041,28 @@ export default function Category() {
                         </Badge>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Separación por arsenal: Bulnes vs Ñuble (SSÑ-2026) */}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {[
+                      { key: 'all', label: `Todos (${arsenalCounts.total})` },
+                      { key: 'bulnes', label: `Arsenal Bulnes (${arsenalCounts.bulnes})` },
+                      { key: 'ssn', label: `Arsenal Ñuble · SSÑ-2026 (${arsenalCounts.ssn})` },
+                    ].map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setArsenalSource(opt.key)}
+                        className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                          arsenalSource === opt.key
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
