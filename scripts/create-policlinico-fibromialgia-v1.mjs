@@ -124,10 +124,12 @@ const content_blocks = [
     ],
   },
 
+  // ───────────────────────────── Tab: Flujo (subpestañas) ─────────────────────────────
   {
     id: 'fibro-flujo-atencion',
     type: 'flowchart',
-    tab: 'Inicio',
+    tab: 'Flujo',
+    subtab: 'Paso a paso',
     color: 'green',
     order: 14,
     title: 'Flujo de atención en APS — paso a paso',
@@ -141,6 +143,66 @@ const content_blocks = [
       'Control médico a los 3 meses: evaluar la respuesta. Si es refractario al manejo multimodal, iniciar pregabalina y/o duloxetina en APS (ver pestaña Tratamiento).',
       'Nuevo control a los 2-3 meses (≈6 meses desde el inicio): si persiste el fracaso del manejo multimodal, derivar al especialista que corresponda (Fisiatría / Reumatología / Psiquiatría).',
     ],
+  },
+  {
+    id: 'fibro-flujograma',
+    type: 'mermaid',
+    tab: 'Flujo',
+    subtab: 'Referencia y contrarreferencia',
+    color: 'blue',
+    order: 15,
+    title: 'Flujo de referencia y contrarreferencia',
+    description: 'Recorrido del usuario con dolor musculoesquelético persistente entre APS y nivel secundario.',
+    content: `flowchart TD
+    A["Usuario con dolor ME persistente<br/>atención médica + exámenes si procede"] --> B["Prueba de sospecha y dx precoz de FBM"]
+    B -->|Sospecha negativa| C["Continúa manejo en APS según diagnóstico - alta"]
+    B -->|Sospecha positiva| D["Control de otros problemas de salud / ECICEP<br/>atención 30 min + criterios ACR 2016"]
+    D --> E{"Sospecha mesenquimopatía?"}
+    E -->|Sí| F["SIC a Reumatología con exámenes<br/>no excluye manejo paralelo de FBM"]
+    E -->|"No / además FBM"| G{"Cumple criterios ACR 2016?"}
+    G -->|No| C
+    G -->|Sí| H["Inicio manejo multimodal 3 pilares:<br/>farmacológico + rehabilitación + salud mental"]
+    H --> I["Control médico a los 3 meses"]
+    I --> J{"Respuesta refractaria?"}
+    J -->|No| K["Continúa tratamiento en APS"]
+    J -->|"Sí, físico"| L["Evaluar entrega en APS de<br/>pregabalina y/o duloxetina"]
+    J -->|"Sí, salud mental"| M["Consultoría SM"]
+    M --> N{"Se deriva a Psiquiatría?"}
+    N -->|No| K
+    N -->|Sí| O["SIC a Psiquiatría"]
+    L --> P["Nuevo control aprox 6 meses<br/>desde el inicio multimodal"]
+    P --> Q{"Dolor mod-severo / sin baja 3 ptos ENA / sin cambios funcionalidad?"}
+    Q -->|No| K
+    Q -->|"Sí, o intolerancia"| R["SIC a Fisiatría"]
+    F --> S["Atención especialista<br/>Reumatología / Fisiatría / Psiquiatría"]
+    R --> S
+    O --> S
+    S --> T["Control en 6 meses"]
+    T --> U{"Mejora funcionalidad y dolor?"}
+    U -->|Sí| V["Alta / contrarreferencia a APS"]
+    U -->|No| W["Continúa en tratamiento<br/>paralelo Hospital + APS"]`,
+  },
+  {
+    id: 'fibro-tx-escalonamiento',
+    type: 'mermaid',
+    tab: 'Flujo',
+    subtab: 'Escalonamiento farmacológico',
+    color: 'blue',
+    order: 16,
+    title: 'Escalonamiento farmacológico — paso a paso',
+    description: 'Secuencia de inicio y ajuste de fármacos en APS según la respuesta al manejo multimodal.',
+    content: `flowchart TD
+    A["1a línea - arsenal básico APS<br/>paracetamol/meloxicam +<br/>ATC/ciclobenzaprina + ISRS si ánimo"] --> B["Control a los 3 meses<br/>adherencia verificada, idealmente por QF"]
+    B --> C{"Refractario al manejo multimodal?"}
+    C -->|No| D["Continúa manejo en APS"]
+    C -->|"Sí, dolor ENA >=4"| E["Refractario: Pregabalina 37,5-75 mg/día"]
+    C -->|"Sí, trastorno del ánimo"| F["Refractario: cambio de ISRS a<br/>Duloxetina 30 mg/día"]
+    E --> G["Nuevo control 2-3 meses<br/>aprox 6 meses desde el inicio"]
+    F --> G
+    G --> H{"Persiste dolor severo y trastorno del ánimo?"}
+    H -->|No| D
+    H -->|Sí| I["Ajuste máximo: Pregabalina 150 mg/día<br/>y/o Duloxetina 60 mg/día"]
+    I --> J["Fracaso multimodal 5-6 meses o intolerancia: SIC a Fisiatría"]`,
   },
 
   // ───────────────────────────── Tab: Diagnóstico ─────────────────────────────
@@ -218,36 +280,72 @@ const content_blocks = [
       'El tratamiento es sintomático y combina 3 pilares: manejo farmacológico, manejo de salud mental y actividad física. La educación es el punto de inicio de la rehabilitación y, combinada con terapia psicológica, facilita el afrontamiento activo y la adherencia. El manejo no farmacológico es la intervención de primera línea.',
   },
   {
-    id: 'fibro-tx-farmacos',
-    type: 'criteria',
+    id: 'fibro-tx-algoritmo',
+    type: 'flowchart',
     tab: 'Tratamiento',
     subtab: 'Farmacológico',
     color: 'blue',
-    order: 31,
-    title: 'Fármacos de arsenal APS — manejo inicial',
-    items: [
-      'Paracetamol: manejo de dolor nociceptivo de carácter leve.',
-      'Meloxicam: manejo de dolor nociceptivo de carácter moderado.',
-      'Amitriptilina (ATC): alivio por inhibición de recaptación de serotonina y noradrenalina; reduce dolor ~30% (similar a duloxetina); efecto moderado en sueño.',
-      'Ciclobenzaprina: relajante muscular similar a ATC; mejora general en dolor y trastornos del sueño.',
-      'Sertralina: manejo de trastornos del ánimo asociados.',
-      'Fluoxetina: manejo de trastornos del ánimo; controvertida para dolor, sueño y fatiga.',
+    order: 311,
+    title: 'Algoritmo de escalonamiento farmacológico',
+    description: 'Dosis, tiempos y secuencia de inicio y ajuste en APS según la respuesta al manejo multimodal.',
+    details: [
+      '1ª línea — al confirmar el diagnóstico: iniciar arsenal básico APS según el cuadro. Dolor: paracetamol 500 mg (leve) o meloxicam 15 mg/día (moderado). Dolor y sueño: amitriptilina 25 mg en la noche y/o ciclobenzaprina 10 mg. Si hay trastorno del ánimo: agregar ISRS (sertralina 50 mg/día o fluoxetina 20 mg/día).',
+      'Control a los 3 meses: verificar adherencia (idealmente evaluada por QF) y la respuesta al manejo multimodal.',
+      '~ Si responde: continuar el manejo en APS.',
+      'Si es refractario al manejo multimodal, escalar en APS:',
+      '~ Dolor generalizado moderado-severo (ENA ≥4): iniciar pregabalina 37,5–75 mg/día (1 vez al día).',
+      '~ Trastorno del ánimo / episodio depresivo: cambiar el ISRS a duloxetina 30 mg/día, post comida (mejor tolerancia gástrica).',
+      'Nuevo control a los 2–3 meses (≈6 meses desde el inicio): reevaluar dolor y ánimo.',
+      '~ Si persiste dolor severo y trastorno del ánimo: ajustar hasta pregabalina 150 mg/día y/o duloxetina 60 mg/día.',
+      'Si fracasa el manejo multimodal tras 5–6 meses, o hay intolerancia a pregabalina/duloxetina: emitir SIC a Fisiatría.',
+      '━━━ REGISTRO ━━━',
+      'En Rayen, asociar pregabalina/duloxetina al diagnóstico de Fibromialgia (CIE-10 M79.7) y registrar siempre las RAM en la ficha clínica.',
     ],
   },
   {
-    id: 'fibro-tx-farmacos-refractario',
-    type: 'criteria',
+    id: 'fibro-tx-posologia-inicial',
+    type: 'table',
+    tab: 'Tratamiento',
+    subtab: 'Farmacológico',
+    color: 'green',
+    order: 32,
+    title: '1ª línea · manejo inicial — arsenal básico APS',
+    description: 'Se inicia al confirmar el diagnóstico, según el dolor y el ánimo. Presentaciones del arsenal de Bulnes.',
+    headers: ['Fármaco', 'Presentación', 'Inicio', 'Rol / indicación'],
+    rows: [
+      ['**Paracetamol**', 'comp 500 mg', 'Según dolor', 'Dolor nociceptivo leve'],
+      ['**Meloxicam**', 'comp 15 mg', '15 mg 1 vez/día', 'Dolor nociceptivo moderado'],
+      ['**Amitriptilina** (ATC)', 'comp 25 mg', '25 mg en la noche', 'Reduce dolor ~30 % (similar a duloxetina); efecto moderado en sueño'],
+      ['**Ciclobenzaprina**', 'comp 10 mg', '10 mg', 'Relajante muscular similar a ATC; mejora dolor y sueño'],
+      ['**Sertralina**', 'comp 50 mg', '50 mg/día', 'Trastorno del ánimo asociado'],
+      ['**Fluoxetina**', 'comp 20 mg', '20 mg/día', 'Trastorno del ánimo; controvertida para dolor, sueño y fatiga'],
+    ],
+  },
+  {
+    id: 'fibro-tx-posologia-refractario',
+    type: 'table',
     tab: 'Tratamiento',
     subtab: 'Farmacológico',
     color: 'amber',
-    order: 32,
-    title: 'Fármacos de arsenal APS — dolor refractario',
-    items: [
-      'Pregabalina y duloxetina están disponibles en el arsenal APS para fibromialgia confirmada que previamente haya recibido tratamiento multimodal, al menos 3 meses con fármacos del manejo inicial.',
-      'Pregabalina: neuromodulador; reduce el dolor y mejora el ciclo sueño-vigilia y la calidad de vida.',
-      'Duloxetina: antidepresivo dual; disminución significativa del dolor (~50%) y mejora del ánimo y la calidad de vida.',
-      'Se inician en APS (no requieren derivación a especialista para indicarlas).',
+    order: 33,
+    title: 'Escalón refractario — tras ≥3 meses de manejo multimodal',
+    description: 'Solo en fibromialgia confirmada que ya recibió ≥3 meses de fármacos del manejo inicial. Se inician en APS (no requieren derivación a especialista).',
+    headers: ['Fármaco', 'Presentación', 'Inicio', 'Máximo', 'Indicación'],
+    rows: [
+      ['**Pregabalina**', 'comp/cáps 75 mg', '37,5–75 mg/día', '**150 mg/día**', 'Dolor generalizado mod-severo (ENA ≥4) refractario; mejora ciclo sueño-vigilia'],
+      ['**Duloxetina**', 'comp 30 mg', '30 mg/día post comida', '**60 mg/día**', 'Episodio depresivo / ánimo secundario / fatiga severa refractarios; cambio desde ISRS'],
     ],
+  },
+  {
+    id: 'fibro-tx-rayen',
+    type: 'alert',
+    tab: 'Tratamiento',
+    subtab: 'Farmacológico',
+    color: 'amber',
+    order: 34,
+    title: 'Registro en Rayen y disponibilidad de comprimido',
+    content:
+      'Toda prescripción de pregabalina y/o duloxetina en el marco de este protocolo debe quedar asociada al diagnóstico de Fibromialgia con CIE-10 M79.7 (pertinencia, trazabilidad y coherencia). La pregabalina 75 mg puede venir como cápsulas o comprimidos: antes de indicar 37,5 mg, confirmar con la jefatura de farmacia la disponibilidad de comprimido fraccionable; si solo hay cápsulas, no es posible el fraccionamiento.',
   },
   {
     id: 'fibro-tx-disponibilidad',
@@ -255,8 +353,9 @@ const content_blocks = [
     tab: 'Tratamiento',
     subtab: 'Farmacológico',
     color: 'green',
-    order: 33,
+    order: 35,
     title: 'Disponibilidad en la red APS',
+    description: 'Todos los fármacos del protocolo están disponibles en CESFAM y HCSF.',
     headers: ['Fármaco', 'CESFAM', 'HCSF'],
     rows: [
       ['Paracetamol', 'Sí', 'Sí'],
@@ -268,59 +367,6 @@ const content_blocks = [
       ['Pregabalina', 'Sí', 'Sí'],
       ['Duloxetina', 'Sí', 'Sí'],
     ],
-  },
-  {
-    id: 'fibro-tx-posologia',
-    type: 'table',
-    tab: 'Tratamiento',
-    subtab: 'Farmacológico',
-    color: 'blue',
-    order: 34,
-    title: 'Posología — presentaciones del arsenal de Bulnes',
-    headers: ['Fármaco', 'Presentación', 'Inicio', 'Ajuste / máximo', 'Indicación'],
-    rows: [
-      ['Paracetamol', 'comp 500 mg', 'Según dolor', '—', 'Dolor nociceptivo leve'],
-      ['Meloxicam', 'comp 15 mg', '15 mg 1 vez/día', '—', 'Dolor nociceptivo moderado'],
-      ['Amitriptilina', 'comp 25 mg', '25 mg en la noche', 'Según respuesta', 'Dolor y sueño (ATC)'],
-      ['Ciclobenzaprina', 'comp 10 mg', '10 mg', 'Según respuesta', 'Relajante muscular; dolor y sueño'],
-      ['Sertralina', 'comp 50 mg', '50 mg/día', 'Según ánimo', 'Trastorno del ánimo asociado'],
-      ['Fluoxetina', 'comp 20 mg', '20 mg/día', 'Según ánimo', 'Trastorno del ánimo asociado'],
-      ['Pregabalina', 'comp/cáps 75 mg', '37,5–75 mg 1 vez/día', 'Hasta 150 mg/día', 'Dolor generalizado mod-severo (ENA ≥4) refractario'],
-      ['Duloxetina', 'comp 30 mg', '30 mg/día post comida', 'Hasta 60 mg/día', 'Episodio depresivo / ánimo secundario / fatiga severa, refractarios'],
-    ],
-  },
-  {
-    id: 'fibro-tx-escalonamiento',
-    type: 'mermaid',
-    tab: 'Tratamiento',
-    subtab: 'Farmacológico',
-    color: 'blue',
-    order: 35,
-    title: 'Escalonamiento farmacológico — paso a paso',
-    description: 'Secuencia de inicio y ajuste de fármacos en APS según respuesta al manejo multimodal.',
-    content: `flowchart TD
-    A["Inicio: arsenal básico APS\\n(paracetamol/meloxicam +\\nATC/ciclobenzaprina ± ISRS según ánimo)"] --> B["Control a los 3 meses\\nadherencia verificada (idealmente por QF)"]
-    B --> C{"¿Refractario al\\nmanejo multimodal?"}
-    C -->|"No"| D["Continúa manejo en APS"]
-    C -->|"Sí · dolor ENA ≥4"| E["Pregabalina 37,5–75 mg/día"]
-    C -->|"Sí · trastorno del ánimo"| F["Cambio de ISRS a\\nDuloxetina 30 mg/día"]
-    E --> G["Nuevo control 2–3 meses\\n(≈6 meses desde el inicio)"]
-    F --> G
-    G --> H{"¿Persiste dolor severo\\ny trastorno del ánimo?"}
-    H -->|"No"| D
-    H -->|"Sí"| I["Ajuste: Pregabalina 150 mg/día\\ny/o Duloxetina 60 mg/día"]
-    I --> J["Fracaso multimodal ≥5–6 meses\\no intolerancia → SIC a Fisiatría"]`,
-  },
-  {
-    id: 'fibro-tx-rayen',
-    type: 'alert',
-    tab: 'Tratamiento',
-    subtab: 'Farmacológico',
-    color: 'amber',
-    order: 36,
-    title: 'Registro en Rayen y disponibilidad de comprimido',
-    content:
-      'Toda prescripción de pregabalina y/o duloxetina en el marco de este protocolo debe quedar asociada al diagnóstico de Fibromialgia con CIE-10 M79.7 (pertinencia, trazabilidad y coherencia). La pregabalina 75 mg puede venir como cápsulas o comprimidos: antes de indicar 37,5 mg, confirmar con la jefatura de farmacia la disponibilidad de comprimido fraccionable; si solo hay cápsulas, no es posible el fraccionamiento.',
   },
   {
     id: 'fibro-tx-salud-mental',
@@ -339,6 +385,17 @@ const content_blocks = [
     ],
   },
   {
+    id: 'fibro-tx-sm-derivacion',
+    type: 'alert',
+    tab: 'Tratamiento',
+    subtab: 'Salud mental',
+    color: 'purple',
+    order: 341,
+    title: '➜ Derivación a psicólogo/a de APS (si aplica)',
+    content:
+      'Derivar a psicólogo/a de APS para el pilar de salud mental (TCC, manejo del catastrofismo, terapias de aceptación y compromiso). Gestionar consultoría con psiquiatra cuando corresponda; si tras el manejo del equipo de salud mental no hay mejora, la consultoría define la derivación a psiquiatría vía SIC, según el mapa de salud mental.',
+  },
+  {
     id: 'fibro-tx-ejercicio',
     type: 'criteria',
     tab: 'Tratamiento',
@@ -352,6 +409,17 @@ const content_blocks = [
       'Ninguna modalidad es superior: para favorecer la adherencia, el paciente elige la modalidad con asesoría clínica.',
       'Dosificar con escala de esfuerzo percibido (Borg) a intensidad moderada; ajustar según tolerancia al dolor.',
     ],
+  },
+  {
+    id: 'fibro-tx-ejercicio-derivacion',
+    type: 'alert',
+    tab: 'Tratamiento',
+    subtab: 'Ejercicio',
+    color: 'green',
+    order: 351,
+    title: '➜ Derivación a kinesiólogo/a y/o terapeuta ocupacional de APS (si aplica)',
+    content:
+      'Derivar a kinesiólogo/a y/o terapeuta ocupacional de APS para el programa de rehabilitación: entrevista, evaluación funcional, educación en neurociencias del dolor y sesiones de ejercicio (individuales y grupales). La educación es el punto de inicio de la rehabilitación.',
   },
 
   // ───────────────────────────── Tab: Derivación ─────────────────────────────
@@ -449,45 +517,6 @@ const content_blocks = [
     title: 'Contrarreferencia',
     content:
       'En cualquiera de las tres especialidades se ajustará el manejo farmacológico, exámenes u otra intervención. Ante buena respuesta al ajuste de fármacos se contrarreferirá a APS para continuidad del manejo integral, manteniendo la receta del especialista en el HCHM por el período de 1 año. La contrarreferencia incluirá sugerencias para el manejo. En Fisiatría se agenda un control en 6 meses para evaluar la evolución y definir el tratamiento a seguir; si no hay mejora, continúa en tratamiento paralelo en Hospital y APS.',
-  },
-
-  // ───────────────────────────── Tab: Flujograma ─────────────────────────────
-  {
-    id: 'fibro-flujograma',
-    type: 'mermaid',
-    tab: 'Flujograma',
-    color: 'blue',
-    order: 50,
-    title: 'Flujo de referencia y contrarreferencia',
-    description: 'Recorrido del usuario con dolor musculoesquelético persistente entre APS y nivel secundario.',
-    content: `flowchart TD
-    A["Usuario con dolor ME persistente\\natención médica + exámenes si procede"] --> B["Prueba de sospecha y dx precoz de FBM"]
-    B -->|"Sospecha negativa"| C["Continúa manejo en APS\\nsegún diagnóstico — alta"]
-    B -->|"Sospecha positiva"| D["Control de otros problemas de salud / ECICEP\\natención 30 min + criterios ACR 2016"]
-    D --> E{"¿Sospecha\\nmesenquimopatía?"}
-    E -->|"Sí"| F["SIC a Reumatología con exámenes\\n(no excluye manejo paralelo de FBM)"]
-    E -->|"No / además FBM"| G{"¿Cumple criterios\\nACR 2016?"}
-    G -->|"No"| C
-    G -->|"Sí"| H["Inicio manejo multimodal (3 pilares):\\nfarmacológico + rehabilitación + salud mental"]
-    H --> I["Control médico a los 3 meses"]
-    I --> J{"¿Respuesta refractaria?"}
-    J -->|"No"| K["Continúa tratamiento en APS"]
-    J -->|"Sí · físico"| L["Evaluar entrega en APS de\\npregabalina y/o duloxetina"]
-    J -->|"Sí · salud mental"| M["Consultoría SM"]
-    M --> N{"¿Se deriva\\na Psiquiatría?"}
-    N -->|"No"| K
-    N -->|"Sí"| O["SIC a Psiquiatría"]
-    L --> P["Nuevo control ≈6 meses\\ndesde el inicio multimodal"]
-    P --> Q{"¿Dolor mod-severo / sin baja\\nde 3 ptos ENA / sin cambios funcionalidad?"}
-    Q -->|"No"| K
-    Q -->|"Sí · o intolerancia a fármacos"| R["SIC a Fisiatría"]
-    F --> S["Atención especialista\\nReumatología / Fisiatría / Psiquiatría"]
-    R --> S
-    O --> S
-    S --> T["Control en 6 meses"]
-    T --> U{"¿Mejora\\nfuncionalidad y dolor?"}
-    U -->|"Sí"| V["Alta / contrarreferencia a APS"]
-    U -->|"No"| W["Continúa en tratamiento\\nparalelo Hospital + APS"]`,
   },
 
   // ───────────────────────────── Tab: Escalas (subtabs) ─────────────────────────────

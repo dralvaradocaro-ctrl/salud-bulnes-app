@@ -7,7 +7,7 @@ import {
   LinkIcon, Calculator, ExternalLink,
   Eye, Stethoscope, FlaskConical, Scissors,
   AlertTriangle, ChevronDown, Check, FileText, Calendar, Building2, MapPin,
-  GitBranch, ClipboardList, BookOpen, Phone,
+  GitBranch, ClipboardList, BookOpen, Phone, ArrowRight, Info,
 } from 'lucide-react';
 import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils/hiddenContent';
 import MermaidDiagram from './MermaidDiagram';
@@ -412,6 +412,16 @@ function ImageGalleryBlock({ block }) {
   );
 }
 
+// Renderiza **negritas** dentro de una celda/texto simple sin parser markdown completo.
+function renderRichText(text) {
+  if (typeof text !== 'string' || text.indexOf('**') === -1) return text;
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={i} className="font-semibold text-slate-900">{part.slice(2, -2)}</strong>
+      : part
+  );
+}
+
 function TableBlock({ block }) {
   const headers = block.headers || [];
   const rows = block.rows || [];
@@ -454,7 +464,7 @@ function TableBlock({ block }) {
               <tr key={ri} className="hover:bg-slate-50">
                 {row.map((cell, ci) => (
                   <td key={ci} className="px-4 py-2.5 align-top text-slate-700">
-                    {cell}
+                    {renderRichText(cell)}
                   </td>
                 ))}
               </tr>
@@ -873,20 +883,30 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
           </div>
         );
 
-      case 'alert':
+      case 'alert': {
+        const ALERT_PALETTES = {
+          amber:  { box: 'border-amber-200 bg-amber-50',     icon: 'text-amber-700',   title: 'text-amber-900',   text: 'text-amber-800',   Icon: AlertTriangle },
+          red:    { box: 'border-red-200 bg-red-50',         icon: 'text-red-700',     title: 'text-red-900',     text: 'text-red-800',     Icon: AlertTriangle },
+          green:  { box: 'border-emerald-200 bg-emerald-50', icon: 'text-emerald-700', title: 'text-emerald-900', text: 'text-emerald-800', Icon: ArrowRight },
+          blue:   { box: 'border-blue-200 bg-blue-50',       icon: 'text-blue-700',    title: 'text-blue-900',    text: 'text-blue-800',    Icon: Info },
+          purple: { box: 'border-violet-200 bg-violet-50',   icon: 'text-violet-700',  title: 'text-violet-900',  text: 'text-violet-800',  Icon: ArrowRight },
+        };
+        const ap = ALERT_PALETTES[block.color] || ALERT_PALETTES.amber;
+        const AlertIcon = ap.Icon;
         return (
-          <div key={block.id} className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <div key={block.id} className={`rounded-2xl border p-4 ${ap.box}`}>
             {block.title && (
               <div className="mb-2 flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-700" />
-                <h4 className="text-sm font-bold text-amber-900">{block.title}</h4>
+                <AlertIcon className={`h-4 w-4 shrink-0 ${ap.icon}`} />
+                <h4 className={`text-sm font-bold ${ap.title}`}>{block.title}</h4>
               </div>
             )}
             {block.content && (
-              <p className="text-sm leading-relaxed text-amber-800">{block.content}</p>
+              <p className={`text-sm leading-relaxed ${ap.text}`}>{block.content}</p>
             )}
           </div>
         );
+      }
 
       case 'criteria': {
         const CRITERIA_PALETTES = {
