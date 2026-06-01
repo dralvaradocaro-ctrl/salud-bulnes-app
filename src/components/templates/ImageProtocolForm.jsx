@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { X, Download, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 import {
   Document, Packer, Paragraph, TextRun, AlignmentType,
   Table, TableRow, TableCell, WidthType, BorderStyle,
@@ -262,6 +263,22 @@ export default function ImageProtocolForm({ onClose }) {
     doctorRut: '',
   });
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Precarga compartida del generador multi-documento: evita volver a pedir
+  // los datos del paciente (nombre, RUT, fecha de nacimiento → edad, diagnóstico).
+  useEffect(() => {
+    const p = getMultiPrefill();
+    if (!p) return;
+    setFormData(prev => ({
+      ...prev,
+      patientName: prev.patientName || p.patient_name || '',
+      patientRut: prev.patientRut || (p.patient_rut ? formatRut(p.patient_rut) : ''),
+      patientBirthDate: prev.patientBirthDate || p.patient_fecha_nac || '',
+      patientAge: prev.patientAge || (p.patient_fecha_nac ? calcAge(p.patient_fecha_nac) : ''),
+      diagnosis: prev.diagnosis || p.diagnostico || '',
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleRut = (field) => (e) => {
     setFormData(prev => ({ ...prev, [field]: formatRut(e.target.value) }));
