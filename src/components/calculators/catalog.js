@@ -1,4 +1,4 @@
-import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse, Wind, ArrowRightLeft, Candy } from 'lucide-react';
+import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse, Wind, ArrowRightLeft, Candy, Bone } from 'lucide-react';
 
 import NIHSSCalculator from '@/components/calculators/NIHSSCalculator';
 import HEARTScoreCalculator from '@/components/calculators/HEARTScoreCalculator';
@@ -22,12 +22,19 @@ import LightCriteriaCalculator from '@/components/calculators/LightCriteriaCalcu
 import OpioidConversionCalculator from '@/components/calculators/OpioidConversionCalculator';
 import HyperglycemicCrisisCalculator from '@/components/calculators/HyperglycemicCrisisCalculator';
 import HypoglycemiaTreatmentCalculator from '@/components/calculators/HypoglycemiaTreatmentCalculator';
+import HypokalemiaCorrectionCalculator from '@/components/calculators/HypokalemiaCorrectionCalculator';
+import HyperkalemiaManagementCalculator from '@/components/calculators/HyperkalemiaManagementCalculator';
+import FibromyalgiaACRCalculator from '@/components/calculators/FibromyalgiaACRCalculator';
 
 export const calculatorsByCategory = {
   'Urgencias': [
     { id: 'sri', name: 'SRI - Intubación Rápida', component: SRICalculator, icon: Activity, includeInStats: false },
     { id: 'hyperglycemic-crisis', name: 'CAD/EHH — Criterios y manejo inicial', component: HyperglycemicCrisisCalculator, icon: Activity },
     { id: 'hypoglycemia-treatment', name: 'Hipoglicemia en urgencias — Tratamiento inicial', component: HypoglycemiaTreatmentCalculator, icon: Candy }
+  ],
+  'Nefrología': [
+    { id: 'hypokalemia-correction', name: 'Hipokalemia — reposición de KCl', component: HypokalemiaCorrectionCalculator, icon: Pill },
+    { id: 'hyperkalemia-management', name: 'Hiperkalemia — urgencia y manejo inicial', component: HyperkalemiaManagementCalculator, icon: Activity }
   ],
   'Cardiología': [
     { id: 'heart', name: 'HEART Score', component: HEARTScoreCalculator, icon: Heart },
@@ -63,11 +70,15 @@ export const calculatorsByCategory = {
   ],
   'Cuidados Paliativos': [
     { id: 'opioid-conversion', name: 'Equivalencia y rotación de opioides', component: OpioidConversionCalculator, icon: ArrowRightLeft }
+  ],
+  'Reumatología': [
+    { id: 'fibromyalgia-acr', name: 'Fibromialgia — Criterios diagnósticos ACR 2016', component: FibromyalgiaACRCalculator, icon: Bone }
   ]
 };
 
 export const categoryIcons = {
   'Urgencias': Activity,
+  'Nefrología': Pill,
   'Cardiología': Heart,
   'Neurología': Brain,
   'Pediatría': Baby,
@@ -75,11 +86,13 @@ export const categoryIcons = {
   'Respiratorio': Wind,
   'Salud Mental': HeartPulse,
   'Gastroenterología': Pill,
-  'Cuidados Paliativos': ArrowRightLeft
+  'Cuidados Paliativos': ArrowRightLeft,
+  'Reumatología': Bone
 };
 
 export const categoryColors = {
   'Urgencias': 'from-red-500 to-red-600',
+  'Nefrología': 'from-sky-500 to-blue-600',
   'Cardiología': 'from-rose-500 to-rose-600',
   'Neurología': 'from-violet-500 to-violet-600',
   'Pediatría': 'from-teal-500 to-emerald-600',
@@ -87,7 +100,8 @@ export const categoryColors = {
   'Respiratorio': 'from-cyan-500 to-blue-600',
   'Salud Mental': 'from-fuchsia-500 to-purple-600',
   'Gastroenterología': 'from-orange-500 to-amber-600',
-  'Cuidados Paliativos': 'from-indigo-500 to-purple-600'
+  'Cuidados Paliativos': 'from-indigo-500 to-purple-600',
+  'Reumatología': 'from-rose-500 to-purple-600'
 };
 
 export const allCalculators = Object.values(calculatorsByCategory).flat();

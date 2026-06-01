@@ -15,6 +15,9 @@ import LightCriteriaCalculator from '@/components/calculators/LightCriteriaCalcu
 import OpioidConversionCalculator from '@/components/calculators/OpioidConversionCalculator';
 import HyperglycemicCrisisCalculator from '@/components/calculators/HyperglycemicCrisisCalculator';
 import HypoglycemiaTreatmentCalculator from '@/components/calculators/HypoglycemiaTreatmentCalculator';
+import HypokalemiaCorrectionCalculator from '@/components/calculators/HypokalemiaCorrectionCalculator';
+import HyperkalemiaManagementCalculator from '@/components/calculators/HyperkalemiaManagementCalculator';
+import FibromyalgiaACRCalculator from '@/components/calculators/FibromyalgiaACRCalculator';
 
 // Renders text with inline clickable links for patterns defined in block.links.
 // block.links value can be:
@@ -667,6 +670,15 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
       case 'hypoglycemia_treatment_calculator':
         return <HypoglycemiaTreatmentCalculator key={block.id} />;
 
+      case 'hypokalemia_correction_calculator':
+        return <HypokalemiaCorrectionCalculator key={block.id} />;
+
+      case 'hyperkalemia_management_calculator':
+        return <HyperkalemiaManagementCalculator key={block.id} />;
+
+      case 'fibromyalgia_acr_calculator':
+        return <FibromyalgiaACRCalculator key={block.id} />;
+
       case 'image_gallery':
         return <ImageGalleryBlock key={block.id} block={block} />;
 
@@ -1251,6 +1263,20 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     pr_protocolo_triage: 'Triage',
     pr_protocolo_aborto: 'Tipos de aborto',
     pr_protocolo_otras: 'Otras pérdidas',
+    kb_hipo: 'Hipokalemia',
+    kb_hiper: 'Hiperkalemia',
+    kb_hipo_diagnostico: 'Diagnóstico',
+    kb_hipo_calculadora: 'Calculadora',
+    kb_hipo_reposicion: 'Reposición',
+    kb_hipo_urgente: 'Urgente',
+    kb_hipo_arsenal: 'Arsenal y seguimiento',
+    kb_hipo_flujo: 'Flujo',
+    kb_hiper_diagnostico: 'Diagnóstico',
+    kb_hiper_calculadora: 'Calculadora',
+    kb_hiper_urgente: 'Urgente',
+    kb_hiper_farmacos: 'Fármacos',
+    kb_hiper_eliminacion: 'Eliminación',
+    kb_hiper_flujo: 'Flujo',
     triage_protocolo: 'Protocolo',
     triage_equipo: 'Equipo',
     triage_categorias: 'Niveles ESI',
