@@ -805,6 +805,14 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
             </h1>
             <p className="text-xs text-slate-500">Programa de Optimización del Uso de Antimicrobianos · HCSFB</p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(createPageUrl('GestionPROA'))}
+            className="gap-1.5 border-teal-200 text-teal-700 hover:bg-teal-50"
+          >
+            <ShieldPlus className="h-4 w-4" /> <span className="hidden sm:inline">Gestión PROA</span>
+          </Button>
           <Button variant="outline" size="sm" onClick={clear} className="gap-1.5">
             <RotateCcw className="h-4 w-4" /> Limpiar
           </Button>

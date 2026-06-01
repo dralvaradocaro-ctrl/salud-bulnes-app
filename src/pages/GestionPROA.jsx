@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { createPageUrl } from '@/utils';
@@ -52,6 +52,7 @@ function findServiceForBed(bedCode) {
 
 export default function GestionPROA() {
   const navigate = useNavigate();
+  const bedMapRef = useRef(null);
   const [records, setRecords] = useState(() => readProaRegistry());
   const [selectedBed, setSelectedBed] = useState('');
   const [activeService, setActiveService] = useState(PROA_BED_MAP[0]?.servicio || '');
@@ -105,6 +106,10 @@ export default function GestionPROA() {
     setRecords(readProaRegistry());
   };
 
+  const scrollToBedMap = () => {
+    bedMapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const modules = [
     {
       title: 'Formato de evolución PROA',
@@ -120,6 +125,7 @@ export default function GestionPROA() {
       icon: Users,
       color: 'teal',
       status: `${records.length} registros`,
+      onClick: scrollToBedMap,
     },
     {
       title: 'Tablas de seguimiento',
@@ -132,7 +138,7 @@ export default function GestionPROA() {
 
   const renderCard = (mod, index) => {
     const Icon = mod.icon;
-    const available = Boolean(mod.to);
+    const available = Boolean(mod.to || mod.onClick);
     const colors = mod.color === 'teal'
       ? {
           border: 'border-teal-200 hover:border-teal-300',
@@ -174,10 +180,16 @@ export default function GestionPROA() {
       </motion.div>
     );
 
-    return available ? (
+    if (mod.to) return (
       <Link key={mod.title} to={mod.to} className="block">
         {inner}
       </Link>
+    );
+
+    return mod.onClick ? (
+      <button key={mod.title} type="button" onClick={mod.onClick} className="block w-full text-left">
+        {inner}
+      </button>
     ) : (
       <div key={mod.title}>{inner}</div>
     );
@@ -222,7 +234,7 @@ export default function GestionPROA() {
           {modules.map(renderCard)}
         </div>
 
-        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section ref={bedMapRef} className="mt-6 scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
