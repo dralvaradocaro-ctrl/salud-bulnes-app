@@ -440,7 +440,7 @@ export default function Category() {
       <div className="max-w-5xl mx-auto px-4 py-6">
 
         {/* Tab bar */}
-        <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-2xl w-fit">
+        <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-2xl w-fit max-w-full overflow-x-auto [&>*]:shrink-0 [&>*]:whitespace-nowrap">
           {topics.length > 0 && (
             <button
               onClick={() => setActiveTab('topics')}
