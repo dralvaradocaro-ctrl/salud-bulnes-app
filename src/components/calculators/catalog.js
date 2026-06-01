@@ -25,6 +25,8 @@ import HypoglycemiaTreatmentCalculator from '@/components/calculators/Hypoglycem
 import HypokalemiaCorrectionCalculator from '@/components/calculators/HypokalemiaCorrectionCalculator';
 import HyperkalemiaManagementCalculator from '@/components/calculators/HyperkalemiaManagementCalculator';
 import FibromyalgiaACRCalculator from '@/components/calculators/FibromyalgiaACRCalculator';
+import FIQRCalculator from '@/components/calculators/FIQRCalculator';
+import PSFSCalculator from '@/components/calculators/PSFSCalculator';
 
 export const calculatorsByCategory = {
   'Urgencias': [
@@ -72,7 +74,9 @@ export const calculatorsByCategory = {
     { id: 'opioid-conversion', name: 'Equivalencia y rotación de opioides', component: OpioidConversionCalculator, icon: ArrowRightLeft }
   ],
   'Reumatología': [
-    { id: 'fibromyalgia-acr', name: 'Fibromialgia — Criterios diagnósticos ACR 2016', component: FibromyalgiaACRCalculator, icon: Bone }
+    { id: 'fibromyalgia-acr', name: 'Fibromialgia — Criterios diagnósticos ACR 2016', component: FibromyalgiaACRCalculator, icon: Bone },
+    { id: 'fiq-r', name: 'FIQ-R — Impacto de la fibromialgia', component: FIQRCalculator, icon: Activity },
+    { id: 'psfs', name: 'PSFS — Escala Funcional Específica del Paciente', component: PSFSCalculator, icon: Activity }
   ]
 };
 

@@ -145,6 +145,27 @@ const content_blocks = [
     ],
   },
   {
+    id: 'fibro-flujo-registro',
+    type: 'criteria',
+    tab: 'Flujo',
+    subtab: 'Paso a paso',
+    color: 'red',
+    order: 145,
+    title: 'Registrar en la ficha clínica en cada atención de morbilidad',
+    items: [
+      'Diagnóstico de fibromialgia (criterios ACR 2016) y tiempo de evolución del cuadro.',
+      'Dolor con escala ENA/EVA: valor basal y en cada control.',
+      'Escala FIQ-R (impacto): puntaje basal y de seguimiento. (Calculadora en la pestaña Escalas.)',
+      'Escala PSFS (funcional): puntaje basal y de seguimiento. (Calculadora en la pestaña Escalas.)',
+      'Manejo farmacológico: medicamentos, dosis, respuesta y RAM.',
+      'Rehabilitación: intervención realizada y resultados.',
+      'Salud mental: intervención de psicólogo y/o psiquiatría.',
+      'Objetivo de la derivación si corresponde: manejo de dolor, no respuesta al manejo de APS, u otro.',
+      '━━━ NOTA ━━━',
+      'PSFS y FIQ-R son obligatorias para fundamentar la derivación a Fisiatría; sin registro seriado la derivación se considera no pertinente (pauta de cotejo).',
+    ],
+  },
+  {
     id: 'fibro-flujograma',
     type: 'mermaid',
     tab: 'Flujo',
@@ -545,6 +566,13 @@ const content_blocks = [
     ],
   },
   {
+    id: 'fibro-escalas-fiqr-calc',
+    type: 'fiqr_calculator',
+    tab: 'Escalas',
+    subtab: 'FIQ-R',
+    order: 611,
+  },
+  {
     id: 'fibro-escalas-psfs',
     type: 'criteria',
     tab: 'Escalas',
@@ -558,6 +586,13 @@ const content_blocks = [
       'Puntuación total = suma de actividades / número de actividades.',
       'Cambio mínimo detectable: 2 puntos en la media; 3 puntos en una sola actividad.',
     ],
+  },
+  {
+    id: 'fibro-escalas-psfs-calc',
+    type: 'psfs_calculator',
+    tab: 'Escalas',
+    subtab: 'PSFS',
+    order: 621,
   },
   {
     id: 'fibro-escalas-pcs',
@@ -657,6 +692,8 @@ const topicPayload = {
   related_topics: [],
   related_tools: [
     { tool_id: 'fibromyalgia-acr', label: 'Fibromialgia — Criterios diagnósticos ACR 2016' },
+    { tool_id: 'fiq-r', label: 'FIQ-R — Impacto de la fibromialgia' },
+    { tool_id: 'psfs', label: 'PSFS — Escala Funcional Específica del Paciente' },
   ],
   clinical_summary:
     'Fibromialgia: dolor musculoesquelético generalizado crónico con fatiga, sueño no reparador y síntomas cognitivos. Diagnóstico clínico por criterios ACR 2016 (IDG + ESS). Manejo integral de 3 pilares en APS.',
