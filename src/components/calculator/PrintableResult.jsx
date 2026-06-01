@@ -43,6 +43,12 @@ export default function PrintableResult({ title, inputs, result, patientInfo, ge
   const { tone, Icon } = getRiskTone(result?.interpretation);
   const T = TONE_CLASSES[tone];
 
+  // El score puede ser un número corto ("12") o una frase ("No cumple criterios ACR 2016").
+  // Escala el tamaño según el largo para no romper el layout de impresión.
+  const scoreStr = result?.score === undefined || result?.score === null ? '' : String(result.score);
+  const scoreClass = scoreStr.length <= 4 ? 'text-5xl' : scoreStr.length <= 10 ? 'text-2xl' : 'text-base';
+  const scoreIsLong = scoreStr.length > 10;
+
   // Quita el "Plazo: ..." del texto principal cuando lo extraemos al banner.
   const cleanInterpretation = result?.interpretation
     ? result.interpretation.replace(/Plazo:\s*[^.]+\.?/i, '').trim()
@@ -114,9 +120,9 @@ export default function PrintableResult({ title, inputs, result, patientInfo, ge
           <div className="flex items-stretch gap-4">
             {/* Score grande */}
             {result?.score !== undefined && (
-              <div className="flex flex-col items-center justify-center border-r-2 border-slate-300 pr-4 min-w-[80px]">
-                <div className={`text-5xl font-extrabold leading-none ${T.score}`}>{result.score}</div>
-                {result.label && <p className="text-[9pt] text-slate-600 mt-1 text-center max-w-[120px] leading-tight">{result.label}</p>}
+              <div className={`flex flex-col items-center justify-center border-r-2 border-slate-300 pr-4 ${scoreIsLong ? 'min-w-[120px] max-w-[170px]' : 'min-w-[80px]'}`}>
+                <div className={`${scoreClass} font-extrabold leading-tight text-center ${T.score}`}>{result.score}</div>
+                {result.label && <p className="text-[9pt] text-slate-600 mt-1 text-center max-w-[150px] leading-tight">{result.label}</p>}
               </div>
             )}
             {/* Texto + plazo */}
