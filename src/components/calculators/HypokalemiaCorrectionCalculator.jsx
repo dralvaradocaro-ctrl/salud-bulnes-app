@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, Calculator, Pill, ShieldCheck, Zap } from 'lucide-react';
+import { Pill, ShieldCheck } from 'lucide-react';
 
 import CalculatorWrapper from '@/components/calculator/CalculatorWrapper';
 import CalculatorReferences from '@/components/calculator/CalculatorReferences';
@@ -103,6 +103,16 @@ export default function HypokalemiaCorrectionCalculator() {
       ? urgent ? 'EV monitorizada' : k < 3 ? 'VO o EV periférica según tolerancia' : 'VO preferente'
       : values.route;
 
+    // ── Orden EV lista (bolsa periférica estándar) ──
+    const PERIPH_RATE = 10;   // mEq/h máx periférica
+    const PERIPH_CONC = 40;   // mEq/L máx periférica
+    const BAG_MEQ = 40;       // mEq por bolsa estándar
+    const ampsPerBag = Math.round(BAG_MEQ / KCL_AMP_MEQ);          // ≈3 amp
+    const volPerBag = Math.round(BAG_MEQ / PERIPH_CONC * 1000);    // 1000 mL
+    const hoursPerBag = Math.round(BAG_MEQ / PERIPH_RATE);         // 4 h
+    const bagsLow = Math.max(1, Math.round(deficitLow / BAG_MEQ));
+    const bagsHigh = Math.max(1, Math.round(deficitHigh / BAG_MEQ));
+
     const medicationCards = [
       {
         title: 'Cloruro de potasio VO',
@@ -115,11 +125,13 @@ export default function HypokalemiaCorrectionCalculator() {
       },
       {
         title: 'Cloruro de potasio EV 10%',
-        dose: `${round(ampLow, 1)}-${round(ampHigh, 1)} ampollas aprox.`,
+        dose: `${ampsPerBag} amp en ${volPerBag} mL SF · ${hoursPerBag} h EV`,
         badge: '10 mL ≈ 13,4 mEq',
         details: [
+          `📋 Orden lista: ${ampsPerBag} amp KCl 10% (${BAG_MEQ} mEq) en ${volPerBag} mL de SF 0,9% a pasar en ${hoursPerBag} h EV periférica (10 mEq/h, ≤40 mEq/L).`,
+          `Déficit estimado ~${round(deficitLow, 0)}-${round(deficitHigh, 0)} mEq ≈ ${bagsLow}-${bagsHigh} bolsas como esta; recontrolar K cada 2-4 h entre bolsas.`,
+          `Si es mucho o urge: 2 vías periféricas en paralelo (${ampsPerBag} amp c/u ≈ ${BAG_MEQ * 2} mEq en ${hoursPerBag} h) o vía central/monitorizada (mayor concentración y hasta ~20 mEq/h con ECG).`,
           'Usar EV si grave, síntomas, ECG, intolerancia VO u hospitalizado con pérdidas activas.',
-          'Periférica habitual: 10 mEq/h; concentración 20-40 mEq/L. Mayor velocidad requiere monitorización y vía segura.',
         ],
       },
     ];
