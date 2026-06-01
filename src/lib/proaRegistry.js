@@ -1,4 +1,6 @@
-const STORAGE_KEY = 'proa_pseudonymous_registry_v1';
+import { supabase } from './supabase';
+
+const STORAGE_KEY = 'proa_pseudonymous_registry_v1'; // caché local (respaldo offline)
 const PENDING_KEY = 'proa_pending_form_v1';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -29,6 +31,28 @@ export function generateProaCode({ paciente = '', rut = '' } = {}) {
   return `${initials}${lastTwo}-${dv}-${random}`;
 }
 
+// ─────────────── Mapeo fila Supabase ↔ registro local ───────────────
+const rowToRecord = (row) => ({
+  id: row.id,
+  code: row.code,
+  bedCode: row.bed_code,
+  servicio: row.servicio || '',
+  updatedAt: row.updated_at,
+  evolutions: Array.isArray(row.evolutions) ? row.evolutions : [],
+});
+
+const recordToRow = (record) => ({
+  id: record.id,
+  code: record.code,
+  bed_code: record.bedCode,
+  servicio: record.servicio || '',
+  evolutions: record.evolutions || [],
+  updated_at: record.updatedAt,
+});
+
+const newId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+
+// ─────────────── Caché local (lectura instantánea / offline) ───────────────
 export function readProaRegistry() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -40,92 +64,114 @@ export function readProaRegistry() {
 }
 
 export function writeProaRegistry(records) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records || []));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records || []));
+  } catch {
+    // Best-effort cache.
+  }
 }
 
-export function saveProaRecord(form, options = {}) {
+// ─────────────── Supabase (fuente de verdad, multi-dispositivo) ───────────────
+export async function fetchProaRecords() {
+  try {
+    const { data, error } = await supabase
+      .from('proa_records')
+      .select('*')
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    const records = (data || []).map(rowToRecord);
+    writeProaRegistry(records);
+    return records;
+  } catch {
+    // Sin conexión / error → usar la última caché conocida.
+    return readProaRegistry();
+  }
+}
+
+export async function saveProaRecord(form, options = {}) {
   const now = new Date().toISOString();
   const safeForm = sanitizeProaRecord(form);
   const bedCode = safeForm.cama || 'SIN-CAMA';
-  const existing = readProaRegistry();
   const replaceExisting = options.replaceExisting || form?.__proaRegistryMode === 'new_patient';
-  const sameBed = replaceExisting ? null : existing.find((record) => record.bedCode === bedCode);
+
+  // Registro existente en esa cama (para encadenar evoluciones del mismo paciente).
+  let existing = null;
+  try {
+    const { data } = await supabase
+      .from('proa_records')
+      .select('*')
+      .eq('bed_code', bedCode)
+      .maybeSingle();
+    existing = data ? rowToRecord(data) : null;
+  } catch {
+    existing = readProaRegistry().find((r) => r.bedCode === bedCode) || null;
+  }
+
   const record = {
-    id: sameBed?.id || globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`,
-    code: sameBed?.code || generateProaCode(form),
+    id: existing?.id || newId(),
+    code: replaceExisting || !existing ? generateProaCode(form) : existing.code,
     bedCode,
     servicio: safeForm.servicio || '',
     updatedAt: now,
     evolutions: [
-      {
-        savedAt: now,
-        form: safeForm,
-      },
-      ...(sameBed?.evolutions || []),
+      { savedAt: now, form: safeForm },
+      ...(replaceExisting ? [] : (existing?.evolutions || [])),
     ].slice(0, 12),
   };
-  const next = [record, ...existing.filter((item) => item.id !== record.id && item.bedCode !== bedCode)];
-  writeProaRegistry(next);
+
+  const { error } = await supabase
+    .from('proa_records')
+    .upsert(recordToRow(record), { onConflict: 'bed_code' });
+  if (error) throw error;
+
+  // Mantener la caché local en sincronía.
+  const cache = readProaRegistry();
+  writeProaRegistry([record, ...cache.filter((r) => r.id !== record.id && r.bedCode !== bedCode)]);
   return record;
 }
 
-export function moveProaRecordToBed(sourceBedCode, targetBedCode, targetService = '') {
-  const existing = readProaRegistry();
-  const source = existing.find((record) => record.bedCode === sourceBedCode);
-  if (!source || !targetBedCode || sourceBedCode === targetBedCode) return null;
+export async function moveProaRecordToBed(sourceBedCode, targetBedCode, targetService = '') {
+  if (!sourceBedCode || !targetBedCode || sourceBedCode === targetBedCode) return null;
 
+  const { data: srcRow } = await supabase
+    .from('proa_records')
+    .select('*')
+    .eq('bed_code', sourceBedCode)
+    .maybeSingle();
+  if (!srcRow) return null;
+
+  const src = rowToRecord(srcRow);
   const now = new Date().toISOString();
-  const moved = {
-    ...source,
-    bedCode: targetBedCode,
-    servicio: targetService || source.servicio || '',
-    updatedAt: now,
-    evolutions: (source.evolutions || []).map((evolution) => ({
-      ...evolution,
-      form: sanitizeProaRecord({
-        ...(evolution.form || {}),
-        cama: targetBedCode,
-        servicio: targetService || evolution.form?.servicio || source.servicio || '',
-      }),
-    })),
-  };
+  const movedEvolutions = (src.evolutions || []).map((evolution) => ({
+    ...evolution,
+    form: sanitizeProaRecord({
+      ...(evolution.form || {}),
+      cama: targetBedCode,
+      servicio: targetService || evolution.form?.servicio || src.servicio || '',
+    }),
+  }));
 
-  const next = [
-    moved,
-    ...existing.filter((record) => record.id !== source.id && record.bedCode !== targetBedCode),
-  ];
-  writeProaRegistry(next);
-  return moved;
-}
+  // Limpiar la cama destino y mover el registro de origen hacia ella.
+  await supabase.from('proa_records').delete().eq('bed_code', targetBedCode);
+  const { error } = await supabase
+    .from('proa_records')
+    .update({
+      bed_code: targetBedCode,
+      servicio: targetService || src.servicio || '',
+      updated_at: now,
+      evolutions: movedEvolutions,
+    })
+    .eq('bed_code', sourceBedCode);
+  if (error) throw error;
 
-export function getProaRecordByBed(bedCode) {
-  return readProaRegistry().find((record) => record.bedCode === bedCode) || null;
-}
-
-export function moveProaRecord(recordId, newBedCode, newServicio = '') {
-  const existing = readProaRegistry();
-  const recordIndex = existing.findIndex((r) => r.id === recordId);
-  if (recordIndex === -1) return null;
-
-  const targetRecord = existing[recordIndex];
-  targetRecord.bedCode = newBedCode;
-  if (newServicio) targetRecord.servicio = newServicio;
-  targetRecord.updatedAt = new Date().toISOString();
-
-  // If there's an existing record in the target bed, it will be overwritten
-  // to avoid having two records in the same bed.
-  const updatedRecords = [
-    targetRecord,
-    ...existing.filter((item) => item.id !== targetRecord.id && item.bedCode !== newBedCode)
-  ];
-  writeProaRegistry(updatedRecords);
-  return targetRecord;
+  return { ...src, bedCode: targetBedCode, servicio: targetService || src.servicio || '', updatedAt: now, evolutions: movedEvolutions };
 }
 
 export function getLatestProaForm(record) {
   return record?.evolutions?.[0]?.form || null;
 }
 
+// ─────────────── Formulario pendiente (traspaso entre páginas) ───────────────
 export function setPendingProaForm(form) {
   const pending = sanitizeProaRecord(form);
   if (form?.__proaRegistryMode) pending.__proaRegistryMode = form.__proaRegistryMode;

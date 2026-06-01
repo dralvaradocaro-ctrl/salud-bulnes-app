@@ -627,14 +627,23 @@ export default function VisitaPROA() {
     setF({ ...EMPTY, fecha: todayIso(), hora: currentTime() });
   };
 
-  const handleSaveRegistry = () => {
+  const [saving, setSaving] = useState(false);
+  const handleSaveRegistry = async () => {
     if (!f.cama?.trim()) {
       setRegistryMessage('Selecciona una cama antes de guardar el registro PROA.');
       return;
     }
-    const record = saveProaRecord(f, { replaceExisting: f.__proaRegistryMode === 'new_patient' });
-    setF(prev => ({ ...prev, __proaRegistryMode: '' }));
-    setRegistryMessage(`Registro ${record.code} guardado en cama ${record.bedCode}. No se almacenó nombre, RUT ni ficha.`);
+    setSaving(true);
+    setRegistryMessage('Guardando…');
+    try {
+      const record = await saveProaRecord(f, { replaceExisting: f.__proaRegistryMode === 'new_patient' });
+      setF(prev => ({ ...prev, __proaRegistryMode: '' }));
+      setRegistryMessage(`✅ Registro ${record.code} guardado en cama ${record.bedCode} y sincronizado (visible desde cualquier dispositivo). No se almacenó nombre, RUT ni ficha.`);
+    } catch (e) {
+      setRegistryMessage(`❌ No se pudo guardar en el servidor (${e?.message || e}). Revisa tu conexión e inténtalo de nuevo.`);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggleRec = (rec) => {
@@ -1185,9 +1194,9 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="min-h-5 text-xs font-medium text-teal-700">{registryMessage}</p>
               <div className="flex items-center justify-end gap-2">
-                <Button variant="outline" onClick={handleSaveRegistry} className="gap-2">
+                <Button variant="outline" onClick={handleSaveRegistry} disabled={saving} className="gap-2">
                   <Save className="h-4 w-4" />
-                  Guardar registro PROA
+                  {saving ? 'Guardando…' : 'Guardar registro PROA'}
                 </Button>
               <Button variant="outline" onClick={clear}>Limpiar</Button>
               <Button onClick={() => setShowPreview(true)} className="bg-teal-600 hover:bg-teal-700 gap-2">

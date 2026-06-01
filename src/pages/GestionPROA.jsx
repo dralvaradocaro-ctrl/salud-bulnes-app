@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { createPageUrl } from '@/utils';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PROA_BED_MAP } from '@/lib/hospitalSuggestions';
-import { getLatestProaForm, moveProaRecordToBed, readProaRegistry, setPendingProaForm } from '@/lib/proaRegistry';
+import { fetchProaRecords, getLatestProaForm, moveProaRecordToBed, readProaRegistry, setPendingProaForm } from '@/lib/proaRegistry';
 import {
   ArrowRight,
   Bed,
@@ -73,7 +73,10 @@ export default function GestionPROA() {
   const selectedLatest = getLatestProaForm(selectedRecord);
   const currentService = PROA_BED_MAP.find((service) => service.servicio === activeService) || PROA_BED_MAP[0];
 
-  const refreshRecords = () => setRecords(readProaRegistry());
+  const refreshRecords = () => { fetchProaRecords().then(setRecords); };
+
+  // Cargar desde Supabase al montar (fuente de verdad, multi-dispositivo).
+  useEffect(() => { fetchProaRecords().then(setRecords); }, []);
 
   const serviceRecordCount = (service) => service.groups.reduce((total, group) => (
     total + group.beds.filter((bed) => recordsByBed[bed]).length
@@ -103,11 +106,11 @@ export default function GestionPROA() {
     navigate(createPageUrl('VisitaPROA'));
   };
 
-  const movePatientToSelectedBed = () => {
+  const movePatientToSelectedBed = async () => {
     if (!selectedBed || !sourceBedToMove) return;
-    moveProaRecordToBed(sourceBedToMove, selectedBed, findServiceForBed(selectedBed));
+    await moveProaRecordToBed(sourceBedToMove, selectedBed, findServiceForBed(selectedBed));
     setSourceBedToMove('');
-    setRecords(readProaRegistry());
+    refreshRecords();
   };
 
   const scrollToBedMap = () => {
