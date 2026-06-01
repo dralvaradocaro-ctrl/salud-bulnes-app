@@ -1,6 +1,6 @@
 const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { Link } from 'react-router-dom';
@@ -58,18 +58,22 @@ const TEMPLATE_TYPE_STYLE = {
 const FORM_CARD_CLASS = 'flex items-center gap-4 rounded-xl border p-4 transition-all hover:shadow-sm hover:-translate-y-0.5';
 const FORM_ICON_CLASS = 'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl';
 const SSN2026_TAG = '[SSÑ-2026]';
+const CATEGORY_TABS = ['topics', 'tools', 'templates', 'gestiones'];
 
 export default function Category() {
   const urlParams = new URLSearchParams(window.location.search);
   const categoryId = urlParams.get('id');
   const initialTopicFilter = urlParams.get('topicFilter') || 'all';
   const initialSubcategory = urlParams.get('topicArea') || 'all';
+  const initialTab = CATEGORY_TABS.includes(urlParams.get('tab')) ? urlParams.get('tab') : 'topics';
 
-  const [activeTab, setActiveTab] = useState('topics');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [activeSubcategory, setActiveSubcategory] = useState(initialSubcategory);
   const [activeTopicFilter, setActiveTopicFilter] = useState(initialTopicFilter);
   const [gestionesTab, setGestionesTab] = useState('programas');
   const [arsenalSearch, setArsenalSearch] = useState('');
+  const didRestoreReturnPoint = useRef(false);
+  const pendingRestoreScroll = useRef(null);
 
   const { data: category, isLoading: loadingCategory } = useQuery({
     queryKey: ['category', categoryId],
@@ -315,6 +319,8 @@ export default function Category() {
   useEffect(() => {
     const nextParams = new URLSearchParams(window.location.search);
     if (categoryId) nextParams.set('id', categoryId);
+    if (activeTab !== 'topics') nextParams.set('tab', activeTab);
+    else nextParams.delete('tab');
     if (activeTopicFilter !== 'all') nextParams.set('topicFilter', activeTopicFilter);
     else nextParams.delete('topicFilter');
     if (activeSubcategory !== 'all') nextParams.set('topicArea', activeSubcategory);
@@ -322,8 +328,74 @@ export default function Category() {
 
     const nextSearch = nextParams.toString();
     const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}`;
-    window.history.replaceState({}, '', nextUrl);
-  }, [activeSubcategory, activeTopicFilter, categoryId]);
+    window.history.replaceState(window.history.state, '', nextUrl);
+  }, [activeTab, activeSubcategory, activeTopicFilter, categoryId]);
+
+  const saveCategoryReturnPoint = useCallback(() => {
+    if (!categoryId) return;
+    const nextParams = new URLSearchParams(window.location.search);
+    if (categoryId) nextParams.set('id', categoryId);
+    if (activeTab !== 'topics') nextParams.set('tab', activeTab);
+    else nextParams.delete('tab');
+    if (activeTopicFilter !== 'all') nextParams.set('topicFilter', activeTopicFilter);
+    else nextParams.delete('topicFilter');
+    if (activeSubcategory !== 'all') nextParams.set('topicArea', activeSubcategory);
+    else nextParams.delete('topicArea');
+    const search = nextParams.toString();
+    const url = `${window.location.pathname}${search ? `?${search}` : ''}`;
+    try {
+      sessionStorage.setItem(`category-return:${categoryId}`, JSON.stringify({
+        categoryId,
+        url,
+        activeTab,
+        activeSubcategory,
+        activeTopicFilter,
+        gestionesTab,
+        arsenalSearch,
+        scrollY: window.scrollY,
+        savedAt: Date.now(),
+      }));
+    } catch {
+      // Best-effort navigation memory.
+    }
+  }, [activeTab, activeSubcategory, activeTopicFilter, arsenalSearch, categoryId, gestionesTab]);
+
+  useEffect(() => {
+    if (!categoryId || didRestoreReturnPoint.current) return;
+    didRestoreReturnPoint.current = true;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(`category-return:${categoryId}`) || 'null');
+      if (!saved || saved.categoryId !== categoryId) return;
+      const params = new URLSearchParams(window.location.search);
+      if (!params.has('tab') && CATEGORY_TABS.includes(saved.activeTab)) setActiveTab(saved.activeTab);
+      if (!params.has('topicArea') && saved.activeSubcategory) setActiveSubcategory(saved.activeSubcategory);
+      if (!params.has('topicFilter') && saved.activeTopicFilter) setActiveTopicFilter(saved.activeTopicFilter);
+      if (saved.gestionesTab) setGestionesTab(saved.gestionesTab);
+      if (saved.arsenalSearch) setArsenalSearch(saved.arsenalSearch);
+      pendingRestoreScroll.current = saved.scrollY || 0;
+      window.setTimeout(() => window.scrollTo({ top: pendingRestoreScroll.current || 0, behavior: 'auto' }), 120);
+    } catch {
+      sessionStorage.removeItem(`category-return:${categoryId}`);
+    }
+  }, [categoryId]);
+
+  useEffect(() => {
+    if (loadingCategory || loadingTopics || pendingRestoreScroll.current === null) return;
+    const target = pendingRestoreScroll.current;
+    window.setTimeout(() => {
+      window.scrollTo({ top: target, behavior: 'auto' });
+      pendingRestoreScroll.current = null;
+    }, 80);
+  }, [loadingCategory, loadingTopics, topics.length]);
+
+  useEffect(() => {
+    const handlePageHide = () => saveCategoryReturnPoint();
+    window.addEventListener('pagehide', handlePageHide);
+    return () => {
+      handlePageHide();
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, [saveCategoryReturnPoint]);
 
   if (loadingCategory) {
     return (
@@ -525,6 +597,8 @@ export default function Category() {
                           >
                             <Link
                               to={createPageUrl(`TopicDetail?id=${topic.id}`)}
+                              state={{ fromCategoryUrl: `${window.location.pathname}${window.location.search}` }}
+                              onClick={saveCategoryReturnPoint}
                               className={`group block bg-white rounded-2xl p-6 border transition-all h-full ${
                                 topic.has_local_protocol
                                   ? 'border-green-200 shadow-md hover:shadow-2xl ring-2 ring-green-100'

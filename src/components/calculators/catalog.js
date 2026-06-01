@@ -1,4 +1,4 @@
-import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse, Wind, ArrowRightLeft } from 'lucide-react';
+import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse, Wind, ArrowRightLeft, Candy } from 'lucide-react';
 
 import NIHSSCalculator from '@/components/calculators/NIHSSCalculator';
 import HEARTScoreCalculator from '@/components/calculators/HEARTScoreCalculator';
@@ -20,10 +20,14 @@ import GlasgowCalculator from '@/components/calculators/GlasgowCalculator';
 import GDSCalculator from '@/components/calculators/GDSCalculator';
 import LightCriteriaCalculator from '@/components/calculators/LightCriteriaCalculator';
 import OpioidConversionCalculator from '@/components/calculators/OpioidConversionCalculator';
+import HyperglycemicCrisisCalculator from '@/components/calculators/HyperglycemicCrisisCalculator';
+import HypoglycemiaTreatmentCalculator from '@/components/calculators/HypoglycemiaTreatmentCalculator';
 
 export const calculatorsByCategory = {
   'Urgencias': [
-    { id: 'sri', name: 'SRI - Intubación Rápida', component: SRICalculator, icon: Activity, includeInStats: false }
+    { id: 'sri', name: 'SRI - Intubación Rápida', component: SRICalculator, icon: Activity, includeInStats: false },
+    { id: 'hyperglycemic-crisis', name: 'CAD/EHH — Criterios y manejo inicial', component: HyperglycemicCrisisCalculator, icon: Activity },
+    { id: 'hypoglycemia-treatment', name: 'Hipoglicemia en urgencias — Tratamiento inicial', component: HypoglycemiaTreatmentCalculator, icon: Candy }
   ],
   'Cardiología': [
     { id: 'heart', name: 'HEART Score', component: HEARTScoreCalculator, icon: Heart },

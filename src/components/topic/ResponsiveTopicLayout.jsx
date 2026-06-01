@@ -13,11 +13,27 @@ import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils
 import MermaidDiagram from './MermaidDiagram';
 import LightCriteriaCalculator from '@/components/calculators/LightCriteriaCalculator';
 import OpioidConversionCalculator from '@/components/calculators/OpioidConversionCalculator';
+import HyperglycemicCrisisCalculator from '@/components/calculators/HyperglycemicCrisisCalculator';
+import HypoglycemiaTreatmentCalculator from '@/components/calculators/HypoglycemiaTreatmentCalculator';
 
 // Renders text with inline clickable links for patterns defined in block.links.
 // block.links value can be:
 //   string                       → topicId (tooltip = pattern)
 //   { topicId, label }           → topicId with custom tooltip label
+function rememberCurrentTopicReturnPoint() {
+  const url = new URL(window.location.href);
+  const tab = url.searchParams.get('tab');
+  if (!tab) return;
+  try {
+    sessionStorage.setItem(`topic-return:${url.pathname}${url.search}`, JSON.stringify({
+      tab,
+      scrollY: window.scrollY,
+    }));
+  } catch {
+    // Best-effort return memory.
+  }
+}
+
 function renderWithLinks(text, links) {
   if (!links || !text || Object.keys(links).length === 0) return text;
   let segments = [text];
@@ -42,7 +58,10 @@ function renderWithLinks(text, links) {
       <span key={i} className="group relative inline-block">
         <Link
           to={createPageUrl(`TopicDetail?id=${seg.topicId}`)}
-          onClick={e => e.stopPropagation()}
+          onClick={e => {
+            e.stopPropagation();
+            rememberCurrentTopicReturnPoint();
+          }}
           className="font-semibold text-blue-600 underline decoration-dotted underline-offset-2 transition-colors hover:text-blue-800"
         >
           {seg.pattern}
@@ -617,6 +636,7 @@ function ChecklistBlock({ block }) {
 export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto', relatedTopics, relatedTools }) {
   const safeRelatedTopics = relatedTopics || [];
   const safeRelatedTools = relatedTools || [];
+  const visibleRelatedTopics = safeRelatedTopics.filter(ref => ref?.topic_id && ref?.label);
   const visibleRelatedTools = safeRelatedTools.filter(ref =>
     !isHiddenCalculatorId(ref.tool_id) && !isHiddenCalculatorName(ref.label)
   );
@@ -640,6 +660,12 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
 
       case 'opioid_conversion_calculator':
         return <OpioidConversionCalculator key={block.id} />;
+
+      case 'hyperglycemic_crisis_calculator':
+        return <HyperglycemicCrisisCalculator key={block.id} />;
+
+      case 'hypoglycemia_treatment_calculator':
+        return <HypoglycemiaTreatmentCalculator key={block.id} />;
 
       case 'image_gallery':
         return <ImageGalleryBlock key={block.id} block={block} />;
@@ -1506,12 +1532,12 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
         </>
       )}
 
-      {(safeRelatedTopics.length > 0 || visibleRelatedTools.length > 0) && (
+      {(visibleRelatedTopics.length > 0 || visibleRelatedTools.length > 0) && (
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Contenido relacionado</h3>
           <div className="grid gap-3 md:grid-cols-2">
-            {safeRelatedTopics.map((ref, idx) => (
-              <Link key={idx} to={createPageUrl(`TopicDetail?id=${ref.topic_id}`)}>
+            {visibleRelatedTopics.map((ref, idx) => (
+              <Link key={idx} to={createPageUrl(`TopicDetail?id=${ref.topic_id}`)} onClick={rememberReturnPoint}>
                 <div className="rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-blue-300 hover:shadow-sm">
                   <div className="mb-1.5 flex items-center gap-2">
                     <LinkIcon className="h-3.5 w-3.5 text-blue-600" />
@@ -1522,7 +1548,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
               </Link>
             ))}
             {visibleRelatedTools.map((ref, idx) => (
-              <Link key={idx} to={createPageUrl(`AllCalculators?calc=${ref.tool_id}`)}>
+              <Link key={idx} to={createPageUrl(`AllCalculators?calc=${ref.tool_id}`)} onClick={rememberReturnPoint}>
                 <div className="rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-purple-300 hover:shadow-sm">
                   <div className="mb-1.5 flex items-center gap-2">
                     <Calculator className="h-3.5 w-3.5 text-purple-600" />
