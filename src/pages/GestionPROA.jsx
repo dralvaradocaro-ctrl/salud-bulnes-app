@@ -52,6 +52,10 @@ function findServiceForBed(bedCode) {
 
 export default function GestionPROA() {
   const navigate = useNavigate();
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate(createPageUrl('Home'));
+  };
   const bedMapRef = useRef(null);
   const [records, setRecords] = useState(() => readProaRegistry());
   const [selectedBed, setSelectedBed] = useState('');
@@ -200,11 +204,9 @@ export default function GestionPROA() {
       <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur-xl">
         <div className="mx-auto max-w-6xl px-4 py-4">
           <div className="flex items-center gap-4">
-            <Link to={createPageUrl('Home')}>
-              <Button variant="ghost" size="icon" className="rounded-xl">
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-            </Link>
+            <Button variant="ghost" size="icon" className="rounded-xl" onClick={goBack} title="Volver">
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-600">
                 <ShieldPlus className="h-5 w-5 text-white" />
@@ -304,14 +306,19 @@ export default function GestionPROA() {
                                           : 'border-slate-200 bg-white hover:border-teal-200 hover:bg-teal-50/40'
                                     }`}
                                   >
-                                    <span className="block text-base font-bold text-slate-900">{bed}</span>
+                                    <div className="flex items-center justify-between gap-1">
+                                      <span className="block text-base font-bold text-slate-900">{bed}</span>
+                                      {record && (
+                                        <span className="rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">Ocupada</span>
+                                      )}
+                                    </div>
                                     {record ? (
                                       <>
                                         <span className="mt-0.5 block truncate text-xs font-semibold text-emerald-800">{record.code}</span>
                                         <span className="mt-0.5 block text-[10px] text-slate-500">{formatUpdatedAt(record.updatedAt)}</span>
                                       </>
                                     ) : (
-                                      <span className="mt-1 block text-xs text-slate-400">Sin registro</span>
+                                      <span className="mt-1 block text-xs text-slate-400">Libre</span>
                                     )}
                                   </button>
                                 );

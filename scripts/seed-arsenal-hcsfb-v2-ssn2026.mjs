@@ -16,9 +16,11 @@ import { createClient } from '@supabase/supabase-js';
 
 const APPLY = process.argv.includes('--apply');
 
+// `medications` tiene RLS que bloquea inserts con la anon key.
+// Exporta SUPABASE_SERVICE_ROLE_KEY para poder escribir con --apply.
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL     || 'https://gcuevpxondfepbowvyqa.supabase.co',
-  process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_eCS95aS_Aw3SAJnoZvLO1g_erOAjCkh'
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_eCS95aS_Aw3SAJnoZvLO1g_erOAjCkh'
 );
 
 const SOURCE_TAG = '[SSÑ-2026]';

@@ -601,7 +601,7 @@ export default function VisitaPROA() {
   const navigate = useNavigate();
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
-    else navigate(createPageUrl('Home'));
+    else navigate(createPageUrl('GestionPROA'));
   };
   const [f, setF] = useState(() => {
     const pending = takePendingProaForm();
@@ -1130,7 +1130,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
             {/* Recomendaciones PROA */}
             <Section title="Recomendaciones del equipo PROA" right={
               <Button type="button" size="sm" variant="outline" onClick={suggestModifications} disabled={aiSuggesting} className="gap-1 text-xs h-7">
-                <Sparkles className="h-3 w-3" /> {aiSuggesting ? 'Sugiriendo...' : 'Sugerir modificaciones IA'}
+                <Sparkles className="h-3 w-3" /> {aiSuggesting ? 'Generando…' : 'Sugerencia'}
               </Button>
             }>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
@@ -1163,12 +1163,12 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                 </Field>
               </Grid>
               <div className="mt-3">
-                <label className="block text-[11px] font-medium text-slate-600 mb-1">Sugerencias / modificaciones IA</label>
+                <label className="block text-[11px] font-medium text-slate-600 mb-1">Sugerencia</label>
                 <Textarea
                   value={f.sugerencias_ia}
                   onChange={e => u('sugerencias_ia', e.target.value)}
                   className="min-h-[76px] text-sm"
-                  placeholder="Usá el botón IA para proponer modificaciones con los datos ingresados."
+                  placeholder="Usá el botón Sugerencia para proponer modificaciones con los datos ingresados."
                 />
               </div>
             </Section>
@@ -1569,7 +1569,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
               </PrintGrid>
               {f.sugerencias_ia && (
                 <div style={{ ...box, minHeight: '24pt', marginTop: '4pt' }}>
-                  <strong>Sugerencias IA:</strong>
+                  <strong>Sugerencia:</strong>
                   <br />
                   {f.sugerencias_ia}
                 </div>
