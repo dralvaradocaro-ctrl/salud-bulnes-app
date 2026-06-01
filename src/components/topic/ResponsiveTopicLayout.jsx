@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -1086,6 +1086,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     return tabValues.includes(requested) ? requested : tabValues[0];
   })();
   const [activeTab, setActiveTab] = useState(initialTab);
+  const tabBarRef = useRef(null);
 
   // Sub-tabs (un nivel de anidación dentro de la pestaña activa)
   const blocksInActiveTab = hasTabs ? safeBlocks.filter(b => b.tab === activeTab) : [];
@@ -1122,10 +1123,16 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
   }, [activeTab, hasTabs]);
 
   const updateActiveTab = (tab) => {
+    if (tab === activeTab) return;
     setActiveTab(tab);
     const url = new URL(window.location.href);
     url.searchParams.set('tab', tab);
     window.history.replaceState(window.history.state, '', url);
+    // Evita el salto de scroll inconsistente al cambiar de pestaña: deja la barra
+    // de pestañas en una posición fija (bajo el header sticky) en cada cambio.
+    window.requestAnimationFrame(() => {
+      tabBarRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+    });
   };
 
   const rememberReturnPoint = () => {
@@ -1514,7 +1521,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
 
       {/* ── Normal tab switcher ── */}
       {!isGESMode && hasTabs && (
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
+        <div ref={tabBarRef} className="scroll-mt-32 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
           <div className="flex gap-1.5 min-w-max">
             {tabValues.map(tab => (
               <button
