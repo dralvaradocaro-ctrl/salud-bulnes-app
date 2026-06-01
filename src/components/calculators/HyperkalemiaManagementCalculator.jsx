@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, ShieldCheck, Zap } from 'lucide-react';
+import { ShieldCheck, Zap } from 'lucide-react';
 
 import CalculatorWrapper from '@/components/calculator/CalculatorWrapper';
 import CalculatorReferences from '@/components/calculator/CalculatorReferences';
@@ -119,20 +119,22 @@ export default function HyperkalemiaManagementCalculator() {
     const calciumCard = values.calciumAvailable === 'gluconate'
       ? {
         title: 'Gluconato de calcio 10%',
-        dose: '30 mL EV en 10 min',
-        badge: 'Si disponible',
+        dose: '30 mL (3 amp) EV en 10 min',
+        badge: 'Stat · repetible',
         details: [
-          'Inicio 1-3 min; repetir si persisten cambios ECG.',
-          'No baja K: solo estabiliza membrana.',
+          'Indicación: 3 amp (30 mL) de gluconato de calcio 10% EV a pasar en 10 min.',
+          'Dosis stat (una vez). Inicio 1-3 min, dura ~30-60 min: repetible 1 vez a los 5-10 min si persisten los cambios ECG.',
+          'No baja el K: solo estabiliza la membrana mientras actúan las medidas que sí lo bajan.',
         ],
       }
       : {
         title: 'Cloruro de calcio 10%',
-        dose: '10 mL EV lento',
-        badge: 'Alternativa local',
+        dose: '10 mL (1 amp) EV lento',
+        badge: 'Stat · repetible',
         details: [
-          'Preferir vía central o vena segura; extravasación es lesiva.',
-          'Usar si gluconato no está disponible y hay toxicidad ECG/periparo.',
+          'Indicación: 1 amp (10 mL) de cloruro de calcio 10% EV lento.',
+          'Dosis stat (una vez), repetible si persiste toxicidad ECG. Preferir vía central o vena segura; la extravasación es lesiva.',
+          'Usar si el gluconato no está disponible y hay toxicidad ECG / periparo.',
         ],
       };
 
@@ -141,29 +143,29 @@ export default function HyperkalemiaManagementCalculator() {
       {
         title: 'Insulina cristalina + glucosa',
         dose: '10 UI EV + 25 g glucosa',
-        badge: 'Shift K',
+        badge: 'Shift K · única',
         details: [
-          'SG 10% 250 mL = 25 g; SG 30% 83 mL aprox = 25 g.',
+          'Indicación: 10 UI de insulina cristalina EV en bolo + 25 g de glucosa EV (SG 10% 250 mL, o SG 30% ≈ 83 mL).',
           glucosePlan,
-          'Esperar descenso K ~0,6-1,0 mEq/L; vigilar hipoglicemia por 4-6 h.',
+          'Dosis única; efecto en 15-30 min y dura 4-6 h. Repetible según K de control. Vigilar glicemia 1-2 h y por 4-6 h (riesgo de hipoglicemia tardía). Descenso esperado de K ~0,6-1,0 mEq/L.',
         ],
       },
       {
         title: 'Salbutamol nebulizado',
         dose: '10-20 mg nebulizado',
-        badge: 'Adyuvante',
+        badge: 'Adyuvante · repetible',
         details: [
-          'Solución 5 mg/mL: 2-4 mL nebulizados.',
-          'No usar como único tratamiento en hiperkalemia grave.',
+          'Indicación: 10-20 mg nebulizados (solución 5 mg/mL: 2-4 mL).',
+          'Adyuvante, repetible. No usar como único tratamiento en hiperkalemia grave.',
         ],
       },
       {
         title: 'Bicarbonato 8,4%',
         dose: '50 mEq EV',
-        badge: 'Si acidosis',
+        badge: 'Solo si acidosis',
         details: [
-          'Útil principalmente si acidosis metabólica significativa.',
-          '8,4% suele equivaler a 1 mEq/mL: 50 mEq ≈ 50 mL.',
+          'Indicación: 50 mEq EV (8,4% ≈ 1 mEq/mL → 50 mL).',
+          'Solo si acidosis metabólica significativa; no es de rutina. Repetible según pH.',
         ],
       },
       {
@@ -171,8 +173,8 @@ export default function HyperkalemiaManagementCalculator() {
         dose: '20-40 mg EV',
         badge: 'Si diuresis',
         details: [
-          'Presentación local 20 mg/mL: 1-2 mL.',
-          'No sirve en anuria; corregir volemia si hipovolémico.',
+          'Indicación: 20-40 mg EV (presentación 20 mg/mL → 1-2 mL).',
+          'Elimina K por orina (efecto en 30-60 min); repetible según diuresis. No sirve en anuria; corregir volemia si hipovolémico.',
         ],
       },
     ];

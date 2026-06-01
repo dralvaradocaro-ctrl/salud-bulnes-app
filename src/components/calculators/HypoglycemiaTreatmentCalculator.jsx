@@ -73,10 +73,10 @@ export default function HypoglycemiaTreatmentCalculator() {
       medicationCards.push({
         title: 'Carbohidrato oral de absorción rápida',
         dose: '15-20 g VO',
-        badge: 'Paciente despierto',
+        badge: 'Despierto · repetible',
         details: [
-          'Ejemplos: glucosa oral, jugo azucarado o equivalente disponible.',
-          'Recontrolar HGT a los 15 min y repetir si sigue <70 mg/dL.',
+          'Indicación: 15-20 g de carbohidrato de absorción rápida VO (glucosa oral, jugo azucarado o equivalente).',
+          'Repetible cada 15 min: recontrolar HGT y dar otros 15-20 g si sigue <70 mg/dL. Al recuperar, dar colación o adelantar la comida.',
         ],
       });
       recommendations.push('Dar 15-20 g de carbohidrato de absorción rápida por vía oral.');
@@ -87,20 +87,20 @@ export default function HypoglycemiaTreatmentCalculator() {
         {
           title: 'Suero glucosado 30%',
           dose: '50 mL EV = 15 g',
-          badge: 'Opción local rápida',
+          badge: 'Bolo · repetible',
           details: [
-            'Si ampolla local es 20 mL: 2,5 ampollas.',
-            'Si no se fracciona: 3 ampollas = 60 mL = 18 g.',
-            'Prescribir en gramos + mL; ampollas solo como ayuda práctica.',
+            'Indicación: SG 30% 50 mL EV en bolo (= 15 g). Ampolla de 20 mL → 2,5 amp; si no se fracciona, 3 amp = 60 mL = 18 g.',
+            'Bolo único, repetible a los 15 min si sigue <70 mg/dL. Prescribir en gramos + mL; ampollas solo como ayuda práctica.',
+            'Tras recuperar, dejar infusión de mantención (SG 5-10%) si persiste riesgo por ayuno o exceso de insulina.',
           ],
         },
         {
           title: 'Suero glucosado 10%',
           dose: '150 mL EV = 15 g',
-          badge: 'Alternativa menos hipertónica',
+          badge: 'Bolo · repetible',
           details: [
-            'Útil si se quiere evitar carga hipertónica concentrada.',
-            'Puede continuar como infusión si persiste riesgo por ayuno o exceso de insulina.',
+            'Indicación: SG 10% 150 mL EV (= 15 g); alternativa menos hipertónica.',
+            'Repetible a los 15 min si persiste <70 mg/dL; puede continuar como infusión de mantención si hay riesgo por ayuno o exceso de insulina.',
           ],
         },
       );
@@ -113,10 +113,10 @@ export default function HypoglycemiaTreatmentCalculator() {
       medicationCards.push({
         title: 'Glucagón',
         dose: '1 mg IM/SC',
-        badge: 'Mientras se obtiene vía',
+        badge: 'Dosis única',
         details: [
-          'Usar solo si está disponible; no reemplaza conseguir acceso EV/IO.',
-          'Respuesta menor en ayuno prolongado, alcoholismo o desnutrición.',
+          'Indicación: 1 mg IM/SC, dosis única, mientras se obtiene la vía (no repetir de rutina).',
+          'Usar solo si está disponible; no reemplaza conseguir acceso EV/IO. Respuesta menor en ayuno prolongado, alcoholismo o desnutrición.',
         ],
       });
       recommendations.push('Sin vía venosa y no puede tragar: pedir ayuda, asegurar ABC y conseguir vía EV/IO urgente.');

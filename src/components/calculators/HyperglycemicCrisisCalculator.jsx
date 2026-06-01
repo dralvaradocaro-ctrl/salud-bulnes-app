@@ -114,8 +114,9 @@ export default function HyperglycemicCrisisCalculator() {
       {
         title: 'NaCl 0,9%',
         dose: '500-1000 mL/h',
-        badge: 'Primera hora',
+        badge: 'Infusión · 1ª-2ª h',
         details: [
+          'Indicación: NaCl 0,9% 500-1000 mL/h EV en infusión continua durante 1-2 h. No es bolo único: se titula según diuresis, Na corregido, presión y comorbilidad.',
           'Ajustar por cardiopatía, falla renal, edad, presión, diuresis y Na corregido.',
           correctedNa >= 135 ? 'Luego de fase inicial: Na corregido normal/alto, reevaluar tipo de fluido.' : 'Na corregido bajo: continuar reposición salina isotónica según respuesta.',
         ],
@@ -189,21 +190,20 @@ export default function HyperglycemicCrisisCalculator() {
       medicationCards.push({
         title: 'Insulina humana cristalina',
         dose: `${round(insulinRate)} UI/h`,
-        badge: '100 UI/mL',
+        badge: 'Infusión continua',
         details: [
-          `Equivalente práctico: preparar 100 UI en 100 mL NaCl 0,9% = 1 UI/mL; pasar a ${round(insulinRate)} mL/h.`,
-          `Al llegar a rango de transición: bajar a ${round(reducedInsulinRate)} UI/h = ${round(reducedInsulinRate)} mL/h con esa dilución.`,
-          'No iniciar si K <3,3 mEq/L.',
+          `Indicación: insulina cristalina ${round(insulinRate)} UI/h EV en infusión continua (BIC). No se da en bolo: se titula según glicemia/acidosis.`,
+          `Preparar 100 UI en 100 mL NaCl 0,9% = 1 UI/mL → pasar a ${round(insulinRate)} mL/h.`,
+          `Al llegar a rango de transición: bajar a ${round(reducedInsulinRate)} UI/h (= ${round(reducedInsulinRate)} mL/h) y mantener hasta resolver acidosis/osmolaridad. No iniciar si K <3,3 mEq/L.`,
         ],
       });
       medicationCards.push({
         title: 'Suero glucosado 5-10%',
         dose: 'Agregar en transición',
-        badge: 'Mantener insulina',
+        badge: 'Infusión en transición',
         details: [
-          'CAD: agregar cuando glicemia llegue a 200-250 mg/dL.',
-          'EHH: agregar cuando glicemia llegue a 250-300 mg/dL.',
-          'Permite seguir cerrando cetosis/osmolaridad sin hipoglicemia.',
+          'Se agrega como infusión (no bolo) cuando la glicemia baja al umbral: CAD 200-250 mg/dL; EHH 250-300 mg/dL.',
+          'Permite mantener la insulina y seguir cerrando cetosis/osmolaridad sin hipoglicemia.',
         ],
       });
       recommendations.push(`Insulina cristalina EV: ${round(insulinRate)} UI/h. Si se prepara 100 UI en 100 mL, pasar a ${round(insulinRate)} mL/h.`);
