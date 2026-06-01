@@ -142,6 +142,17 @@ const MEDICATIONS = [
     'Opioide', 'CPU'),
 ];
 
+// Modo --sql: emite INSERT SQL a stdout (para pegar en el SQL Editor de Supabase).
+if (process.argv.includes('--sql')) {
+  const esc = (v) => v === null || v === undefined ? 'NULL'
+    : (typeof v === 'number' || typeof v === 'boolean' ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
+  const cols = ['name', 'active_ingredient', 'presentation', 'dose_value', 'dose_unit', 'category', 'restrictions', 'is_active'];
+  const rows = MEDICATIONS.map((med) => `  (${cols.map((c) => esc(med[c])).join(', ')})`).join(',\n');
+  process.stdout.write(`-- Arsenal SSÑ-2026 v2 (${MEDICATIONS.length} medicamentos, tag [SSÑ-2026])\n`);
+  process.stdout.write(`insert into public.medications (${cols.join(', ')}) values\n${rows};\n`);
+  process.exit(0);
+}
+
 console.log(`\n═══════════════════════════════════════════════════════`);
 console.log(`  ARSENAL SSÑ-2026 v2 — ${APPLY ? '⚡ APPLY MODE' : '🔍 DRY-RUN'}`);
 console.log(`  Res. Ex. N°5754 (23-dic-2025) Servicio de Salud Ñuble`);

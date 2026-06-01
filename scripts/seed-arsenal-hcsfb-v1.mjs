@@ -491,6 +491,17 @@ const MEDICATIONS = [
   m('Óxido nitroso', 'Gas medicinal', 1, 'unidad', 'Gas'),
 ];
 
+// Modo --sql: emite INSERT SQL a stdout (para pegar en el SQL Editor de Supabase).
+if (process.argv.includes('--sql')) {
+  const esc = (v) => v === null || v === undefined ? 'NULL'
+    : (typeof v === 'number' || typeof v === 'boolean' ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
+  const cols = ['name', 'active_ingredient', 'presentation', 'dose_value', 'dose_unit', 'category', 'is_active'];
+  const rows = MEDICATIONS.map((med) => `  (${cols.map((c) => esc(med[c])).join(', ')})`).join(',\n');
+  process.stdout.write(`-- Arsenal HCSFB Bulnes v1 (${MEDICATIONS.length} medicamentos)\n`);
+  process.stdout.write(`insert into public.medications (${cols.join(', ')}) values\n${rows};\n`);
+  process.exit(0);
+}
+
 console.log(`\n═══════════════════════════════════════════════════════`);
 console.log(`  ARSENAL HCSF v1 — ${APPLY ? '⚡ APPLY MODE' : '🔍 DRY-RUN'}`);
 console.log(`═══════════════════════════════════════════════════════\n`);
