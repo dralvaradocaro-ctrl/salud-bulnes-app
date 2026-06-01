@@ -34,6 +34,11 @@ export default function PrintableResult({ title, inputs, result, patientInfo, ge
     year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
   });
 
+  // Normaliza `inputs`: acepta objeto { label: value } o array [{ label, value }].
+  const inputEntries = Array.isArray(inputs)
+    ? inputs.filter(Boolean).map((it) => [it.label, it.value])
+    : (inputs ? Object.entries(inputs) : []);
+
   const plazo = extractPlazo(result?.interpretation);
   const { tone, Icon } = getRiskTone(result?.interpretation);
   const T = TONE_CLASSES[tone];
@@ -90,12 +95,12 @@ export default function PrintableResult({ title, inputs, result, patientInfo, ge
         )}
 
         {/* Parámetros — dos columnas densas */}
-        {inputs && Object.keys(inputs).length > 0 && (
+        {inputEntries.length > 0 && (
           <div className="mb-3">
             <h2 className="text-[10.5pt] font-bold text-slate-900 mb-1 uppercase tracking-wide">Parámetros evaluados</h2>
             <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10pt]">
-              {Object.entries(inputs).map(([k, v]) => (
-                <div key={k} className="flex justify-between border-b border-dotted border-slate-300 py-0.5">
+              {inputEntries.map(([k, v], idx) => (
+                <div key={`${k}-${idx}`} className="flex justify-between border-b border-dotted border-slate-300 py-0.5">
                   <span className="text-slate-700">{k}:</span>
                   <span className="font-semibold text-slate-900">{v}</span>
                 </div>
