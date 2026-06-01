@@ -119,8 +119,9 @@ export default function HypokalemiaCorrectionCalculator() {
         dose: `${oralTabletsLow}-${oralTabletsHigh} comp de 600 mg`,
         badge: '600 mg = 8 mEq',
         details: [
+          `Es el total para el déficit, no una sola toma: repartir en tomas de ≤5 comp (40 mEq), varias al día, hasta completar ${oralTabletsLow}-${oralTabletsHigh} comp con control de K.`,
           'Preferir VO si K >=3,0, sin síntomas graves y con tubo digestivo funcionante.',
-          'Fraccionar; evitar más de 40 mEq por toma si hay mala tolerancia gástrica.',
+          'Evitar más de 40 mEq por toma si hay mala tolerancia gástrica.',
         ],
       },
       {
@@ -128,9 +129,10 @@ export default function HypokalemiaCorrectionCalculator() {
         dose: `${ampsPerBag} amp en ${volPerBag} mL SF · ${hoursPerBag} h EV`,
         badge: '10 mL ≈ 13,4 mEq',
         details: [
-          `📋 Orden lista: ${ampsPerBag} amp KCl 10% (${BAG_MEQ} mEq) en ${volPerBag} mL de SF 0,9% a pasar en ${hoursPerBag} h EV periférica (10 mEq/h, ≤40 mEq/L).`,
-          `Déficit estimado ~${round(deficitLow, 0)}-${round(deficitHigh, 0)} mEq ≈ ${bagsLow}-${bagsHigh} bolsas como esta; recontrolar K cada 2-4 h entre bolsas.`,
-          `Si es mucho o urge: 2 vías periféricas en paralelo (${ampsPerBag} amp c/u ≈ ${BAG_MEQ * 2} mEq en ${hoursPerBag} h) o vía central/monitorizada (mayor concentración y hasta ~20 mEq/h con ECG).`,
+          `Indicación por bolsa: ${ampsPerBag} amp KCl 10% (${BAG_MEQ} mEq) en ${volPerBag} mL de SF 0,9% EV periférica, a pasar en ${hoursPerBag} h (10 mEq/h, ≤40 mEq/L).`,
+          `No es dosis única: se repite hasta corregir. Para el déficit estimado (~${round(deficitLow, 0)}-${round(deficitHigh, 0)} mEq) son ≈ ${bagsLow}-${bagsHigh} bolsas iguales, una tras otra.`,
+          `Recontrolar K cada 2-4 h y suspender al llegar a la meta (no completar las bolsas "a ciegas"; el déficit es estimado).`,
+          `Si urge o es mucho volumen: 2 vías periféricas en paralelo (${ampsPerBag} amp c/u ≈ ${BAG_MEQ * 2} mEq en ${hoursPerBag} h) o vía central/monitorizada (mayor concentración y hasta ~20 mEq/h con ECG).`,
           'Usar EV si grave, síntomas, ECG, intolerancia VO u hospitalizado con pérdidas activas.',
         ],
       },
