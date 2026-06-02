@@ -3,7 +3,7 @@ const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
@@ -130,6 +130,12 @@ export default function Templates() {
     return acc;
   }, {});
 
+  const navigate = useNavigate();
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate(createPageUrl('Home'));
+  };
+
   const exitMultiMode = () => {
     window.history.pushState({}, '', createPageUrl('Templates'));
   };
@@ -140,11 +146,9 @@ export default function Templates() {
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4 mb-4">
-            <Link to={createPageUrl('Home')}>
-              <Button variant="ghost" size="icon" className="rounded-xl">
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-            </Link>
+            <Button variant="ghost" size="icon" className="rounded-xl" onClick={goBack} title="Volver">
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
             <div>
               <h1 className="text-xl font-bold text-slate-900">Documentos clínicos</h1>
               <p className="text-sm text-slate-500">Formularios categorizados y generación múltiple</p>

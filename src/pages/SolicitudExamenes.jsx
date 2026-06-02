@@ -280,7 +280,7 @@ export default function SolicitudExamenes() {
   const navigate = useNavigate();
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
-    else navigate(createPageUrl('Templates'));
+    else navigate(createPageUrl('Home'));
   };
   const [search, setSearch]   = useState('');
   const [selected, setSelected] = useState(new Set());
