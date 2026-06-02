@@ -20,6 +20,9 @@ import {
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import { setMultiPrefill } from '@/lib/multiTemplatePrefill';
+import ImageProtocolForm from './ImageProtocolForm';
+
+const IMAGE_TYPE = 'Protocolo Imágenes';
 
 const EXTERNAL_FORMS = [
   {
@@ -224,6 +227,7 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
   const unionFields = useMemo(() => {
     const seen = new Map();
     selectedTemplates.forEach(t => {
+      if (t.type === IMAGE_TYPE) return; // Protocolo Imágenes trae su propio formulario
       (t.required_fields || []).forEach(f => {
         if (!seen.has(f.field_name)) seen.set(f.field_name, f);
       });
@@ -260,12 +264,16 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
     }));
     setGenerated(out);
     setActivePreviewId(out[0]?.template.id || selectedExternal[0]?.id || null);
-    if (selectedExternal.length > 0) setMultiPrefill(formData);
+    // Comparte los datos del paciente con los formularios que tienen su propia
+    // UI (formularios externos y Protocolo Imágenes embebido).
+    setMultiPrefill(formData);
     setStep(3);
   };
 
+  const textGenerated = generated.filter(g => g.template.type !== IMAGE_TYPE);
+
   const copyAll = async () => {
-    const text = generated.map(g => `===== ${g.template.name} =====\n\n${g.content}`).join('\n\n\n');
+    const text = textGenerated.map(g => `===== ${g.template.name} =====\n\n${g.content}`).join('\n\n\n');
     try {
       await navigator.clipboard.writeText(text);
       toast.success(`${generated.length} documentos copiados al portapapeles.`);
@@ -286,8 +294,8 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
   };
 
   const downloadAll = () => {
-    generated.forEach((g, i) => setTimeout(() => downloadWord(g.template.name, g.content), i * 200));
-    toast.success(`Descargando ${generated.length} documentos...`);
+    textGenerated.forEach((g, i) => setTimeout(() => downloadWord(g.template.name, g.content), i * 200));
+    toast.success(`Descargando ${textGenerated.length} documentos...`);
   };
 
   const updateGeneratedContent = (id, content) => {
@@ -409,7 +417,7 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
               <p className="text-sm text-emerald-800">Selecciona un documento para revisar la vista previa, editarlo si corresponde e imprimirlo.</p>
             </div>
 
-            {generated.length > 0 && (
+            {textGenerated.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 <Button onClick={downloadAll} className="bg-blue-600 hover:bg-blue-700 gap-2">
                   <Download className="h-4 w-4" /> Descargar todos (.doc)
@@ -463,6 +471,11 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
                     >
                       Abrir formulario editable <ExternalLink className="h-4 w-4" />
                     </a>
+                  </div>
+                ) : activeGenerated && activeGenerated.template.type === IMAGE_TYPE ? (
+                  <div className="p-4">
+                    <p className="mb-3 text-sm text-slate-600">Completa los estudios solicitados y descarga el documento. Los datos del paciente ya vienen cargados.</p>
+                    <ImageProtocolForm embedded />
                   </div>
                 ) : activeGenerated ? (
                   <div className="flex h-full flex-col">

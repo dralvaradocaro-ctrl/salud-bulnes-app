@@ -249,7 +249,7 @@ function calcAge(birthDate) {
   return age >= 0 ? age.toString() : '';
 }
 
-export default function ImageProtocolForm({ onClose }) {
+export default function ImageProtocolForm({ onClose, embedded = false }) {
   const [formData, setFormData] = useState({
     patientName: '',
     patientRut: '',
@@ -475,19 +475,8 @@ export default function ImageProtocolForm({ onClose }) {
     formData.requestedExam &&
     formData.doctorName;
 
-  return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold text-slate-900 flex items-center justify-between">
-            Interconsulta a Imagenología — HCHM
-            <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg">
-              <X className="h-5 w-5" />
-            </button>
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-6 py-2">
+  const formBody = (
+    <div className="space-y-6 py-2">
 
           {/* Patient */}
           <div className="bg-slate-50 rounded-xl p-4 space-y-4">
@@ -597,7 +586,7 @@ export default function ImageProtocolForm({ onClose }) {
           )}
 
           <div className="flex gap-3 pt-2 border-t">
-            <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>
+            {!embedded && <Button variant="outline" onClick={onClose} className="flex-1">Cancelar</Button>}
             <Button
               onClick={generateDocument}
               disabled={!isFormValid || isGenerating}
@@ -610,6 +599,22 @@ export default function ImageProtocolForm({ onClose }) {
             </Button>
           </div>
         </div>
+  );
+
+  if (embedded) return formBody;
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold text-slate-900 flex items-center justify-between">
+            Interconsulta a Imagenología — HCHM
+            <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded-lg">
+              <X className="h-5 w-5" />
+            </button>
+          </DialogTitle>
+        </DialogHeader>
+        {formBody}
       </DialogContent>
     </Dialog>
   );
