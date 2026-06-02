@@ -73,11 +73,15 @@ const AuthenticatedApp = () => {
   );
 };
 
+// EXCEPCIONAL: login de funcionarios desactivado temporalmente.
+// Para reactivarlo, poner LOGIN_FUNCIONARIOS_DISABLED en false.
+const LOGIN_FUNCIONARIOS_DISABLED = true;
+
 const LoginGate = ({ children }) => {
   const [authed, setAuthed] = useState(isLoggedIn());
   const navigate = useNavigate();
 
-  if (!authed) {
+  if (!LOGIN_FUNCIONARIOS_DISABLED && !authed) {
     return <WelcomeLogin onLogin={() => { setAuthed(true); navigate('/'); }} />;
   }
 
