@@ -15,7 +15,7 @@ import {
   Mail,
   ExternalLink,
   Printer,
-  Edit3,
+  ArrowDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
@@ -181,7 +181,6 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
   const [formData, setFormData] = useState({});
   const [generated, setGenerated] = useState([]);
   const [copiedId, setCopiedId] = useState(null);
-  const [activePreviewId, setActivePreviewId] = useState(null);
 
   const eligibleTemplates = useMemo(
     () => (templates || []).filter(t =>
@@ -249,7 +248,6 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
     setSelectedIds([]);
     setFormData({});
     setGenerated([]);
-    setActivePreviewId(null);
   };
 
   const handleClose = () => {
@@ -263,7 +261,6 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
       content: renderTemplate(t, formData),
     }));
     setGenerated(out);
-    setActivePreviewId(out[0]?.template.id || selectedExternal[0]?.id || null);
     // Comparte los datos del paciente con los formularios que tienen su propia
     // UI (formularios externos y Protocolo Imágenes embebido).
     setMultiPrefill(formData);
@@ -304,8 +301,14 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
 
   if (!open) return null;
 
-  const activeGenerated = generated.find(g => g.template.id === activePreviewId);
-  const activeExternal = selectedExternal.find(ext => ext.id === activePreviewId);
+  // Documentos en el orden en que se eligieron (para la vista apilada).
+  const orderedDocs = selectedIds.map(id => {
+    const ext = selectedExternal.find(e => e.id === id);
+    if (ext) return { kind: 'external', id, ext };
+    const g = generated.find(x => x.template.id === id);
+    if (g) return { kind: g.template.type === IMAGE_TYPE ? 'image' : 'template', id, g };
+    return null;
+  }).filter(Boolean);
   const shellClass = embedded
     ? 'bg-white rounded-3xl shadow-xl border border-slate-200 w-full overflow-hidden flex flex-col'
     : 'bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[92vh] overflow-hidden flex flex-col';
@@ -414,7 +417,7 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
           <div className="space-y-4">
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
               <p className="font-bold text-emerald-900">Documentos listos</p>
-              <p className="text-sm text-emerald-800">Selecciona un documento para revisar la vista previa, editarlo si corresponde e imprimirlo.</p>
+              <p className="text-sm text-emerald-800">Aquí están todos tus documentos, uno bajo otro. Edítalos, completa los selectores donde corresponda, y descárgalos o imprímelos.</p>
             </div>
 
             {textGenerated.length > 0 && (
@@ -428,89 +431,72 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
               </div>
             )}
 
-            <div className="grid gap-4 lg:grid-cols-[280px,1fr]">
-              <div className="space-y-2">
-                {selectedExternal.map(ext => (
-                  <button
-                    key={ext.id}
-                    onClick={() => setActivePreviewId(ext.id)}
-                    className={`w-full text-left flex items-center gap-3 rounded-xl border px-3 py-3 transition-colors ${
-                      activePreviewId === ext.id ? 'border-cyan-300 bg-cyan-50' : 'border-slate-200 bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <FileText className="h-4 w-4 text-cyan-700" />
-                    <span className="text-sm font-semibold text-slate-800">{ext.name}</span>
-                  </button>
-                ))}
-                {generated.map(g => (
-                  <button
-                    key={g.template.id}
-                    onClick={() => setActivePreviewId(g.template.id)}
-                    className={`w-full text-left flex items-center gap-3 rounded-xl border px-3 py-3 transition-colors ${
-                      activePreviewId === g.template.id ? 'border-violet-300 bg-violet-50' : 'border-slate-200 bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <Edit3 className="h-4 w-4 text-violet-700" />
-                    <span className="text-sm font-semibold text-slate-800">{g.template.name}</span>
-                  </button>
-                ))}
-              </div>
+            <div className="space-y-1">
+              {orderedDocs.map((doc, idx) => (
+                <div key={doc.id}>
+                  {idx > 0 && (
+                    <div className="flex justify-center py-1.5" aria-hidden>
+                      <ArrowDown className="h-5 w-5 text-slate-300" />
+                    </div>
+                  )}
 
-              <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden min-h-[340px]">
-                {activeExternal ? (
-                  <div className="p-5 space-y-4">
-                    <div>
-                      <p className="text-lg font-bold text-slate-900">{activeExternal.name}</p>
-                      <p className="text-sm text-slate-600 mt-1">Este formulario oficial se abre con los datos compartidos ya cargados para completar sus campos específicos antes de imprimir.</p>
-                    </div>
-                    <a
-                      href={createPageUrl(activeExternal.route)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700"
-                    >
-                      Abrir formulario editable <ExternalLink className="h-4 w-4" />
-                    </a>
-                  </div>
-                ) : activeGenerated && activeGenerated.template.type === IMAGE_TYPE ? (
-                  <div className="p-4">
-                    <p className="mb-3 text-sm text-slate-600">Completa los estudios solicitados y descarga el documento. Los datos del paciente ya vienen cargados.</p>
-                    <ImageProtocolForm embedded />
-                  </div>
-                ) : activeGenerated ? (
-                  <div className="flex h-full flex-col">
-                    <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3">
-                      <p className="font-semibold text-sm text-slate-800 flex-1">{activeGenerated.template.name}</p>
-                      <button onClick={() => copyOne(activeGenerated)} className="text-xs text-slate-600 hover:text-violet-700 inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-white">
-                        {copiedId === activeGenerated.template.id ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                        {copiedId === activeGenerated.template.id ? 'Copiado' : 'Copiar'}
-                      </button>
-                      <button onClick={() => downloadWord(activeGenerated.template.name, activeGenerated.content)} className="text-xs text-slate-600 hover:text-blue-700 inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-white">
-                        <Download className="h-3.5 w-3.5" /> .doc
-                      </button>
-                      <button onClick={() => printContent(activeGenerated.template.name, activeGenerated.content)} className="text-xs text-slate-600 hover:text-slate-900 inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-white">
-                        <Printer className="h-3.5 w-3.5" /> Imprimir
-                      </button>
-                    </div>
-                    <Textarea
-                      value={activeGenerated.content}
-                      onChange={(e) => updateGeneratedContent(activeGenerated.template.id, e.target.value)}
-                      className="min-h-[300px] flex-1 resize-y rounded-none border-0 font-mono text-xs focus-visible:ring-0"
-                    />
-                    {activeGenerated.template.destination_emails?.length > 0 && (
-                      <div className="px-4 py-2 bg-blue-50/40 border-t border-blue-100 flex items-center gap-2 flex-wrap">
-                        <Mail className="h-3.5 w-3.5 text-blue-700" />
-                        <span className="text-[11px] text-blue-700 font-medium">Enviar a:</span>
-                        {activeGenerated.template.destination_emails.map((email, i) => (
-                          <a key={i} href={`mailto:${email}?subject=${encodeURIComponent(activeGenerated.template.name)}&body=${encodeURIComponent(activeGenerated.content)}`} className="text-[11px] px-2 py-0.5 bg-white border border-blue-200 text-blue-700 rounded-full hover:bg-blue-100">{email}</a>
-                        ))}
+                  {doc.kind === 'external' ? (
+                    <div className="rounded-2xl border border-cyan-200 bg-white p-5">
+                      <div className="flex items-start gap-3">
+                        <FileText className="mt-0.5 h-5 w-5 shrink-0 text-cyan-700" />
+                        <div className="flex-1">
+                          <p className="text-base font-bold text-slate-900">{doc.ext.name}</p>
+                          <p className="mt-0.5 text-sm text-slate-600">{doc.ext.description} · Datos del paciente ya cargados.</p>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-5 text-sm text-slate-500">Selecciona un documento para revisar.</div>
-                )}
-              </div>
+                      <a
+                        href={createPageUrl(doc.ext.route)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-700"
+                      >
+                        Abrir y completar <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </div>
+                  ) : doc.kind === 'image' ? (
+                    <div className="rounded-2xl border border-indigo-200 bg-white p-4">
+                      <p className="text-base font-bold text-slate-900">{doc.g.template.name}</p>
+                      <p className="mt-0.5 mb-3 text-sm text-slate-600">Selecciona los estudios y descarga el documento. Datos del paciente ya cargados.</p>
+                      <ImageProtocolForm embedded />
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="flex-1 text-sm font-semibold text-slate-800">{doc.g.template.name}</p>
+                        <button onClick={() => copyOne(doc.g)} className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-slate-600 hover:bg-white hover:text-violet-700">
+                          {copiedId === doc.g.template.id ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                          {copiedId === doc.g.template.id ? 'Copiado' : 'Copiar'}
+                        </button>
+                        <button onClick={() => downloadWord(doc.g.template.name, doc.g.content)} className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-slate-600 hover:bg-white hover:text-blue-700">
+                          <Download className="h-3.5 w-3.5" /> .doc
+                        </button>
+                        <button onClick={() => printContent(doc.g.template.name, doc.g.content)} className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-slate-600 hover:bg-white hover:text-slate-900">
+                          <Printer className="h-3.5 w-3.5" /> Imprimir
+                        </button>
+                      </div>
+                      <Textarea
+                        value={doc.g.content}
+                        onChange={(e) => updateGeneratedContent(doc.g.template.id, e.target.value)}
+                        className="min-h-[220px] resize-y rounded-none border-0 font-mono text-xs focus-visible:ring-0"
+                      />
+                      {doc.g.template.destination_emails?.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2 border-t border-blue-100 bg-blue-50/40 px-4 py-2">
+                          <Mail className="h-3.5 w-3.5 text-blue-700" />
+                          <span className="text-[11px] font-medium text-blue-700">Enviar a:</span>
+                          {doc.g.template.destination_emails.map((email, i) => (
+                            <a key={i} href={`mailto:${email}?subject=${encodeURIComponent(doc.g.template.name)}&body=${encodeURIComponent(doc.g.content)}`} className="rounded-full border border-blue-200 bg-white px-2 py-0.5 text-[11px] text-blue-700 hover:bg-blue-100">{email}</a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
