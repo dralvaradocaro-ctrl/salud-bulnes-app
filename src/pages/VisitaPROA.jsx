@@ -501,6 +501,10 @@ const EMPTY = {
   edad: '',
   peso_kg: '',
   n_ficha: '',
+  fecha_ingreso: '',
+  usa_invasivo: 'no',
+  invasivo_desde: '',
+  invasivo_cual: '',
   alergias: '',
   comorbilidades: '',
   funcion_renal: '',
@@ -520,6 +524,17 @@ const EMPTY = {
   proxima_revision: '',
   medico_firma: '',
 };
+
+// Días de hospitalización = días entre la fecha de ingreso y la fecha de la visita
+// (o hoy si no hay fecha de visita). Devuelve '' si la fecha de ingreso no es válida.
+function diasHospitalizacion(fechaIngresoIso, fechaVisitaIso) {
+  if (!fechaIngresoIso) return '';
+  const from = new Date(`${fechaIngresoIso}T00:00:00`);
+  const to = fechaVisitaIso ? new Date(`${fechaVisitaIso}T00:00:00`) : new Date();
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return '';
+  const days = Math.floor((to - from) / 86400000);
+  return days >= 0 ? String(days) : '';
+}
 
 // Construye el texto del diagnóstico microbiológico a partir de los estudios
 // (ej: "Urocultivo + S. aureus (MSSA); Hemocultivo + E. coli BLEE").
@@ -622,6 +637,7 @@ export default function VisitaPROA() {
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [registryMessage, setRegistryMessage] = useState('');
   const u = (k, v) => setF(prev => ({ ...prev, [k]: v }));
+  const diasHosp = diasHospitalizacion(f.fecha_ingreso, f.fecha);
   const clear = () => {
     setRegistryMessage('');
     setF({ ...EMPTY, fecha: todayIso(), hora: currentTime() });
@@ -891,6 +907,49 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                 <Field label="Función renal" span="md:col-span-2">
                   <Input value={f.funcion_renal} onChange={e => u('funcion_renal', e.target.value)} placeholder="ClCr / Crea" className="h-9" />
                 </Field>
+                <Field label="Fecha de ingreso">
+                  <DateInputDdmm value={f.fecha_ingreso} onChange={v => u('fecha_ingreso', v)} className="h-9" />
+                </Field>
+                <Field label="Días de hospitalización">
+                  <div className="flex h-9 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700">
+                    {diasHosp !== '' ? `${diasHosp} días` : '— (ingresa la fecha de ingreso)'}
+                  </div>
+                </Field>
+                <Field label="¿Usa dispositivo invasivo?">
+                  <select
+                    value={f.usa_invasivo}
+                    onChange={e => u('usa_invasivo', e.target.value)}
+                    className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm bg-white focus:border-teal-400 focus:outline-none"
+                  >
+                    <option value="no">No</option>
+                    <option value="si">Sí</option>
+                  </select>
+                </Field>
+                {f.usa_invasivo === 'si' && (
+                  <>
+                    <Field label="¿Cuál?">
+                      <select
+                        value={f.invasivo_cual}
+                        onChange={e => u('invasivo_cual', e.target.value)}
+                        className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm bg-white focus:border-teal-400 focus:outline-none"
+                      >
+                        <option value="">Seleccionar…</option>
+                        <option>Sonda Foley (CUP)</option>
+                        <option>VVP (vía venosa periférica)</option>
+                        <option>CVC (catéter venoso central)</option>
+                        <option>PICC</option>
+                        <option>SNG (sonda nasogástrica)</option>
+                        <option>Ventilación mecánica (TOT)</option>
+                        <option>Traqueostomía</option>
+                        <option>Drenaje</option>
+                        <option>Otro</option>
+                      </select>
+                    </Field>
+                    <Field label="¿Desde cuándo?">
+                      <DateInputDdmm value={f.invasivo_desde} onChange={v => u('invasivo_desde', v)} className="h-9" />
+                    </Field>
+                  </>
+                )}
               </Grid>
             </Section>
 
@@ -1440,6 +1499,11 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
               <PrintGrid>
                 <PrintField label="Comorbilidades" value={f.comorbilidades} flex={2} />
                 <PrintField label="Función renal" value={f.funcion_renal} flex={2} />
+              </PrintGrid>
+              <PrintGrid>
+                <PrintField label="Fecha de ingreso" value={f.fecha_ingreso ? formatDateLocal(f.fecha_ingreso) : ''} flex={1} />
+                <PrintField label="Días de hospitalización" value={diasHosp !== '' ? `${diasHosp} días` : ''} flex={1} />
+                <PrintField label="Dispositivo invasivo" value={f.usa_invasivo === 'si' ? `${f.invasivo_cual || 'Sí'}${f.invasivo_desde ? ` (desde ${formatDateLocal(f.invasivo_desde)})` : ''}` : 'No'} flex={2} />
               </PrintGrid>
             </PrintBlock>
 
