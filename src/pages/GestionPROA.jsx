@@ -44,6 +44,47 @@ function summarizeLatest(form) {
   return atb ? `${diagnosis} · ATB: ${atb}` : diagnosis;
 }
 
+// Parseo tolerante de fecha (ISO yyyy-mm-dd o dd/mm/aaaa).
+function parseProaDate(s) {
+  if (!s) return null;
+  let d = new Date(`${s}T00:00:00`);
+  if (!Number.isNaN(d.getTime())) return d;
+  const m = String(s).match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+  if (m) {
+    const yr = m[3].length === 2 ? `20${m[3]}` : m[3];
+    d = new Date(`${yr}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}T00:00:00`);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+function daysSince(s, { inclusive = false } = {}) {
+  const d = parseProaDate(s);
+  if (!d) return null;
+  const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (diff < 0) return null;
+  return inclusive ? diff + 1 : diff;
+}
+
+// Resumen para el tooltip al pasar sobre una cama ocupada (si hay info).
+function bedTooltip(form) {
+  if (!form) return '';
+  const lines = [];
+  const dx = form.diagnostico_actual || form.diagnostico_microbiologico;
+  if (dx) lines.push(`Diagnóstico: ${dx}`);
+  const atbs = (form.antibioticos || []).filter((a) => a.nombre);
+  if (atbs.length) {
+    const txt = atbs.map((a) => {
+      const dia = daysSince(a.inicio, { inclusive: true });
+      const dosis = [a.dosis, a.intervalo_horas ? `c/${a.intervalo_horas} h` : '', a.via].filter(Boolean).join(' ');
+      return `${a.nombre}${dosis ? ` ${dosis}` : ''}${dia ? ` (día ${dia})` : ''}`;
+    }).join(' · ');
+    lines.push(`ATB: ${txt}`);
+  }
+  const diasHosp = daysSince(form.fecha_ingreso);
+  if (diasHosp !== null) lines.push(`Días de hospitalización: ${diasHosp}`);
+  return lines.join('\n');
+}
+
 function findServiceForBed(bedCode) {
   return PROA_BED_MAP.find((service) => (
     service.groups.some((group) => group.beds.includes(bedCode))
@@ -310,6 +351,7 @@ export default function GestionPROA() {
                                   <button
                                     key={bed}
                                     type="button"
+                                    title={record ? bedTooltip(getLatestProaForm(record)) : undefined}
                                     onClick={() => {
                                       setSelectedBed(bed);
                                       setSourceBedToMove('');

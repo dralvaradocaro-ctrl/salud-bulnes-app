@@ -10,8 +10,8 @@ export const SERVICIOS = [
   'Urgencias',
 ];
 
-const buildRoomBeds = (room, count = 5) =>
-  Array.from({ length: count }, (_, i) => `${room}-${i + 1}`);
+const buildRoomBeds = (room, count = 5, prefix = '') =>
+  Array.from({ length: count }, (_, i) => `${prefix}${room}-${i + 1}`);
 
 export const PROA_BED_MAP = [
   {
@@ -27,10 +27,10 @@ export const PROA_BED_MAP = [
   {
     servicio: 'MQ2',
     groups: [
-      { label: 'Sala 2', beds: buildRoomBeds(2) },
-      { label: 'Sala 3', beds: buildRoomBeds(3) },
-      { label: 'Sala 4', beds: buildRoomBeds(4) },
-      { label: 'Sala 5', beds: buildRoomBeds(5, 1) },
+      { label: 'Sala 2', beds: buildRoomBeds(2, 5, 'MQ2-') },
+      { label: 'Sala 3', beds: buildRoomBeds(3, 5, 'MQ2-') },
+      { label: 'Sala 4', beds: buildRoomBeds(4, 5, 'MQ2-') },
+      { label: 'Sala 5', beds: buildRoomBeds(5, 1, 'MQ2-') },
     ],
   },
   {
@@ -66,10 +66,10 @@ const MQ1_CAMAS = [
 
 const MQ2_SALAS = ['MQ2 - Sala 2', 'MQ2 - Sala 3', 'MQ2 - Sala 4'];
 const MQ2_CAMAS = [
-  ...buildRoomBeds(2),
-  ...buildRoomBeds(3),
-  ...buildRoomBeds(4),
-  ...buildRoomBeds(5, 1),
+  ...buildRoomBeds(2, 5, 'MQ2-'),
+  ...buildRoomBeds(3, 5, 'MQ2-'),
+  ...buildRoomBeds(4, 5, 'MQ2-'),
+  ...buildRoomBeds(5, 1, 'MQ2-'),
 ];
 
 export const SALAS = [
@@ -102,7 +102,7 @@ export const SALA_CAMA_SUGGESTIONS = [
   'MQ1 - Aisl 8 / Cama Aisl 8-2',
   ...MQ2_SALAS.flatMap((sala) => {
     const room = sala.match(/Sala (\d+)/)?.[1];
-    return buildRoomBeds(room).map((cama) => `${sala} / Cama ${cama}`);
+    return buildRoomBeds(room, 5, 'MQ2-').map((cama) => `${sala} / Cama ${cama}`);
   }),
   ...Array.from({ length: 9 }, (_, i) => `Pediatría / Cama PED-${i + 1}`),
   ...Array.from({ length: 3 }, (_, i) => `Ginecología Obstetricia / Cama GINE-${i + 1}`),
