@@ -219,6 +219,7 @@ export default function NRS2002Calculator() {
   const resetCalculator = () => {
     setMedicalHighRisk(null);
     setMedicalReasons([]);
+    setNutritionalException(null);
     setScreeningAnswers({
       lowIMC: null,
       weightLoss: null,
@@ -234,6 +235,12 @@ export default function NRS2002Calculator() {
     setImcWeight('');
     setImcHeight('');
     setImcCalcTarget(null);
+    setShowWeightHelper(false);
+    setShowIntakeHelp(false);
+    setPesoHabitual('');
+    setPesoActual('');
+    setWeightMonths('');
+    setIntakeSel(null);
   };
 
   // Datos antropométricos para el impreso — sólo aparecen si el clínico
@@ -257,17 +264,30 @@ export default function NRS2002Calculator() {
     );
   };
 
-  // Si hay alto riesgo por indicación médica, exigimos al menos una razón
-  // marcada para considerar el paso completo.
-  const medicalHighRiskComplete = medicalHighRisk === false
-    || (medicalHighRisk === true && medicalReasons.length > 0);
-
   const totalScore = calculateTotalScore();
   const interpretation = showFullAssessment ? getInterpretation(totalScore) : null;
+  const isExceptionCutoff = nutritionalException === 'no';
+  const isMedicalHighRiskCutoff = nutritionalException === 'si' && medicalHighRisk === true;
+  const shouldShowMedicalHighRisk = nutritionalException === 'si';
+  const shouldShowNrsScreening = shouldShowMedicalHighRisk && medicalHighRisk !== true;
+  const printOnly = isExceptionCutoff || isMedicalHighRiskCutoff;
 
   const resultData = (() => {
+    if (isExceptionCutoff) {
+      return {
+        score: '—',
+        label: 'No corresponde aplicar tamizaje',
+        interpretation: 'Excepción registrada: no corresponde aplicar NRS-2002 en este paciente.',
+        recommendations: [
+          'Imprimir constancia del resultado de excepción',
+          'Mantener registro en ficha clínica según protocolo local',
+          'Si cambia la condición clínica o deja de aplicar la excepción, reevaluar necesidad de tamizaje nutricional',
+        ],
+      };
+    }
+
     // Caso prioritario: alto riesgo por indicación médica → termina el protocolo.
-    if (medicalHighRisk === true && medicalReasons.length > 0) {
+    if (isMedicalHighRiskCutoff) {
       return {
         score: '★',
         label: 'Alto riesgo por indicación médica',
@@ -276,7 +296,9 @@ export default function NRS2002Calculator() {
           'Evaluación nutricional completa dentro de 24–48 horas hábiles',
           'Definición de intervención o soporte nutricional especializado',
           'Monitoreo estrecho de ingesta y tolerancia',
-          ...medicalReasons.map(r => `Justificación: ${r}`),
+          ...(medicalReasons.length > 0
+            ? medicalReasons.map(r => `Justificación: ${r}`)
+            : ['Justificación: alto riesgo por indicación médica consignado por clínico tratante']),
         ],
       };
     }
@@ -307,16 +329,25 @@ export default function NRS2002Calculator() {
   })();
 
   const inputsData = (() => {
-    if (medicalHighRisk === true && medicalReasons.length > 0) {
+    if (isExceptionCutoff) {
       return {
+        'Evaluación nutricional': 'No corresponde (excepción)',
+        'Resultado': 'Tamizaje no aplicado',
+      };
+    }
+
+    if (isMedicalHighRiskCutoff) {
+      return {
+        'Evaluación nutricional': 'Sí corresponde evaluar',
         'Alto riesgo por indicación médica': 'Sí',
-        'Justificaciones': medicalReasons.join(' · '),
+        'Justificaciones': medicalReasons.length > 0 ? medicalReasons.join(' · ') : 'Consignar en ficha clínica',
         ...(anthroForPrint || {}),
       };
     }
 
     if (screeningComplete && !needsFullAssessment) {
       return {
+        'Evaluación nutricional': 'Sí corresponde evaluar',
         'Alto riesgo por indicación médica': 'No',
         ...screeningSummary,
         'Resultado tamizaje': 'Normal',
@@ -326,6 +357,7 @@ export default function NRS2002Calculator() {
 
     if (showFullAssessment) {
       return {
+        'Evaluación nutricional': 'Sí corresponde evaluar',
         'Alto riesgo por indicación médica': 'No',
         ...screeningSummary,
         'Resultado tamizaje': 'Alterado',
@@ -350,6 +382,7 @@ export default function NRS2002Calculator() {
       result={resultData}
       onCalculate={() => resultData}
       onReset={resetCalculator}
+      printOnly={printOnly}
     >
 
       <div className="space-y-6">
@@ -373,17 +406,24 @@ export default function NRS2002Calculator() {
             <Button
               variant={nutritionalException === 'no' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setNutritionalException('no')}
+              onClick={() => {
+                setNutritionalException('no');
+                setMedicalHighRisk(null);
+                setMedicalReasons([]);
+                setShowFullAssessment(false);
+              }}
             >No corresponde (excepción)</Button>
           </div>
           {nutritionalException === 'no' && (
-            <p className="mt-3 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-3">
-              Marcado como excepción: no corresponde aplicar el tamizaje. Si igualmente quieres evaluarlo, elige «Sí, aplicar tamizaje».
-            </p>
+            <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+              <p className="font-semibold text-slate-900">Tamizaje detenido por excepción.</p>
+              <p className="mt-1">No se mostrarán las etapas siguientes. Completa nombre y RUT arriba para imprimir la constancia.</p>
+            </div>
           )}
         </div>
 
         {/* Etapa 1: Alto riesgo por indicación médica (corta el protocolo) */}
+        {shouldShowMedicalHighRisk && (
         <div className={`rounded-xl p-5 border-2 ${medicalHighRisk === true ? 'bg-red-50 border-red-300' : 'bg-white border-slate-200'}`}>
           <h4 className="font-bold text-slate-900 mb-3 flex items-center gap-2">
             <span className="bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">0</span>
@@ -398,7 +438,10 @@ export default function NRS2002Calculator() {
             <Button
               variant={medicalHighRisk === true ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setMedicalHighRisk(true)}
+              onClick={() => {
+                setMedicalHighRisk(true);
+                setShowFullAssessment(false);
+              }}
               className={medicalHighRisk === true ? 'bg-red-600 hover:bg-red-700' : ''}
             >Sí, alto riesgo por indicación médica</Button>
             <Button
@@ -425,14 +468,17 @@ export default function NRS2002Calculator() {
                 ))}
               </div>
               {medicalReasons.length === 0 && (
-                <p className="text-[11px] text-red-700 mt-2 italic">Tenés que marcar al menos una justificación para que se aplique el alto riesgo por indicación médica.</p>
+                <p className="text-[11px] text-red-700 mt-2 italic">
+                  Puedes imprimir de inmediato. Si corresponde, marca una justificación para que aparezca en el impreso.
+                </p>
               )}
             </div>
           )}
         </div>
+        )}
 
-      {/* Si hay alto riesgo médico con justificación, no se muestra el resto */}
-      {!(medicalHighRisk === true && medicalReasons.length > 0) && (<>
+      {/* Si hay excepción o alto riesgo médico, no se muestra el resto del tamizaje */}
+      {shouldShowNrsScreening && (<>
         <div className="bg-white rounded-xl p-5 border border-slate-200">
           <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
             <span className="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">1</span>

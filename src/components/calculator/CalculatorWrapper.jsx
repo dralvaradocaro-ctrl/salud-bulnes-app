@@ -30,7 +30,8 @@ export default function CalculatorWrapper({
   onCalculate,
   result,
   onReset,
-  showPatientInfo = true
+  showPatientInfo = true,
+  printOnly = false
 }) {
   const [patientInfo, setPatientInfo] = useState({
     name: '',
@@ -178,10 +179,12 @@ export default function CalculatorWrapper({
 
       {/* Actions */}
       <div className="flex gap-3 mt-6">
-        <Button onClick={handleCalculateWithHistory} className="flex-1">
-          <Calculator className="h-4 w-4 mr-2" />
-          Calcular
-        </Button>
+        {!(printOnly && result) && (
+          <Button onClick={handleCalculateWithHistory} className="flex-1">
+            <Calculator className="h-4 w-4 mr-2" />
+            Calcular
+          </Button>
+        )}
         {result && (
           <>
             <Button
@@ -189,7 +192,7 @@ export default function CalculatorWrapper({
               onClick={handlePrint}
               disabled={!patientValid}
               title={!patientValid ? 'Para imprimir hay que anotar nombre y RUT del paciente' : 'Imprimir resultado'}
-              className={!patientValid ? 'opacity-50 cursor-not-allowed' : ''}
+              className={`${printOnly ? 'flex-1' : ''} ${!patientValid ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Printer className="h-4 w-4 mr-2" />
               Imprimir
