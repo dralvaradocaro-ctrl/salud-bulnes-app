@@ -9,6 +9,17 @@ const STATE_STYLE = {
   [BED_STATE.EMPTY]: 'bg-slate-50 border-dashed border-slate-300 text-slate-400 italic',
 };
 
+// Nombre legible para mostrar en el botón (el código interno se conserva como key).
+// "SALA 2" de MQ2 → "MQ2 2-1"; "AISL 5" → "MQ1 Aisl5-1"; resto → código original.
+function bedLabel(svc, sala, idx, code) {
+  const short = svc.short || svc.name || '';
+  const m = /SALA\s*0*(\d+)/i.exec(sala.label || '');
+  if (m) return `${short} ${m[1]}-${idx + 1}`;
+  const a = /AISL\s*0*(\d+)/i.exec(sala.label || '');
+  if (a) return `${short} Aisl${a[1]}-${idx + 1}`;
+  return code;
+}
+
 /**
  * Vista gráfica de servicios → salas → camas, estilo planilla de gestión.
  * bedStates: { [code]: 'visit'|'novisit'|'blocked'|'empty' }
@@ -66,17 +77,18 @@ function ServiceCard({ svc, stateOf, onToggle }) {
               {sala.label}
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {sala.beds.map((b) => {
+              {sala.beds.map((b, idx) => {
                 const st = stateOf(b.code);
+                const label = bedLabel(svc, sala, idx, b.code);
                 return (
                   <button
                     key={b.code}
                     onClick={() => onToggle(b.code)}
-                    title={`${b.code} — click para cambiar estado`}
-                    className={`px-2 py-1 rounded border text-xs font-mono transition-colors inline-flex items-center gap-1 ${STATE_STYLE[st]}`}
+                    title={`${label} (${b.code}) — click para cambiar estado`}
+                    className={`px-2 py-1 rounded border text-xs font-medium transition-colors inline-flex items-center gap-1 ${STATE_STYLE[st]}`}
                   >
                     {st === BED_STATE.BLOCKED && <Lock className="h-3 w-3" />}
-                    {b.code}
+                    {label}
                   </button>
                 );
               })}

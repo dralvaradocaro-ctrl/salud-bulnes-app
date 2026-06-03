@@ -595,7 +595,8 @@ function EcografiasCard({ doctors, extraBlocks, setExtraBlocks, docName }) {
     const [h, m] = (from || '08:00').split(':').map(Number);
     const total = h * 60 + m + 30;
     const to = `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-    setExtraBlocks((p) => [...p, { id: crypto.randomUUID(), from, to, doctorId, cause: 'Ecografía ambulatoria (30 min)', eco: true }]);
+    const n = (extraBlocks || []).filter((b) => b.eco && b.doctorId === doctorId).length + 1;
+    setExtraBlocks((p) => [...p, { id: crypto.randomUUID(), from, to, doctorId, cause: `Ecografía (${n})`, eco: true }]);
   };
   const removeEco = (id) => setExtraBlocks((p) => p.filter((b) => b.id !== id));
 
