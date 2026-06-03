@@ -26,6 +26,7 @@ export default function NRS2002Calculator() {
   // Paso 0: alto riesgo por indicación médica (corta el protocolo si aplica).
   const [medicalHighRisk, setMedicalHighRisk] = useState(null); // null | true | false
   const [medicalReasons, setMedicalReasons] = useState([]);
+  const [nutritionalException, setNutritionalException] = useState(null); // null | 'si' | 'no'
 
   // Mini calculadora de IMC: aparece en dos lugares (Q1 del tamizaje y en la
   // evaluación formal). `imcCalcTarget` marca quién la abrió para que el botón
@@ -351,8 +352,38 @@ export default function NRS2002Calculator() {
       onReset={resetCalculator}
     >
 
-      {/* Etapa 0: Alto riesgo por indicación médica (corta el protocolo) */}
       <div className="space-y-6">
+
+        {/* Excepción de evaluación nutricional */}
+        <div className="rounded-xl p-5 border-2 border-slate-200 bg-white">
+          <h4 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
+            <span className="bg-slate-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">0</span>
+            Excepción de evaluación nutricional
+          </h4>
+          <p className="text-xs text-slate-600 mb-3">
+            ¿Corresponde evaluación nutricional para este paciente? Si <strong>Sí</strong>, se aplica el tamizaje NRS-2002 a continuación. Si es una <strong>excepción</strong>, no corresponde aplicarlo.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant={nutritionalException === 'si' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setNutritionalException('si')}
+              className={nutritionalException === 'si' ? 'bg-slate-700 hover:bg-slate-800' : ''}
+            >Sí, aplicar tamizaje</Button>
+            <Button
+              variant={nutritionalException === 'no' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setNutritionalException('no')}
+            >No corresponde (excepción)</Button>
+          </div>
+          {nutritionalException === 'no' && (
+            <p className="mt-3 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg p-3">
+              Marcado como excepción: no corresponde aplicar el tamizaje. Si igualmente quieres evaluarlo, elige «Sí, aplicar tamizaje».
+            </p>
+          )}
+        </div>
+
+        {/* Etapa 1: Alto riesgo por indicación médica (corta el protocolo) */}
         <div className={`rounded-xl p-5 border-2 ${medicalHighRisk === true ? 'bg-red-50 border-red-300' : 'bg-white border-slate-200'}`}>
           <h4 className="font-bold text-slate-900 mb-3 flex items-center gap-2">
             <span className="bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">0</span>
