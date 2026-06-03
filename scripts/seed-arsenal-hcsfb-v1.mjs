@@ -454,6 +454,7 @@ const MEDICATIONS = [
   m('Suero glucosado', 'Solución inyectable', 30, '%', 'Solución'),
   m('Glucosa polvo', 'Polvo oral', 75, 'g', 'Solución'),
   m('Suero Ringer Lactato', 'Solución inyectable', 1000, 'mL', 'Solución'),
+  m('Cloruro de sodio', 'Solución inyectable', 3, '%', 'Electrolito'),
   m('Cloruro de sodio', 'Solución inyectable', 10, '%', 'Electrolito'),
   m('Cloruro de potasio', 'Comprimido', 600, 'mg', 'Electrolito'),
   m('Cloruro de potasio', 'Solución inyectable', 10, '%', 'Electrolito'),

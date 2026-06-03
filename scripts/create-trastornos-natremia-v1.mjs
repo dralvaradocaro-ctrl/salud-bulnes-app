@@ -92,11 +92,23 @@ const blocks = [
     title: 'Arsenal local y preparación — Hiponatremia',
     headers: ['Recurso', 'Detalle', 'Uso práctico', 'Precaución'],
     rows: [
-      ['NaCl 3% (hipertónico)', 'No premezclado en arsenal; NaCl 3% ≈ 513 mEq/L', 'Rescate sintomático: 100-150 mL en 10-20 min, repetible ×3. Solicitar preparación a farmacia.', 'Confirmar concentración preparada. Vía segura. No exceder el ascenso de 4-6 mEq/L en el rescate.'],
+      ['NaCl 3% (hipertónico)', 'Disponible en arsenal local (≈ 513 mEq/L)', 'Rescate sintomático: 100-150 mL EV en 10-20 min, repetible ×3.', 'Vía segura. No exceder el ascenso de 4-6 mEq/L en el rescate. Control de Na cada 1-2 h.'],
       ['Cloruro de sodio 10%', 'Ampolla concentrada (insumo para preparar el 3%)', 'Base para preparar NaCl 3% junto con SF 0,9%.', 'Nunca administrar NaCl 10% sin diluir.'],
       ['Suero fisiológico 0,9%', '154 mEq/L de Na', 'Hiponatremia hipovolémica; diluyente.', 'Puede empeorar el SIADH si la osmolalidad urinaria es alta.'],
       ['Suero glucosado 5%', 'Aporta agua libre', 'Frenar la sobrecorrección (junto con DDAVP) si el Na sube demasiado rápido.', 'Vigilar glicemia.'],
       ['Furosemida', '20 mg/mL', 'Hiponatremia hipervolémica con sobrecarga.', 'Ajustar a diuresis/volemia.'],
+    ],
+  },
+  {
+    id: 'na-hipo-receta', tab: 'Hiponatremia', subtab: 'Arsenal', type: 'criteria', color: 'amber', order: 42,
+    title: 'NaCl 3%: disponible en arsenal — preparación solo de respaldo',
+    items: [
+      'El NaCl 3% está disponible en el arsenal local: usarlo directamente para el rescate.',
+      'Respaldo (si no hay stock). Objetivo: NaCl 3% ≈ 513 mEq/L (30 g/L). Equivalencias: NaCl 10% = 1,71 mEq/mL (≈ 34 mEq por ampolla de 20 mL); SF 0,9% = 0,154 mEq/mL.',
+      'Receta para ~500 mL de NaCl 3%: 385 mL de SF 0,9% + 115 mL de NaCl 10% (≈ 6 ampollas de 20 mL) → ≈ 513 mEq/L.',
+      'Forma práctica al lado de la cama: de un matraz de SF 0,9% de 500 mL, retirar y descartar ~115 mL; agregar ~115 mL (≈ 6 amp) de NaCl 10%; homogeneizar y rotular «NaCl 3% preparado».',
+      'Dosis de rescate: 100-150 mL de este NaCl 3% EV a pasar en 10-20 min, repetible hasta 3 veces hasta que cedan los síntomas (meta: subir Na 4-6 mEq/L; control de Na cada 1-2 h).',
+      '⚠️ El volumen/concentración de la ampolla local puede variar: CONFIRMAR con farmacia y, cuando sea posible, solicitar la preparación a farmacia con rótulo y doble verificación.',
     ],
   },
   {

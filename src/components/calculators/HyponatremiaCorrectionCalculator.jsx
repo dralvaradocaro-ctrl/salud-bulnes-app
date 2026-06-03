@@ -63,7 +63,7 @@ export default function HyponatremiaCorrectionCalculator() {
         details: [
           'Indicación: NaCl 3% 100-150 mL EV a pasar en 10-20 min. Repetible hasta 3 veces (cada 10-20 min) hasta que cedan los síntomas graves (convulsión, coma, vómitos).',
           'Objetivo del rescate: subir el Na 4-6 mEq/L (no más). Controlar Na cada 1-2 h durante el rescate.',
-          'Arsenal local: no hay NaCl 3% premezclado. Se prepara con NaCl 10% + SF 0,9% (NaCl 3% ≈ 513 mEq/L). Solicitar preparación a farmacia y confirmar concentración antes de administrar.',
+          'Arsenal local: NaCl 3% disponible — usar directamente. Respaldo si no hay stock (NaCl 3% ≈ 513 mEq/L): mezclar 385 mL de SF 0,9% + 115 mL de NaCl 10% (≈ 6 ampollas de 20 mL) para ~500 mL; confirmar con farmacia.',
         ],
       });
     } else {
