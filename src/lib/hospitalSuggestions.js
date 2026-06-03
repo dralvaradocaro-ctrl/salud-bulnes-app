@@ -30,6 +30,7 @@ export const PROA_BED_MAP = [
       { label: 'Sala 2', beds: buildRoomBeds(2) },
       { label: 'Sala 3', beds: buildRoomBeds(3) },
       { label: 'Sala 4', beds: buildRoomBeds(4) },
+      { label: 'Sala 5', beds: buildRoomBeds(5, 1) },
     ],
   },
   {
@@ -68,6 +69,7 @@ const MQ2_CAMAS = [
   ...buildRoomBeds(2),
   ...buildRoomBeds(3),
   ...buildRoomBeds(4),
+  ...buildRoomBeds(5, 1),
 ];
 
 export const SALAS = [

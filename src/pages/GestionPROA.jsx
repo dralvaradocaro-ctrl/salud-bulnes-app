@@ -96,6 +96,19 @@ export default function GestionPROA() {
     navigate(createPageUrl('VisitaPROA'));
   };
 
+  // Nueva evolución del MISMO paciente, con el formulario en blanco (sin arrastrar
+  // datos clínicos). Conserva fecha de ingreso si está registrada, para que los días
+  // de hospitalización sigan calculándose. No es paciente nuevo: se encadena al registro.
+  const newBlankEvolution = () => {
+    if (!selectedBed) return;
+    setPendingProaForm({
+      cama: selectedBed,
+      servicio: findServiceForBed(selectedBed),
+      fecha_ingreso: selectedLatest?.fecha_ingreso || '',
+    });
+    navigate(createPageUrl('VisitaPROA'));
+  };
+
   const createFromBed = () => {
     if (!selectedBed) return;
     setPendingProaForm({
@@ -384,10 +397,14 @@ export default function GestionPROA() {
                   <div className="space-y-2 rounded-lg border border-teal-200 bg-teal-50 p-3">
                     <p className="text-xs font-bold uppercase tracking-wide text-teal-900">¿Qué quieres hacer con esta cama?</p>
                     <Button onClick={editFromLatest} className="w-full bg-teal-600 hover:bg-teal-700">
-                      Evolucionar paciente ya registrado ({selectedRecord.code})
+                      Continuar evolución ({selectedRecord.code})
+                    </Button>
+                    <p className="text-[11px] leading-tight text-teal-800">Carga la evolución previa y actualiza días de hospitalización, días de antibiótico y la curva inflamatoria.</p>
+                    <Button onClick={newBlankEvolution} variant="outline" className="w-full border-teal-300 bg-white text-teal-800">
+                      Nueva evolución desde 0 (mismo paciente)
                     </Button>
                     <Button onClick={createFromBed} variant="outline" className="w-full border-slate-300 bg-white">
-                      Crear nuevo paciente en esta cama
+                      Nuevo paciente en esta cama
                     </Button>
                   </div>
 
