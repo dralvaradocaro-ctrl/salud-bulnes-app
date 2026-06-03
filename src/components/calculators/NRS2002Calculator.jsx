@@ -33,6 +33,29 @@ export default function NRS2002Calculator() {
   const [imcCalcTarget, setImcCalcTarget] = useState(null); // null | 'q1' | 'estado'
   const [imcWeight, setImcWeight] = useState(''); // kg
   const [imcHeight, setImcHeight] = useState(''); // cm
+
+  // Apoyos para el Estado Nutricional: % de baja de peso (con tiempo) e ingesta.
+  // Ambos permiten "Aplicar" el resultado al estado nutricional (como el IMC).
+  const [showWeightHelper, setShowWeightHelper] = useState(false);
+  const [showIntakeHelp, setShowIntakeHelp] = useState(false);
+  const [pesoHabitual, setPesoHabitual] = useState(''); // kg
+  const [pesoActual, setPesoActual] = useState('');     // kg
+  const [weightMonths, setWeightMonths] = useState(''); // '' | '1' | '2' | '3'
+  const [intakeSel, setIntakeSel] = useState(null);     // null | 0 | 1 | 2 | 3
+  const pesoLossPct = (() => {
+    const hab = Number(pesoHabitual);
+    const act = Number(pesoActual);
+    if (!Number.isFinite(hab) || !Number.isFinite(act) || hab <= 0 || act <= 0) return null;
+    return ((hab - act) / hab) * 100;
+  })();
+  // Puntaje de estado nutricional sugerido por la baja de peso + tiempo.
+  const weightStatus = (() => {
+    if (pesoLossPct === null) return null;
+    if (pesoLossPct <= 5) return 0;            // ≤5%: no puntúa por peso
+    if (!weightMonths) return null;            // >5% pero falta el tiempo
+    return weightMonths === '1' ? 3 : weightMonths === '2' ? 2 : 1;
+  })();
+  const STATUS_LABEL = ['Normal (0 pts)', 'Desnutrición leve (1 pt)', 'Desnutrición moderada (2 pts)', 'Desnutrición grave (3 pts)'];
   const imcValue = (() => {
     const w = parseFloat(String(imcWeight).replace(',', '.'));
     const hCm = parseFloat(String(imcHeight).replace(',', '.'));
@@ -55,10 +78,10 @@ export default function NRS2002Calculator() {
       // al paso 2 (evaluación formal) para no obligar a recalcular después.
       setScreeningAnswers(prev => ({ ...prev, lowIMC: imcValue < 20.5 }));
       if (suggestedNutritionalCategory) {
-        setFullScore(prev => ({ ...prev, nutritionalStatus: suggestedNutritionalCategory.value }));
+        setFullScore(prev => ({ ...prev, nutritionalStatus: Math.max(prev.nutritionalStatus, suggestedNutritionalCategory.value) }));
       }
     } else if (imcCalcTarget === 'estado' && suggestedNutritionalCategory) {
-      setFullScore(prev => ({ ...prev, nutritionalStatus: suggestedNutritionalCategory.value }));
+      setFullScore(prev => ({ ...prev, nutritionalStatus: Math.max(prev.nutritionalStatus, suggestedNutritionalCategory.value) }));
     }
     setImcCalcTarget(null);
   };
@@ -523,18 +546,115 @@ export default function NRS2002Calculator() {
             <div className="space-y-6">
               {/* Estado Nutricional */}
               <div>
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                   <Label className="font-semibold">Estado Nutricional</Label>
-                  <button
-                    type="button"
-                    onClick={() => setImcCalcTarget(t => t === 'estado' ? null : 'estado')}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700 hover:text-blue-900 hover:bg-blue-100 border border-blue-300 rounded px-2 py-1"
-                    title="Mini calculadora de IMC — sugiere categoría según resultado"
-                  >
-                    <Calculator className="h-3 w-3" />
-                    Calcular IMC
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowWeightHelper(v => !v)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100 border border-emerald-300 rounded px-2 py-1"
+                      title="Calcular el % de baja de peso con peso habitual y actual"
+                    >
+                      <Calculator className="h-3 w-3" />
+                      % baja de peso
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowIntakeHelp(v => !v)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 hover:text-amber-900 hover:bg-amber-100 border border-amber-300 rounded px-2 py-1"
+                      title="Ejemplos para estimar la ingesta de la última semana"
+                    >
+                      <Info className="h-3 w-3" />
+                      Ayuda ingesta
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImcCalcTarget(t => t === 'estado' ? null : 'estado')}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700 hover:text-blue-900 hover:bg-blue-100 border border-blue-300 rounded px-2 py-1"
+                      title="Mini calculadora de IMC — sugiere categoría según resultado"
+                    >
+                      <Calculator className="h-3 w-3" />
+                      Calcular IMC
+                    </button>
+                  </div>
                 </div>
+
+                {showWeightHelper && (
+                  <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                    <p className="mb-2 text-xs font-semibold text-emerald-900">Baja de peso → estado nutricional</p>
+                    <div className="mb-2 grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-[11px] text-slate-600">Peso habitual (kg)</Label>
+                        <input type="number" min="0" step="0.1" value={pesoHabitual} onChange={e => setPesoHabitual(e.target.value)} className="h-8 w-full rounded-md border border-slate-300 px-2 text-sm" placeholder="Ej: 70" />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] text-slate-600">Peso actual (kg)</Label>
+                        <input type="number" min="0" step="0.1" value={pesoActual} onChange={e => setPesoActual(e.target.value)} className="h-8 w-full rounded-md border border-slate-300 px-2 text-sm" placeholder="Ej: 64" />
+                      </div>
+                    </div>
+                    <Label className="text-[11px] text-slate-600">¿En cuánto tiempo bajó?</Label>
+                    <div className="mb-2 mt-1 flex flex-wrap gap-1.5">
+                      {[['1', '1 mes'], ['2', '2 meses'], ['3', '3 meses']].map(([v, l]) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setWeightMonths(v)}
+                          className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${weightMonths === v ? 'border-emerald-500 bg-emerald-600 text-white' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'}`}
+                        >{l}</button>
+                      ))}
+                    </div>
+                    {pesoLossPct !== null && (
+                      <p className="text-sm font-bold text-emerald-900">
+                        Baja de peso: {pesoLossPct.toFixed(1)}%
+                        {pesoLossPct < 0 ? ' (subió de peso)' : pesoLossPct <= 5 ? ' — ≤5%, no puntúa por peso' : !weightMonths ? ' — >5%: elige el tiempo' : ` → ${STATUS_LABEL[weightStatus]}`}
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      disabled={weightStatus === null}
+                      onClick={() => setFullScore({ ...fullScore, nutritionalStatus: Math.max(fullScore.nutritionalStatus, weightStatus) })}
+                      className="mt-2 inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Aplicar al estado nutricional
+                    </button>
+                    <p className="mt-2 text-[11px] text-slate-500">Si ya aplicaste otro criterio (IMC o ingesta), se conserva el <strong>mayor puntaje</strong>. Cómo preguntar: «¿Cuánto pesaba y cuánto pesa ahora? ¿En cuánto tiempo bajó?»</p>
+                  </div>
+                )}
+
+                {showIntakeHelp && (
+                  <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p className="mb-1 text-xs font-semibold text-amber-900">Ingesta de la última semana → estado nutricional</p>
+                    <p className="mb-2 text-[11px] text-slate-600">Cómo preguntar: «En la última semana, ¿cuánto ha comido respecto a lo habitual? ¿Ha saltado comidas o ha estado días sin comer?»</p>
+                    <div className="space-y-1.5">
+                      {[
+                        [0, '>75% — ingesta normal', 'Come casi como siempre.'],
+                        [1, '50-75% (leve, 1 pt)', 'Come algo menos; salta ocasionalmente una comida.'],
+                        [2, '25-60% (moderada, 2 pts)', 'Come ~la mitad; salta comidas casi a diario o 1-2 días comiendo muy poco.'],
+                        [3, '0-25% (grave, 3 pts)', 'Casi no come; solo líquidos / «picotea» o ≥3-4 días casi sin comer.'],
+                      ].map(([val, title, desc]) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setIntakeSel(val)}
+                          className={`w-full rounded-md border px-2.5 py-1.5 text-left ${intakeSel === val ? 'border-amber-500 bg-amber-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}
+                        >
+                          <span className="text-xs font-semibold text-slate-800">{title}</span>
+                          <span className="block text-[11px] text-slate-500">{desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={intakeSel === null}
+                      onClick={() => setFullScore({ ...fullScore, nutritionalStatus: Math.max(fullScore.nutritionalStatus, intakeSel) })}
+                      className="mt-2 inline-flex items-center gap-1 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Aplicar al estado nutricional
+                    </button>
+                    <p className="mt-2 text-[11px] text-slate-500">Si ya aplicaste otro criterio (peso o IMC), se conserva el <strong>mayor puntaje</strong>.</p>
+                  </div>
+                )}
+
                 {renderImcPanel('estado')}
                 <div className="space-y-2 mt-3">
                   <button
