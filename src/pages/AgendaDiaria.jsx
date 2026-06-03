@@ -105,7 +105,8 @@ export default function AgendaDiaria() {
   // marcó ausente (externo) o tiene un bloqueo extra que ocupa su mañana.
   const blockedMorningDocs = useMemo(() => {
     const s = new Set();
-    extraBlocks.forEach((b) => { if (b.doctorId && blocksMorning(b)) s.add(b.doctorId); });
+    // Las ecografías NO sacan al médico de la visita: solo le restan ~30 min c/u.
+    extraBlocks.forEach((b) => { if (b.doctorId && !b.eco && blocksMorning(b)) s.add(b.doctorId); });
     return s;
   }, [extraBlocks]);
 
@@ -495,9 +496,18 @@ function StepAgenda({ day, docName, doctors, externalConfirm, setExternalConfirm
         {bloqueos.length === 0 ? (
           <Muted>Sin bloqueos.</Muted>
         ) : (
-          <p className="text-sm text-slate-500 w-full">
-            {bloqueos.map((b) => b.name).join(' · ')}
-          </p>
+          <ul className="w-full space-y-1 text-sm text-slate-600">
+            {bloqueos.map((b, i) => {
+              const hhmm = (t) => (t || '').slice(0, 5);
+              const horario = b.from ? `${hhmm(b.from)}${b.to ? `–${hhmm(b.to)}` : ''}` : '';
+              return (
+                <li key={i} className="flex items-baseline gap-2">
+                  {horario && <span className="shrink-0 font-semibold tabular-nums text-slate-700">{horario}</span>}
+                  <span>{b.name}{b.doctor_id ? ` · ${docName(b.doctor_id)}` : ''}</span>
+                </li>
+              );
+            })}
+          </ul>
         )}
 
         {/* Bloqueos extra del día (ad-hoc) */}
@@ -547,6 +557,8 @@ function StepAgenda({ day, docName, doctors, externalConfirm, setExternalConfirm
         </p>
       </InfoCard>
 
+      <EcografiasCard doctors={doctors} extraBlocks={extraBlocks} setExtraBlocks={setExtraBlocks} docName={docName} />
+
       <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 text-sm text-blue-700">
         Médicos que harán visita hoy:{' '}
         <span className="font-medium">
@@ -564,6 +576,74 @@ function StepAgenda({ day, docName, doctors, externalConfirm, setExternalConfirm
         </span>
       </div>
     </div>
+  );
+}
+
+// Ecografías ambulatorias: se realizan el mismo día (no se planifican), duran
+// 30 min y solo las hacen Dra. Fasani o Dra. Sbarbaro. No sacan al médico de la
+// visita: solo le restan ~30 min por cada una. Se agregan como bloque (eco:true).
+function EcografiasCard({ doctors, extraBlocks, setExtraBlocks, docName }) {
+  const ecoDoctors = (doctors || []).filter((d) => /fasani|sbarbaro/i.test(d.display_name || ''));
+  const [doctorId, setDoctorId] = useState('');
+  const [from, setFrom] = useState('08:00');
+
+  const ecos = (extraBlocks || []).filter((b) => b.eco);
+  const ecoCountByDoctor = ecos.reduce((acc, b) => { acc[b.doctorId] = (acc[b.doctorId] || 0) + 1; return acc; }, {});
+
+  const addEco = () => {
+    if (!doctorId) return;
+    const [h, m] = (from || '08:00').split(':').map(Number);
+    const total = h * 60 + m + 30;
+    const to = `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+    setExtraBlocks((p) => [...p, { id: crypto.randomUUID(), from, to, doctorId, cause: 'Ecografía ambulatoria (30 min)', eco: true }]);
+  };
+  const removeEco = (id) => setExtraBlocks((p) => p.filter((b) => b.id !== id));
+
+  return (
+    <InfoCard title="Ecografías ambulatorias (hoy)">
+      <p className="text-xs text-slate-500 w-full mb-2">
+        Se realizan el mismo día (no se planifican). Duran 30 min y solo las hacen Dra. Fasani o Dra. Sbarbaro.
+        No las sacan de la visita: cada ecografía les resta ~30 min de tiempo de visita.
+      </p>
+      {ecoDoctors.length === 0 ? (
+        <Muted>No se encontró a Fasani/Sbarbaro en la lista de médicos.</Muted>
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={doctorId}
+              onChange={(e) => setDoctorId(e.target.value)}
+              className="h-8 text-xs rounded-md border border-slate-200 bg-white px-2 min-w-[160px]"
+            >
+              <option value="">Médico…</option>
+              {ecoDoctors.map((d) => <option key={d.id} value={d.id}>{d.display_name}</option>)}
+            </select>
+            <Input type="time" value={from} onChange={(e) => setFrom(e.target.value)} className="w-28 h-8 text-xs" />
+            <Button variant="outline" size="sm" onClick={addEco} disabled={!doctorId}>
+              <Plus className="h-4 w-4 mr-1" /> Agregar ecografía (30 min)
+            </Button>
+          </div>
+          {ecos.length > 0 && (
+            <ul className="mt-3 w-full space-y-1.5 border-t border-slate-100 pt-3">
+              {ecos.map((b) => (
+                <li key={b.id} className="flex items-center gap-2 text-xs text-slate-700">
+                  <span className="font-semibold tabular-nums">{(b.from || '').slice(0, 5)}–{(b.to || '').slice(0, 5)}</span>
+                  <span className="flex-1">Ecografía · {docName(b.doctorId)}</span>
+                  <Button variant="ghost" size="icon" onClick={() => removeEco(b.id)}>
+                    <Trash2 className="h-4 w-4 text-slate-400" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {Object.keys(ecoCountByDoctor).length > 0 && (
+            <p className="mt-2 w-full text-[11px] text-amber-600">
+              {Object.entries(ecoCountByDoctor).map(([id, n]) => `${docName(id)}: ${n} eco → −${n * 30} min de visita`).join(' · ')}
+            </p>
+          )}
+        </>
+      )}
+    </InfoCard>
   );
 }
 
