@@ -491,6 +491,18 @@ function buildAntibiograma(c) {
 const EMPTY_ATB    = { nombre: '', via: 'EV', presentacion: '', dosis_modo: 'total', dosis_por_kg: '', dosis_cantidad: '', dosis_unidad: 'mg', unidades_por_dosis: '', intervalo_horas: '', dosis: '', inicio: '', termino: '', termino_manual: false };
 const EMPTY_CULT   = { tipo_muestra: '', fecha: '', patogeno: '', sensibilidad: 'Pendiente', resistente: [], sensible: [], intermedio: [], antibiograma_nota: '', antibiograma: '' };
 
+const INVASIVE_DEVICES = [
+  'Sonda Foley (CUP)',
+  'VVP (vía venosa periférica)',
+  'CVC (catéter venoso central)',
+  'PICC',
+  'SNG (sonda nasogástrica)',
+  'Ventilación mecánica (TOT)',
+  'Traqueostomía',
+  'Drenaje',
+  'Otro',
+];
+
 const EMPTY = {
   fecha: '',
   hora: '',
@@ -503,8 +515,7 @@ const EMPTY = {
   n_ficha: '',
   fecha_ingreso: '',
   usa_invasivo: 'no',
-  invasivo_desde: '',
-  invasivo_cual: '',
+  invasivos: [{ cual: '', desde: '' }],
   alergias: '',
   comorbilidades: '',
   funcion_renal: '',
@@ -638,6 +649,9 @@ export default function VisitaPROA() {
   const [registryMessage, setRegistryMessage] = useState('');
   const u = (k, v) => setF(prev => ({ ...prev, [k]: v }));
   const diasHosp = diasHospitalizacion(f.fecha_ingreso, f.fecha);
+  const addInvasivo = () => setF(prev => ({ ...prev, invasivos: [...(prev.invasivos || []), { cual: '', desde: '' }] }));
+  const updateInvasivo = (i, key, val) => setF(prev => ({ ...prev, invasivos: (prev.invasivos || []).map((d, idx) => idx === i ? { ...d, [key]: val } : d) }));
+  const removeInvasivo = (i) => setF(prev => ({ ...prev, invasivos: (prev.invasivos || []).length <= 1 ? prev.invasivos : prev.invasivos.filter((_, idx) => idx !== i) }));
   const clear = () => {
     setRegistryMessage('');
     setF({ ...EMPTY, fecha: todayIso(), hora: currentTime() });
@@ -926,29 +940,35 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                   </select>
                 </Field>
                 {f.usa_invasivo === 'si' && (
-                  <>
-                    <Field label="¿Cuál?">
-                      <select
-                        value={f.invasivo_cual}
-                        onChange={e => u('invasivo_cual', e.target.value)}
-                        className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm bg-white focus:border-teal-400 focus:outline-none"
-                      >
-                        <option value="">Seleccionar…</option>
-                        <option>Sonda Foley (CUP)</option>
-                        <option>VVP (vía venosa periférica)</option>
-                        <option>CVC (catéter venoso central)</option>
-                        <option>PICC</option>
-                        <option>SNG (sonda nasogástrica)</option>
-                        <option>Ventilación mecánica (TOT)</option>
-                        <option>Traqueostomía</option>
-                        <option>Drenaje</option>
-                        <option>Otro</option>
-                      </select>
-                    </Field>
-                    <Field label="¿Desde cuándo?">
-                      <DateInputDdmm value={f.invasivo_desde} onChange={v => u('invasivo_desde', v)} className="h-9" />
-                    </Field>
-                  </>
+                  <Field label="Dispositivos (¿cuál? y ¿desde cuándo?)" span="md:col-span-4">
+                    <div className="space-y-2">
+                      {(f.invasivos || []).map((dev, i) => (
+                        <div key={i} className="flex flex-wrap items-center gap-2">
+                          <select
+                            value={dev.cual}
+                            onChange={e => updateInvasivo(i, 'cual', e.target.value)}
+                            className="h-9 min-w-[200px] flex-1 rounded-md border border-slate-200 px-3 text-sm bg-white focus:border-teal-400 focus:outline-none"
+                          >
+                            <option value="">Seleccionar dispositivo…</option>
+                            {INVASIVE_DEVICES.map(d => <option key={d}>{d}</option>)}
+                          </select>
+                          <span className="text-[11px] text-slate-500">desde</span>
+                          <div className="w-40"><DateInputDdmm value={dev.desde} onChange={v => updateInvasivo(i, 'desde', v)} className="h-9" /></div>
+                          <button
+                            type="button"
+                            onClick={() => removeInvasivo(i)}
+                            className="shrink-0 rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-rose-600"
+                            title="Quitar dispositivo"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      <Button type="button" size="sm" variant="outline" onClick={addInvasivo} className="gap-1 text-xs h-7">
+                        <Plus className="h-3 w-3" /> Agregar dispositivo
+                      </Button>
+                    </div>
+                  </Field>
                 )}
               </Grid>
             </Section>
@@ -1258,8 +1278,12 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                   {saving ? 'Guardando…' : 'Guardar registro PROA'}
                 </Button>
               <Button variant="outline" onClick={clear}>Limpiar</Button>
-              <Button onClick={() => setShowPreview(true)} className="bg-teal-600 hover:bg-teal-700 gap-2">
-                Generar formulario →
+              <Button
+                onClick={() => { if (f.cama?.trim()) handleSaveRegistry(); setShowPreview(true); }}
+                disabled={saving}
+                className="bg-teal-600 hover:bg-teal-700 gap-2"
+              >
+                {saving ? 'Guardando…' : 'Generar y guardar →'}
               </Button>
               </div>
             </div>
@@ -1503,7 +1527,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
               <PrintGrid>
                 <PrintField label="Fecha de ingreso" value={f.fecha_ingreso ? formatDateLocal(f.fecha_ingreso) : ''} flex={1} />
                 <PrintField label="Días de hospitalización" value={diasHosp !== '' ? `${diasHosp} días` : ''} flex={1} />
-                <PrintField label="Dispositivo invasivo" value={f.usa_invasivo === 'si' ? `${f.invasivo_cual || 'Sí'}${f.invasivo_desde ? ` (desde ${formatDateLocal(f.invasivo_desde)})` : ''}` : 'No'} flex={2} />
+                <PrintField label="Dispositivos invasivos" value={f.usa_invasivo === 'si' ? ((f.invasivos || []).filter(d => d.cual || d.desde).map(d => `${d.cual || 'Dispositivo'}${d.desde ? ` (desde ${formatDateLocal(d.desde)})` : ''}`).join('; ') || 'Sí') : 'No'} flex={2} />
               </PrintGrid>
             </PrintBlock>
 
