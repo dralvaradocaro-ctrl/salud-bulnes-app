@@ -347,38 +347,57 @@ export default function GestionPROA() {
                               {group.beds.map((bed) => {
                                 const record = recordsByBed[bed];
                                 const selected = selectedBed === bed;
+                                const tip = record ? bedTooltip(getLatestProaForm(record)) : '';
                                 return (
-                                  <button
-                                    key={bed}
-                                    type="button"
-                                    title={record ? bedTooltip(getLatestProaForm(record)) : undefined}
-                                    onClick={() => {
-                                      setSelectedBed(bed);
-                                      setSourceBedToMove('');
-                                    }}
-                                    className={`min-h-[62px] rounded-xl border px-3 py-2 text-left transition ${
-                                      selected
-                                        ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200'
-                                        : record
-                                          ? 'border-emerald-200 bg-emerald-50 hover:border-emerald-300'
-                                          : 'border-slate-200 bg-white hover:border-teal-200 hover:bg-teal-50/40'
-                                    }`}
-                                  >
-                                    <div className="flex items-center justify-between gap-1">
-                                      <span className="block text-base font-bold text-slate-900">{bed}</span>
-                                      {record && (
-                                        <span className="rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">Ocupada</span>
+                                  <div key={bed} className="group relative">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedBed(bed);
+                                        setSourceBedToMove('');
+                                      }}
+                                      className={`w-full min-h-[62px] rounded-xl border px-3 py-2 text-left transition ${
+                                        selected
+                                          ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200'
+                                          : record
+                                            ? 'border-emerald-200 bg-emerald-50 hover:border-emerald-300'
+                                            : 'border-slate-200 bg-white hover:border-teal-200 hover:bg-teal-50/40'
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between gap-1">
+                                        <span className="block text-base font-bold text-slate-900">{bed}</span>
+                                        {record && (
+                                          <span className="rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">Ocupada</span>
+                                        )}
+                                      </div>
+                                      {record ? (
+                                        <>
+                                          <span className="mt-0.5 block truncate text-xs font-semibold text-emerald-800">{record.code}</span>
+                                          <span className="mt-0.5 block text-[10px] text-slate-500">{formatUpdatedAt(record.updatedAt)}</span>
+                                        </>
+                                      ) : (
+                                        <span className="mt-1 block text-xs text-slate-400">Libre</span>
                                       )}
-                                    </div>
-                                    {record ? (
-                                      <>
-                                        <span className="mt-0.5 block truncate text-xs font-semibold text-emerald-800">{record.code}</span>
-                                        <span className="mt-0.5 block text-[10px] text-slate-500">{formatUpdatedAt(record.updatedAt)}</span>
-                                      </>
-                                    ) : (
-                                      <span className="mt-1 block text-xs text-slate-400">Libre</span>
+                                    </button>
+                                    {tip && (
+                                      <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-64 max-w-[80vw] -translate-x-1/2 group-hover:block">
+                                        <div className="rounded-lg bg-slate-900/95 px-3 py-2 text-left text-[11px] leading-snug text-white shadow-xl ring-1 ring-black/10">
+                                          {tip.split('\n').map((line, li) => {
+                                            const idx = line.indexOf(':');
+                                            const label = idx > -1 ? line.slice(0, idx) : '';
+                                            const value = idx > -1 ? line.slice(idx + 1).trim() : line;
+                                            return (
+                                              <p key={li} className={li > 0 ? 'mt-1' : ''}>
+                                                {label && <span className="font-bold text-emerald-300">{label}: </span>}
+                                                {value}
+                                              </p>
+                                            );
+                                          })}
+                                        </div>
+                                        <div className="mx-auto -mt-1 h-2 w-2 rotate-45 bg-slate-900/95" />
+                                      </div>
                                     )}
-                                  </button>
+                                  </div>
                                 );
                               })}
                             </div>
