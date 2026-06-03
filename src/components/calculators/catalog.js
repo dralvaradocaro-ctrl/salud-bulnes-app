@@ -1,4 +1,4 @@
-import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse, Wind, ArrowRightLeft, Candy, Bone } from 'lucide-react';
+import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse, Wind, ArrowRightLeft, Candy, Bone, Droplet } from 'lucide-react';
 
 import NIHSSCalculator from '@/components/calculators/NIHSSCalculator';
 import HEARTScoreCalculator from '@/components/calculators/HEARTScoreCalculator';
@@ -24,6 +24,8 @@ import HyperglycemicCrisisCalculator from '@/components/calculators/Hyperglycemi
 import HypoglycemiaTreatmentCalculator from '@/components/calculators/HypoglycemiaTreatmentCalculator';
 import HypokalemiaCorrectionCalculator from '@/components/calculators/HypokalemiaCorrectionCalculator';
 import HyperkalemiaManagementCalculator from '@/components/calculators/HyperkalemiaManagementCalculator';
+import HyponatremiaCorrectionCalculator from '@/components/calculators/HyponatremiaCorrectionCalculator';
+import HypernatremiaCorrectionCalculator from '@/components/calculators/HypernatremiaCorrectionCalculator';
 import FibromyalgiaACRCalculator from '@/components/calculators/FibromyalgiaACRCalculator';
 import FIQRCalculator from '@/components/calculators/FIQRCalculator';
 import PSFSCalculator from '@/components/calculators/PSFSCalculator';
@@ -36,7 +38,9 @@ export const calculatorsByCategory = {
   ],
   'Nefrología': [
     { id: 'hypokalemia-correction', name: 'Hipokalemia — reposición de KCl', component: HypokalemiaCorrectionCalculator, icon: Pill },
-    { id: 'hyperkalemia-management', name: 'Hiperkalemia — urgencia y manejo inicial', component: HyperkalemiaManagementCalculator, icon: Activity }
+    { id: 'hyperkalemia-management', name: 'Hiperkalemia — urgencia y manejo inicial', component: HyperkalemiaManagementCalculator, icon: Activity },
+    { id: 'hyponatremia-correction', name: 'Hiponatremia — corrección (NaCl 3%, límite 24 h)', component: HyponatremiaCorrectionCalculator, icon: Droplet },
+    { id: 'hypernatremia-correction', name: 'Hipernatremia — déficit de agua libre', component: HypernatremiaCorrectionCalculator, icon: Droplet }
   ],
   'Cardiología': [
     { id: 'heart', name: 'HEART Score', component: HEARTScoreCalculator, icon: Heart },

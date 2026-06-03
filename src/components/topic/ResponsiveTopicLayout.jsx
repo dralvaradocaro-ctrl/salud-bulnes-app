@@ -17,6 +17,8 @@ import HyperglycemicCrisisCalculator from '@/components/calculators/Hyperglycemi
 import HypoglycemiaTreatmentCalculator from '@/components/calculators/HypoglycemiaTreatmentCalculator';
 import HypokalemiaCorrectionCalculator from '@/components/calculators/HypokalemiaCorrectionCalculator';
 import HyperkalemiaManagementCalculator from '@/components/calculators/HyperkalemiaManagementCalculator';
+import HyponatremiaCorrectionCalculator from '@/components/calculators/HyponatremiaCorrectionCalculator';
+import HypernatremiaCorrectionCalculator from '@/components/calculators/HypernatremiaCorrectionCalculator';
 import FibromyalgiaACRCalculator from '@/components/calculators/FibromyalgiaACRCalculator';
 import FIQRCalculator from '@/components/calculators/FIQRCalculator';
 import PSFSCalculator from '@/components/calculators/PSFSCalculator';
@@ -687,6 +689,12 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
 
       case 'hyperkalemia_management_calculator':
         return <HyperkalemiaManagementCalculator key={block.id} />;
+
+      case 'hyponatremia_correction_calculator':
+        return <HyponatremiaCorrectionCalculator key={block.id} />;
+
+      case 'hypernatremia_correction_calculator':
+        return <HypernatremiaCorrectionCalculator key={block.id} />;
 
       case 'fibromyalgia_acr_calculator':
         return <FibromyalgiaACRCalculator key={block.id} />;
