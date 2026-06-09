@@ -29,6 +29,7 @@ import HypernatremiaCorrectionCalculator from '@/components/calculators/Hypernat
 import FibromyalgiaACRCalculator from '@/components/calculators/FibromyalgiaACRCalculator';
 import FIQRCalculator from '@/components/calculators/FIQRCalculator';
 import PSFSCalculator from '@/components/calculators/PSFSCalculator';
+import PECARNCalculator from '@/components/calculators/PECARNCalculator';
 
 export const calculatorsByCategory = {
   'Urgencias': [
@@ -55,7 +56,8 @@ export const calculatorsByCategory = {
     { id: 'gds', name: 'GDS Reisberg — Estadío de Demencia', component: GDSCalculator, icon: Brain }
   ],
   'Pediatría': [
-    { id: 'pediatric-dose', name: 'Dosis Pediátricas por Peso', component: PediatricDoseCalculator, icon: Baby }
+    { id: 'pediatric-dose', name: 'Dosis Pediátricas por Peso', component: PediatricDoseCalculator, icon: Baby },
+    { id: 'pecarn', name: 'PECARN — TEC pediátrico (TC sí/no)', component: PECARNCalculator, icon: Baby }
   ],
   'Nutrición': [
     { id: 'nrs2002', name: 'NRS-2002 - Riesgo Nutricional', component: NRS2002Calculator, icon: Stethoscope }
