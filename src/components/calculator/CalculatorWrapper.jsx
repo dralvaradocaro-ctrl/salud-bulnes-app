@@ -43,12 +43,15 @@ export default function CalculatorWrapper({
   const [isPrintMode, setIsPrintMode] = useState(false);
   const [printTimestamp, setPrintTimestamp] = useState(null);
   const [printError, setPrintError] = useState('');
+  // Modo de uso: 'consultivo' (sin datos de paciente) o 'registro' (nombre/RUT obligatorios).
+  const [mode, setMode] = useState('consultivo');
 
-  const patientValid = patientInfo.name.trim() !== '' && patientInfo.rut.trim() !== '';
+  const needsPatient = showPatientInfo && mode === 'registro';
+  const patientValid = !needsPatient || (patientInfo.name.trim() !== '' && patientInfo.rut.trim() !== '');
 
   const handlePrint = () => {
-    if (!patientValid) {
-      setPrintError('Para imprimir es obligatorio anotar nombre y RUT del paciente.');
+    if (needsPatient && !patientValid) {
+      setPrintError('Para registro clínico es obligatorio anotar nombre y RUT del paciente.');
       return;
     }
     setPrintError('');
@@ -65,7 +68,7 @@ export default function CalculatorWrapper({
     history.unshift({
       ...calculation,
       timestamp: new Date().toISOString(),
-      patientInfo: showPatientInfo ? patientInfo : null
+      patientInfo: needsPatient ? patientInfo : null
     });
     localStorage.setItem(`calc_history_${title}`, JSON.stringify(history.slice(0, 10)));
   };
@@ -83,7 +86,7 @@ export default function CalculatorWrapper({
         title={title}
         inputs={inputs}
         result={result}
-        patientInfo={patientInfo}
+        patientInfo={needsPatient ? patientInfo : null}
         generatedAt={printTimestamp}
       />
     );
@@ -101,8 +104,35 @@ export default function CalculatorWrapper({
         </div>
       </div>
 
-      {/* Datos del paciente — Nombre y RUT obligatorios para imprimir */}
+      {/* Modo de uso: consultivo (sin datos) o registro clínico (paciente obligatorio) */}
       {showPatientInfo && (
+        <div className="mb-5">
+          <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 text-xs font-semibold shadow-sm">
+            <button
+              type="button"
+              onClick={() => { setMode('consultivo'); setPrintError(''); }}
+              className={`rounded-full px-3.5 py-1.5 transition-colors ${mode === 'consultivo' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Consultivo
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('registro')}
+              className={`rounded-full px-3.5 py-1.5 transition-colors ${mode === 'registro' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Registro clínico
+            </button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-slate-500">
+            {mode === 'registro'
+              ? 'Registro clínico: nombre y RUT obligatorios; el resultado se puede imprimir para la ficha.'
+              : 'Consultivo: uso rápido sin datos del paciente.'}
+          </p>
+        </div>
+      )}
+
+      {/* Datos del paciente — solo en modo registro clínico */}
+      {needsPatient && (
         <div className="mb-6">
           <div className="flex items-center gap-2 text-sm text-slate-700 mb-2 font-semibold">
             <User className="h-4 w-4" />

@@ -20,9 +20,16 @@ const references = [
 ];
 
 // Predictores de "alto riesgo" (TC recomendada) e "intermedios" (observar vs TC) por edad.
+// Formato del algoritmo PECARN (MDCalc): cada predictor es una pregunta Sí/No independiente.
 const HIGH = {
-  lt2: 'GCS ≤ 14, alteración del estado mental (agitación, somnolencia, preguntas repetitivas, respuesta lenta) o fractura de cráneo palpable',
-  gte2: 'GCS ≤ 14, alteración del estado mental o signos de fractura de base de cráneo',
+  lt2: [
+    { key: 'ams', label: 'GCS ≤ 14, o alteración del estado mental (agitación, somnolencia, preguntas repetitivas, respuesta lenta al hablar)' },
+    { key: 'fx', label: 'Fractura de cráneo palpable' },
+  ],
+  gte2: [
+    { key: 'ams', label: 'GCS ≤ 14, o alteración del estado mental' },
+    { key: 'fx', label: 'Signos de fractura de base de cráneo' },
+  ],
 };
 const INTERMEDIATE = {
   lt2: [
@@ -45,15 +52,16 @@ const SEVERE_MECH = {
 
 export default function PECARNCalculator() {
   const [age, setAge] = useState('lt2'); // 'lt2' | 'gte2'
-  const [high, setHigh] = useState(false);
+  const [high, setHigh] = useState({});
   const [inter, setInter] = useState({});
   const [result, setResult] = useState(null);
 
+  const setHighKey = (key, val) => setHigh((prev) => ({ ...prev, [key]: val }));
   const setInterKey = (key, val) => setInter((prev) => ({ ...prev, [key]: val }));
 
   const handleAgeChange = (value) => {
     setAge(value);
-    setHigh(false);
+    setHigh({});
     setInter({});
     setResult(null);
   };
@@ -61,9 +69,10 @@ export default function PECARNCalculator() {
   const handleCalculate = () => {
     const interList = INTERMEDIATE[age];
     const interCount = interList.filter((it) => inter[it.key]).length;
+    const isHigh = HIGH[age].some((it) => high[it.key]);
 
     let score, color, interpretation, recommendations;
-    if (high) {
+    if (isHigh) {
       score = 'TC recomendada';
       color = 'bg-rose-50 border-rose-200';
       interpretation = `Predictor de alto riesgo presente. Riesgo de TEC clínicamente importante ≈ ${age === 'lt2' ? '4,4' : '4,3'}%. Se recomienda TC de cerebro.`;
@@ -101,14 +110,14 @@ export default function PECARNCalculator() {
   };
 
   const handleReset = () => {
-    setHigh(false);
+    setHigh({});
     setInter({});
     setResult(null);
   };
 
   const printableInputs = [
     { label: 'Edad', value: age === 'lt2' ? '< 2 años' : '≥ 2 años' },
-    { label: 'Alto riesgo', value: high ? 'Sí' : 'No' },
+    ...HIGH[age].map((it) => ({ label: it.label, value: high[it.key] ? 'Sí' : 'No' })),
     ...INTERMEDIATE[age].map((it) => ({ label: it.label, value: inter[it.key] ? 'Sí' : 'No' })),
   ];
 
@@ -140,11 +149,15 @@ export default function PECARNCalculator() {
 
       <div className="space-y-4">
         <div>
-          <p className="mb-2 text-sm font-bold text-rose-700">Alto riesgo (si está presente → TC recomendada)</p>
-          <label className={toggleClass}>
-            <input type="checkbox" checked={high} onChange={(e) => setHigh(e.target.checked)} className="mt-0.5" />
-            <span>{HIGH[age]}</span>
-          </label>
+          <p className="mb-2 text-sm font-bold text-rose-700">Alto riesgo (cualquiera presente → TC recomendada)</p>
+          <div className="space-y-2">
+            {HIGH[age].map((it) => (
+              <label key={it.key} className={toggleClass}>
+                <input type="checkbox" checked={!!high[it.key]} onChange={(e) => setHighKey(it.key, e.target.checked)} className="mt-0.5" />
+                <span>{it.label}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
         <div>
