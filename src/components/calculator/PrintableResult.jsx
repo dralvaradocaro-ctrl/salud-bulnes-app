@@ -77,10 +77,17 @@ export default function PrintableResult({ title, inputs, result, patientInfo, ge
 
       <div id="printable-result" className="bg-white px-6 py-5 max-w-4xl mx-auto pr-print-page" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
         {/* Header compacto */}
-        <div className="flex items-baseline justify-between border-b-2 border-slate-800 pb-1.5 mb-3">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900 leading-tight">{title}</h1>
-            <p className="text-[10.5pt] text-slate-600">Hospital de Bulnes · Servicio de Salud Ñuble</p>
+        <div className="flex items-start justify-between border-b-2 border-slate-800 pb-1.5 mb-3">
+          <div className="flex items-start gap-2">
+            <img
+              src="/logo-hospital.png"
+              alt="Hospital de Bulnes"
+              className="h-10 w-auto object-contain"
+            />
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 leading-tight">{title}</h1>
+              <p className="text-[10.5pt] text-slate-600">Hospital de Bulnes · Servicio de Salud Ñuble</p>
+            </div>
           </div>
           <p className="text-[9pt] text-slate-500">{printDate}</p>
         </div>

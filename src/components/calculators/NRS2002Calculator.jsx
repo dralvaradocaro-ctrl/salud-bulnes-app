@@ -5,8 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Calculator, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import CalculatorWrapper from '../calculator/CalculatorWrapper';
 
-// Justificaciones de alto riesgo por indicación médica (protocolo local HCSFB).
-// Si el clínico marca al menos una, el paciente se categoriza como alto riesgo
+// Justificaciones de muy alto riesgo por indicación médica (protocolo local HCSFB).
+// Si el clínico marca al menos una, el paciente se categoriza como muy alto riesgo
 // con plazo 24–48 h y el resto del NRS-2002 deja de aplicar.
 const MEDICAL_HIGH_RISK_REASONS = [
   'Cirugía mayor reciente o programada (cabeza/cuello, esofágica, gástrica, pancreática, hepatobiliar)',
@@ -23,7 +23,7 @@ const MEDICAL_HIGH_RISK_REASONS = [
 ];
 
 export default function NRS2002Calculator() {
-  // Paso 0: alto riesgo por indicación médica (corta el protocolo si aplica).
+  // Paso 0: muy alto riesgo por indicación médica (corta el protocolo si aplica).
   const [medicalHighRisk, setMedicalHighRisk] = useState(null); // null | true | false
   const [medicalReasons, setMedicalReasons] = useState([]);
   const [nutritionalException, setNutritionalException] = useState(null); // null | 'si' | 'no'
@@ -286,19 +286,19 @@ export default function NRS2002Calculator() {
       };
     }
 
-    // Caso prioritario: alto riesgo por indicación médica → termina el protocolo.
+    // Caso prioritario: muy alto riesgo por indicación médica → termina el protocolo.
     if (isMedicalHighRiskCutoff) {
       return {
         score: '★',
-        label: 'Alto riesgo por indicación médica',
-        interpretation: 'Alto Riesgo Nutricional (por indicación médica) - Derivación a Nutrición prioritaria. Plazo: 24-48 horas hábiles.',
+        label: 'Muy alto riesgo por indicación médica',
+        interpretation: 'Muy Alto Riesgo Nutricional (por indicación médica) - Derivación a Nutrición prioritaria. Plazo: 24-48 horas hábiles.',
         recommendations: [
           'Evaluación nutricional completa dentro de 24–48 horas hábiles',
           'Definición de intervención o soporte nutricional especializado',
           'Monitoreo estrecho de ingesta y tolerancia',
           ...(medicalReasons.length > 0
             ? medicalReasons.map(r => `Justificación: ${r}`)
-            : ['Justificación: alto riesgo por indicación médica consignado por clínico tratante']),
+            : ['Justificación: muy alto riesgo por indicación médica consignado por clínico tratante']),
         ],
       };
     }
@@ -339,7 +339,7 @@ export default function NRS2002Calculator() {
     if (isMedicalHighRiskCutoff) {
       return {
         'Evaluación nutricional': 'Sí corresponde evaluar',
-        'Alto riesgo por indicación médica': 'Sí',
+        'Muy alto riesgo por indicación médica': 'Sí',
         'Justificaciones': medicalReasons.length > 0 ? medicalReasons.join(' · ') : 'Consignar en ficha clínica',
         ...(anthroForPrint || {}),
       };
@@ -348,7 +348,7 @@ export default function NRS2002Calculator() {
     if (screeningComplete && !needsFullAssessment) {
       return {
         'Evaluación nutricional': 'Sí corresponde evaluar',
-        'Alto riesgo por indicación médica': 'No',
+        'Muy alto riesgo por indicación médica': 'No',
         ...screeningSummary,
         'Resultado tamizaje': 'Normal',
         ...(anthroForPrint || {}),
@@ -358,7 +358,7 @@ export default function NRS2002Calculator() {
     if (showFullAssessment) {
       return {
         'Evaluación nutricional': 'Sí corresponde evaluar',
-        'Alto riesgo por indicación médica': 'No',
+        'Muy alto riesgo por indicación médica': 'No',
         ...screeningSummary,
         'Resultado tamizaje': 'Alterado',
         'Estado nutricional': `${fullScore.nutritionalStatus} puntos`,
@@ -422,16 +422,16 @@ export default function NRS2002Calculator() {
           )}
         </div>
 
-        {/* Etapa 1: Alto riesgo por indicación médica (corta el protocolo) */}
+        {/* Etapa 1: Muy alto riesgo por indicación médica (corta el protocolo) */}
         {shouldShowMedicalHighRisk && (
         <div className={`rounded-xl p-5 border-2 ${medicalHighRisk === true ? 'bg-red-50 border-red-300' : 'bg-white border-slate-200'}`}>
           <h4 className="font-bold text-slate-900 mb-3 flex items-center gap-2">
             <span className="bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">0</span>
-            Alto riesgo por indicación médica
+            Muy alto riesgo por indicación médica
             <span className="text-[10px] uppercase tracking-wide bg-red-100 text-red-800 px-1.5 py-0.5 rounded border border-red-300">Protocolo local · plazo 24-48 h</span>
           </h4>
           <p className="text-xs text-slate-600 mb-3">
-            Si el clínico determina que el paciente tiene <strong>alto riesgo nutricional por indicación médica</strong>,
+            Si el clínico determina que el paciente tiene <strong>muy alto riesgo nutricional por indicación médica</strong>,
             se deriva a Nutrición en 24-48 horas hábiles y el resto del NRS-2002 no se aplica.
           </p>
           <div className="flex gap-2 mb-3">
@@ -443,7 +443,7 @@ export default function NRS2002Calculator() {
                 setShowFullAssessment(false);
               }}
               className={medicalHighRisk === true ? 'bg-red-600 hover:bg-red-700' : ''}
-            >Sí, alto riesgo por indicación médica</Button>
+            >Sí, muy alto riesgo por indicación médica</Button>
             <Button
               variant={medicalHighRisk === false ? 'default' : 'outline'}
               size="sm"
