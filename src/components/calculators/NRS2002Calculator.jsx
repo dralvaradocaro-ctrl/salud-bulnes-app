@@ -44,8 +44,8 @@ export default function NRS2002Calculator() {
   const [weightMonths, setWeightMonths] = useState(''); // '' | '1' | '2' | '3'
   const [intakeSel, setIntakeSel] = useState(null);     // null | 0 | 1 | 2 | 3
   const pesoLossPct = (() => {
-    const hab = Number(pesoHabitual);
-    const act = Number(pesoActual);
+    const hab = Number(String(pesoHabitual).replace(',', '.'));
+    const act = Number(String(pesoActual).replace(',', '.'));
     if (!Number.isFinite(hab) || !Number.isFinite(act) || hab <= 0 || act <= 0) return null;
     return ((hab - act) / hab) * 100;
   })();
@@ -54,7 +54,10 @@ export default function NRS2002Calculator() {
     if (pesoLossPct === null) return null;
     if (pesoLossPct <= 5) return 0;            // ≤5%: no puntúa por peso
     if (!weightMonths) return null;            // >5% pero falta el tiempo
-    return weightMonths === '1' ? 3 : weightMonths === '2' ? 2 : 1;
+    if (pesoLossPct > 15) return 3;             // >15% en ≤3 meses: grave
+    if (weightMonths === '1') return 3;         // >5% en 1 mes: grave
+    if (weightMonths === '2') return 2;         // >5% en 2 meses: moderada
+    return 1;                                   // >5% y ≤15% en 3 meses: leve
   })();
   const STATUS_LABEL = ['Normal (0 pts)', 'Desnutrición leve (1 pt)', 'Desnutrición moderada (2 pts)', 'Desnutrición grave (3 pts)'];
   const imcValue = (() => {
@@ -79,10 +82,10 @@ export default function NRS2002Calculator() {
       // al paso 2 (evaluación formal) para no obligar a recalcular después.
       setScreeningAnswers(prev => ({ ...prev, lowIMC: imcValue < 20.5 }));
       if (suggestedNutritionalCategory) {
-        setFullScore(prev => ({ ...prev, nutritionalStatus: Math.max(prev.nutritionalStatus, suggestedNutritionalCategory.value) }));
+        setFullScore(prev => ({ ...prev, nutritionalStatus: suggestedNutritionalCategory.value }));
       }
     } else if (imcCalcTarget === 'estado' && suggestedNutritionalCategory) {
-      setFullScore(prev => ({ ...prev, nutritionalStatus: Math.max(prev.nutritionalStatus, suggestedNutritionalCategory.value) }));
+      setFullScore(prev => ({ ...prev, nutritionalStatus: suggestedNutritionalCategory.value }));
     }
     setImcCalcTarget(null);
   };
@@ -689,12 +692,12 @@ export default function NRS2002Calculator() {
                     <button
                       type="button"
                       disabled={weightStatus === null}
-                      onClick={() => setFullScore({ ...fullScore, nutritionalStatus: Math.max(fullScore.nutritionalStatus, weightStatus) })}
+                      onClick={() => setFullScore(prev => ({ ...prev, nutritionalStatus: weightStatus }))}
                       className="mt-2 inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                     >
                       <CheckCircle2 className="h-3.5 w-3.5" /> Aplicar al estado nutricional
                     </button>
-                    <p className="mt-2 text-[11px] text-slate-500">Si ya aplicaste otro criterio (IMC o ingesta), se conserva el <strong>mayor puntaje</strong>. Cómo preguntar: «¿Cuánto pesaba y cuánto pesa ahora? ¿En cuánto tiempo bajó?»</p>
+                    <p className="mt-2 text-[11px] text-slate-500">Al aplicar, se reemplaza el Estado Nutricional por el puntaje calculado por baja de peso. Cómo preguntar: «¿Cuánto pesaba y cuánto pesa ahora? ¿En cuánto tiempo bajó?»</p>
                   </div>
                 )}
 
@@ -723,12 +726,12 @@ export default function NRS2002Calculator() {
                     <button
                       type="button"
                       disabled={intakeSel === null}
-                      onClick={() => setFullScore({ ...fullScore, nutritionalStatus: Math.max(fullScore.nutritionalStatus, intakeSel) })}
+                      onClick={() => setFullScore(prev => ({ ...prev, nutritionalStatus: intakeSel }))}
                       className="mt-2 inline-flex items-center gap-1 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
                     >
                       <CheckCircle2 className="h-3.5 w-3.5" /> Aplicar al estado nutricional
                     </button>
-                    <p className="mt-2 text-[11px] text-slate-500">Si ya aplicaste otro criterio (peso o IMC), se conserva el <strong>mayor puntaje</strong>.</p>
+                    <p className="mt-2 text-[11px] text-slate-500">Al aplicar, se reemplaza el Estado Nutricional por el puntaje seleccionado por ingesta.</p>
                   </div>
                 )}
 
@@ -756,7 +759,7 @@ export default function NRS2002Calculator() {
                       <span className="text-sm font-semibold">Desnutrición Leve</span>
                       <Badge variant="outline">1 pt</Badge>
                     </div>
-                    <p className="text-xs text-slate-600">Pérdida de peso &gt;5% en 3 meses o ingesta 50-75% en última semana</p>
+                    <p className="text-xs text-slate-600">Pérdida de peso &gt;5% y ≤15% en 3 meses o ingesta 50-75% en última semana</p>
                   </button>
 
                   <button
@@ -782,7 +785,7 @@ export default function NRS2002Calculator() {
                       <span className="text-sm font-semibold">Desnutrición Grave</span>
                       <Badge variant="outline">3 pts</Badge>
                     </div>
-                    <p className="text-xs text-slate-600">Pérdida de peso &gt;5% en 1 mes, IMC &lt;18,5 o ingesta 0-25% en última semana</p>
+                    <p className="text-xs text-slate-600">Pérdida de peso &gt;5% en 1 mes, &gt;15% en hasta 3 meses, IMC &lt;18,5 o ingesta 0-25% en última semana</p>
                   </button>
                 </div>
               </div>
