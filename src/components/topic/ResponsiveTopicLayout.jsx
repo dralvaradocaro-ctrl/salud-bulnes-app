@@ -1144,11 +1144,9 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     const url = new URL(window.location.href);
     url.searchParams.set('tab', tab);
     window.history.replaceState(window.history.state, '', url);
-    // Evita el salto de scroll inconsistente al cambiar de pestaña: deja la barra
-    // de pestañas en una posición fija (bajo el header sticky) en cada cambio.
-    window.requestAnimationFrame(() => {
-      tabBarRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
-    });
+    // No forzar scroll al cambiar de pestaña: se conserva la posición actual del
+    // usuario (comportamiento previo). El scrollIntoView resultaba molesto porque
+    // empujaba la vista hacia arriba en cada clic de pestaña.
   };
 
   const rememberReturnPoint = () => {
