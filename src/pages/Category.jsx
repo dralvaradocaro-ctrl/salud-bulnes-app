@@ -35,7 +35,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { isHiddenClinicalTool, isHiddenGesConstanciaTool } from '@/components/utils/hiddenContent';
 import { getProtocolValidityStatus } from '@/lib/protocolUtils';
-import { getTopicProtocolStatus, hasSsnProtocolBadge } from '@/lib/topicStatus';
+import { getTopicProtocolStatus, hasSsnProtocolBadge, hasMinsalOrdinarioBadge } from '@/lib/topicStatus';
 import { supabase } from '@/lib/supabase';
 import {
   Tooltip,
@@ -632,7 +632,7 @@ export default function Category() {
                                     {topic.name}
                                   </h3>
                                   <div className="flex flex-wrap gap-1.5 mb-3">
-                                    {(topic.tipo_contenido || []).includes('protocolo') && !topic.has_local_protocol && (
+                                    {(topic.tipo_contenido || []).includes('protocolo') && !topic.has_local_protocol && !hasMinsalOrdinarioBadge(topic) && (
                                       <Badge className="bg-green-100 text-green-700 border-green-200 text-xs">Protocolo</Badge>
                                     )}
                                     {(topic.tipo_contenido || []).includes('contenido_medico') && (
@@ -653,6 +653,11 @@ export default function Category() {
                                     {hasSsnProtocolBadge(topic) && (
                                       <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 flex items-center gap-1 text-xs font-semibold">
                                         Protocolo SSÑ
+                                      </Badge>
+                                    )}
+                                    {hasMinsalOrdinarioBadge(topic) && (
+                                      <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center gap-1 text-xs font-semibold">
+                                        Ordinario MINSAL
                                       </Badge>
                                     )}
                                     {getTopicProtocolStatus(topic) === 'checklist' && (

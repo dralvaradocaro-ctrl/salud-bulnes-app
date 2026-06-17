@@ -48,6 +48,18 @@ export function hasSsnProtocolBadge(topic: TopicLike | null | undefined): boolea
   );
 }
 
+// Documentos normativos nacionales del MINSAL (orientaciones técnicas,
+// ordinarios, resoluciones exentas). No son protocolos locales del HCSFB,
+// por lo que llevan una insignia propia en lugar de "Protocolo Local".
+export function hasMinsalOrdinarioBadge(topic: TopicLike | null | undefined): boolean {
+  if (!topic) return false;
+  const labels = Array.isArray(topic.tags) ? topic.tags.map(normalizeLabel) : [];
+  return labels.some((label) =>
+    label === 'ordinario minsal' ||
+    label === 'ordinario ministerial'
+  );
+}
+
 export const TOPIC_STATUS_LABELS: Record<TopicProtocolStatus, string> = {
   local: 'Protocolo local activo',
   checklist: 'Pauta de cotejo',

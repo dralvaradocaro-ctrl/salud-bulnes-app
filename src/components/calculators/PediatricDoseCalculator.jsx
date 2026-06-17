@@ -41,7 +41,7 @@ const DEFAULT_MEDS = [
     unit: 'mg/kg/dosis',
     frequency: 'c/6–8 h',
     maxSingleDose: 400,
-    maxDailyDosePerKg: 40,
+    maxDailyDosePerKg: 30,
     maxDailyDoseMg: 2400,
     minAge: '> 3 meses',
     route: 'VO',
@@ -172,6 +172,7 @@ const DEFAULT_MEDS = [
     doseMin: 0.35, doseMax: 0.35,
     unit: 'mg/kg/día',
     frequency: 'c/6 h (dividir dosis diaria)',
+    administrationsPerDay: 4,
     maxSingleDose: 4,
     maxDailyDosePerKg: 0.35,
     maxDailyDoseMg: 12,
@@ -197,6 +198,10 @@ const DEFAULT_MEDS = [
     minAge: '> 2 años',
     route: 'VO',
     notes: '< 30 kg: 5 mg/día; ≥ 30 kg: 10 mg/día.',
+    weightBands: [
+      { minWeight: 0, maxWeight: 30, doseMg: 5 },
+      { minWeight: 30, doseMg: 10 },
+    ],
     inArsenal: true,
     hospitalPresentations: [
       { label: 'Jarabe 5 mg/5 mL (= 1 mg/mL)', type: 'liquid', concMg: 1,  via: 'VO', unitLabel: 'mL' },
@@ -209,8 +214,9 @@ const DEFAULT_MEDS = [
     name: 'Amitriptilina',
     category: 'Antidepresivo / Dolor neuropático',
     doseMin: 0.1, doseMax: 0.5,
-    unit: 'mg/kg/dosis',
+    unit: 'mg/kg/día',
     frequency: 'c/24 h (nocturna)',
+    administrationsPerDay: 1,
     maxSingleDose: 25,
     maxDailyDosePerKg: 0.5,
     maxDailyDoseMg: 25,
@@ -257,7 +263,7 @@ const DEFAULT_MEDS = [
     notes: '⚠ Monitoreo respiratorio EV obligatorio.',
     inArsenal: true,
     hospitalPresentations: [
-      { label: 'Sol iny 10 mg/mL', type: 'liquid', concMg: 10, via: 'EV', unitLabel: 'mL' },
+      { label: 'Sol iny 10 mg/2 mL (= 5 mg/mL)', type: 'liquid', concMg: 5, via: 'EV', unitLabel: 'mL' },
       { label: 'Comp 10 mg',       type: 'solid',  mgPerUnit: 10, via: 'VO', unitLabel: 'comp' },
     ],
   },
@@ -306,10 +312,11 @@ const DEFAULT_MEDS = [
     category: 'Antibiótico — Penicilina',
     doseMin: 40, doseMax: 90,
     unit: 'mg/kg/día',
-    frequency: 'c/8 h (dividir dosis diaria)',
-    maxSingleDose: 500,
+    frequency: 'c/8–12 h (dividir dosis diaria)',
+    administrationsPerDayRange: [2, 3],
+    maxSingleDose: 1000,
     maxDailyDosePerKg: 90,
-    maxDailyDoseMg: 3000,
+    maxDailyDoseMg: 4000,
     minAge: null,
     route: 'VO',
     notes: '40 mg/kg/día leve-moderado; 80–90 mg/kg/día para SBO/otitis de alta resistencia.',
@@ -326,12 +333,13 @@ const DEFAULT_MEDS = [
     doseMin: 40, doseMax: 90,
     unit: 'mg/kg/día (de amoxicilina)',
     frequency: 'c/8–12 h',
-    maxSingleDose: 500,
+    administrationsPerDayRange: [2, 3],
+    maxSingleDose: 875,
     maxDailyDosePerKg: 90,
-    maxDailyDoseMg: 3000,
+    maxDailyDoseMg: 4000,
     minAge: null,
     route: 'VO',
-    notes: 'Dosis expresada en amoxicilina. Tomar con alimentos.',
+    notes: 'Dosis expresada en amoxicilina. Tomar con alimentos. Vigilar carga de clavulanato; preferir formulación 400/57 mg/5 mL para dosis altas.',
     inArsenal: true,
     hospitalPresentations: [
       { label: 'Suspensión 400/57 mg/5 mL (= 80 mg/mL amox)', type: 'liquid', concMg: 80, via: 'VO', unitLabel: 'mL', perDose: true },
@@ -366,6 +374,7 @@ const DEFAULT_MEDS = [
     doseMin: 15, doseMax: 15,
     unit: 'mg/kg/día',
     frequency: 'c/12 h (dividir)',
+    administrationsPerDay: 2,
     maxSingleDose: 500,
     maxDailyDosePerKg: 15,
     maxDailyDoseMg: 1000,
@@ -385,6 +394,7 @@ const DEFAULT_MEDS = [
     doseMin: 25, doseMax: 40,
     unit: 'mg/kg/día',
     frequency: 'c/6–8 h (dividir)',
+    administrationsPerDayRange: [3, 4],
     maxSingleDose: 450,
     maxDailyDosePerKg: 40,
     maxDailyDoseMg: 1800,
@@ -404,6 +414,7 @@ const DEFAULT_MEDS = [
     doseMin: 30, doseMax: 50,
     unit: 'mg/kg/día',
     frequency: 'c/12 h (dividir)',
+    administrationsPerDay: 2,
     maxSingleDose: 1000,
     maxDailyDosePerKg: 50,
     maxDailyDoseMg: 2000,
@@ -424,6 +435,7 @@ const DEFAULT_MEDS = [
     doseMin: 5, doseMax: 7,
     unit: 'mg/kg/día',
     frequency: 'c/6 h (4 tomas)',
+    administrationsPerDay: 4,
     maxSingleDose: 100,
     maxDailyDosePerKg: 7,
     maxDailyDoseMg: 400,
@@ -442,7 +454,8 @@ const DEFAULT_MEDS = [
     doseMin: 8, doseMax: 12,
     unit: 'mg/kg/día (de TMP)',
     frequency: 'c/12 h (dividir)',
-    maxSingleDose: null,
+    administrationsPerDay: 2,
+    maxSingleDose: 160,
     maxDailyDosePerKg: 12,
     maxDailyDoseMg: 320,
     minAge: '> 2 meses',
@@ -462,6 +475,7 @@ const DEFAULT_MEDS = [
     doseMin: 8, doseMax: 10,
     unit: 'mg/kg/día (inicio)',
     frequency: 'c/12 h (dividir)',
+    administrationsPerDay: 2,
     maxSingleDose: null,
     maxDailyDosePerKg: 60,
     maxDailyDoseMg: 1800,
@@ -482,6 +496,7 @@ const DEFAULT_MEDS = [
     doseMin: 1, doseMax: 2,
     unit: 'mg/kg/día (inicio)',
     frequency: 'c/12 h (dividir)',
+    administrationsPerDay: 2,
     maxSingleDose: null,
     maxDailyDosePerKg: 12,
     maxDailyDoseMg: 400,
@@ -501,6 +516,7 @@ const DEFAULT_MEDS = [
     doseMin: 0.1, doseMax: 0.5,
     unit: 'mg/kg/día (inicio)',
     frequency: 'c/12–24 h',
+    administrationsPerDayRange: [1, 2],
     maxSingleDose: null,
     maxDailyDosePerKg: 1,
     maxDailyDoseMg: 40,
@@ -520,6 +536,7 @@ const DEFAULT_MEDS = [
     doseMin: 40, doseMax: 50,
     unit: 'mg/kg/día (inicio)',
     frequency: 'c/12 h (dividir)',
+    administrationsPerDay: 2,
     maxSingleDose: null,
     maxDailyDosePerKg: 150,
     maxDailyDoseMg: 3000,
@@ -548,7 +565,7 @@ const DEFAULT_MEDS = [
     inArsenal: true,
     ssn2026: true,
     hospitalPresentations: [
-      { label: 'Sol iny 500 mg/mL', type: 'liquid', concMg: 500, via: 'EV/IM', unitLabel: 'mL' },
+      { label: 'Sol iny 500 mg/10 mL (= 50 mg/mL)', type: 'liquid', concMg: 50, via: 'EV/IM', unitLabel: 'mL' },
     ],
   },
 ];
@@ -562,6 +579,41 @@ function normalize(s) {
 function r1(n) { return Math.round(n * 10) / 10; }
 function r2(n) { return Math.round(n * 100) / 100; }
 
+function formatRange(min, max, suffix = '') {
+  const same = r2(min) === r2(max);
+  return `${same ? r2(min) : `${r2(min)}–${r2(max)}`}${suffix}`;
+}
+
+function isDailyDose(med) {
+  return med.unit.includes('/día') || med.unit.includes('mg/día');
+}
+
+function getAdministrationsPerDay(med) {
+  if (med.administrationsPerDay) return [med.administrationsPerDay, med.administrationsPerDay];
+  if (med.administrationsPerDayRange) return med.administrationsPerDayRange;
+  if (med.frequency.includes('c/24')) return [1, 1];
+  if (med.frequency.includes('c/12')) return med.frequency.includes('c/8') ? [2, 3] : [2, 2];
+  if (med.frequency.includes('c/8')) return med.frequency.includes('c/6') ? [3, 4] : [3, 3];
+  if (med.frequency.includes('c/6')) return [4, 4];
+  return [1, 1];
+}
+
+function capDailyDose(med, doseMg, weight) {
+  const perKgCap = med.maxDailyDosePerKg ? med.maxDailyDosePerKg * weight : Infinity;
+  const absoluteCap = med.maxDailyDoseMg ?? Infinity;
+  return Math.min(doseMg, perKgCap, absoluteCap);
+}
+
+function capSingleDose(med, doseMg) {
+  return med.maxSingleDose ? Math.min(doseMg, med.maxSingleDose) : doseMg;
+}
+
+function getWeightBandDose(med, weight) {
+  return med.weightBands?.find(({ minWeight = 0, maxWeight = Infinity }) => (
+    weight >= minWeight && weight < maxWeight
+  ));
+}
+
 // ── Cálculo en mL o unidades según presentación ────────────────────────────
 function calcPresentation(pres, doseMg) {
   if (pres.type === 'liquid') {
@@ -573,7 +625,7 @@ function calcPresentation(pres, doseMg) {
   }
 }
 
-function HospitalDose({ med, doseMg }) {
+function HospitalDose({ med, doseMg, doseLabel = 'dosis por administración' }) {
   if (!med.inArsenal || !med.hospitalPresentations?.length) return null;
 
   return (
@@ -592,6 +644,9 @@ function HospitalDose({ med, doseMg }) {
           </span>
         )}
       </div>
+      <p className="text-[10px] text-teal-700">
+        Conversión calculada con {r2(doseMg)} mg ({doseLabel}).
+      </p>
       <div className="space-y-1">
         {med.hospitalPresentations.map((pres, i) => {
           const calc = calcPresentation(pres, doseMg);
@@ -622,46 +677,57 @@ function HospitalDose({ med, doseMg }) {
 function DoseResult({ med, weight }) {
   if (!weight || weight <= 0) return null;
   const w = parseFloat(weight);
+  const bandDose = getWeightBandDose(med, w);
 
-  if (med.fixedDose) {
+  if (med.fixedDose || bandDose) {
+    const fixedDoseMg = bandDose?.doseMg ?? med.doseMin;
     return (
       <div className="space-y-2">
         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
-          <p className="mb-1 text-xs font-bold uppercase tracking-wide text-blue-700">Dosis fija — no depende del peso</p>
-          <p className="text-lg font-bold text-blue-900">{med.doseMin} mg / día</p>
+          <p className="mb-1 text-xs font-bold uppercase tracking-wide text-blue-700">
+            {bandDose ? 'Dosis por banda de peso' : 'Dosis fija — no depende del peso'}
+          </p>
+          <p className="text-lg font-bold text-blue-900">{fixedDoseMg} mg / día</p>
           <p className="mt-1 text-xs text-slate-600">{med.frequency} · {med.route}</p>
         </div>
         {med.inArsenal && med.hospitalPresentations.length > 0 && (
-          <HospitalDose med={med} doseMg={med.doseMin} />
+          <HospitalDose med={med} doseMg={fixedDoseMg} doseLabel={bandDose ? 'dosis diaria' : 'dosis fija'} />
         )}
         {med.notes && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">{med.notes}</p>}
       </div>
     );
   }
 
-  const isDaily = med.unit.includes('/día');
-  const rawMin  = r2(med.doseMin * w);
-  const rawMax  = r2(med.doseMax * w);
-  const cappedMin = med.maxSingleDose ? Math.min(rawMin, med.maxSingleDose) : rawMin;
-  const cappedMax = med.maxSingleDose ? Math.min(rawMax, med.maxSingleDose) : rawMax;
-  const hitCap = rawMax > (med.maxSingleDose ?? Infinity);
+  const dailyDose = isDailyDose(med);
+  const rawMin = r2(med.doseMin * w);
+  const rawMax = r2(med.doseMax * w);
+  const dailyMin = dailyDose ? capDailyDose(med, rawMin, w) : null;
+  const dailyMax = dailyDose ? capDailyDose(med, rawMax, w) : null;
+  const [minAdministrations, maxAdministrations] = getAdministrationsPerDay(med);
+  const perDoseMin = dailyDose
+    ? capSingleDose(med, dailyMin / maxAdministrations)
+    : capSingleDose(med, rawMin);
+  const perDoseMax = dailyDose
+    ? capSingleDose(med, dailyMax / minAdministrations)
+    : capSingleDose(med, rawMax);
+  const dailyHitCap = dailyDose && rawMax > dailyMax;
+  const singleHitCap = dailyDose
+    ? (dailyMax / minAdministrations) > (med.maxSingleDose ?? Infinity)
+    : rawMax > (med.maxSingleDose ?? Infinity);
 
-  // Para antibióticos expresados en mg/kg/día, la dosis por toma = dailyDose / nTomas
-  const doseMgForPresentation = cappedMax; // usamos dosis máxima para cálculo de presentación
+  const doseMgForPresentation = perDoseMax;
 
   return (
     <div className="space-y-2">
       {/* Dosis calculada */}
       <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
-        <p className="mb-1 text-xs font-bold uppercase tracking-wide text-emerald-700">
-          {isDaily ? 'Dosis diaria calculada' : 'Dosis por administración'}
-        </p>
+        <p className="mb-1 text-xs font-bold uppercase tracking-wide text-emerald-700">Dosis por administración</p>
         <div className="flex items-end gap-2 flex-wrap">
           <p className="text-2xl font-bold text-emerald-900">
-            {cappedMin === cappedMax ? cappedMin : `${cappedMin}–${cappedMax}`}
+            {formatRange(perDoseMin, perDoseMax)}
             <span className="ml-1 text-base font-normal text-emerald-600">mg</span>
           </p>
-          {hitCap && (
+          {(dailyHitCap || singleHitCap) && (
             <span className="mb-0.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
               Limitado por dosis máxima
             </span>
@@ -670,6 +736,11 @@ function DoseResult({ med, weight }) {
         <p className="mt-1 text-xs text-emerald-700">
           {med.doseMin === med.doseMax ? med.doseMin : `${med.doseMin}–${med.doseMax}`} {med.unit} × {w} kg
         </p>
+        {dailyDose && (
+          <p className="mt-0.5 text-xs font-medium text-emerald-800">
+            Total diario: {formatRange(dailyMin, dailyMax, ' mg/día')} · dividido en {minAdministrations === maxAdministrations ? minAdministrations : `${minAdministrations}–${maxAdministrations}`} tomas/día
+          </p>
+        )}
         <p className="mt-0.5 text-xs text-slate-500">{med.frequency} · {med.route}</p>
       </div>
 
