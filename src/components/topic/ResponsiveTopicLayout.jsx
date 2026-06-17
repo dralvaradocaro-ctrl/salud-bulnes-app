@@ -1155,15 +1155,28 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     }
   }, [activeTab, hasTabs]);
 
+  const preserveScrollDuring = (update) => {
+    const previousScrollY = window.scrollY;
+    const previousTabTop = tabBarRef.current?.getBoundingClientRect().top;
+    update();
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const nextTabTop = tabBarRef.current?.getBoundingClientRect().top;
+        if (Number.isFinite(previousTabTop) && Number.isFinite(nextTabTop)) {
+          window.scrollBy({ top: nextTabTop - previousTabTop, behavior: 'auto' });
+          return;
+        }
+        window.scrollTo({ top: previousScrollY, behavior: 'auto' });
+      });
+    });
+  };
+
   const updateActiveTab = (tab) => {
     if (tab === activeTab) return;
-    setActiveTab(tab);
+    preserveScrollDuring(() => setActiveTab(tab));
     const url = new URL(window.location.href);
     url.searchParams.set('tab', tab);
     window.history.replaceState(window.history.state, '', url);
-    // No forzar scroll al cambiar de pestaña: se conserva la posición actual del
-    // usuario (comportamiento previo). El scrollIntoView resultaba molesto porque
-    // empujaba la vista hacia arriba en cada clic de pestaña.
   };
 
   const rememberReturnPoint = () => {
@@ -1475,42 +1488,44 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
       {/* ── Local Protocol 3-tab mode (GES topic + protocolo local HCSFB) ── */}
       {isLocalProtocolMode && (
         <>
-          <div className="flex gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
-            <button
-              onClick={() => setLocalTab('local')}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-                localTab === 'local'
-                  ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-100'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <BookOpen className="h-4 w-4" />
-              Protocolo Local
-            </button>
-            <button
-              onClick={() => setLocalTab('checklist')}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-                localTab === 'checklist'
-                  ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <ClipboardList className="h-4 w-4" />
-              Pauta de Cotejo
-            </button>
-            {hasMermaid && (
+          <div ref={tabBarRef} style={{ top: headerH }} className="sticky z-30 scroll-mt-32 bg-white pb-2">
+            <div className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-1.5 shadow-sm">
               <button
-                onClick={() => setLocalTab('algoritmo')}
+                onClick={() => preserveScrollDuring(() => setLocalTab('local'))}
                 className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-                  localTab === 'algoritmo'
-                    ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
+                  localTab === 'local'
+                    ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-100'
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
-                <GitBranch className="h-4 w-4" />
-                Algoritmo
+                <BookOpen className="h-4 w-4" />
+                Protocolo Local
               </button>
-            )}
+              <button
+                onClick={() => preserveScrollDuring(() => setLocalTab('checklist'))}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                  localTab === 'checklist'
+                    ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <ClipboardList className="h-4 w-4" />
+                Pauta de Cotejo
+              </button>
+              {hasMermaid && (
+                <button
+                  onClick={() => preserveScrollDuring(() => setLocalTab('algoritmo'))}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                    localTab === 'algoritmo'
+                      ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <GitBranch className="h-4 w-4" />
+                  Algoritmo
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-5">
@@ -1534,29 +1549,31 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
       {/* ── GES Protocol auto-tabs ── */}
       {isGESMode && (
         <>
-          <div className="flex gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
-            <button
-              onClick={() => setGesTab('protocolo')}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-                gesTab === 'protocolo'
-                  ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <ClipboardList className="h-4 w-4" />
-              Criterios y Derivación
-            </button>
-            <button
-              onClick={() => setGesTab('algoritmo')}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
-                gesTab === 'algoritmo'
-                  ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <GitBranch className="h-4 w-4" />
-              Algoritmo
-            </button>
+          <div ref={tabBarRef} style={{ top: headerH }} className="sticky z-30 scroll-mt-32 bg-white pb-2">
+            <div className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-1.5 shadow-sm">
+              <button
+                onClick={() => preserveScrollDuring(() => setGesTab('protocolo'))}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                  gesTab === 'protocolo'
+                    ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-100'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <ClipboardList className="h-4 w-4" />
+                Criterios y Derivación
+              </button>
+              <button
+                onClick={() => preserveScrollDuring(() => setGesTab('algoritmo'))}
+                className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                  gesTab === 'algoritmo'
+                    ? 'bg-white text-slate-800 shadow-sm ring-1 ring-slate-200'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <GitBranch className="h-4 w-4" />
+                Algoritmo
+              </button>
+            </div>
           </div>
 
           <div className="space-y-5">
@@ -1607,7 +1624,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                   {subtabValues.map(st => (
                     <button
                       key={st}
-                      onClick={() => setActiveSubtab(st)}
+                      onClick={() => preserveScrollDuring(() => setActiveSubtab(st))}
                       className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
                         activeSubtab === st
                           ? 'bg-slate-900 text-white'
