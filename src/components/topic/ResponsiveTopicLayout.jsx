@@ -1104,6 +1104,23 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
   const [activeTab, setActiveTab] = useState(initialTab);
   const tabBarRef = useRef(null);
 
+  // Offsets dinámicos para las barras sticky: medimos la altura real del header
+  // de la página (que varía por pantalla) y la de la barra de pestañas, en vez
+  // de hardcodear px. Así las pestañas se anclan justo bajo el header sin
+  // quedar tapadas, y la sub-barra justo bajo la barra de pestañas.
+  const [headerH, setHeaderH] = useState(140);
+  const [tabBarH, setTabBarH] = useState(60);
+  useEffect(() => {
+    const measure = () => {
+      const header = document.querySelector('[data-sticky-header]');
+      if (header) setHeaderH(Math.round(header.getBoundingClientRect().height));
+      if (tabBarRef.current) setTabBarH(Math.round(tabBarRef.current.getBoundingClientRect().height));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [activeTab, hasTabs]);
+
   // Sub-tabs (un nivel de anidación dentro de la pestaña activa)
   const blocksInActiveTab = hasTabs ? safeBlocks.filter(b => b.tab === activeTab) : [];
   const subtabValues = [...new Set(blocksInActiveTab.map(b => b.subtab).filter(Boolean))];
@@ -1553,21 +1570,23 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
 
       {/* ── Normal tab switcher ── */}
       {!isGESMode && hasTabs && (
-        <div ref={tabBarRef} className="scroll-mt-32 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-1.5">
-          <div className="flex gap-1.5 min-w-max">
-            {tabValues.map(tab => (
-              <button
-                key={tab}
-                onClick={() => updateActiveTab(tab)}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all whitespace-nowrap ${
-                  activeTab === tab
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {TAB_LABELS[tab] || tab}
-              </button>
-            ))}
+        <div ref={tabBarRef} style={{ top: headerH }} className="sticky z-30 scroll-mt-32 bg-white pb-2">
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-1.5 shadow-sm">
+            <div className="flex gap-1.5 min-w-max">
+              {tabValues.map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => updateActiveTab(tab)}
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all whitespace-nowrap ${
+                    activeTab === tab
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {TAB_LABELS[tab] || tab}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -1582,8 +1601,8 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                   {commonMainBlocks.map(renderBlock).filter(Boolean)}
                 </div>
               )}
-              {/* Sub-tab bar */}
-              <div className="border-b border-slate-200">
+              {/* Sub-tab bar — sticky apilada justo debajo de la barra principal */}
+              <div style={{ top: headerH + tabBarH }} className="sticky z-20 -mt-2 border-b border-slate-200 bg-white pt-1 pb-1">
                 <div className="flex flex-wrap gap-1.5 pb-2">
                   {subtabValues.map(st => (
                     <button
