@@ -109,6 +109,22 @@ CREATE TABLE IF NOT EXISTS topic_versions (
   content_snapshot    JSONB
 );
 
+CREATE TABLE IF NOT EXISTS news_updates (
+  id                  TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  created_at          TIMESTAMPTZ DEFAULT NOW(),
+  published_at        TIMESTAMPTZ DEFAULT NOW(),
+  title               TEXT NOT NULL,
+  summary             TEXT,
+  details             TEXT,
+  area                TEXT DEFAULT 'general',
+  type                TEXT DEFAULT 'actualizacion',
+  status              TEXT DEFAULT 'published',
+  topic_id            TEXT,
+  link_url            TEXT,
+  expires_at          TIMESTAMPTZ,
+  created_by          TEXT
+);
+
 -- ============================================================
 -- Row Level Security: permitir todo (app interna)
 -- ============================================================
@@ -118,6 +134,7 @@ ALTER TABLE clinical_tools    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE flow_steps         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE request_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE topic_versions    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE news_updates      ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "allow_all" ON categories        FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "allow_all" ON topics             FOR ALL TO anon USING (true) WITH CHECK (true);
@@ -125,6 +142,7 @@ CREATE POLICY "allow_all" ON clinical_tools    FOR ALL TO anon USING (true) WITH
 CREATE POLICY "allow_all" ON flow_steps         FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "allow_all" ON request_templates FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "allow_all" ON topic_versions    FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "allow_all" ON news_updates      FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ============================================================
 -- Storage bucket para archivos subidos

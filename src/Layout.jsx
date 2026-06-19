@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Home, Stethoscope, ClipboardList, BookOpen } from 'lucide-react';
+import FloatingNewsButton from '@/components/news/FloatingNewsButton';
 
 const TOPIC_PAGES = ['TopicDetail', 'Category'];
 const LAST_TOPIC_KEY = 'salud_bulnes_last_topic_url';
@@ -31,7 +32,12 @@ export default function Layout({ children, currentPageName }) {
 
   // Don't show nav on home page
   if (currentPageName === 'Home') {
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+        <FloatingNewsButton currentPageName={currentPageName} />
+      </>
+    );
   }
 
   return (
@@ -63,6 +69,7 @@ export default function Layout({ children, currentPageName }) {
       <main className="mobile-bottom-content md:pb-0">
         {children}
       </main>
+      <FloatingNewsButton currentPageName={currentPageName} />
     </div>
   );
 }

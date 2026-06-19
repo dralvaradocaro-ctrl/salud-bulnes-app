@@ -51,6 +51,7 @@ import AdminAddTopic from './pages/AdminAddTopic';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminEditTopic from './pages/AdminEditTopic';
 import AdminLogin from './pages/AdminLogin';
+import AdminNewsUpdates from './pages/AdminNewsUpdates';
 import AdminPanel from './pages/AdminPanel';
 import AllCalculators from './pages/AllCalculators';
 import Category from './pages/Category';
@@ -80,6 +81,7 @@ export const PAGES = {
     "AdminDashboard": AdminDashboard,
     "AdminEditTopic": AdminEditTopic,
     "AdminLogin": AdminLogin,
+    "AdminNewsUpdates": AdminNewsUpdates,
     "AdminPanel": AdminPanel,
     "AllCalculators": AllCalculators,
     "Category": Category,

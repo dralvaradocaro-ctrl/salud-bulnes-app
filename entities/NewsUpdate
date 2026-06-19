@@ -1,0 +1,72 @@
+{
+  "name": "NewsUpdate",
+  "type": "object",
+  "properties": {
+    "published_at": {
+      "type": "string",
+      "description": "Fecha de publicación de la novedad"
+    },
+    "title": {
+      "type": "string",
+      "description": "Título corto"
+    },
+    "summary": {
+      "type": "string",
+      "description": "Resumen comprimido visible inicialmente"
+    },
+    "details": {
+      "type": "string",
+      "description": "Detalle extendido"
+    },
+    "area": {
+      "type": "string",
+      "enum": [
+        "administracion",
+        "policlinico",
+        "hospitalizados",
+        "urgencias",
+        "transversal",
+        "general"
+      ],
+      "default": "general",
+      "description": "Área a la que pertenece la novedad"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "actualizacion",
+        "protocolo",
+        "aviso",
+        "operativo"
+      ],
+      "default": "actualizacion",
+      "description": "Tipo de novedad"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published",
+        "archived"
+      ],
+      "default": "published",
+      "description": "Estado de publicación"
+    },
+    "topic_id": {
+      "type": "string",
+      "description": "Tema/protocolo relacionado"
+    },
+    "link_url": {
+      "type": "string",
+      "description": "Enlace opcional"
+    },
+    "expires_at": {
+      "type": "string",
+      "description": "Fecha opcional de expiración"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Autor o responsable"
+    }
+  }
+}

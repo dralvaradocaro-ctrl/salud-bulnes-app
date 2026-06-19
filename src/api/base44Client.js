@@ -15,6 +15,7 @@ const TABLE_MAP = {
   FlowStep: 'flow_steps',
   RequestTemplate: 'request_templates',
   TopicVersion: 'topic_versions',
+  NewsUpdate: 'news_updates',
 };
 
 function applySort(query, sort) {

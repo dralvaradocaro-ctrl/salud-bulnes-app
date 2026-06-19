@@ -7,7 +7,7 @@ import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import {
   FileText, Calculator, Home, BookOpen, Plus,
-  CheckCircle2, Clock, LayoutDashboard, LogOut, ChevronRight, Folder
+  CheckCircle2, Clock, LayoutDashboard, LogOut, ChevronRight, Folder, Bell
 } from 'lucide-react';
 
 export default function AdminPanel() {
@@ -102,6 +102,12 @@ export default function AdminPanel() {
               <Button size="sm" variant="outline" className="gap-2">
                 <Calculator className="h-4 w-4" />
                 Herramientas
+              </Button>
+            </Link>
+            <Link to={createPageUrl('AdminNewsUpdates')}>
+              <Button size="sm" variant="outline" className="gap-2">
+                <Bell className="h-4 w-4" />
+                Novedades
               </Button>
             </Link>
           </div>
