@@ -76,31 +76,6 @@ INSERT INTO news_updates (
   type,
   status,
   published_at,
-  created_by
-)
-SELECT
-  'Reunión médica: inauguración de sala de agudos',
-  'Revisión de criterios de ingreso y egreso para la nueva sala de agudos.',
-  'Novedad administrativa/clínica para reunión médica: inauguración de sala de agudos, criterios de ingreso y criterios de egreso. Pendiente de consolidar como documento operativo si corresponde.',
-  'hospitalizados',
-  'operativo',
-  'published',
-  NOW(),
-  'admin'
-WHERE NOT EXISTS (
-  SELECT 1
-  FROM news_updates
-  WHERE title = 'Reunión médica: inauguración de sala de agudos'
-);
-
-INSERT INTO news_updates (
-  title,
-  summary,
-  details,
-  area,
-  type,
-  status,
-  published_at,
   topic_id,
   link_url,
   created_by

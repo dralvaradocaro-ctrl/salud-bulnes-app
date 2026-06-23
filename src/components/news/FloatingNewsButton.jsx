@@ -154,16 +154,6 @@ async function fetchNewsData() {
   const categoryById = new Map(categories.map((category) => [category.id, category.name]));
 
   const fallbackNews = newsTableMissing ? [
-    {
-      id: 'fallback-reunion-sala-agudos',
-      published_at: new Date().toISOString(),
-      title: 'Reunión médica: inauguración de sala de agudos',
-      summary: 'Revisión de criterios de ingreso y egreso para la nueva sala de agudos.',
-      details: 'Novedad administrativa/clínica para reunión médica: inauguración de sala de agudos, criterios de ingreso y criterios de egreso. Pendiente de consolidar como documento operativo si corresponde.',
-      area: 'hospitalizados',
-      type: 'operativo',
-      status: 'published',
-    },
     ...(fimosisTopic ? [{
       id: 'fallback-fimosis-minsal',
       published_at: new Date().toISOString(),
