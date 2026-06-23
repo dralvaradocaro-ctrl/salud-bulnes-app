@@ -29,6 +29,42 @@ import { cn } from '@/lib/utils';
 
 const RECENT_DAYS = 10;
 
+const FREQUENT_QUERIES = [
+  {
+    id: 'faq-atenciones-policlinico',
+    title: 'Atenciones Policlínico: actividad y formulario',
+    area: 'policlinico',
+    summary: 'Tabla rápida para elegir actividad REM/formulario en registros frecuentes.',
+    details: [
+      'Usar la actividad exacta indicada para cada tipo de atención.',
+      'No usar actividades que inicien con AG_ ni opciones marcadas como “No contabilizada en REM”.',
+    ].join('\n'),
+    link_url: createPageUrl('TopicDetail?id=ac8e1455-7cc9-4265-8933-8fe893217201'),
+    table: {
+      headers: ['Atención', 'Actividad / formulario'],
+      rows: [
+        ['Cardiovascular', 'Control salud cardiovascular (+ HEARTS si corresponde) · Formulario salud cardiovascular integral.'],
+        ['Sala ERA/IRA', 'Control sala ERA/IRA/mixta · Otros programas de salud. Ingreso ERA: encuesta calidad de vida.'],
+        ['Salud mental', 'Controles de salud mental. Ingreso/egreso: consulta SM + plan cuidado integral + clasificación N + Goldberg.'],
+        ['Niño sano 1 y 3 meses', 'Control de salud + guías anticipatorias · Control crecimiento/desarrollo. 3 meses: GES sospecha displasia cadera + RX pelvis.'],
+        ['Morbilidad / recetas', 'Consulta otras morbilidades sin formulario · Receta sin paciente: actividad abreviada y confección de recetas.'],
+        ['Paliativos / dependencia severa', 'Paliativos: control otros problemas + cuidados paliativos. Dependencia severa: visita domiciliaria no oncológica.'],
+        ['Telemedicina', 'Nueva o control según corresponda. Teleprocesos: cardiología con ECG, dermatología con fotos, diabetología con perfil glicémico.'],
+      ],
+    },
+  },
+  {
+    id: 'faq-demencia-ingreso',
+    title: 'Atenciones para usuarios con demencia',
+    area: 'policlinico',
+    summary: 'Ingreso: actividades y formularios requeridos para salud mental.',
+    details: [
+      'Ingreso / actividades: control salud mental, plan de cuidado integral elaborado y riesgo de salud mental (N).',
+      'Formularios: Goldberg y Formulario Salud Mental.',
+    ].join('\n'),
+  },
+];
+
 const AREA_META = {
   administracion: { label: 'Administración', icon: Building2, className: 'bg-slate-100 text-slate-700 border-slate-200' },
   policlinico: { label: 'Policlínico', icon: Stethoscope, className: 'bg-cyan-50 text-cyan-700 border-cyan-100' },
@@ -37,8 +73,6 @@ const AREA_META = {
   transversal: { label: 'Transversal', icon: Bell, className: 'bg-blue-50 text-blue-700 border-blue-100' },
   general: { label: 'General', icon: Bell, className: 'bg-slate-100 text-slate-700 border-slate-200' },
 };
-
-const AREA_ORDER = ['administracion', 'policlinico', 'hospitalizados', 'urgencias', 'transversal', 'general'];
 
 function tenDaysAgoIso() {
   const date = new Date();
@@ -136,39 +170,52 @@ async function fetchNewsData() {
     };
   });
 
-  const fallbackNews = fimosisTopic ? [{
-    id: 'fallback-fimosis-minsal',
-    published_at: new Date().toISOString(),
-    title: 'Ordinario MINSAL: Fimosis pediátrica',
-    summary: 'Se incorporó la Orientación Técnica MINSAL 2025 para manejo de fimosis pediátrica.',
-    details: 'Disponible en Policlínico / Pediatría. Incluye evaluación clínica, manejo conservador con corticoide tópico, signos de alarma, criterios de derivación y contrarreferencia según Orientación Técnica MINSAL 2025.',
-    area: 'policlinico',
-    type: 'protocolo',
-    status: 'published',
-    topic_id: fimosisTopic.id,
-    link_url: createPageUrl(`TopicDetail?id=${fimosisTopic.id}`),
-  }] : [];
+  const fallbackNews = newsTableMissing ? [
+    {
+      id: 'fallback-reunion-sala-agudos',
+      published_at: new Date().toISOString(),
+      title: 'Reunión médica: inauguración de sala de agudos',
+      summary: 'Revisión de criterios de ingreso y egreso para la nueva sala de agudos.',
+      details: 'Novedad administrativa/clínica para reunión médica: inauguración de sala de agudos, criterios de ingreso y criterios de egreso. Pendiente de consolidar como documento operativo si corresponde.',
+      area: 'hospitalizados',
+      type: 'operativo',
+      status: 'published',
+    },
+    ...(fimosisTopic ? [{
+      id: 'fallback-fimosis-minsal',
+      published_at: new Date().toISOString(),
+      title: 'Ordinario MINSAL: Fimosis pediátrica',
+      summary: 'Se incorporó la Orientación Técnica MINSAL 2025 para manejo de fimosis pediátrica.',
+      details: 'Disponible en Policlínico / Pediatría. Incluye evaluación clínica, manejo conservador con corticoide tópico, signos de alarma, criterios de derivación y contrarreferencia según Orientación Técnica MINSAL 2025.',
+      area: 'policlinico',
+      type: 'protocolo',
+      status: 'published',
+      topic_id: fimosisTopic.id,
+      link_url: createPageUrl(`TopicDetail?id=${fimosisTopic.id}`),
+    }] : []),
+  ] : [];
 
   return { manualNews: [...fallbackNews, ...manualNews], topicNews };
 }
 
-function groupByArea(items) {
-  const grouped = items.reduce((acc, item) => {
-    const area = normalizeArea(item.area);
-    if (!acc[area]) acc[area] = [];
-    acc[area].push({ ...item, area });
-    return acc;
-  }, {});
+function areaMeta(area) {
+  return AREA_META[normalizeArea(area)] || AREA_META.general;
+}
 
-  return AREA_ORDER
-    .filter((area) => grouped[area]?.length)
-    .map((area) => ({ area, items: grouped[area] }));
+function typeLabel(type) {
+  if (type === 'protocolo') return 'Protocolo';
+  if (type === 'consulta') return 'Consulta';
+  if (type === 'operativo') return 'Operativo';
+  return 'Novedad';
 }
 
 function NewsItem({ item }) {
   const [open, setOpen] = useState(false);
   const details = item.details || item.summary;
   const hasDetails = details && details !== item.summary;
+  const meta = areaMeta(item.area);
+  const AreaIcon = meta.icon;
+  const dateLabel = formatDate(item.published_at || item.created_at);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -176,10 +223,14 @@ function NewsItem({ item }) {
         <CollapsibleTrigger className="flex w-full items-start justify-between gap-3 text-left">
           <div className="min-w-0">
             <div className="mb-1 flex flex-wrap items-center gap-1.5">
+              <span className={cn('inline-flex h-5 items-center gap-1 rounded-md border px-1.5 text-[10px] font-semibold', meta.className)}>
+                <AreaIcon className="h-3 w-3" />
+                {meta.label}
+              </span>
               <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                {item.type === 'protocolo' ? 'Protocolo' : 'Novedad'}
+                {typeLabel(item.type)}
               </Badge>
-              <span className="text-[11px] text-slate-400">{formatDate(item.published_at || item.created_at)}</span>
+              {dateLabel && <span className="text-[11px] text-slate-400">{dateLabel}</span>}
             </div>
             <p className="text-sm font-semibold leading-snug text-slate-800">{item.title}</p>
             {item.summary && <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">{item.summary}</p>}
@@ -190,6 +241,30 @@ function NewsItem({ item }) {
         <CollapsibleContent>
           <div className="mt-2 border-t border-slate-100 pt-2">
             {hasDetails && <p className="whitespace-pre-line text-xs leading-relaxed text-slate-600">{details}</p>}
+            {item.table && (
+              <div className="mt-2 overflow-hidden rounded-lg border border-slate-200">
+                <table className="w-full border-collapse text-left text-[11px]">
+                  <thead className="bg-slate-50 text-slate-500">
+                    <tr>
+                      {item.table.headers.map((header) => (
+                        <th key={header} className="border-b border-slate-200 px-2 py-1.5 font-semibold">{header}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {item.table.rows.map((row, rowIndex) => (
+                      <tr key={rowIndex} className="align-top">
+                        {row.map((cell, cellIndex) => (
+                          <td key={cellIndex} className={cn('px-2 py-1.5 leading-relaxed text-slate-600', cellIndex === 0 && 'font-semibold text-slate-700')}>
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             {item.link_url && (
               <Button asChild variant="ghost" size="sm" className="mt-2 h-7 px-2 text-xs text-blue-600 hover:text-blue-700">
                 <Link to={item.link_url}>
@@ -204,25 +279,23 @@ function NewsItem({ item }) {
   );
 }
 
-function NewsGroup({ area, items }) {
-  const meta = AREA_META[area] || AREA_META.general;
-  const Icon = meta.icon;
-
+function FrequentQueryItem({ item }) {
   return (
-    <section className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className={cn('flex h-7 w-7 items-center justify-center rounded-lg border', meta.className)}>
-            <Icon className="h-3.5 w-3.5" />
-          </span>
-          <h3 className="text-sm font-bold text-slate-800">{meta.label}</h3>
-        </div>
-        <span className="text-xs text-slate-400">{items.length}</span>
-      </div>
-      <div className="space-y-2">
-        {items.map((item) => <NewsItem key={item.id} item={item} />)}
-      </div>
-    </section>
+    <NewsItem
+      item={{
+        ...item,
+        published_at: null,
+        type: 'consulta',
+      }}
+    />
+  );
+}
+
+function TimelineNewsList({ items }) {
+  return (
+    <div className="space-y-2">
+      {items.map((item) => <NewsItem key={item.id} item={item} />)}
+    </div>
   );
 }
 
@@ -236,7 +309,7 @@ export default function FloatingNewsButton({ currentPageName }) {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { recentGroups, historyGroups, recentCount } = useMemo(() => {
+  const { recentItems, historyItems, recentCount } = useMemo(() => {
     const cutoff = new Date(tenDaysAgoIso()).getTime();
     const manualNews = data?.manualNews ?? [];
     const topicNews = data?.topicNews ?? [];
@@ -257,8 +330,8 @@ export default function FloatingNewsButton({ currentPageName }) {
     });
 
     return {
-      recentGroups: groupByArea(recentItems),
-      historyGroups: groupByArea(historyItems),
+      recentItems,
+      historyItems,
       recentCount: recentItems.length,
     };
   }, [data]);
@@ -300,7 +373,7 @@ export default function FloatingNewsButton({ currentPageName }) {
         </SheetHeader>
 
         <div className="border-b border-slate-200 px-5 py-3">
-          <div className="grid grid-cols-2 rounded-lg bg-slate-100 p-1">
+          <div className="grid grid-cols-3 rounded-lg bg-slate-100 p-1">
             <button
               type="button"
               onClick={() => setView('recent')}
@@ -315,6 +388,13 @@ export default function FloatingNewsButton({ currentPageName }) {
             >
               Historial
             </button>
+            <button
+              type="button"
+              onClick={() => setView('frequent')}
+              className={cn('rounded-md px-3 py-1.5 text-xs font-semibold transition', view === 'frequent' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500')}
+            >
+              Consultas frecuentes
+            </button>
           </div>
         </div>
 
@@ -325,13 +405,13 @@ export default function FloatingNewsButton({ currentPageName }) {
                 <div key={item} className="h-24 animate-pulse rounded-lg bg-slate-100" />
               ))}
             </div>
-          ) : view === 'recent' && recentGroups.length > 0 ? (
-            <div className="space-y-5">
-              {recentGroups.map((group) => <NewsGroup key={group.area} {...group} />)}
-            </div>
-          ) : view === 'history' && historyGroups.length > 0 ? (
-            <div className="space-y-5">
-              {historyGroups.map((group) => <NewsGroup key={group.area} {...group} />)}
+          ) : view === 'recent' && recentItems.length > 0 ? (
+            <TimelineNewsList items={recentItems} />
+          ) : view === 'history' && historyItems.length > 0 ? (
+            <TimelineNewsList items={historyItems} />
+          ) : view === 'frequent' && FREQUENT_QUERIES.length > 0 ? (
+            <div className="space-y-2">
+              {FREQUENT_QUERIES.map((item) => <FrequentQueryItem key={item.id} item={item} />)}
             </div>
           ) : (
             <div className="flex h-full min-h-72 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center">
