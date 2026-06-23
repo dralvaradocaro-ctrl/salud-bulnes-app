@@ -153,23 +153,6 @@ async function fetchNewsData() {
 
   const categoryById = new Map(categories.map((category) => [category.id, category.name]));
 
-  const topicNews = topics.map((topic) => {
-    const categoryName = categoryById.get(topic.category_id);
-    return {
-      id: `topic-${topic.id}`,
-      published_at: topic.created_at,
-      title: topic.name,
-      summary: topic.has_local_protocol
-        ? 'Nuevo protocolo local disponible en la guía.'
-        : 'Nuevo tema publicado en la guía.',
-      details: topic.description || 'Disponible para consulta en su ficha clínica dentro de la plataforma.',
-      area: inferTopicArea(topic, categoryName),
-      type: 'protocolo',
-      link_url: createPageUrl(`TopicDetail?id=${topic.id}`),
-      source: 'topic',
-    };
-  });
-
   const fallbackNews = newsTableMissing ? [
     {
       id: 'fallback-reunion-sala-agudos',
@@ -195,7 +178,27 @@ async function fetchNewsData() {
     }] : []),
   ] : [];
 
-  return { manualNews: [...fallbackNews, ...manualNews], topicNews };
+  const effectiveManualNews = [...fallbackNews, ...manualNews];
+  const manualTopicIds = new Set(effectiveManualNews.map((item) => item.topic_id).filter(Boolean));
+
+  const topicNews = topics.filter((topic) => !manualTopicIds.has(topic.id)).map((topic) => {
+    const categoryName = categoryById.get(topic.category_id);
+    return {
+      id: `topic-${topic.id}`,
+      published_at: topic.created_at,
+      title: topic.name,
+      summary: topic.has_local_protocol
+        ? 'Nuevo protocolo local disponible en la guía.'
+        : 'Nuevo tema publicado en la guía.',
+      details: topic.description || 'Disponible para consulta en su ficha clínica dentro de la plataforma.',
+      area: inferTopicArea(topic, categoryName),
+      type: 'protocolo',
+      link_url: createPageUrl(`TopicDetail?id=${topic.id}`),
+      source: 'topic',
+    };
+  });
+
+  return { manualNews: effectiveManualNews, topicNews };
 }
 
 function areaMeta(area) {
@@ -322,11 +325,15 @@ export default function FloatingNewsButton({ currentPageName }) {
     });
 
     const recentItems = [...activeManual, ...topicNews].sort((a, b) => {
-      return new Date(b.published_at || b.created_at) - new Date(a.published_at || a.created_at);
+      const dateDelta = new Date(b.published_at || b.created_at) - new Date(a.published_at || a.created_at);
+      if (dateDelta !== 0) return dateDelta;
+      return String(a.title || '').localeCompare(String(b.title || ''), 'es');
     });
 
     const historyItems = publishedManual.sort((a, b) => {
-      return new Date(b.published_at || b.created_at) - new Date(a.published_at || a.created_at);
+      const dateDelta = new Date(b.published_at || b.created_at) - new Date(a.published_at || a.created_at);
+      if (dateDelta !== 0) return dateDelta;
+      return String(a.title || '').localeCompare(String(b.title || ''), 'es');
     });
 
     return {

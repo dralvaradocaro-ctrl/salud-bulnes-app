@@ -54,7 +54,7 @@ SELECT
   'policlinico',
   'protocolo',
   'published',
-  NOW(),
+  topics.created_at,
   topics.id,
   '/TopicDetail?id=' || topics.id,
   'admin'
@@ -112,7 +112,7 @@ SELECT
   'policlinico',
   'consulta',
   'published',
-  NOW(),
+  topics.created_at,
   topics.id,
   '/TopicDetail?id=' || topics.id,
   'admin'
