@@ -189,11 +189,27 @@ export default function HyperkalemiaManagementCalculator() {
       'Solo apoyo clínico: siempre correlacionar con ECG, velocidad de instalación, función renal y disponibilidad local.',
     ];
 
+    const clinicalOrder = [
+      `Hiperkalemia ${classification.label.toLowerCase()} (K ${round(k, 1)} mEq/L). ECG inmediato, monitorización, vía venosa, control de K y glicemia seriados.`,
+      needsCalcium
+        ? `${calciumCard.title}: ${calciumCard.dose} ahora. Repetir si persisten cambios ECG o toxicidad eléctrica.`
+        : 'Sin criterios ingresados de calcio inmediato: mantener monitorización y repetir ECG/control de K según evolución.',
+      needsShift
+        ? `Insulina cristalina 10 UI EV + 25 g glucosa EV (${glucose !== null && glucose >= 250 ? 'ajustar/omitir glucosa inicial si glicemia alta, con HGT estricto' : 'SG 10% 250 mL o SG 30% 83 mL'}). Asociar salbutamol nebulizado 10-20 mg si disponible.`
+        : 'Si K leve y estable: suspender aportes/fármacos gatillantes, dieta baja en K y control seriado.',
+      values.acidosis ? 'Agregar bicarbonato de sodio 8,4% 50 mEq EV si acidosis metabólica significativa.' : 'No indicar bicarbonato de rutina si no hay acidosis metabólica relevante.',
+      values.oliguria
+        ? 'Oliguria/anuria o ERC avanzada: alto riesgo de rebote; coordinar nefrología/traslado para diálisis si grave o refractaria.'
+        : 'Si hay diuresis y volemia adecuada, considerar furosemida 20-40 mg EV para eliminación de K.',
+      'Recontrol: K y ECG a 1-2 h; HGT a 0, 30, 60, 90 y 120 min tras insulina, luego según riesgo.',
+    ];
+
     const calcResult = {
       score: classification.label,
       label: `K ${round(k, 1)} mEq/L`,
       interpretation: 'Apoyo para ordenar urgencia, secuencia y fármacos. No reemplaza ECG ni criterio clínico.',
       color: classification.color,
+      clinicalOrder,
       sequenceSteps,
       medicationCards,
       recommendations,
@@ -279,6 +295,15 @@ export default function HyperkalemiaManagementCalculator() {
           <div className="mt-4 rounded-lg border border-white/80 bg-white/80 p-4">
             <h4 className="mb-2 text-sm font-bold text-slate-900">Advertencia</h4>
             <p className="text-sm leading-relaxed text-slate-700">{result.interpretation}</p>
+          </div>
+
+          <div className="mt-4 rounded-2xl border-2 border-rose-400 bg-rose-50 p-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-rose-800">Indicación sugerida para ficha clínica</p>
+            <div className="mt-3 space-y-2">
+              {result.clinicalOrder.map((item, index) => (
+                <p key={index} className="text-sm font-semibold leading-relaxed text-rose-950">{item}</p>
+              ))}
+            </div>
           </div>
 
           <div className="mt-4 rounded-2xl border-2 border-slate-300 bg-white p-4 shadow-sm">

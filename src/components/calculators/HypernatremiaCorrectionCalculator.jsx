@@ -20,7 +20,7 @@ const references = [
 ];
 
 export default function HypernatremiaCorrectionCalculator() {
-  const [v, setV] = useState({ na: '', weight: '', sex: 'M', chronicity: 'desconocida' });
+  const [v, setV] = useState({ na: '', weight: '', sex: 'M', chronicity: 'desconocida', volume: 'estable' });
   const [result, setResult] = useState(null);
   const set = (k, val) => setV((p) => ({ ...p, [k]: val }));
   const tbwFactor = v.sex === 'F' ? 0.5 : 0.6;
@@ -29,6 +29,7 @@ export default function HypernatremiaCorrectionCalculator() {
     { label: 'Na actual', value: v.na ? `${v.na} mEq/L` : '' },
     { label: 'Peso', value: v.weight ? `${v.weight} kg` : '' },
     { label: 'Sexo', value: v.sex === 'F' ? 'Femenino' : 'Masculino' },
+    { label: 'Volemia', value: v.volume },
   ], [v]);
 
   const handleCalculate = () => {
@@ -76,11 +77,28 @@ export default function HypernatremiaCorrectionCalculator() {
       ],
     }];
 
+    const clinicalOrder = [
+      `Hipernatremia ${classification.toLowerCase()} (Na ${round(na)} mEq/L). Indicar balance hídrico estricto, control de Na cada 4-6 h y búsqueda de causa/pérdidas en curso.`,
+      v.volume === 'hipovolemia_inestable'
+        ? 'Si hay hipovolemia o inestabilidad: primero estabilizar con SF 0,9% EV hasta perfusión adecuada; luego iniciar corrección de agua libre.'
+        : 'Paciente sin hipovolemia/inestabilidad ingresada: priorizar reposición de agua libre VO/SNG si es posible, o EV con SG 5%.',
+      freeWaterDeficit !== null
+        ? `Déficit de agua libre estimado ${round(freeWaterDeficit)} L. Reponer en 24-48 h, sumando mantención y pérdidas; no bajar Na >${limit24} mEq/L en 24 h si crónica/desconocida.`
+        : 'Ingresar peso para calcular déficit de agua libre; mientras tanto titular aporte por controles seriados.',
+      rateMlH !== null
+        ? `Si se usa SG 5% EV para el déficit inicial: orientar a ${round(rateMlH, 0)} mL/h como punto de partida, ajustando según Na de control y balance.`
+        : 'Si se usa SG 5% EV: iniciar velocidad conservadora y ajustar a controles de Na/balance.',
+      v.chronicity === 'aguda'
+        ? 'Duración aguda documentada: puede requerir corrección más rápida bajo monitorización estrecha.'
+        : 'Duración desconocida o >48 h: tratar como crónica para evitar edema cerebral por corrección rápida.',
+    ];
+
     const calcResult = {
       score: round(na),
       label: `${classification}${freeWaterDeficit !== null ? ` · déficit agua libre ≈ ${round(freeWaterDeficit)} L` : ''}`,
       color,
       interpretation: `Na ${round(na)} mEq/L. Estima el déficit de agua libre y la velocidad segura; la decisión depende del estado de volumen, la causa y los controles seriados.`,
+      clinicalOrder,
       medicationCards,
       recommendations,
     };
@@ -88,7 +106,7 @@ export default function HypernatremiaCorrectionCalculator() {
     return calcResult;
   };
 
-  const handleReset = () => { setV({ na: '', weight: '', sex: 'M', chronicity: 'desconocida' }); setResult(null); };
+  const handleReset = () => { setV({ na: '', weight: '', sex: 'M', chronicity: 'desconocida', volume: 'estable' }); setResult(null); };
 
   return (
     <CalculatorWrapper
@@ -132,6 +150,16 @@ export default function HypernatremiaCorrectionCalculator() {
             </SelectContent>
           </Select>
         </div>
+        <div className="md:col-span-2">
+          <Label className="mb-2 block text-sm">Estado de volumen/perfusión</Label>
+          <Select value={v.volume} onValueChange={(val) => set('volume', val)}>
+            <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="estable">Sin hipovolemia/inestabilidad evidente</SelectItem>
+              <SelectItem value="hipovolemia_inestable">Hipovolemia o inestabilidad</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {result && (
@@ -139,6 +167,14 @@ export default function HypernatremiaCorrectionCalculator() {
           <div className="text-center">
             <div className="text-3xl font-bold text-slate-900">{result.score}<span className="text-base text-slate-500"> mEq/L</span></div>
             <p className="mt-2 text-sm text-slate-600">{result.label}</p>
+          </div>
+          <div className="mt-4 rounded-2xl border-2 border-amber-400 bg-amber-50 p-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-amber-800">Indicación sugerida para ficha clínica</p>
+            <div className="mt-3 space-y-2">
+              {result.clinicalOrder.map((item, i) => (
+                <p key={i} className="text-sm font-semibold leading-relaxed text-amber-950">{item}</p>
+              ))}
+            </div>
           </div>
           {result.medicationCards?.length > 0 && (
             <div className="mt-4 grid gap-3">

@@ -149,11 +149,26 @@ export default function HypokalemiaCorrectionCalculator() {
       values.renalRisk ? 'Riesgo renal/oliguria: reducir dosis, evitar sobrecorrección y controlar K/creatinina estrechamente.' : 'Confirmar diuresis y función renal antes de reposición EV significativa.',
     ];
 
+    const clinicalOrder = urgent || recommendedRoute.includes('EV')
+      ? [
+        `Hipokalemia ${classification.label.toLowerCase()} (K ${round(k, 1)} mEq/L). Solicitar ECG/monitorización, Mg, creatinina y control de K seriado.`,
+        `Indicar KCl 10% ${ampsPerBag} ampollas (${BAG_MEQ} mEq) en ${volPerBag} mL de SF 0,9% EV periférico, pasar en ${hoursPerBag} h. Repetir según control hasta meta ${round(target, 1)} mEq/L.`,
+        `Déficit estimado ${round(deficitLow, 0)}-${round(deficitHigh, 0)} mEq: considerar ${bagsLow}-${bagsHigh} bolsas en total, ajustando a K de control, diuresis y función renal.`,
+        values.magnesiumLow ? 'Corregir magnesio en paralelo por hipomagnesemia conocida/sospechada.' : 'Medir magnesio y corregir si bajo, especialmente si reposición refractaria o riesgo arrítmico.',
+      ]
+      : [
+        `Hipokalemia ${classification.label.toLowerCase()} (K ${round(k, 1)} mEq/L), sin criterios de urgencia ingresados.`,
+        `Indicar KCl VO 600 mg: déficit estimado ${round(deficitLow, 0)}-${round(deficitHigh, 0)} mEq, equivalente a ${oralTabletsLow}-${oralTabletsHigh} comprimidos en total. Fraccionar en tomas de hasta 5 comprimidos (40 mEq) y controlar K.`,
+        `Meta inicial ${round(target, 1)} mEq/L. Control de K en 6-24 h según severidad, función renal y pérdidas activas.`,
+        values.ongoingLosses ? 'Registrar pérdidas activas y corregir causa; puede requerir reposición adicional.' : 'Buscar causa: pérdidas GI/urinarias, diuréticos, alcalosis, redistribución o baja ingesta.',
+      ];
+
     const calcResult = {
       score: classification.label,
       label: `K ${round(k, 1)} mEq/L → meta ${round(target, 1)} mEq/L`,
       interpretation: 'Apoyo para ordenar reposición inicial. La respuesta real depende de pH, insulina, magnesio, función renal y pérdidas activas.',
       color: classification.color,
+      clinicalOrder,
       medicationCards,
       recommendations,
     };
@@ -245,6 +260,14 @@ export default function HypokalemiaCorrectionCalculator() {
           <div className="mt-4 rounded-lg border border-white/80 bg-white/80 p-4">
             <h4 className="mb-2 text-sm font-bold text-slate-900">Advertencia</h4>
             <p className="text-sm leading-relaxed text-slate-700">{result.interpretation}</p>
+          </div>
+          <div className="mt-4 rounded-2xl border-2 border-blue-400 bg-blue-50 p-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-blue-800">Indicación sugerida para ficha clínica</p>
+            <div className="mt-3 space-y-2">
+              {result.clinicalOrder.map((item, index) => (
+                <p key={index} className="text-sm font-semibold leading-relaxed text-blue-950">{item}</p>
+              ))}
+            </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {result.medicationCards.map((card, index) => (

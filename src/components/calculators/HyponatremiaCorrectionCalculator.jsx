@@ -20,7 +20,7 @@ const references = [
 ];
 
 export default function HyponatremiaCorrectionCalculator() {
-  const [v, setV] = useState({ na: '', weight: '', sex: 'M', symptoms: 'ausente', chronicity: 'desconocida', highRisk: false });
+  const [v, setV] = useState({ na: '', weight: '', sex: 'M', symptoms: 'ausente', chronicity: 'desconocida', volume: 'no_definida', highRisk: false });
   const [result, setResult] = useState(null);
   const set = (k, val) => setV((p) => ({ ...p, [k]: val }));
 
@@ -31,6 +31,7 @@ export default function HyponatremiaCorrectionCalculator() {
     { label: 'Peso', value: v.weight ? `${v.weight} kg` : '' },
     { label: 'Sexo', value: v.sex === 'F' ? 'Femenino' : 'Masculino' },
     { label: 'Síntomas', value: v.symptoms },
+    { label: 'Volemia', value: v.volume },
   ], [v]);
 
   const handleCalculate = () => {
@@ -93,11 +94,35 @@ export default function HyponatremiaCorrectionCalculator() {
       'Medir y corregir el potasio: reponer K también sube el Na (suma al límite de corrección).',
     ];
 
+    const volumePlan = {
+      hipovolemica: 'Hipovolémica: indicar SF 0,9% EV, tratar pérdidas y vigilar autocorrección rápida al restaurar volumen.',
+      euvolemica: 'Euvolémica/SIADH probable: restricción hídrica, tratar causa y evitar SF 0,9% si orina hipertónica porque puede empeorar el Na.',
+      hipervolemica: 'Hipervolémica: restricción hídrica y sodio, tratar causa de sobrecarga y considerar diurético de asa si congestión.',
+      no_definida: 'Definir volemia antes de indicar corrección no urgente: hipovolémica, euvolémica/SIADH o hipervolémica.',
+    };
+
+    const clinicalOrder = severe
+      ? [
+        `Hiponatremia sintomática grave (Na ${round(na)} mEq/L). Indicar NaCl 3% 100-150 mL EV en 10-20 min ahora.`,
+        'Reevaluar clínica y Na; repetir bolo cada 10-20 min hasta 3 veces si persisten convulsión, coma o vómitos, buscando aumento inicial 4-6 mEq/L.',
+        `No sobrepasar corrección de ${limit24} mEq/L en 24 h (${v.highRisk ? 'alto riesgo de mielinolisis' : 'límite prudente'}). Control de Na cada 1-2 h durante rescate.`,
+        'Monitorización, balance hídrico estricto, diuresis horaria si posible, medir/corregir K y considerar DDAVP si ascenso rápido.',
+        'Preparación si no hay NaCl 3% listo: 385 mL SF 0,9% + 115 mL NaCl 10% para ~500 mL de NaCl 3%; confirmar con farmacia/local.',
+      ]
+      : [
+        `Hiponatremia ${classification.toLowerCase()} sin síntomas graves ingresados (Na ${round(na)} mEq/L). Corrección planificada y controlada.`,
+        volumePlan[v.volume],
+        `Meta máxima: subir Na ≤ ${limit24} mEq/L en 24 h y ≤ ${v.highRisk ? 12 : 18} mEq/L en 48 h. Control de Na cada 2-4 h al inicio si hospitalizado o Na <125.`,
+        tbw !== null ? `Déficit aproximado para subir ${round(targetDelta)} mEq/L: ${round(naDeficitToTarget, 0)} mEq de Na; ajustar por controles y causa.` : 'Ingresar peso para estimar déficit y respuesta esperada.',
+        'Medir osmolalidad plasmática/urinaria, Na urinario, glicemia, TSH/cortisol si corresponde; corregir K porque aumenta Na efectivo.',
+      ];
+
     const calcResult = {
       score: round(na),
       label: `${classification} · meta inicial +${round(targetDelta)} mEq/L`,
       color,
       interpretation: `Na ${round(na)} mEq/L. Apoyo para ordenar la corrección inicial; la decisión depende del estado de volumen, síntomas, cronicidad y controles seriados.`,
+      clinicalOrder,
       medicationCards,
       recommendations,
     };
@@ -105,7 +130,7 @@ export default function HyponatremiaCorrectionCalculator() {
     return calcResult;
   };
 
-  const handleReset = () => { setV({ na: '', weight: '', sex: 'M', symptoms: 'ausente', chronicity: 'desconocida', highRisk: false }); setResult(null); };
+  const handleReset = () => { setV({ na: '', weight: '', sex: 'M', symptoms: 'ausente', chronicity: 'desconocida', volume: 'no_definida', highRisk: false }); setResult(null); };
 
   return (
     <CalculatorWrapper
@@ -160,6 +185,18 @@ export default function HyponatremiaCorrectionCalculator() {
             </SelectContent>
           </Select>
         </div>
+        <div className="md:col-span-2">
+          <Label className="mb-2 block text-sm">Estado de volumen</Label>
+          <Select value={v.volume} onValueChange={(val) => set('volume', val)}>
+            <SelectTrigger className="bg-white"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="no_definida">No definido</SelectItem>
+              <SelectItem value="hipovolemica">Hipovolémica</SelectItem>
+              <SelectItem value="euvolemica">Euvolémica / SIADH probable</SelectItem>
+              <SelectItem value="hipervolemica">Hipervolémica</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <label className="md:col-span-2 flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
           <input type="checkbox" checked={v.highRisk} onChange={(e) => set('highRisk', e.target.checked)} className="mt-1" />
           <span>Alto riesgo de mielinolisis (Na &lt;120, alcoholismo, desnutrición, hipokalemia, hepatopatía): meta ≤6 mEq/L/24 h.</span>
@@ -171,6 +208,14 @@ export default function HyponatremiaCorrectionCalculator() {
           <div className="text-center">
             <div className="text-3xl font-bold text-slate-900">{result.score}<span className="text-base text-slate-500"> mEq/L</span></div>
             <p className="mt-2 text-sm text-slate-600">{result.label}</p>
+          </div>
+          <div className="mt-4 rounded-2xl border-2 border-blue-400 bg-blue-50 p-4 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-blue-800">Indicación sugerida para ficha clínica</p>
+            <div className="mt-3 space-y-2">
+              {result.clinicalOrder.map((item, i) => (
+                <p key={i} className="text-sm font-semibold leading-relaxed text-blue-950">{item}</p>
+              ))}
+            </div>
           </div>
           {result.medicationCards?.length > 0 && (
             <div className="mt-4 grid gap-3">
