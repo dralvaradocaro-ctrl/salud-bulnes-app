@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import {
-  LinkIcon, Calculator, ExternalLink,
+  LinkIcon, Calculator,
   Eye, Stethoscope, FlaskConical, Scissors,
   AlertTriangle, ChevronDown, Check, FileText, Calendar, Building2, MapPin,
   GitBranch, ClipboardList, BookOpen, Phone, ArrowRight, Info,
@@ -324,48 +324,85 @@ function DoseCalculatorBlock({ block }) {
 function ImageGalleryBlock({ block }) {
   const images = block.images || [];
   const [active, setActive] = useState(null);
+  const [preview, setPreview] = useState(null);
 
   if (images.length === 1) {
     const img = images[0];
     return (
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        {block.title && (
-          <div className="border-b border-slate-100 bg-slate-50 px-5 py-3.5">
-            <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-600">{block.title}</h3>
-            {block.description && <p className="mt-0.5 text-xs text-slate-500">{block.description}</p>}
-          </div>
-        )}
-        <div className="p-4">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-            <img
-              src={img.url}
-              alt={img.alt || img.caption || ''}
-              className="max-h-[520px] w-full object-contain"
-              loading="lazy"
-            />
-            {img.caption && (
-              <p className="border-t border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700">{img.caption}</p>
-            )}
-            {img.description && (
-              <p className="px-4 pb-3 text-xs leading-relaxed text-slate-500">{img.description}</p>
-            )}
-          </div>
-          {img.url && (
-            <a
-              href={img.url}
-              target="_blank"
-              rel="noreferrer"
+      <>
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          {block.title && (
+            <div className="border-b border-slate-100 bg-slate-50 px-5 py-3.5">
+              <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-slate-600">{block.title}</h3>
+              {block.description && <p className="mt-0.5 text-xs text-slate-500">{block.description}</p>}
+            </div>
+          )}
+          <div className="p-4">
+            <button
+              type="button"
+              onClick={() => setPreview(img)}
+              className="group block w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-left transition hover:border-blue-200 hover:shadow-md"
+            >
+              <img
+                src={img.url}
+                alt={img.alt || img.caption || ''}
+                className="max-h-[520px] w-full object-contain transition group-hover:scale-[1.01]"
+                loading="lazy"
+              />
+              {img.caption && (
+                <p className="border-t border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700">{img.caption}</p>
+              )}
+              {img.description && (
+                <p className="px-4 pb-3 text-xs leading-relaxed text-slate-500">{img.description}</p>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreview(img)}
               className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
             >
-              Abrir imagen completa
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          )}
-          {block.source && (
-            <p className="mt-3 text-[11px] leading-relaxed text-slate-400">Fuente: {block.source}</p>
-          )}
+              Ver flujograma ampliado
+              <Eye className="h-3.5 w-3.5" />
+            </button>
+            {block.source && (
+              <p className="mt-3 text-[11px] leading-relaxed text-slate-400">Fuente: {block.source}</p>
+            )}
+          </div>
         </div>
-      </div>
+
+        {preview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-sm md:p-6">
+            <button
+              type="button"
+              onClick={() => setPreview(null)}
+              className="absolute inset-0 cursor-zoom-out"
+              aria-label="Cerrar flujograma ampliado"
+            />
+            <div className="relative z-10 flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-white shadow-2xl">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-slate-900">{preview.caption || block.title || 'Flujograma'}</p>
+                  {preview.description && <p className="truncate text-xs text-slate-500">{preview.description}</p>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreview(null)}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                >
+                  Cerrar
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-auto bg-slate-100 p-3">
+                <img
+                  src={preview.url}
+                  alt={preview.alt || preview.caption || ''}
+                  className="mx-auto max-w-none rounded-lg bg-white shadow-sm"
+                />
+              </div>
+            </div>
+          </div>
+          )}
+      </>
     );
   }
 
@@ -1673,7 +1710,9 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                 <div className="rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-blue-300 hover:shadow-sm">
                   <div className="mb-1.5 flex items-center gap-2">
                     <LinkIcon className="h-3.5 w-3.5 text-blue-600" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-blue-700">Protocolo relacionado</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                      {ref.type === 'flujo_local' ? 'Flujo local relacionado' : 'Protocolo relacionado'}
+                    </span>
                   </div>
                   <p className="text-sm font-medium text-slate-800">{ref.label}</p>
                 </div>
