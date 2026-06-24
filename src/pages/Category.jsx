@@ -612,7 +612,9 @@ export default function Category() {
                               state={{ fromCategoryUrl: `${window.location.pathname}${window.location.search}` }}
                               onClick={saveCategoryReturnPoint}
                               className={`group block bg-white rounded-2xl p-6 border transition-all h-full ${
-                                topic.has_local_protocol
+                                (topic.tipo_contenido || []).includes('flujo_local')
+                                  ? 'border-sky-100 hover:border-sky-300 hover:shadow-xl ring-2 ring-sky-50'
+                                  : topic.has_local_protocol
                                   ? 'border-green-200 shadow-md hover:shadow-2xl ring-2 ring-green-100'
                                   : (topic.tipo_contenido || []).includes('protocolo')
                                     ? 'border-green-100 hover:border-green-300 hover:shadow-xl'
@@ -643,6 +645,12 @@ export default function Category() {
                                     )}
                                     {(topic.tipo_contenido || []).includes('herramienta_clinica') && (
                                       <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-xs">Herramienta</Badge>
+                                    )}
+                                    {(topic.tipo_contenido || []).includes('flujo_local') && (
+                                      <Badge className="bg-sky-100 text-sky-700 border-sky-200 flex items-center gap-1 text-xs font-semibold">
+                                        <ClipboardList className="h-3 w-3" />
+                                        Flujo local
+                                      </Badge>
                                     )}
                                     {topic.has_local_protocol && (
                                       <Badge className="bg-green-100 text-green-700 border-green-300 flex items-center gap-1 text-xs font-semibold">
@@ -708,11 +716,13 @@ export default function Category() {
                                   )}
                                 </div>
                                 <div className={`flex items-center text-xs font-semibold mt-4 group-hover:gap-2 transition-all ${
-                                  (topic.tipo_contenido || []).includes('protocolo') ? 'text-green-600'
+                                  (topic.tipo_contenido || []).includes('flujo_local') ? 'text-sky-600'
+                                  : (topic.tipo_contenido || []).includes('protocolo') ? 'text-green-600'
                                   : (topic.tipo_contenido || []).includes('herramienta_clinica') ? 'text-purple-600'
                                   : 'text-blue-600'
                                 }`}>
-                                  {(topic.tipo_contenido || []).includes('protocolo') ? 'Ver protocolo'
+                                  {(topic.tipo_contenido || []).includes('flujo_local') ? 'Ver flujo'
+                                    : (topic.tipo_contenido || []).includes('protocolo') ? 'Ver protocolo'
                                     : (topic.tipo_contenido || []).includes('herramienta_clinica') ? 'Ver herramienta'
                                     : 'Ver contenido'}
                                   <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />

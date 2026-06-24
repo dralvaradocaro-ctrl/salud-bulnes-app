@@ -200,8 +200,10 @@ export function getTopicVisual(topic = {}) {
   );
 
   const areaVisual = specificVisual || getVisualFromArea(topic);
-  const contentVisual = topic.tipo_contenido?.includes('herramienta_clinica')
-    ? { icon: Stethoscope, color: 'emerald' }
+  const contentVisual = topic.tipo_contenido?.includes('flujo_local')
+      ? { icon: ClipboardList, color: 'sky' }
+    : topic.tipo_contenido?.includes('herramienta_clinica')
+      ? { icon: Stethoscope, color: 'emerald' }
     : topic.has_local_protocol
       ? { icon: ClipboardList, color: 'blue' }
       : { icon: FileText, color: 'slate' };

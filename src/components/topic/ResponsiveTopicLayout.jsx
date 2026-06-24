@@ -350,6 +350,17 @@ function ImageGalleryBlock({ block }) {
               <p className="px-4 pb-3 text-xs leading-relaxed text-slate-500">{img.description}</p>
             )}
           </div>
+          {img.url && (
+            <a
+              href={img.url}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+            >
+              Abrir imagen completa
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          )}
           {block.source && (
             <p className="mt-3 text-[11px] leading-relaxed text-slate-400">Fuente: {block.source}</p>
           )}

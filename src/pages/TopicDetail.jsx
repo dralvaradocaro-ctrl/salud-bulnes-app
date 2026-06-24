@@ -29,6 +29,7 @@ import ReactMarkdown from 'react-markdown';
 import {
   ChevronLeft,
   CheckCircle2,
+  ClipboardList,
   FileText,
   GitBranch,
   Tag,
@@ -569,6 +570,12 @@ export default function TopicDetail() {
                     {hasMinsalOrdinarioBadge(topic) && (
                       <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center gap-1 px-3 py-1.5 font-semibold">
                         Ordinario MINSAL
+                      </Badge>
+                    )}
+                    {(topic.tipo_contenido || []).includes('flujo_local') && (
+                      <Badge className="bg-sky-100 text-sky-700 border-sky-200 flex items-center gap-1 px-3 py-1.5 font-semibold">
+                        <ClipboardList className="h-4 w-4" />
+                        Flujo local
                       </Badge>
                     )}
                     {topic.tags?.map((tag, idx) => (

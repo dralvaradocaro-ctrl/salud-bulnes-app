@@ -4,13 +4,18 @@ import { Link } from 'react-router-dom';
 import {
   Bell,
   BookOpen,
+  Baby,
+  Brain,
   Building2,
   ChevronDown,
   ClipboardList,
+  Ear,
   ExternalLink,
   History,
   Megaphone,
+  MessageCircle,
   Stethoscope,
+  UserRound,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { createPageUrl } from '@/utils';
@@ -30,6 +35,87 @@ import { cn } from '@/lib/utils';
 const RECENT_DAYS = 10;
 
 const FREQUENT_QUERIES = [
+  {
+    id: 'faq-flujograma-fonoaudiologia',
+    title: 'Derivación a Fonoaudiología',
+    area: 'policlinico',
+    summary: 'Flujo local HB 2026 para derivar a Fonoaudiología según edad, programa y motivo.',
+    highlight: 'Elegir ruta por edad/programa y motivo principal. No marcarlo como protocolo: es solo flujo local de derivación.',
+    orders: [
+      { label: 'CHCC', value: 'Fono CHCC' },
+      { label: 'General', value: 'Fonoaudiología' },
+      { label: 'Ley TEA', value: 'Fono Ley TEA' },
+    ],
+    routes: [
+      {
+        icon: Baby,
+        title: '0 a 4 años 11 meses',
+        subtitle: 'Chile Crece Contigo',
+        order: 'Fono CHCC',
+        items: ['Inicio tardío del lenguaje', 'EEDP / TEPSI descendido sin diagnóstico neurológico'],
+      },
+      {
+        icon: MessageCircle,
+        title: 'Hasta 20 años 11 meses',
+        subtitle: 'Infanto-juvenil',
+        order: 'Fonoaudiología',
+        items: ['Trastorno del lenguaje', 'Selectividad alimentaria', 'Dislalia o baja inteligibilidad', 'Lectoescritura / dislexia'],
+      },
+      {
+        icon: Stethoscope,
+        title: 'Odonto / ORL',
+        subtitle: 'Motivos orofaciales',
+        order: 'Fonoaudiología',
+        items: ['Anquiloglosia', 'Deglución atípica', 'Interposición lingual', 'Respirador oral'],
+      },
+      {
+        icon: Brain,
+        title: 'Autismo confirmado',
+        subtitle: 'Programa Ley TEA',
+        order: 'Fono Ley TEA',
+        items: ['Certificado diagnóstico', 'Lenguaje y comunicación asociado a autismo'],
+      },
+      {
+        icon: UserRound,
+        title: 'NANEAS',
+        subtitle: 'Con diagnóstico de base',
+        order: 'Según ruta interna',
+        items: ['TDAH', 'Discapacidad intelectual', 'Trastorno del lenguaje', 'Otras condiciones de base'],
+      },
+      {
+        icon: Ear,
+        title: 'Adultos',
+        subtitle: 'Audición / vestibular / neuro',
+        order: 'Fonoaudiología adultos',
+        items: ['Hipoacusia o vértigo', 'Disfagia o disfonía', 'ACV, Parkinson, demencias u otras neurológicas'],
+      },
+    ],
+    link_url: createPageUrl('TopicDetail?id=49239ba8-b658-4295-aac6-90acd9da882a'),
+  },
+  {
+    id: 'faq-derivaciones-rehabilitacion',
+    title: 'Derivaciones a Terapia Ocupacional',
+    area: 'policlinico',
+    summary: 'Patologias y talleres disponibles para apoyar derivaciones a rehabilitacion.',
+    details: [
+      'Derivar a Terapia Ocupacional cuando la patologia o lesion dificulte el desempeno en actividades de la vida diaria.',
+      'Para ingreso a talleres, el medico debe derivar al profesional segun patologia; tras la evaluacion clinica se inician sesiones en taller.',
+    ].join('\n'),
+    table: {
+      headers: ['Grupo', 'Indicaciones / derivacion'],
+      rows: [
+        ['Neurologia y neurorehabilitacion', 'ACV, TEC, enfermedad de Parkinson, lesion medular, esclerosis multiple, esclerosis lateral amiotrofica, neuropatias perifericas.'],
+        ['Reumatologia y dolor', 'Fibromialgia, artritis reumatoide, artrosis de manos, lupus eritematoso sistemico.'],
+        ['Mano y extremidades', 'Amputaciones EEII/EESS, lesiones de dedos de la mano, dedo en gatillo, Dupuytren, fracturas, sindrome del tunel carpiano, tenosinovitis de Quervain.'],
+        ['Ortesis / funcionalidad', 'Confeccion de ferulas y otras patologias o lesiones que dificulten el desempeno en las AVD.'],
+        ['Taller ACV', 'Derivar a terapeuta ocupacional o kinesiologo.'],
+        ['Taller Parkinson', 'Derivar a terapeuta ocupacional o kinesiologo.'],
+        ['Taller fibromialgia', 'Derivar a terapeuta ocupacional o kinesiologo.'],
+        ['Taller artritis reumatoide', 'Derivar a terapeuta ocupacional y kinesiologo.'],
+        ['Taller artrosis', 'Derivar a kinesiologo.'],
+      ],
+    },
+  },
   {
     id: 'faq-atenciones-policlinico',
     title: 'Atenciones Policlínico: actividad y formulario',
@@ -202,6 +288,63 @@ function typeLabel(type) {
   return 'Novedad';
 }
 
+function RouteQuickView({ item }) {
+  if (!item.highlight && !item.orders?.length && !item.routes?.length) return null;
+
+  return (
+    <div className="mt-2 space-y-2">
+      {item.highlight && (
+        <div className="rounded-md border border-sky-100 bg-sky-50 px-2.5 py-2 text-[11px] font-medium leading-relaxed text-sky-800">
+          {item.highlight}
+        </div>
+      )}
+
+      {item.orders?.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {item.orders.map((order) => (
+            <span key={order.label} className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-600">
+              <span className="font-semibold text-slate-800">{order.label}</span>
+              <span className="text-slate-300">/</span>
+              <span>{order.value}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {item.routes?.length > 0 && (
+        <div className="space-y-1.5">
+          {item.routes.map((route) => {
+            const RouteIcon = route.icon || ClipboardList;
+            return (
+              <div key={`${route.title}-${route.order}`} className="rounded-md border border-slate-200 bg-white p-2">
+                <div className="flex items-start gap-2">
+                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-cyan-50 text-cyan-700">
+                    <RouteIcon className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="text-xs font-bold leading-snug text-slate-800">{route.title}</p>
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">{route.subtitle}</span>
+                    </div>
+                    <p className="mt-1 text-[11px] font-semibold text-cyan-700">Orden interna: {route.order}</p>
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {route.items.map((routeItem) => (
+                        <span key={routeItem} className="rounded bg-slate-50 px-1.5 py-0.5 text-[10px] leading-relaxed text-slate-600">
+                          {routeItem}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NewsItem({ item }) {
   const [open, setOpen] = useState(false);
   const details = item.details || item.summary;
@@ -234,6 +377,7 @@ function NewsItem({ item }) {
         <CollapsibleContent>
           <div className="mt-2 border-t border-slate-100 pt-2">
             {hasDetails && <p className="whitespace-pre-line text-xs leading-relaxed text-slate-600">{details}</p>}
+            <RouteQuickView item={item} />
             {item.table && (
               <div className="mt-2 overflow-hidden rounded-lg border border-slate-200">
                 <table className="w-full border-collapse text-left text-[11px]">

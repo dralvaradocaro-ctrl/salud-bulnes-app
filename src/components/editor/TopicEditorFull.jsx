@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  GripVertical, X, Plus, FileText, Upload, Sparkles, Link as LinkIcon,
-  Save, Eye, EyeOff, History, GitBranch, AlertCircle, ChevronDown
+  GripVertical, X, Plus, FileText, Sparkles, Link as LinkIcon,
+  Save, Eye, EyeOff, GitBranch, AlertCircle
 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import ReactMarkdown from 'react-markdown';
@@ -630,6 +630,7 @@ export default function TopicEditorFull({
                   { value: 'protocolo', label: 'Protocolo', bg: 'bg-green-100 border-green-400 text-green-800' },
                   { value: 'contenido_medico', label: 'Contenido Médico', bg: 'bg-blue-100 border-blue-400 text-blue-800' },
                   { value: 'herramienta_clinica', label: 'Herramienta Clínica', bg: 'bg-purple-100 border-purple-400 text-purple-800' },
+                  { value: 'flujo_local', label: 'Flujo Local', bg: 'bg-sky-100 border-sky-400 text-sky-800' },
                 ].map(({ value, label, bg }) => {
                   const selected = (formData.tipo_contenido || []).includes(value);
                   return (
@@ -880,6 +881,9 @@ export default function TopicEditorFull({
                       )}
                       {formData.tipo_contenido.includes('herramienta_clinica') && (
                         <span className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700 font-medium">Herramienta</span>
+                      )}
+                      {formData.tipo_contenido.includes('flujo_local') && (
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-sky-100 text-sky-700 font-medium">Flujo local</span>
                       )}
                       {formData.has_local_protocol && (
                         <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800 font-semibold border border-green-300">✓ Protocolo Local</span>

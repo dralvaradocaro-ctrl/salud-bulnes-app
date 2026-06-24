@@ -330,6 +330,11 @@ function ResultRow({ item, aiReason, onClose, onNavigate }) {
           Protocolo Local
         </span>
       )}
+      {item.type === 'topic' && (item.tipo_contenido || []).includes('flujo_local') && (
+        <span className="px-2 py-1 text-xs font-medium bg-sky-100 text-sky-700 rounded-full flex-shrink-0">
+          Flujo local
+        </span>
+      )}
       {item.type === 'topic' && hasSsnProtocolBadge(item) && (
         <span className="px-2 py-1 text-xs font-medium bg-cyan-50 text-cyan-700 rounded-full flex-shrink-0">
           Protocolo SSÑ

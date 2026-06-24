@@ -53,6 +53,21 @@ const ayudasRows = [
   ['Nunca registrar', 'No usar actividades que inicien con AG_.', 'Tampoco usar cualquier actividad que al seleccionarla indique "No contabilizada en REM".'],
 ];
 
+const terapiaOcupacionalRows = [
+  ['Neurología y neurorehabilitación', 'ACV; TEC; enfermedad de Parkinson; lesión medular; esclerosis múltiple; esclerosis lateral amiotrófica; neuropatías periféricas.'],
+  ['Reumatología y dolor', 'Fibromialgia; artritis reumatoide; artrosis de manos; lupus eritematoso sistémico.'],
+  ['Mano y extremidades', 'Amputaciones EEII/EESS; lesiones de dedos de la mano; dedo en gatillo; fibromatosis de fascia palmar (Dupuytren); fracturas; síndrome del túnel carpiano; tenosinovitis de Quervain.'],
+  ['Órtesis / funcionalidad', 'Confección de férulas; otras patologías o lesiones que dificulten el desempeño en las actividades de la vida diaria.'],
+];
+
+const talleresRows = [
+  ['ACV', 'Derivar a terapeuta ocupacional o kinesiólogo.'],
+  ['Enfermedad de Parkinson', 'Derivar a terapeuta ocupacional o kinesiólogo.'],
+  ['Fibromialgia', 'Derivar a terapeuta ocupacional o kinesiólogo.'],
+  ['Artritis reumatoide', 'Derivar a terapeuta ocupacional y kinesiólogo.'],
+  ['Artrosis', 'Derivar a kinesiólogo.'],
+];
+
 const telemedicinaRows = [
   ['Sincrónica', 'Paciente citado a box con especialista en cámara.', 'Cardiología, endocrinología infantil/adulto, psiquiatría adulto/infantil, diabetología con perfil glicémico, neurología, hematología, gastroenterología, medicina interna, broncopulmonar, ginecología, reumatología, inmunología. Alivio del dolor y geriatría: derivar a medicina interna y especificar sincrónica.'],
   ['Asincrónica - Hospital Digital', 'Evitar usar salvo indicación.', 'Nefrología ERC IIIa/IIIb requiere al menos 2 creatininas y RAC en sistema. Diabetología: preferir teleprocesos. Geriatría solicita Barthel y datos; preparar con derivación previa a TO para escalas.'],
@@ -96,6 +111,32 @@ const content_blocks = [
     title: 'Otras ayudas de memoria',
     headers: ['Situación', 'Qué registrar / solicitar', 'Qué hacer'],
     rows: ayudasRows,
+    layout_position: 'main',
+  },
+  {
+    id: 'atenciones-poli-terapia-ocupacional',
+    type: 'table',
+    tab: 'Derivaciones',
+    color: 'emerald',
+    order: 35,
+    title: 'Derivaciones a Terapia Ocupacional',
+    content:
+      'Referencia para apoyar derivaciones a Terapia Ocupacional. Derivar cuando la patología o lesión dificulte el desempeño en actividades de la vida diaria.',
+    headers: ['Grupo', 'Patologías / indicaciones'],
+    rows: terapiaOcupacionalRows,
+    layout_position: 'main',
+  },
+  {
+    id: 'atenciones-poli-talleres-rehabilitacion',
+    type: 'table',
+    tab: 'Derivaciones',
+    color: 'emerald',
+    order: 36,
+    title: 'Talleres disponibles',
+    content:
+      'Para ingreso a talleres el médico debe realizar la derivación a profesional según patología; tras la evaluación clínica se inician sesiones en talleres.',
+    headers: ['Taller', 'Derivar a'],
+    rows: talleresRows,
     layout_position: 'main',
   },
   {

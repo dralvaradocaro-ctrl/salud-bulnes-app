@@ -74,7 +74,8 @@
         "enum": [
           "protocolo",
           "contenido_medico",
-          "herramienta_clinica"
+          "herramienta_clinica",
+          "flujo_local"
         ]
       },
       "description": "Tipo(s) de contenido del tema"
