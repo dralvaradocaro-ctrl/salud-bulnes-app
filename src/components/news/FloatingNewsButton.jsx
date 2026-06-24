@@ -6,14 +6,18 @@ import {
   BookOpen,
   Baby,
   Brain,
+  ClipboardCheck,
   Building2,
   ChevronDown,
   ClipboardList,
   Ear,
   ExternalLink,
+  HeartPulse,
   History,
   Megaphone,
   MessageCircle,
+  Pill,
+  ScanLine,
   Stethoscope,
   UserRound,
 } from 'lucide-react';
@@ -96,58 +100,144 @@ const FREQUENT_QUERIES = [
     id: 'faq-derivaciones-rehabilitacion',
     title: 'Derivaciones a Terapia Ocupacional',
     area: 'policlinico',
-    summary: 'Patologias y talleres disponibles para apoyar derivaciones a rehabilitacion.',
-    details: [
-      'Derivar a Terapia Ocupacional cuando la patologia o lesion dificulte el desempeno en actividades de la vida diaria.',
-      'Para ingreso a talleres, el medico debe derivar al profesional segun patologia; tras la evaluacion clinica se inician sesiones en taller.',
-    ].join('\n'),
-    table: {
-      headers: ['Grupo', 'Indicaciones / derivacion'],
-      rows: [
-        ['Neurologia y neurorehabilitacion', 'ACV, TEC, enfermedad de Parkinson, lesion medular, esclerosis multiple, esclerosis lateral amiotrofica, neuropatias perifericas.'],
-        ['Reumatologia y dolor', 'Fibromialgia, artritis reumatoide, artrosis de manos, lupus eritematoso sistemico.'],
-        ['Mano y extremidades', 'Amputaciones EEII/EESS, lesiones de dedos de la mano, dedo en gatillo, Dupuytren, fracturas, sindrome del tunel carpiano, tenosinovitis de Quervain.'],
-        ['Ortesis / funcionalidad', 'Confeccion de ferulas y otras patologias o lesiones que dificulten el desempeno en las AVD.'],
-        ['Taller ACV', 'Derivar a terapeuta ocupacional o kinesiologo.'],
-        ['Taller Parkinson', 'Derivar a terapeuta ocupacional o kinesiologo.'],
-        ['Taller fibromialgia', 'Derivar a terapeuta ocupacional o kinesiologo.'],
-        ['Taller artritis reumatoide', 'Derivar a terapeuta ocupacional y kinesiologo.'],
-        ['Taller artrosis', 'Derivar a kinesiologo.'],
-      ],
-    },
+    summary: 'Patologías y talleres disponibles para apoyar derivaciones a rehabilitación.',
+    highlight: 'Derivar a Terapia Ocupacional cuando la patología o lesión dificulte el desempeño en actividades de la vida diaria.',
+    orders: [
+      { label: 'Ingreso talleres', value: 'Derivación médica previa' },
+      { label: 'Inicio', value: 'Tras evaluación clínica' },
+    ],
+    routes: [
+      {
+        icon: Brain,
+        title: 'Neurorehabilitación',
+        subtitle: 'TO',
+        order: 'Terapia Ocupacional',
+        items: ['ACV', 'TEC', 'Parkinson', 'Lesión medular', 'Esclerosis múltiple', 'ELA', 'Neuropatías periféricas'],
+      },
+      {
+        icon: HeartPulse,
+        title: 'Reumatología y dolor',
+        subtitle: 'TO',
+        order: 'Terapia Ocupacional',
+        items: ['Fibromialgia', 'Artritis reumatoide', 'Artrosis de manos', 'Lupus eritematoso sistémico'],
+      },
+      {
+        icon: UserRound,
+        title: 'Mano y extremidades',
+        subtitle: 'TO',
+        order: 'Terapia Ocupacional',
+        items: ['Amputaciones EEII/EESS', 'Lesiones de dedos', 'Dedo en gatillo', 'Dupuytren', 'Fracturas', 'Túnel carpiano', 'Quervain'],
+      },
+      {
+        icon: ClipboardCheck,
+        title: 'Funcionalidad / órtesis',
+        subtitle: 'AVD',
+        order: 'Terapia Ocupacional',
+        items: ['Confección de férulas', 'Otras lesiones que limiten actividades de la vida diaria'],
+      },
+    ],
+    sections: [
+      {
+        title: 'Talleres disponibles',
+        items: [
+          { label: 'ACV', value: 'TO o Kinesiología' },
+          { label: 'Parkinson', value: 'TO o Kinesiología' },
+          { label: 'Fibromialgia', value: 'TO o Kinesiología' },
+          { label: 'Artritis reumatoide', value: 'TO y Kinesiología' },
+          { label: 'Artrosis', value: 'Kinesiología' },
+        ],
+      },
+    ],
   },
   {
     id: 'faq-atenciones-policlinico',
     title: 'Atenciones Policlínico: actividad y formulario',
     area: 'policlinico',
     summary: 'Tabla rápida para elegir actividad REM/formulario en registros frecuentes.',
-    details: [
-      'Usar la actividad exacta indicada para cada tipo de atención.',
-      'No usar actividades que inicien con AG_ ni opciones marcadas como “No contabilizada en REM”.',
-    ].join('\n'),
+    highlight: 'Usar la actividad exacta indicada y evitar AG_ o actividades marcadas como “No contabilizada en REM”.',
+    orders: [
+      { label: 'REM', value: 'Actividad exacta' },
+      { label: 'Formulario', value: 'Según programa' },
+    ],
     link_url: createPageUrl('TopicDetail?id=ac8e1455-7cc9-4265-8933-8fe893217201'),
-    table: {
-      headers: ['Atención', 'Actividad / formulario'],
-      rows: [
-        ['Cardiovascular', 'Control salud cardiovascular (+ HEARTS si corresponde) · Formulario salud cardiovascular integral.'],
-        ['Sala ERA/IRA', 'Control sala ERA/IRA/mixta · Otros programas de salud. Ingreso ERA: encuesta calidad de vida.'],
-        ['Salud mental', 'Controles de salud mental. Ingreso/egreso: consulta SM + plan cuidado integral + clasificación N + Goldberg.'],
-        ['Niño sano 1 y 3 meses', 'Control de salud + guías anticipatorias · Control crecimiento/desarrollo. 3 meses: GES sospecha displasia cadera + RX pelvis.'],
-        ['Morbilidad / recetas', 'Consulta otras morbilidades sin formulario · Receta sin paciente: actividad abreviada y confección de recetas.'],
-        ['Paliativos / dependencia severa', 'Paliativos: control otros problemas + cuidados paliativos. Dependencia severa: visita domiciliaria no oncológica.'],
-        ['Telemedicina', 'Nueva o control según corresponda. Teleprocesos: cardiología con ECG, dermatología con fotos, diabetología con perfil glicémico.'],
-      ],
-    },
+    routes: [
+      {
+        icon: HeartPulse,
+        title: 'Cardiovascular',
+        subtitle: 'Control / ingreso',
+        order: 'Salud cardiovascular integral',
+        items: ['Control salud cardiovascular', 'Ingreso HEARTS si corresponde', 'Orden interna nutricionista 3-4 meses'],
+      },
+      {
+        icon: Stethoscope,
+        title: 'ERA / IRA',
+        subtitle: 'Sala respiratoria',
+        order: 'Otros programas de salud',
+        items: ['Control sala ERA/IRA/mixta', 'Ingreso ERA: encuesta calidad de vida', 'Ingreso IRA: PedsQL por edad'],
+      },
+      {
+        icon: Brain,
+        title: 'Salud mental',
+        subtitle: 'Ingreso / control / egreso',
+        order: 'Control de salud mental',
+        items: ['Plan de cuidado integral', 'Clasificación N', 'Goldberg si ingreso/egreso'],
+      },
+      {
+        icon: Baby,
+        title: 'Niño sano 1 y 3 meses',
+        subtitle: 'Control sano',
+        order: 'Crecimiento y desarrollo',
+        items: ['Guías anticipatorias', 'Score IRA', '3 meses: GES displasia cadera + RX pelvis'],
+      },
+      {
+        icon: Pill,
+        title: 'Morbilidad / recetas',
+        subtitle: 'Registro simple',
+        order: 'Consulta otras morbilidades',
+        items: ['Morbilidad general sin formulario', 'Receta sin paciente: actividad abreviada y confección de recetas'],
+      },
+      {
+        icon: UserRound,
+        title: 'Paliativos / dependencia severa',
+        subtitle: 'Continuidad',
+        order: 'Según atención',
+        items: ['Paliativos: otros problemas + cuidados paliativos', 'Dependencia severa: visita domiciliaria no oncológica'],
+      },
+      {
+        icon: ScanLine,
+        title: 'Telemedicina',
+        subtitle: 'Nueva / control',
+        order: 'Especialidad ambulatoria por telemedicina',
+        items: ['Cardiología con ECG', 'Dermatología con fotos', 'Diabetología con perfil glicémico'],
+      },
+    ],
   },
   {
     id: 'faq-demencia-ingreso',
     title: 'Atenciones para usuarios con demencia',
     area: 'policlinico',
     summary: 'Ingreso: actividades y formularios requeridos para salud mental.',
-    details: [
-      'Ingreso / actividades: control salud mental, plan de cuidado integral elaborado y riesgo de salud mental (N).',
-      'Formularios: Goldberg y Formulario Salud Mental.',
-    ].join('\n'),
+    highlight: 'Para ingreso de usuarios con demencia, registrar actividades de salud mental y completar formularios asociados.',
+    orders: [
+      { label: 'Actividad', value: 'Control salud mental' },
+      { label: 'Riesgo', value: 'Clasificación N' },
+    ],
+    routes: [
+      {
+        icon: Brain,
+        title: 'Ingreso',
+        subtitle: 'Salud mental',
+        order: 'Control salud mental',
+        items: ['Plan de cuidado integral elaborado', 'Riesgo de salud mental (N)'],
+      },
+      {
+        icon: ClipboardList,
+        title: 'Formularios',
+        subtitle: 'Registro obligatorio',
+        order: 'Formulario Salud Mental',
+        items: ['Goldberg', 'Formulario Salud Mental'],
+      },
+    ],
   },
 ];
 
@@ -289,7 +379,7 @@ function typeLabel(type) {
 }
 
 function RouteQuickView({ item }) {
-  if (!item.highlight && !item.orders?.length && !item.routes?.length) return null;
+  if (!item.highlight && !item.orders?.length && !item.routes?.length && !item.sections?.length) return null;
 
   return (
     <div className="mt-2 space-y-2">
@@ -339,6 +429,25 @@ function RouteQuickView({ item }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {item.sections?.length > 0 && (
+        <div className="space-y-1.5">
+          {item.sections.map((section) => (
+            <div key={section.title} className="rounded-md border border-slate-200 bg-slate-50 p-2">
+              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500">{section.title}</p>
+              <div className="flex flex-wrap gap-1">
+                {section.items.map((sectionItem) => (
+                  <span key={`${section.title}-${sectionItem.label}`} className="inline-flex items-center gap-1 rounded bg-white px-1.5 py-0.5 text-[10px] leading-relaxed text-slate-600 ring-1 ring-slate-200">
+                    <span className="font-semibold text-slate-800">{sectionItem.label}</span>
+                    <span className="text-slate-300">/</span>
+                    <span>{sectionItem.value}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
