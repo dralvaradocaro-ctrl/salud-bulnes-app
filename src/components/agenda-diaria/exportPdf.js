@@ -6,8 +6,18 @@ import { jsPDF } from 'jspdf';
 import { buildRoster, KIND_RGB } from './roster';
 
 const fmtDmy = (iso) => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
+const hhmm = (t) => (t || '').slice(0, 5);
+const blockDoctorIds = (b) =>
+  Array.isArray(b?.doctor_ids) && b.doctor_ids.length ? b.doctor_ids.filter(Boolean) : (b?.doctor_id ? [b.doctor_id] : []);
 
-export function exportDailyAgendaPdf({ date, day, result, telemed = [], extraBlocks = [], docName }) {
+async function loadLogo() {
+  const img = new Image();
+  img.src = '/logo-hospital.png';
+  await img.decode();
+  return img;
+}
+
+export async function exportDailyAgendaPdf({ date, day, result, telemed = [], extraBlocks = [], docName }) {
   const { rows, interns } = buildRoster({ day, result, extraBlocks, docName });
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const M = 40;
@@ -20,10 +30,17 @@ export function exportDailyAgendaPdf({ date, day, result, telemed = [], extraBlo
   const COL_NUM_X = W - M - 40; // borde izq de la columna número
   let y = M;
 
-  // Título
+  // Título + logo institucional
+  try {
+    const logo = await loadLogo();
+    doc.addImage(logo, 'PNG', M, y - 8, 48, 48);
+  } catch { /* si el asset no carga, el PDF sigue siendo usable */ }
   doc.setFont('helvetica', 'bold'); doc.setFontSize(14);
-  doc.text(`AGENDA  ${fmtDmy(date)}`, M, y);
-  y += 20;
+  doc.text(`AGENDA  ${fmtDmy(date)}`, M + 58, y + 8);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(100, 116, 139);
+  doc.text('HOSPITAL COMUNITARIO DE SALUD FAMILIAR DE BULNES', M + 58, y + 22);
+  doc.setTextColor(15, 23, 42);
+  y += 50;
 
   const drawRow = (name, parts, num, { bold = false } = {}) => {
     doc.setFontSize(10);
@@ -77,6 +94,22 @@ export function exportDailyAgendaPdf({ date, day, result, telemed = [], extraBlo
   rows.forEach((r) => drawRow(r.name, r.parts, r.num));
   interns.forEach((it) =>
     drawRow(`INT ${it.name || 'Interno'}`, [{ text: it.label, kind: 'visita' }], it.num));
+
+  // ── BLOQUEOS ───────────────────────────────────────────────────────────────
+  const bloqueos = (day?.bloqueos || []).filter((b) => !b.suspended && b.category !== 'feriado');
+  if (bloqueos.length) {
+    y += 16;
+    if (y > H - M - 40) { doc.addPage(); y = M; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(15, 23, 42);
+    doc.text('BLOQUEOS:', M, y); y += 16;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    bloqueos.forEach((b) => {
+      if (y > H - M) { doc.addPage(); y = M; }
+      const doctors = blockDoctorIds(b).map(docName).join(' + ');
+      const line = `${b.from ? `${hhmm(b.from)}-${hhmm(b.to)}` : ''}  ${doctors ? `${doctors} ` : ''}${b.name || 'Bloqueo'}`;
+      doc.text(line, M, y); y += 14;
+    });
+  }
 
   // ── TELEMEDICINA ────────────────────────────────────────────────────────────
   if (telemed.length) {

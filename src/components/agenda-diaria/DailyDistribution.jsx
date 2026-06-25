@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shuffle, Pencil, X, Save, FileDown } from 'lucide-react';
+import { Shuffle, Pencil, X, Save, FileDown, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -26,6 +26,7 @@ export default function DailyDistribution({
   bedOverrides, setBedOverrides,
   supervisorOverrides, setSupervisorOverrides,
   onSave, saving, savedExists, dirty, onExportPdf,
+  date, day, telemed = [],
 }) {
   const [editMode, setEditMode] = useState(false);
 
@@ -53,12 +54,17 @@ export default function DailyDistribution({
           <Button variant="outline" size="sm" onClick={onExportPdf}>
             <FileDown className="h-4 w-4 mr-1" /> PDF
           </Button>
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <Printer className="h-4 w-4 mr-1" /> Imprimir
+          </Button>
           <Button size="sm" onClick={onSave} disabled={saving}>
             <Save className="h-4 w-4 mr-1" />
             {saving ? 'Guardando…' : savedExists ? (dirty ? 'Guardar cambios' : 'Guardado') : 'Guardar'}
           </Button>
         </div>
       </div>
+
+      <PrintPreview roster={roster} date={date} day={day} telemed={telemed} />
 
       {Object.keys(bedOverrides).length > 0 && (
         <div className="flex items-center justify-between rounded-lg bg-violet-50 border border-violet-100 px-3 py-2 text-sm text-violet-700">
@@ -68,27 +74,6 @@ export default function DailyDistribution({
           </button>
         </div>
       )}
-
-      {/* Tabla tipo planilla institucional */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden divide-y divide-slate-100">
-        {roster.rows.map((r) => (
-          <RosterRow key={r.id} name={r.name} parts={r.parts} num={r.num} />
-        ))}
-        {roster.interns.map((it) => (
-          <RosterRow
-            key={it.id}
-            name={`INT ${it.name || 'Interno'}`}
-            parts={[{ text: it.label, kind: 'visita' }]}
-            num={it.num}
-            muted
-          />
-        ))}
-        {roster.rows.length === 0 && (
-          <p className="px-4 py-6 text-center text-sm text-slate-400">
-            Aún no hay actividades para mostrar.
-          </p>
-        )}
-      </div>
 
       {/* Edición manual */}
       {editMode && (
@@ -168,21 +153,87 @@ export default function DailyDistribution({
   );
 }
 
-function RosterRow({ name, parts, num, muted }) {
+const fmtDmy = (iso) => iso ? `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}` : '';
+const hhmm = (t) => (t || '').slice(0, 5);
+const blockDoctorIds = (b) =>
+  Array.isArray(b?.doctor_ids) && b.doctor_ids.length ? b.doctor_ids.filter(Boolean) : (b?.doctor_id ? [b.doctor_id] : []);
+
+function PrintPreview({ roster, date, day, telemed }) {
+  const bloqueos = (day?.bloqueos || []).filter((b) => !b.suspended && b.category !== 'feriado');
+  const doctorName = (id) => roster.rows.find((r) => r.id === id)?.name || String(id || '').toUpperCase();
+  const blockDoctors = (b) => blockDoctorIds(b).map(doctorName).join(' + ');
   return (
-    <div className="flex items-start gap-3 px-4 py-2">
-      <span className={`font-bold text-sm w-40 shrink-0 ${muted ? 'text-slate-500' : 'text-slate-900'}`}>
+    <section className="print-preview rounded-lg border border-slate-300 bg-white p-5 shadow-sm print:block print:rounded-none print:border-0 print:p-0 print:shadow-none">
+      <div className="mb-4 flex items-start gap-3">
+        <img src="/logo-hospital.png" alt="Hospital de Bulnes" className="h-14 w-auto object-contain" />
+        <div>
+          <p className="text-lg font-bold tracking-wide text-slate-900">AGENDA {fmtDmy(date)}</p>
+          <p className="text-xs font-semibold uppercase text-slate-500">Hospital Comunitario de Salud Familiar de Bulnes</p>
+        </div>
+      </div>
+      <div className="overflow-hidden border border-slate-300">
+        {roster.rows.map((r) => (
+          <PrintRosterRow key={r.id} name={r.name} parts={r.parts} num={r.num} />
+        ))}
+        {roster.interns.map((it) => (
+          <PrintRosterRow
+            key={it.id}
+            name={`INT ${it.name || 'Interno'}`}
+            parts={[{ text: it.label, kind: 'visita' }]}
+            num={it.num}
+          />
+        ))}
+      </div>
+      {bloqueos.length > 0 && (
+        <div className="mt-4 text-[12px] leading-snug">
+          <p className="mb-1 font-bold text-slate-900">BLOQUEOS:</p>
+          {bloqueos.map((b, i) => (
+            <p key={b.block_id || i} className="text-slate-700">
+              <span className="font-semibold tabular-nums">{b.from ? `${hhmm(b.from)}${b.to ? `-${hhmm(b.to)}` : ''}` : ''}</span>
+              {' '}{blockDoctors(b) ? `${blockDoctors(b)} ` : ''}{b.name}
+            </p>
+          ))}
+        </div>
+      )}
+      {telemed.length > 0 && (
+        <div className="mt-4 text-[12px] leading-snug">
+          <p className="mb-1 font-bold text-slate-900">TELEMEDICINA:</p>
+          {telemed.map((t) => (
+            <p key={t.id} className="text-slate-700">
+              {t.specialty || 'Telemedicina'}{t.time ? ` ${t.time}` : ''}{t.doctor ? ` ${t.doctor}` : ''}
+            </p>
+          ))}
+        </div>
+      )}
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          .print-preview, .print-preview * { visibility: visible; }
+          .print-preview { position: absolute; left: 0; top: 0; width: 100%; }
+          @page { size: letter; margin: 0.55in; }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+function PrintRosterRow({ name, parts, num }) {
+  return (
+    <div className="grid min-h-8 grid-cols-[150px_1fr_36px] border-b border-slate-300 text-[12px] last:border-b-0">
+      <div className="border-r border-slate-300 bg-slate-50 px-2 py-1.5 font-bold text-slate-900">
         {(name || '').toUpperCase()}
-      </span>
-      <span className="flex-1 text-sm leading-snug">
+      </div>
+      <div className="px-2 py-1.5 leading-snug">
         {parts.map((p, i) => (
           <React.Fragment key={i}>
-            {i > 0 && <span className="text-slate-300"> + </span>}
+            {i > 0 && <span className="text-slate-400"> + </span>}
             <span className={KIND_CLASS[p.kind] || 'text-slate-700'}>{p.text}</span>
           </React.Fragment>
         ))}
-      </span>
-      {num != null && <span className="font-bold text-sm text-slate-900 w-6 text-right">{num}</span>}
+      </div>
+      <div className="border-l border-slate-300 px-2 py-1.5 text-right font-bold text-slate-900">
+        {num ?? ''}
+      </div>
     </div>
   );
 }

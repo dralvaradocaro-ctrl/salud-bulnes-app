@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   CalendarDays, Check, ChevronLeft, ChevronRight, Plus, Trash2,
-  Video, GraduationCap, ClipboardList, AlertTriangle,
+  Video, GraduationCap, ClipboardList, AlertTriangle, Pencil, BedDouble, Users, FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +13,9 @@ import { getMondayOfWeek, fmtDate, weekDates } from '@/components/sdm/lib/genera
 import { sdmSupabase, explainSdmWriteError } from '@/components/sdm/lib/sdmSupabase';
 import BedMap from '@/components/agenda-diaria/BedMap';
 import {
-  BED_STATE, NEXT_STATE_CYCLE, ALL_BEDS, defaultBedState,
+  BED_STATE, NEXT_STATE_CYCLE, ALL_BEDS, defaultBedState, initialBedStatesForDate,
 } from '@/components/agenda-diaria/bedCatalog';
-import { isLimited, hashStr, slugifyName, distributeDay } from '@/components/agenda-diaria/distribute';
+import { hashStr, slugifyName, distributeDay } from '@/components/agenda-diaria/distribute';
 import DailyDistribution from '@/components/agenda-diaria/DailyDistribution';
 import { exportDailyAgendaPdf } from '@/components/agenda-diaria/exportPdf';
 import { buildRoster } from '@/components/agenda-diaria/roster';
@@ -29,11 +29,137 @@ const blocksMorning = (b) => b.from && b.to && toMin(b.from) < 11 * 60 && toMin(
 const todayIso = () => fmtDate(new Date());
 
 const DAY_SHORT = { lun: 'Lun', mar: 'Mar', mie: 'Mié', jue: 'Jue', vie: 'Vie' };
+const EMPTY_DOCTOR = '__empty__';
+
+const newBlock = () => ({
+  block_id: `daily-${crypto.randomUUID()}`,
+  name: '',
+  from: '08:00',
+  to: '11:00',
+  doctor_id: null,
+  doctor_ids: [],
+  category: 'manual',
+  source: 'daily_edit',
+});
+
+const doctorIds = (block) => (
+  Array.isArray(block?.doctor_ids) ? block.doctor_ids.filter(Boolean) : (block?.doctor_id ? [block.doctor_id] : [])
+);
+
+const normalizeDailyBlock = (block) => {
+  const ids = doctorIds(block);
+  return {
+    ...block,
+    block_id: block.block_id || `daily-${crypto.randomUUID()}`,
+    name: block.name || 'Bloqueo',
+    from: block.from ? String(block.from).slice(0, 5) : null,
+    to: block.to ? String(block.to).slice(0, 5) : null,
+    doctor_ids: ids,
+    doctor_id: ids[0] || null,
+    source: block.source || 'daily_edit',
+  };
+};
+
+const applyDayOverrides = (baseDay, overrides = {}) => {
+  if (!baseDay) return null;
+  return {
+    ...baseDay,
+    turnos: overrides.turnos || baseDay.turnos || [],
+    posturno: overrides.posturno || baseDay.posturno || [],
+    ausencias: overrides.ausencias || baseDay.ausencias || [],
+    refuerzos: overrides.refuerzos || baseDay.refuerzos || { am: null, pm: null },
+    bloqueos: (overrides.bloqueos || baseDay.bloqueos || []).map(normalizeDailyBlock),
+    visita: uniqueVisits(overrides.visita || baseDay.visita || []),
+  };
+};
+
+const idsOf = (rows = []) => rows.map((r) => r.doctor_id).filter(Boolean);
+const unique = (arr) => [...new Set(arr.filter(Boolean))];
+const uniqueVisits = (visits = []) => {
+  const seen = new Set();
+  return visits.filter((v) => {
+    if (!v?.doctor_id || seen.has(v.doctor_id)) return false;
+    seen.add(v.doctor_id);
+    return true;
+  });
+};
+
+const block = (name, from, to, doctorIds, extra = {}) => ({
+  block_id: `initial-2026-06-25-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`,
+  name,
+  from,
+  to,
+  doctor_ids: doctorIds,
+  doctor_id: doctorIds[0] || null,
+  category: extra.category || 'manual',
+  source: 'initial_agenda_2026_06_25',
+  ...extra,
+});
+
+const INITIAL_DAILY_AGENDAS = {
+  '2026-06-25': {
+    dayOverrides: {
+      turnos: [{ doctor_id: 'r_aguilera' }, { doctor_id: 'rivas' }],
+      posturno: [{ doctor_id: 'carreno' }, { doctor_id: 'sbarbaro' }],
+      refuerzos: { am: 'santibanez', pm: 'v_aguilera' },
+      ausencias: [
+        { doctor_id: 'cordero', type: 'FL' },
+        { doctor_id: 'san_martin', type: 'FL' },
+        { doctor_id: 'correa', type: 'A' },
+      ],
+      bloqueos: [
+        block('Selector de demanda', '08:00', '11:00', ['ruf']),
+        block('SDM + Poli TACO', '08:00', '17:00', ['fasani']),
+        block('Telesalud', '08:00', '10:30', ['sandoval']),
+        block('Gestión telemedicina', '10:30', '13:30', ['sandoval']),
+        block('Gestión dependencia severa', '12:00', '13:30', ['toledo']),
+        block('Paliativos', '14:00', '17:00', ['sandoval']),
+        block('HODOM', '14:00', '17:00', ['troncoso']),
+        block('Visita PROA', '12:50', '13:30', ['alvarado']),
+        block('Dependencia severa', '14:00', '17:00', ['toledo']),
+        block('Gestión PSCV', '14:00', '17:00', ['alvarado']),
+        block('Visita de servicio - Dr. R. Sandoval', '14:00', '16:00', ['gil', 'sandoval']),
+        block('Regulación IC', '15:20', '16:40', ['enriquez']),
+      ],
+      visita: [
+        { doctor_id: 'alvarado', capacity: 5, manual: true },
+        { doctor_id: 'enriquez', capacity: 5, manual: true },
+        { doctor_id: 'gil', capacity: 5, manual: true },
+        { doctor_id: 'toledo', capacity: 4, manual: true },
+        { doctor_id: 'troncoso', capacity: 4, manual: true },
+      ],
+    },
+    telemed: [
+      { id: 'initial-psiquiatria-2026-06-25', specialty: 'Psiquiatría - Luz Fernández (hospitalizada)', time: '10:00', doctor: 'ENRIQUEZ' },
+      { id: 'initial-reumatologia-2026-06-25', specialty: 'Reumatología - Lucía Vargas (ambulatorio)', time: '12:30', doctor: 'GIL' },
+    ],
+    internos: [
+      { id: 'initial-yasna-quezada', name: 'Yasna Quezada', isNew: false },
+      { id: 'initial-javiera-munoz', name: 'Javiera Muñoz', isNew: false },
+      { id: 'initial-vale-albornoz', name: 'Vale Albornoz', isNew: false },
+      { id: 'initial-maria-molina', name: 'María Molina', isNew: false },
+    ],
+  },
+};
+
+const initialDailyAgendaForDate = (date) => INITIAL_DAILY_AGENDAS[String(date || '').slice(0, 10)] || {};
+
+function buildVisitaOverride(baseDay, editedDay) {
+  const base = new Set(idsOf(baseDay?.visita || []));
+  const edited = idsOf(editedDay?.visita || []);
+  return {
+    add: edited.filter((id) => !base.has(id)),
+    remove: [...base].filter((id) => !edited.includes(id)),
+  };
+}
 
 const STEPS = [
   { key: 'agenda', label: 'Agenda del día', icon: ClipboardList },
   { key: 'telemed', label: 'Telemedicinas', icon: Video },
   { key: 'internos', label: 'Internos', icon: GraduationCap },
+  { key: 'camas', label: 'Camas', icon: BedDouble },
+  { key: 'visita', label: 'Médicos visita', icon: Users },
+  { key: 'final', label: 'Agenda final', icon: FileText },
 ];
 
 export default function AgendaDiaria() {
@@ -51,14 +177,15 @@ export default function AgendaDiaria() {
     return weekDays.some((d) => d.date === t) ? t : weekDays[0]?.date;
   });
 
-  const day = useMemo(
+  const baseDay = useMemo(
     () => agenda.find((d) => d.date === selectedDate) || null,
     [agenda, selectedDate],
   );
+  const [dayOverrides, setDayOverrides] = useState({});
+  const day = useMemo(() => applyDayOverrides(baseDay, dayOverrides), [baseDay, dayOverrides]);
 
   // ── estado del wizard ──────────────────────────────────────────────────
   const [step, setStep] = useState(0);
-  const [wizardDone, setWizardDone] = useState(false);
 
   // Step 1: confirmación de visitantes externos (Sandoval, Rubilar, etc.)
   const [externalConfirm, setExternalConfirm] = useState({}); // { name: boolean(presente) }
@@ -142,7 +269,6 @@ export default function AgendaDiaria() {
   useEffect(() => {
     let alive = true;
     setHydrating(true);
-    setStep(0);
     (async () => {
       let row = null;
       try {
@@ -154,16 +280,18 @@ export default function AgendaDiaria() {
 
       if (row?.data) {
         const dd = row.data;
-        setBedStates(dd.bedStates || {});
-        setTelemed(dd.telemed || []);
-        setInternos(dd.internos || []);
+        const initial = initialDailyAgendaForDate(selectedDate);
+        setDayOverrides(Object.keys(dd.dayOverrides || {}).length ? dd.dayOverrides : (initial.dayOverrides || {}));
+        setBedStates(Object.keys(dd.bedStates || {}).length ? dd.bedStates : initialBedStatesForDate(selectedDate));
+        setTelemed((dd.telemed || []).length ? dd.telemed : (initial.telemed || []));
+        setInternos((dd.internos || []).length ? dd.internos : (initial.internos || []));
         setExtraBlocks(dd.extraBlocks || []);
         setDoctorSeed(dd.doctorSeed || 0);
         setBedOverrides(dd.bedOverrides || {});
         setSupervisorOverrides(dd.supervisorOverrides || {});
         setPriorAssignments(dd.assigned || {}); // reproduce el reparto guardado
         setSavedExists(true);
-        setWizardDone(true);
+        setStep(5);
       } else {
         // Día nuevo: heredar del último día guardado anterior (continuidad).
         let prev = null;
@@ -175,16 +303,19 @@ export default function AgendaDiaria() {
         } catch { /* noop */ }
         if (!alive) return;
         const pd = prev?.data || {};
-        setBedStates(pd.bedStates || {});           // hereda bloqueos/ocupación
-        setTelemed([]);                              // las telemedicinas son del día
-        setInternos((pd.internos || []).map((i) => ({ ...i, isNew: false }))); // misma rotación
+        const initial = initialDailyAgendaForDate(selectedDate);
+        const initialBeds = initialBedStatesForDate(selectedDate);
+        setDayOverrides(initial.dayOverrides || {});
+        setBedStates(Object.keys(initialBeds).length ? initialBeds : (pd.bedStates || {})); // plantilla vigente o herencia
+        setTelemed(initial.telemed || []);             // telemedicinas del día si hay plantilla
+        setInternos((initial.internos || (pd.internos || [])).map((i) => ({ ...i, isNew: false }))); // plantilla o misma rotación
         setExtraBlocks([]);
         setDoctorSeed(0);
         setBedOverrides({});
         setSupervisorOverrides(pd.supervisorOverrides || {});
         setPriorAssignments(pd.assigned || {});     // seguimiento médico↔paciente
         setSavedExists(false);
-        setWizardDone(false);
+        setStep(0);
       }
       setDirty(false);
       skipDirty.current = true; // ignora el re-run de efectos por la hidratación
@@ -206,7 +337,7 @@ export default function AgendaDiaria() {
     if (hydrating) return;
     if (skipDirty.current) { skipDirty.current = false; return; }
     setDirty(true);
-  }, [bedStates, telemed, internos, extraBlocks, doctorSeed, bedOverrides, supervisorOverrides, hydrating]);
+  }, [dayOverrides, bedStates, telemed, internos, extraBlocks, doctorSeed, bedOverrides, supervisorOverrides, hydrating]);
 
   // Redistribuir: re-aleatoriza médicos pero los internos conservan sus camas
   // (se mantiene la herencia de las camas asignadas a internos).
@@ -228,9 +359,11 @@ export default function AgendaDiaria() {
 
   const onSave = useCallback(async () => {
     setSaving(true);
+    const editedDay = applyDayOverrides(baseDay, dayOverrides);
     const payload = {
       date: selectedDate,
       data: {
+        dayOverrides,
         bedStates, telemed, internos, extraBlocks,
         doctorSeed, bedOverrides, supervisorOverrides,
         assigned: result.assigned,
@@ -240,21 +373,31 @@ export default function AgendaDiaria() {
     };
     const { error } = await sdmSupabase
       .from('sdm_daily_agendas').upsert(payload, { onConflict: 'date' });
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast.error('Error al guardar: ' + (explainSdmWriteError(error) || error.message));
       return;
     }
+
+    const weeklyOk = await saveDailyIntoWeekly({
+      weekStart: fmtDate(monday),
+      baseDay,
+      editedDay,
+      dayOverrides,
+      currentAgenda: agenda,
+    });
+    setSaving(false);
+    if (!weeklyOk) return;
     setSavedExists(true);
     setDirty(false);
     setPriorAssignments(result.assigned); // fija el reparto guardado
-    toast.success('Agenda diaria guardada');
-  }, [selectedDate, bedStates, telemed, internos, extraBlocks, doctorSeed, bedOverrides, supervisorOverrides, result]);
+    toast.success('Agenda diaria guardada y reflejada en Subdirección');
+  }, [selectedDate, monday, baseDay, dayOverrides, agenda, bedStates, telemed, internos, extraBlocks, doctorSeed, bedOverrides, supervisorOverrides, result]);
 
-  const onExportPdf = useCallback(() => {
+  const onExportPdf = useCallback(async () => {
     if (!day) return;
     try {
-      exportDailyAgendaPdf({ date: selectedDate, day, result, telemed, extraBlocks, docName });
+      await exportDailyAgendaPdf({ date: selectedDate, day, result, telemed, extraBlocks, docName });
     } catch (e) {
       toast.error('No se pudo generar el PDF: ' + e.message);
     }
@@ -319,33 +462,9 @@ export default function AgendaDiaria() {
       <div className="max-w-4xl mx-auto px-4 py-6">
         {!day ? (
           <EmptyDay onSubdireccion={() => navigate(createPageUrl('SubdireccionMedica'))} />
-        ) : wizardDone ? (
-          <PostWizard
-            docName={docName}
-            telemed={telemed}
-            internos={internos}
-            bedStates={bedStates}
-            onToggleBed={toggleBed}
-            result={result}
-            roster={roster}
-            visitBedCodes={visitBedCodes}
-            visitDocs={visitDocs}
-            interns_={effInterns}
-            onRedistribute={onRedistribute}
-            bedOverrides={bedOverrides}
-            setBedOverrides={setBedOverrides}
-            supervisorOverrides={supervisorOverrides}
-            setSupervisorOverrides={setSupervisorOverrides}
-            onSave={onSave}
-            saving={saving}
-            savedExists={savedExists}
-            dirty={dirty}
-            onExportPdf={onExportPdf}
-            onReabrir={() => { setWizardDone(false); setStep(0); }}
-          />
         ) : (
           <>
-            <Stepper step={step} />
+            <Stepper step={step} onStepChange={setStep} />
             <div className="mt-6">
               {step === 0 && (
                 <StepAgenda
@@ -356,11 +475,40 @@ export default function AgendaDiaria() {
                   setExternalConfirm={setExternalConfirm}
                   extraBlocks={extraBlocks}
                   setExtraBlocks={setExtraBlocks}
+                  setDayOverrides={setDayOverrides}
                 />
               )}
-              {step === 1 && <StepTelemed telemed={telemed} setTelemed={setTelemed} />}
+              {step === 1 && <StepTelemed telemed={telemed} setTelemed={setTelemed} doctors={doctors} />}
               {step === 2 && (
                 <StepInternos internos={internos} setInternos={setInternos} />
+              )}
+              {step >= 3 && (
+                <PostWizard
+                  section={STEPS[step].key}
+                  docName={docName}
+                  telemed={telemed}
+                  bedStates={bedStates}
+                  onToggleBed={toggleBed}
+                  result={result}
+                  roster={roster}
+                  visitBedCodes={visitBedCodes}
+                  visitDocs={visitDocs}
+                  interns_={effInterns}
+                  onRedistribute={onRedistribute}
+                  bedOverrides={bedOverrides}
+                  setBedOverrides={setBedOverrides}
+                  supervisorOverrides={supervisorOverrides}
+                  setSupervisorOverrides={setSupervisorOverrides}
+                  onSave={onSave}
+                  saving={saving}
+                  savedExists={savedExists}
+                  dirty={dirty}
+                  onExportPdf={onExportPdf}
+                  date={selectedDate}
+                  day={day}
+                  doctors={doctors}
+                  setDayOverrides={setDayOverrides}
+                />
               )}
             </div>
 
@@ -373,13 +521,20 @@ export default function AgendaDiaria() {
               >
                 <ChevronLeft className="h-4 w-4 mr-1" /> Atrás
               </Button>
+              {(savedExists || dirty) && step < STEPS.length - 1 && (
+                <Button variant="outline" onClick={onSave} disabled={saving || !dirty}>
+                  <Check className="h-4 w-4 mr-1" />
+                  {saving ? 'Guardando…' : dirty ? 'Guardar cambios' : 'Guardado'}
+                </Button>
+              )}
               {step < STEPS.length - 1 ? (
                 <Button onClick={() => setStep((s) => s + 1)}>
                   Continuar <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               ) : (
-                <Button onClick={() => setWizardDone(true)}>
-                  <Check className="h-4 w-4 mr-1" /> Confirmar y continuar
+                <Button onClick={onSave} disabled={saving}>
+                  <Check className="h-4 w-4 mr-1" />
+                  {saving ? 'Guardando…' : savedExists ? (dirty ? 'Guardar cambios' : 'Guardado') : 'Guardar agenda'}
                 </Button>
               )}
             </div>
@@ -391,7 +546,7 @@ export default function AgendaDiaria() {
 }
 
 // ── Stepper ──────────────────────────────────────────────────────────────
-function Stepper({ step }) {
+function Stepper({ step, onStepChange }) {
   return (
     <div className="flex items-center gap-2">
       {STEPS.map((s, i) => {
@@ -400,18 +555,20 @@ function Stepper({ step }) {
         const done = i < step;
         return (
           <React.Fragment key={s.key}>
-            <div
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${
+            <button
+              type="button"
+              onClick={() => onStepChange(i)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 active
                   ? 'bg-blue-600 text-white'
                   : done
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'bg-white text-slate-400 border border-slate-200'
+                    ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                    : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-800'
               }`}
             >
               {done ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
               <span className="hidden sm:inline">{s.label}</span>
-            </div>
+            </button>
             {i < STEPS.length - 1 && <div className="flex-1 h-px bg-slate-200" />}
           </React.Fragment>
         );
@@ -421,9 +578,84 @@ function Stepper({ step }) {
 }
 
 // ── Step 1: Agenda del día ─────────────────────────────────────────────────
-function StepAgenda({ day, docName, doctors, externalConfirm, setExternalConfirm, extraBlocks, setExtraBlocks }) {
+async function saveDailyIntoWeekly({ weekStart, baseDay, editedDay, dayOverrides, currentAgenda }) {
+  if (!baseDay || !editedDay) return true;
+
+  const { data: row, error: readError } = await sdmSupabase
+    .from('sdm_weekly_agendas')
+    .select('*')
+    .eq('week_start', weekStart)
+    .maybeSingle();
+  if (readError) {
+    toast.error('Guardado diario OK, pero no se pudo leer la agenda semanal: ' + (explainSdmWriteError(readError) || readError.message));
+    return false;
+  }
+
+  const previous = row?.data || {};
+  const previousAgenda = Array.isArray(previous.agenda) ? previous.agenda : currentAgenda;
+  const nextAgenda = previousAgenda.map((d) => (d.date === editedDay.date ? editedDay : d));
+  const nextReinforcements = {
+    ...(previous.reinforcements || {}),
+    [editedDay.date]: editedDay.refuerzos || { am: null, pm: null },
+  };
+  const nextBloqueosOverrides = {
+    ...(previous.bloqueosOverrides || {}),
+    [editedDay.date]: (editedDay.bloqueos || []).map(normalizeDailyBlock),
+  };
+  const visitaOverride = buildVisitaOverride(baseDay, editedDay);
+  const nextVisitaOverrides = { ...(previous.visitaOverrides || {}) };
+  if (visitaOverride.add.length || visitaOverride.remove.length) nextVisitaOverrides[editedDay.date] = visitaOverride;
+  else delete nextVisitaOverrides[editedDay.date];
+
+  const nextDailyOverrides = {
+    ...(previous.dailyOverrides || {}),
+    [editedDay.date]: dayOverrides,
+  };
+
+  const payload = {
+    week_start: weekStart,
+    data: {
+      ...previous,
+      agenda: nextAgenda,
+      reinforcements: nextReinforcements,
+      bloqueosOverrides: nextBloqueosOverrides,
+      visitaOverrides: nextVisitaOverrides,
+      dailyOverrides: nextDailyOverrides,
+      generated_at: new Date().toISOString(),
+    },
+    status: 'editada',
+    updated_at: new Date().toISOString(),
+  };
+
+  const write = row?.id
+    ? await sdmSupabase.from('sdm_weekly_agendas').update(payload).eq('id', row.id)
+    : await sdmSupabase.from('sdm_weekly_agendas').insert(payload);
+  if (write.error) {
+    toast.error('Guardado diario OK, pero no se pudo actualizar Subdirección: ' + (explainSdmWriteError(write.error) || write.error.message));
+    return false;
+  }
+
+  if (dayOverrides?.turnos) {
+    const baseTurnos = idsOf(baseDay.turnos || []);
+    const editedTurnos = idsOf(editedDay.turnos || []);
+    const replacements = baseTurnos
+      .map((doctorId, index) => ({ doctor_id: doctorId, replaced_by: editedTurnos[index], reason: 'Agenda diaria' }))
+      .filter((r) => r.replaced_by && r.replaced_by !== r.doctor_id);
+    const { error } = await sdmSupabase
+      .from('sdm_shift_calendar')
+      .update({ replacements })
+      .eq('date', editedDay.date);
+    if (error) {
+      toast.warning('La semana quedó actualizada, pero el calendario de turnos no aceptó el reemplazo: ' + (explainSdmWriteError(error) || error.message));
+    }
+  }
+  return true;
+}
+
+function StepAgenda({ day, docName, doctors, externalConfirm, setExternalConfirm, extraBlocks, setExtraBlocks, setDayOverrides }) {
   const turnos = day.turnos || [];
   const posturno = day.posturno || [];
+  const ausencias = day.ausencias || [];
   const bloqueos = (day.bloqueos || []).filter((b) => !b.suspended);
   const externals = day.external_visitors || [];
 
@@ -432,6 +664,27 @@ function StepAgenda({ day, docName, doctors, externalConfirm, setExternalConfirm
   const updateExtra = (id, field, value) =>
     setExtraBlocks((p) => p.map((b) => (b.id === id ? { ...b, [field]: value } : b)));
   const removeExtra = (id) => setExtraBlocks((p) => p.filter((b) => b.id !== id));
+  const updateDay = (field, value) => setDayOverrides((p) => ({ ...p, [field]: value }));
+  const updateDoctorList = (field, index, doctorId) => {
+    const current = day[field] || [];
+    updateDay(field, current.map((row, i) => (i === index ? { ...row, doctor_id: doctorId } : row)));
+  };
+  const addDoctorToList = (field) => updateDay(field, [...(day[field] || []), { doctor_id: doctors[0]?.id || '' }]);
+  const removeDoctorFromList = (field, index) => updateDay(field, (day[field] || []).filter((_, i) => i !== index));
+  const setRefuerzo = (slot, doctorId) => updateDay('refuerzos', { ...(day.refuerzos || {}), [slot]: doctorId === EMPTY_DOCTOR ? null : doctorId });
+  const updateAusencia = (index, field, value) => updateDay('ausencias', ausencias.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
+  const addAusencia = () => updateDay('ausencias', [...ausencias, { doctor_id: doctors[0]?.id || '', type: 'A' }]);
+  const removeAusencia = (index) => updateDay('ausencias', ausencias.filter((_, i) => i !== index));
+  const updateBlock = (index, patch) => {
+    updateDay('bloqueos', bloqueos.map((b, i) => {
+      if (i !== index) return b;
+      const next = { ...b, ...patch };
+      return normalizeDailyBlock(next);
+    }));
+  };
+  const setBlockDoctor = (index, doctorId) => updateBlock(index, { doctor_ids: doctorId === EMPTY_DOCTOR ? [] : [doctorId], doctor_id: doctorId === EMPTY_DOCTOR ? null : doctorId });
+  const addBlock = () => updateDay('bloqueos', [...bloqueos, newBlock()]);
+  const removeBlock = (index) => updateDay('bloqueos', bloqueos.filter((_, i) => i !== index));
 
   return (
     <div className="space-y-5">
@@ -445,23 +698,55 @@ function StepAgenda({ day, docName, doctors, externalConfirm, setExternalConfirm
 
       <InfoCard title="Turno">
         {turnos.length
-          ? turnos.map((t) => (
-              <Chip key={t.doctor_id}>{docName(t.doctor_id)}</Chip>
+          ? turnos.map((t, i) => (
+              <DoctorSelectRow key={`${t.doctor_id}-${i}`} value={t.doctor_id} doctors={doctors} onChange={(v) => updateDoctorList('turnos', i, v)} onRemove={() => removeDoctorFromList('turnos', i)} />
             ))
           : <Muted>Sin turno asignado</Muted>}
+        <MiniButton onClick={() => addDoctorToList('turnos')}>Agregar</MiniButton>
       </InfoCard>
 
       <InfoCard title="Posturno">
         {posturno.length
-          ? posturno.map((t) => <Chip key={t.doctor_id} tone="slate">{docName(t.doctor_id)}</Chip>)
+          ? posturno.map((t, i) => (
+              <DoctorSelectRow key={`${t.doctor_id}-${i}`} value={t.doctor_id} doctors={doctors} onChange={(v) => updateDoctorList('posturno', i, v)} onRemove={() => removeDoctorFromList('posturno', i)} />
+            ))
           : <Muted>—</Muted>}
+        <MiniButton onClick={() => addDoctorToList('posturno')}>Agregar</MiniButton>
       </InfoCard>
 
       <InfoCard title="Refuerzos">
         <div className="flex flex-wrap gap-2">
-          <Chip tone="amber">AM: {day.refuerzos?.am ? docName(day.refuerzos.am) : '—'}</Chip>
-          <Chip tone="amber">PM: {day.refuerzos?.pm ? docName(day.refuerzos.pm) : '—'}</Chip>
+          <DoctorPick label="AM" value={day.refuerzos?.am || EMPTY_DOCTOR} doctors={doctors} onChange={(v) => setRefuerzo('am', v)} allowEmpty />
+          <DoctorPick label="PM" value={day.refuerzos?.pm || EMPTY_DOCTOR} doctors={doctors} onChange={(v) => setRefuerzo('pm', v)} allowEmpty />
         </div>
+      </InfoCard>
+
+      <InfoCard title="Ausencias">
+        {ausencias.length === 0 ? (
+          <Muted>Sin ausencias anotadas.</Muted>
+        ) : ausencias.map((a, i) => (
+          <span key={`${a.doctor_id}-${i}`} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
+            <DoctorPick value={a.doctor_id} doctors={doctors} onChange={(v) => updateAusencia(i, 'doctor_id', v)} />
+            <select
+              value={a.type || 'A'}
+              onChange={(e) => updateAusencia(i, 'type', e.target.value)}
+              className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700"
+            >
+              <option value="FL">Feriado legal</option>
+              <option value="A">Administrativo</option>
+              <option value="LM">Licencia médica</option>
+              <option value="P">Permiso</option>
+              <option value="DT">Devolución tiempo</option>
+              <option value="CAP">Capacitación</option>
+              <option value="PAS">Pasantía</option>
+              <option value="OTRO">Otro</option>
+            </select>
+            <button type="button" onClick={() => removeAusencia(i)} className="rounded p-1 text-slate-400 hover:bg-white hover:text-slate-700">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </span>
+        ))}
+        <MiniButton onClick={addAusencia}>Agregar</MiniButton>
       </InfoCard>
 
       <InfoCard title="Especialistas visitantes">
@@ -496,19 +781,25 @@ function StepAgenda({ day, docName, doctors, externalConfirm, setExternalConfirm
         {bloqueos.length === 0 ? (
           <Muted>Sin bloqueos.</Muted>
         ) : (
-          <ul className="w-full space-y-1 text-sm text-slate-600">
+          <ul className="w-full space-y-2 text-sm text-slate-600">
             {bloqueos.map((b, i) => {
-              const hhmm = (t) => (t || '').slice(0, 5);
-              const horario = b.from ? `${hhmm(b.from)}${b.to ? `–${hhmm(b.to)}` : ''}` : '';
               return (
-                <li key={i} className="flex items-baseline gap-2">
-                  {horario && <span className="shrink-0 font-semibold tabular-nums text-slate-700">{horario}</span>}
-                  <span>{b.name}{b.doctor_id ? ` · ${docName(b.doctor_id)}` : ''}</span>
+                <li key={b.block_id || i} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-100 p-2">
+                  <Input type="time" value={b.from || ''} onChange={(e) => updateBlock(i, { from: e.target.value })} className="w-28 h-8 text-xs" />
+                  <Input type="time" value={b.to || ''} onChange={(e) => updateBlock(i, { to: e.target.value })} className="w-28 h-8 text-xs" />
+                  <Input value={b.name || ''} onChange={(e) => updateBlock(i, { name: e.target.value })} className="min-w-[180px] flex-1 h-8 text-xs" />
+                  <DoctorPick value={b.doctor_id || EMPTY_DOCTOR} doctors={doctors} onChange={(v) => setBlockDoctor(i, v)} allowEmpty />
+                  <Button variant="ghost" size="icon" onClick={() => removeBlock(i)}>
+                    <Trash2 className="h-4 w-4 text-slate-400" />
+                  </Button>
                 </li>
               );
             })}
           </ul>
         )}
+        <Button variant="outline" size="sm" className="mt-3 mr-2" onClick={addBlock}>
+          <Plus className="h-4 w-4 mr-1" /> Agregar bloqueo a agenda
+        </Button>
 
         {/* Bloqueos extra del día (ad-hoc) */}
         {extraBlocks.length > 0 && (
@@ -558,23 +849,6 @@ function StepAgenda({ day, docName, doctors, externalConfirm, setExternalConfirm
       </InfoCard>
 
       <EcografiasCard doctors={doctors} extraBlocks={extraBlocks} setExtraBlocks={setExtraBlocks} docName={docName} />
-
-      <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 text-sm text-blue-700">
-        Médicos que harán visita hoy:{' '}
-        <span className="font-medium">
-          {(day.visita || []).length
-            ? (day.visita || [])
-                .map((v) => isLimited(v.capacity)
-                  ? `${docName(v.doctor_id)} (máx ${v.capacity})`
-                  : docName(v.doctor_id))
-                .join(', ')
-            : '—'}
-        </span>
-        <span className="block text-xs text-blue-500/80 mt-1">
-          El número entre paréntesis es un tope solo para médicos con limitación horaria; el resto
-          asume más visitas según su jornada.
-        </span>
-      </div>
     </div>
   );
 }
@@ -649,7 +923,9 @@ function EcografiasCard({ doctors, extraBlocks, setExtraBlocks, docName }) {
 }
 
 // ── Step 2: Telemedicinas ──────────────────────────────────────────────────
-function StepTelemed({ telemed, setTelemed }) {
+const TELEMED_DEFAULT_DOCTORS = ['ALVARADO', 'CARREÑO', 'CORDERO', 'TOLEDO', 'SBARBARO', 'FASANI', 'SANDOVAL'];
+
+function StepTelemed({ telemed, setTelemed, doctors = [] }) {
   const add = () =>
     setTelemed((p) => [...p, { id: crypto.randomUUID(), specialty: '', time: '', doctor: '' }]);
   const update = (id, field, value) =>
@@ -662,6 +938,12 @@ function StepTelemed({ telemed, setTelemed }) {
       <p className="text-sm text-slate-500 -mt-3">
         Ej: Teleginecología 14:30 (Dra. Toledo). Agrega las que correspondan.
       </p>
+      <div className="flex flex-wrap gap-2 rounded-lg border border-blue-100 bg-blue-50 p-3">
+        <span className="w-full text-xs font-semibold uppercase tracking-wide text-blue-700">Pool habitual</span>
+        {TELEMED_DEFAULT_DOCTORS.map((name) => (
+          <Chip key={name}>{name}</Chip>
+        ))}
+      </div>
 
       <div className="space-y-3">
         {telemed.map((t) => (
@@ -686,6 +968,7 @@ function StepTelemed({ telemed, setTelemed }) {
               value={t.doctor}
               onChange={(e) => update(t.id, 'doctor', e.target.value)}
               className="flex-1 min-w-[140px]"
+              list="telemed-doctor-pool"
             />
             <Button variant="ghost" size="icon" onClick={() => remove(t.id)}>
               <Trash2 className="h-4 w-4 text-slate-400" />
@@ -697,6 +980,11 @@ function StepTelemed({ telemed, setTelemed }) {
       <Button variant="outline" onClick={add}>
         <Plus className="h-4 w-4 mr-1" /> Agregar telemedicina
       </Button>
+      <datalist id="telemed-doctor-pool">
+        {unique([...TELEMED_DEFAULT_DOCTORS, ...doctors.map((d) => d.display_name)]).map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
     </div>
   );
 }
@@ -754,59 +1042,106 @@ function StepInternos({ internos, setInternos }) {
 
 // ── Vista posterior al wizard: distribución de camas + reparto ───────────────
 function PostWizard({
-  docName, telemed, internos, bedStates, onToggleBed,
+  section, docName, telemed, bedStates, onToggleBed,
   result, roster, visitBedCodes, visitDocs, interns_,
   onRedistribute, bedOverrides, setBedOverrides,
   supervisorOverrides, setSupervisorOverrides,
   onSave, saving, savedExists, dirty, onExportPdf,
-  onReabrir,
+  date, day, doctors, setDayOverrides,
 }) {
   return (
     <div className="space-y-5">
-      <div className="rounded-lg bg-green-50 border border-green-100 p-4 flex items-start gap-3">
-        <Check className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
+      {section === 'camas' && (
         <div>
-          <p className="font-medium text-green-800">Confirmación completada</p>
-          <p className="text-sm text-green-700">
-            {visitDocs.length} médicos en visita · {telemed.length} telemedicinas ·{' '}
-            {interns_.length} internos
+          <h2 className="text-lg font-semibold text-slate-900 mb-1">Distribución de camas</h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Deja en <span className="font-medium text-emerald-700">verde</span> las disponibles, en{' '}
+            <span className="font-medium text-red-700">rojo</span> las ocupadas, en{' '}
+            <span className="font-medium text-violet-700">morado</span> las sociales y con{' '}
+            <span className="font-medium">línea suspensiva</span> las no disponibles. Quedan{' '}
+            <span className="font-semibold text-blue-700">{visitBedCodes.length} pacientes con visita</span>{' '}
+            para repartir entre {visitDocs.length} médicos.
           </p>
+          <BedMap bedStates={bedStates} onToggle={onToggleBed} />
         </div>
-        <Button variant="outline" size="sm" className="ml-auto" onClick={onReabrir}>
-          Reabrir
-        </Button>
-      </div>
+      )}
 
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900 mb-1">Distribución de camas</h2>
-        <p className="text-sm text-slate-500 mb-4">
-          Marca las camas <span className="font-medium">sin visita</span>, las{' '}
-          <span className="font-medium">bloqueadas</span> (sociales) y las{' '}
-          <span className="font-medium">vacías</span>. Quedan{' '}
-          <span className="font-semibold text-blue-700">{visitBedCodes.length} pacientes con visita</span>{' '}
-          para repartir entre {visitDocs.length} médicos.
-        </p>
-        <BedMap bedStates={bedStates} onToggle={onToggleBed} />
-      </div>
+      {section === 'visita' && (
+        <VisitDoctorsPanel day={day} doctors={doctors} setDayOverrides={setDayOverrides} />
+      )}
 
-      <DailyDistribution
-        result={result}
-        roster={roster}
-        visitBedCodes={visitBedCodes}
-        visitDocs={visitDocs}
-        interns={interns_}
-        docName={docName}
-        onRedistribute={onRedistribute}
-        bedOverrides={bedOverrides}
-        setBedOverrides={setBedOverrides}
-        supervisorOverrides={supervisorOverrides}
-        setSupervisorOverrides={setSupervisorOverrides}
-        onSave={onSave}
-        saving={saving}
-        savedExists={savedExists}
-        dirty={dirty}
-        onExportPdf={onExportPdf}
-      />
+      {section === 'final' && (
+        <DailyDistribution
+          result={result}
+          roster={roster}
+          visitBedCodes={visitBedCodes}
+          visitDocs={visitDocs}
+          interns={interns_}
+          docName={docName}
+          onRedistribute={onRedistribute}
+          bedOverrides={bedOverrides}
+          setBedOverrides={setBedOverrides}
+          supervisorOverrides={supervisorOverrides}
+          setSupervisorOverrides={setSupervisorOverrides}
+          onSave={onSave}
+          saving={saving}
+          savedExists={savedExists}
+          dirty={dirty}
+          onExportPdf={onExportPdf}
+          date={date}
+          day={day}
+          telemed={telemed}
+        />
+      )}
+    </div>
+  );
+}
+
+function VisitDoctorsPanel({ day, doctors, setDayOverrides }) {
+  const visitas = day?.visita || [];
+  const used = new Set(visitas.map((v) => v.doctor_id).filter(Boolean));
+  const updateVisita = (next) => setDayOverrides((p) => ({ ...p, visita: uniqueVisits(next) }));
+  const update = (index, field, value) => {
+    if (field === 'doctor_id' && visitas.some((v, i) => i !== index && v.doctor_id === value)) {
+      toast.warning('Ese médico ya está en la visita del día.');
+      return;
+    }
+    updateVisita(visitas.map((v, i) => (i === index ? { ...v, [field]: field === 'capacity' ? (value === '' ? null : Number(value)) : value } : v)));
+  };
+  const add = () => {
+    const nextDoctor = doctors.find((d) => !used.has(d.id))?.id || doctors[0]?.id || '';
+    if (!nextDoctor) return;
+    updateVisita([...visitas, { doctor_id: nextDoctor, capacity: null, manual: true }]);
+  };
+  const remove = (index) => updateVisita(visitas.filter((_, i) => i !== index));
+
+  return (
+    <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+      <h2 className="mb-4 text-lg font-semibold text-blue-700">Médicos que harán visita hoy</h2>
+      <div className="space-y-3">
+        {visitas.map((v, i) => (
+          <div key={`${v.doctor_id}-${i}`} className="flex flex-wrap items-center gap-3">
+            <DoctorPick value={v.doctor_id} doctors={doctors} onChange={(value) => update(i, 'doctor_id', value)} />
+            <Input
+              type="number"
+              min="1"
+              placeholder="Sin tope"
+              value={v.capacity ?? ''}
+              onChange={(e) => update(i, 'capacity', e.target.value)}
+              className="w-28 bg-white text-blue-700"
+            />
+            <Button variant="ghost" size="icon" onClick={() => remove(i)}>
+              <Trash2 className="h-4 w-4 text-blue-400" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <Button variant="outline" className="mt-4 bg-white" onClick={add}>
+        <Plus className="h-4 w-4 mr-1" /> Agregar visita
+      </Button>
+      <p className="mt-3 text-sm text-blue-500">
+        El número entre paréntesis es un tope solo para médicos con limitación horaria; el resto asume más visitas según su jornada.
+      </p>
     </div>
   );
 }
@@ -829,6 +1164,44 @@ function Chip({ children, tone = 'blue' }) {
   };
   return (
     <span className={`px-2.5 py-1 rounded-full text-sm font-medium ${tones[tone]}`}>{children}</span>
+  );
+}
+
+function MiniButton({ children, onClick }) {
+  return (
+    <button type="button" onClick={onClick} className="inline-flex h-8 items-center gap-1 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-600 hover:bg-slate-50">
+      <Plus className="h-3.5 w-3.5" /> {children}
+    </button>
+  );
+}
+
+function DoctorPick({ label, value, doctors, onChange, allowEmpty = false }) {
+  return (
+    <label className="inline-flex items-center gap-1 text-xs text-slate-500">
+      {label && <span className="font-semibold">{label}</span>}
+      <select
+        value={value || (allowEmpty ? EMPTY_DOCTOR : '')}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700"
+      >
+        {allowEmpty && <option value={EMPTY_DOCTOR}>—</option>}
+        {(doctors || []).map((d) => (
+          <option key={d.id} value={d.id}>{d.display_name}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function DoctorSelectRow({ value, doctors, onChange, onRemove }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
+      <Pencil className="h-3.5 w-3.5 text-slate-400" />
+      <DoctorPick value={value} doctors={doctors} onChange={onChange} />
+      <button type="button" onClick={onRemove} className="rounded p-1 text-slate-400 hover:bg-white hover:text-slate-700">
+        <Trash2 className="h-3.5 w-3.5" />
+      </button>
+    </span>
   );
 }
 

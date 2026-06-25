@@ -3,10 +3,10 @@ import { Lock } from 'lucide-react';
 import { BED_CATALOG, BED_STATE, defaultBedState } from './bedCatalog';
 
 const STATE_STYLE = {
-  [BED_STATE.VISIT]: 'bg-blue-50 border-blue-300 text-blue-800',
-  [BED_STATE.NOVISIT]: 'bg-amber-50 border-amber-300 text-amber-700 line-through decoration-amber-400 decoration-2',
-  [BED_STATE.BLOCKED]: 'bg-slate-200 border-slate-400 text-slate-600 line-through decoration-slate-500 decoration-2',
-  [BED_STATE.EMPTY]: 'bg-slate-50 border-dashed border-slate-300 text-slate-400 italic',
+  [BED_STATE.VISIT]: 'bg-red-50 border-red-400 text-red-700',
+  [BED_STATE.NOVISIT]: 'bg-slate-50 border-dashed border-slate-300 text-slate-400 italic',
+  [BED_STATE.BLOCKED]: 'bg-violet-50 border-violet-400 text-violet-700 line-through decoration-violet-400 decoration-2',
+  [BED_STATE.EMPTY]: 'bg-emerald-50 border-emerald-400 text-emerald-800',
 };
 
 // Nombre legible para mostrar en el botón (el código interno se conserva como key).
@@ -15,6 +15,8 @@ function bedLabel(svc, sala, idx, code) {
   const short = svc.short || svc.name || '';
   const m = /SALA\s*0*(\d+)/i.exec(sala.label || '');
   if (m) return `${short} ${m[1]}-${idx + 1}`;
+  const iso = /AISLAMIENTO\s*0*(\d+)/i.exec(sala.label || '');
+  if (iso) return `${short} Aislamiento ${iso[1]}`;
   const a = /AISL\s*0*(\d+)/i.exec(sala.label || '');
   if (a) return `${short} Aisl${a[1]}-${idx + 1}`;
   return code;
@@ -64,10 +66,10 @@ function ServiceCard({ svc, stateOf, onToggle }) {
           <span className="ml-2 text-xs text-slate-400">{svc.short}</span>
         </div>
         <span className="text-xs text-slate-500">
-          {counts.visit} visita{counts.visit !== 1 ? 's' : ''}
-          {counts.blocked > 0 && ` · ${counts.blocked} bloq.`}
-          {counts.novisit > 0 && ` · ${counts.novisit} sin`}
-          {counts.empty > 0 && ` · ${counts.empty} vacía${counts.empty !== 1 ? 's' : ''}`}
+          {counts.visit} ocupada{counts.visit !== 1 ? 's' : ''}
+          {counts.empty > 0 && ` · ${counts.empty} disp.`}
+          {counts.blocked > 0 && ` · ${counts.blocked} social${counts.blocked !== 1 ? 'es' : ''}`}
+          {counts.novisit > 0 && ` · ${counts.novisit} no disp.`}
         </span>
       </div>
       <div className="p-3 space-y-2.5">
@@ -102,10 +104,10 @@ function ServiceCard({ svc, stateOf, onToggle }) {
 
 function Legend() {
   const items = [
-    { st: BED_STATE.VISIT, label: 'Ocupada — con visita' },
-    { st: BED_STATE.NOVISIT, label: 'Ocupada — sin visita' },
-    { st: BED_STATE.BLOCKED, label: 'Bloqueada (social)' },
-    { st: BED_STATE.EMPTY, label: 'Vacía' },
+    { st: BED_STATE.EMPTY, label: 'Disponible' },
+    { st: BED_STATE.VISIT, label: 'Ocupada' },
+    { st: BED_STATE.BLOCKED, label: 'Social' },
+    { st: BED_STATE.NOVISIT, label: 'No disponible' },
   ];
   return (
     <div className="flex flex-wrap gap-3 text-xs text-slate-500">

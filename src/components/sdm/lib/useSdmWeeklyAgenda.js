@@ -26,6 +26,24 @@ export function buildBlockSuggestions(blockTemplates) {
   });
 }
 
+function applyDailyOverridesToAgenda(agenda, dailyOverrides = {}) {
+  if (!dailyOverrides || Object.keys(dailyOverrides).length === 0) return agenda;
+  return agenda.map((day) => {
+    const ov = dailyOverrides[day.date];
+    if (!ov) return day;
+    return {
+      ...day,
+      turnos: ov.turnos || day.turnos || [],
+      posturno: ov.posturno || day.posturno || [],
+      ausencias: ov.ausencias || day.ausencias || [],
+      refuerzos: ov.refuerzos || day.refuerzos || { am: null, pm: null },
+      bloqueos: ov.bloqueos || day.bloqueos || [],
+      visita: ov.visita || day.visita || [],
+      daily_override: true,
+    };
+  });
+}
+
 export function useSdmWeeklyAgenda(monday) {
   const [doctors, setDoctors] = useState([]);
   const [rotation, setRotation] = useState([]);
@@ -124,7 +142,7 @@ export function useSdmWeeklyAgenda(monday) {
 
   const agenda = useMemo(() => {
     if (loading) return [];
-    return generateAgenda({
+    const generated = generateAgenda({
       weekStart: monday,
       doctors,
       rotation,
@@ -140,7 +158,8 @@ export function useSdmWeeklyAgenda(monday) {
       bloqueosOverrides,
       poliDisabled,
     });
-  }, [loading, monday, doctors, rotation, shiftCalendar, blockTemplates, programAssignments, absences, oneoffBlocks, reinforcements, poli8amOverrides, poliDisabled, visitaOverrides, externalVisitorOverrides, bloqueosOverrides]);
+    return applyDailyOverridesToAgenda(generated, savedData?.dailyOverrides || {});
+  }, [loading, monday, doctors, rotation, shiftCalendar, blockTemplates, programAssignments, absences, oneoffBlocks, reinforcements, poli8amOverrides, poliDisabled, visitaOverrides, externalVisitorOverrides, bloqueosOverrides, savedData]);
 
   const blockSuggestions = useMemo(() => buildBlockSuggestions(blockTemplates), [blockTemplates]);
 
@@ -176,6 +195,7 @@ export function useSdmWeeklyAgenda(monday) {
         poliDisabled,
         visitaOverrides,
         externalVisitorOverrides,
+        dailyOverrides: savedData?.dailyOverrides || {},
         dismissedErrors,
         acknowledgedErrors,
         has_errors: hasErrors,

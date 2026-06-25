@@ -31,6 +31,7 @@ export const PROA_BED_MAP = [
       { label: 'Sala 3', beds: buildRoomBeds(3, 5, 'MQ2-') },
       { label: 'Sala 4', beds: buildRoomBeds(4, 5, 'MQ2-') },
       { label: 'Sala 5', beds: buildRoomBeds(5, 1, 'MQ2-') },
+      { label: 'Aislamientos', beds: ['MQ2-Aislamiento 1', 'MQ2-Aislamiento 2'] },
     ],
   },
   {
@@ -65,16 +66,20 @@ const MQ1_CAMAS = [
 ];
 
 const MQ2_SALAS = ['MQ2 - Sala 2', 'MQ2 - Sala 3', 'MQ2 - Sala 4'];
+const MQ2_AISLAMIENTO_SALAS = ['MQ2 - Aislamiento 1', 'MQ2 - Aislamiento 2'];
+const MQ2_AISLAMIENTOS = ['MQ2-Aislamiento 1', 'MQ2-Aislamiento 2'];
 const MQ2_CAMAS = [
   ...buildRoomBeds(2, 5, 'MQ2-'),
   ...buildRoomBeds(3, 5, 'MQ2-'),
   ...buildRoomBeds(4, 5, 'MQ2-'),
   ...buildRoomBeds(5, 1, 'MQ2-'),
+  ...MQ2_AISLAMIENTOS,
 ];
 
 export const SALAS = [
   ...MQ1_SALAS,
   ...MQ2_SALAS,
+  ...MQ2_AISLAMIENTO_SALAS,
   'Pediatría',
   'Ginecología Obstetricia',
   'Urgencias',
@@ -104,6 +109,8 @@ export const SALA_CAMA_SUGGESTIONS = [
     const room = sala.match(/Sala (\d+)/)?.[1];
     return buildRoomBeds(room, 5, 'MQ2-').map((cama) => `${sala} / Cama ${cama}`);
   }),
+  'MQ2 - Aislamiento 1 / Cama MQ2-Aislamiento 1',
+  'MQ2 - Aislamiento 2 / Cama MQ2-Aislamiento 2',
   ...Array.from({ length: 9 }, (_, i) => `Pediatría / Cama PED-${i + 1}`),
   ...Array.from({ length: 3 }, (_, i) => `Ginecología Obstetricia / Cama GINE-${i + 1}`),
   ...Array.from({ length: 3 }, (_, i) => `Ginecología Obstetricia / Cama OBS-${i + 1}`),

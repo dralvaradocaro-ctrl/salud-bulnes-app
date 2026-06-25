@@ -31,6 +31,8 @@ export const BED_CATALOG = [
       { id: 'mq2-s2', label: 'SALA 2', beds: beds('S2MQMCHB-1', 'S2MQMCHB-2', 'S2MQMCHB-3', 'S2MQMCHB-4', 'S2MQMCHB-5') },
       { id: 'mq2-s3', label: 'SALA 3', beds: beds('S3MQMCHB-1', 'S3MQMCHB-2', 'S3MQMCHB-3', 'S3MQMCHB-4', 'S3MQMCHB-5') },
       { id: 'mq2-s4', label: 'SALA 4', beds: beds('S4MQMCHB-1', 'S4MQMCHB-2', 'S4MQMCHB-3', 'S4MQMCHB-4', 'S4MQMCHB-5') },
+      { id: 'mq2-a1', label: 'AISLAMIENTO 1', beds: beds('MQ2-AISL-1') },
+      { id: 'mq2-a2', label: 'AISLAMIENTO 2', beds: beds('MQ2-AISL-2') },
     ],
   },
   {
@@ -65,20 +67,18 @@ export const BED_CATALOG = [
 
 // Estados posibles de una cama en la agenda del día.
 export const BED_STATE = {
-  VISIT: 'visit', // ocupada, requiere visita (por defecto)
-  NOVISIT: 'novisit', // ocupada, NO requiere visita hoy
-  BLOCKED: 'blocked', // bloqueada (paciente social: visita cada 2 semanas, no diaria)
-  EMPTY: 'empty', // cama vacía
+  VISIT: 'visit', // ocupada, entra al reparto/visita del día
+  NOVISIT: 'novisit', // no disponible para reparto
+  BLOCKED: 'blocked', // social: no entra al reparto diario habitual
+  EMPTY: 'empty', // disponible
 };
 
-// Ciclo al hacer click: bloqueada → visita → sin visita → vacía → bloqueada
-// (desde "bloqueada" un click la desbloquea para la visita diaria; luego se
-// puede volver a bloquear recorriendo el ciclo.)
+// Ciclo al hacer click: disponible → ocupada → no disponible → social → disponible.
 export const NEXT_STATE_CYCLE = {
-  [BED_STATE.BLOCKED]: BED_STATE.VISIT,
   [BED_STATE.VISIT]: BED_STATE.NOVISIT,
-  [BED_STATE.NOVISIT]: BED_STATE.EMPTY,
-  [BED_STATE.EMPTY]: BED_STATE.BLOCKED,
+  [BED_STATE.NOVISIT]: BED_STATE.BLOCKED,
+  [BED_STATE.BLOCKED]: BED_STATE.EMPTY,
+  [BED_STATE.EMPTY]: BED_STATE.VISIT,
 };
 
 // ─── Camas SOCIALES ────────────────────────────────────────────────────────
@@ -94,7 +94,42 @@ export const SOCIAL_BED_CODES = new Set([
 
 // Estado por defecto de una cama (cuando no hay estado guardado ni heredado).
 export function defaultBedState(code) {
-  return SOCIAL_BED_CODES.has(code) ? BED_STATE.BLOCKED : BED_STATE.VISIT;
+  return SOCIAL_BED_CODES.has(code) ? BED_STATE.BLOCKED : BED_STATE.EMPTY;
+}
+
+// Plantilla inicial cargada desde la agenda vigente enviada el 25-06-2026.
+// Cuando la agenda trae solo "SALA X (n)" sin números de cama, se pre-marcan
+// las primeras n camas de esa sala; el usuario puede corregirlas en el mapa.
+export const INITIAL_BED_STATES_BY_DATE = {
+  '2026-06-25': {
+    '08MB-1': BED_STATE.VISIT, // MATER (1)
+    '01MQB-01': BED_STATE.VISIT,
+    '01MQB-02': BED_STATE.VISIT,
+    '01MQB-03': BED_STATE.VISIT,
+    '02MQB-01': BED_STATE.VISIT,
+    '02MQB-02': BED_STATE.VISIT,
+    '03MQB-01': BED_STATE.VISIT,
+    '03MQB-02': BED_STATE.VISIT,
+    '04MQB-1': BED_STATE.VISIT,
+    '04MQB-2': BED_STATE.VISIT,
+    '05AMQB-5P': BED_STATE.VISIT,
+    '07AMQB-01': BED_STATE.VISIT,
+    'S2MQMCHB-1': BED_STATE.VISIT,
+    'S2MQMCHB-2': BED_STATE.VISIT,
+    'S2MQMCHB-3': BED_STATE.VISIT,
+    'S2MQMCHB-4': BED_STATE.VISIT,
+    'S3MQMCHB-2': BED_STATE.VISIT,
+    'S3MQMCHB-3': BED_STATE.VISIT,
+    'S3MQMCHB-4': BED_STATE.VISIT,
+    'S3MQMCHB-5': BED_STATE.VISIT,
+    'S4MQMCHB-1': BED_STATE.VISIT,
+    'MQ2-AISL-1': BED_STATE.VISIT,
+    'MQ2-AISL-2': BED_STATE.VISIT,
+  },
+};
+
+export function initialBedStatesForDate(date) {
+  return INITIAL_BED_STATES_BY_DATE[String(date || '').slice(0, 10)] || {};
 }
 
 // Lista plana de todas las camas con su servicio y sala (para distribución).
