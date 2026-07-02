@@ -59,22 +59,22 @@ export default function Layout({ children, currentPageName }) {
       </nav>
 
       {/* Mobile bottom navigation */}
-      <nav className="mobile-bottom-nav md:hidden print:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 px-2 pt-2">
-        <div className="flex justify-around">
+      <nav className="mobile-bottom-nav md:hidden print:hidden fixed bottom-0 left-0 right-0 bg-white/95 border-t border-slate-200 z-50 px-2 backdrop-blur-xl">
+        <div className="flex justify-around gap-1">
           {navItems.map((item) => {
             const isActive = item.active ?? currentPageName === item.page;
             return (
               <Link
                 key={item.name}
                 to={item.to}
-                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
+                className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5 transition-all ${
                   isActive
                     ? 'text-blue-600 bg-blue-50'
                     : 'text-slate-600 hover:bg-slate-100'
                 }`}
               >
-                <item.icon className="h-5 w-5" />
-                <span className="text-xs font-medium">{item.name}</span>
+                <item.icon className="h-5 w-5 shrink-0" />
+                <span className="max-w-full truncate text-[11px] font-medium leading-tight">{item.name}</span>
               </Link>
             );
           })}
