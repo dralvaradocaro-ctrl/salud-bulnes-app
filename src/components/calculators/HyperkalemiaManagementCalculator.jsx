@@ -179,18 +179,7 @@ export default function HyperkalemiaManagementCalculator() {
       },
     ];
 
-    const recommendations = [
-      correctedK !== null ? `K corregido aproximado a pH 7,40: ${round(correctedK, 1)} mEq/L. Si pH bajo, parte de la hiperkalemia puede ser por shift; igual tratar si grave/ECG.` : 'Si hay acidosis/alcalosis, interpreta K con pH: el pH desplaza K entre intra y extracelular.',
-      glucosePlan,
-      needsCalcium ? 'Calcio primero si ECG alterado, K >=6,5 o periparo. Repetir si ECG no mejora.' : 'Si K leve sin ECG alterado, priorizar confirmar, retirar fármacos gatillantes y seguimiento.',
-      needsShift ? 'Insulina/glucosa y salbutamol compran tiempo, pero no eliminan K: planificar eliminación y recontrol.' : 'No urgente: revisar IECA/ARA-II/espironolactona/AINES/sales de K, dieta y función renal.',
-      values.oliguria ? 'Oliguria/anuria: alto riesgo de rebote. Coordinar traslado/nefrología para diálisis si refractaria o grave.' : 'Con diuresis conservada, furosemida puede ayudar a eliminar K si volemia lo permite.',
-      values.acidosis ? 'Acidosis marcada: bicarbonato puede ayudar como adyuvante, además de tratar la causa.' : 'Bicarbonato no es de rutina si no hay acidosis metabólica relevante.',
-      'Solo apoyo clínico: siempre correlacionar con ECG, velocidad de instalación, función renal y disponibilidad local.',
-    ];
-
     const clinicalOrder = [
-      `Hiperkalemia ${classification.label.toLowerCase()} (K ${round(k, 1)} mEq/L). ECG inmediato, monitorización, vía venosa, control de K y glicemia seriados.`,
       needsCalcium
         ? `${calciumCard.title}: ${calciumCard.dose} ahora. Repetir si persisten cambios ECG o toxicidad eléctrica.`
         : 'Sin criterios ingresados de calcio inmediato: mantener monitorización y repetir ECG/control de K según evolución.',
@@ -204,15 +193,37 @@ export default function HyperkalemiaManagementCalculator() {
       'Recontrol: K y ECG a 1-2 h; HGT a 0, 30, 60, 90 y 120 min tras insulina, luego según riesgo.',
     ];
 
+    const finalIndication = needsShift
+      ? [
+        needsCalcium ? `${calciumCard.title}: ${calciumCard.dose} ahora.` : null,
+        `Insulina cristalina 10 UI EV + 25 g glucosa EV${glucose !== null && glucose >= 250 ? ' (ajustar glucosa inicial por glicemia alta)' : ''}.`,
+        'Asociar salbutamol nebulizado 10-20 mg si disponible.',
+      ].filter(Boolean).join(' ')
+      : 'Suspender aportes/fármacos gatillantes, ECG/control de K seriado y definir eliminación según función renal.';
+
+    const keyMedicationCards = needsShift
+      ? [needsCalcium ? calciumCard : null, medicationCards[1], medicationCards[2]].filter(Boolean)
+      : [];
+    if (values.acidosis) keyMedicationCards.push(medicationCards[3]);
+    if (!values.oliguria && needsShift) keyMedicationCards.push(medicationCards[4]);
+
+    const safetyChecks = [
+      'ECG inmediato y monitorización si K >=6, ECG alterado, síntomas o periparo.',
+      'Recontrol: K y ECG a 1-2 h; HGT 0, 30, 60, 90 y 120 min tras insulina.',
+      values.oliguria ? 'Oliguria/anuria: coordinar nefrología/traslado si grave o refractaria.' : 'Planificar eliminación de K; el shift no elimina potasio corporal.',
+      correctedK !== null ? `K corregido aprox. a pH 7,40: ${round(correctedK, 1)} mEq/L.` : null,
+    ].filter(Boolean);
+
     const calcResult = {
       score: classification.label,
       label: `K ${round(k, 1)} mEq/L`,
       interpretation: 'Apoyo para ordenar urgencia, secuencia y fármacos. No reemplaza ECG ni criterio clínico.',
       color: classification.color,
+      finalIndication,
       clinicalOrder,
       sequenceSteps,
-      medicationCards,
-      recommendations,
+      medicationCards: keyMedicationCards,
+      safetyChecks,
     };
     setResult(calcResult);
     return calcResult;
@@ -292,21 +303,18 @@ export default function HyperkalemiaManagementCalculator() {
             <div className="text-3xl font-bold text-slate-900">{result.score}</div>
             <p className="mt-2 text-sm text-slate-600">{result.label}</p>
           </div>
-          <div className="mt-4 rounded-lg border border-white/80 bg-white/80 p-4">
-            <h4 className="mb-2 text-sm font-bold text-slate-900">Advertencia</h4>
-            <p className="text-sm leading-relaxed text-slate-700">{result.interpretation}</p>
-          </div>
 
-          <div className="mt-4 rounded-2xl border-2 border-rose-400 bg-rose-50 p-4 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-wide text-rose-800">Indicación sugerida para ficha clínica</p>
-            <div className="mt-3 space-y-2">
-              {result.clinicalOrder.map((item, index) => (
-                <p key={index} className="text-sm font-semibold leading-relaxed text-rose-950">{item}</p>
+          <div className="mt-4 rounded-2xl border-2 border-rose-500 bg-white p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-rose-700">Indicación final sugerida</p>
+            <p className="mt-2 text-xl font-black leading-snug text-rose-950">{result.finalIndication}</p>
+            <div className="mt-3 space-y-1.5">
+              {result.clinicalOrder.slice(2).map((item, index) => (
+                <p key={index} className="text-sm font-semibold leading-relaxed text-rose-900">{item}</p>
               ))}
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl border-2 border-slate-300 bg-white p-4 shadow-sm">
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <h4 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-900">Orden de manejo</h4>
             <div className="grid gap-2">
               {result.sequenceSteps.map((step, index) => (
@@ -314,45 +322,51 @@ export default function HyperkalemiaManagementCalculator() {
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm font-black text-white">{index + 1}</div>
                   <div>
                     <p className="text-sm font-black text-slate-900">{step.title}</p>
-                    <p className="mt-0.5 text-sm leading-relaxed text-slate-700">{step.text}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{step.text}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {result.medicationCards.map((card, index) => (
-              <div key={index} className="rounded-2xl border-2 border-rose-300 bg-white p-4 shadow-sm">
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-wide text-rose-700">Fármaco / solución</p>
-                    <h4 className="mt-1 text-lg font-black text-slate-950">{card.title}</h4>
-                  </div>
-                  <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-bold text-rose-800">{card.badge}</span>
-                </div>
-                <div className="rounded-xl bg-rose-50 px-4 py-3 text-center">
-                  <p className="text-2xl font-black text-rose-900">{card.dose}</p>
-                </div>
-                <div className="mt-3 space-y-1.5">
-                  {card.details.map((detail, detailIndex) => (
-                    <div key={detailIndex} className="flex items-start gap-2 text-sm text-slate-700">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
-                      <span>{detail}</span>
+          {result.medicationCards.length > 0 && (
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {result.medicationCards.map((card, index) => (
+                <div key={index} className="rounded-2xl border-2 border-rose-300 bg-white p-4 shadow-sm">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-rose-700">Fármaco / solución</p>
+                      <h4 className="mt-1 text-lg font-black text-slate-950">{card.title}</h4>
                     </div>
-                  ))}
+                    <span className="rounded-full bg-rose-100 px-2.5 py-1 text-[11px] font-bold text-rose-800">{card.badge}</span>
+                  </div>
+                  <div className="rounded-xl bg-rose-50 px-4 py-3 text-center">
+                    <p className="text-2xl font-black text-rose-900">{card.dose}</p>
+                  </div>
+                  <div className="mt-3 space-y-1.5">
+                    {card.details.slice(0, 2).map((detail, detailIndex) => (
+                      <div key={detailIndex} className="flex items-start gap-2 text-sm text-slate-700">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
+                        <span>{detail}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          <div className="mt-4 space-y-2">
-            {result.recommendations.map((item, index) => (
+          <div className="mt-4 rounded-xl border border-white/80 bg-white/80 p-4">
+            <p className="text-sm font-bold text-slate-900">Controles clave</p>
+            <p className="mt-1 text-sm text-slate-600">{result.interpretation}</p>
+            <div className="mt-3 space-y-2">
+            {result.safetyChecks.map((item, index) => (
               <div key={index} className="flex items-start gap-2 text-sm text-slate-700">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                 <span>{item}</span>
               </div>
             ))}
+            </div>
           </div>
         </div>
       )}

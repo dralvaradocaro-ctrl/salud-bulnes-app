@@ -33,6 +33,7 @@ import { Label } from '@/medispense/components/ui/label';
 import { useToast } from '@/medispense/hooks/use-toast';
 import { supabase } from '@/medispense/integrations/supabase/client';
 import { routes } from '@/medispense/lib/routes';
+import { filterLocallyAvailableMedications, isLocallyAvailableMedication } from '@/lib/localArsenal';
 
 interface Medication {
   id: string;
@@ -127,7 +128,7 @@ export default function Arsenal() {
     if (error) {
       toast({ title: 'Error', description: 'No se pudieron cargar los medicamentos', variant: 'destructive' });
     } else {
-      setMedications(data || []);
+      setMedications(filterLocallyAvailableMedications(data));
     }
     setLoading(false);
   };
@@ -146,6 +147,20 @@ export default function Arsenal() {
   const handleSave = async () => {
     if (!formData.name || !formData.activeIngredient || !formData.presentation || !formData.doseValue) {
       toast({ title: 'Error', description: 'Completa los campos requeridos', variant: 'destructive' });
+      return;
+    }
+
+    if (!isLocallyAvailableMedication({
+      name: formData.name,
+      active_ingredient: formData.activeIngredient,
+      dose_value: formData.doseValue,
+      dose_unit: formData.doseUnit,
+    })) {
+      toast({
+        title: 'Presentación no disponible',
+        description: 'El arsenal local no dispone de Amlodipino 5 mg. Usa Amlodipino 10 mg y fracciona la dosis cuando corresponda.',
+        variant: 'destructive',
+      });
       return;
     }
 

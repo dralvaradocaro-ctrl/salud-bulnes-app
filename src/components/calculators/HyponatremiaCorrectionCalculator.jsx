@@ -80,20 +80,6 @@ export default function HyponatremiaCorrectionCalculator() {
       });
     }
 
-    const recommendations = [
-      `Clasificación: ${classification} (Na ${round(na)} mEq/L). ${severe ? 'Con síntomas graves → rescate con NaCl 3%.' : 'Sin síntomas graves → corrección lenta según volemia.'}`,
-      `⚠️ LÍMITE 24 h: NO subir el Na más de ${limit24} mEq/L (riesgo de síndrome de desmielinización osmótica). En 48 h, ≤ ${v.highRisk ? 12 : 18} mEq/L. Controlar Na cada 2-4 h al inicio.`,
-      v.chronicity === 'aguda'
-        ? 'Hiponatremia aguda (<48 h, p. ej. polidipsia, post-operatorio, MDMA): el riesgo es el edema cerebral; puede corregirse algo más rápido bajo monitorización.'
-        : 'Si la cronicidad es desconocida o >48 h, tratar como crónica: respetar el límite estricto para evitar mielinolisis.',
-      tbw !== null
-        ? `Agua corporal total ≈ ${round(tbw)} L (peso × ${tbwFactor}). Déficit de Na para subir ${round(targetDelta)} mEq/L ≈ ${round(naDeficitToTarget, 0)} mEq.${deltaPerLiter3 !== null ? ` 1 L de NaCl 3% sube el Na ≈ ${round(deltaPerLiter3)} mEq/L (estimación de Adrogué-Madias).` : ''}`
-        : 'Ingresa peso y sexo para estimar el agua corporal total y el déficit de Na.',
-      'Alto riesgo de mielinolisis: Na <120, alcoholismo, desnutrición, hipokalemia, hepatopatía, mujer premenopáusica. En ellos, meta ≤6 mEq/L/24 h.',
-      'Si hay riesgo de sobrecorrección (hipovolemia que se corrige, SIADH transitorio): considerar DDAVP «clamp» y/o aporte de agua libre para frenar el ascenso del Na.',
-      'Medir y corregir el potasio: reponer K también sube el Na (suma al límite de corrección).',
-    ];
-
     const volumePlan = {
       hipovolemica: 'Hipovolémica: indicar SF 0,9% EV, tratar pérdidas y vigilar autocorrección rápida al restaurar volumen.',
       euvolemica: 'Euvolémica/SIADH probable: restricción hídrica, tratar causa y evitar SF 0,9% si orina hipertónica porque puede empeorar el Na.',
@@ -103,28 +89,35 @@ export default function HyponatremiaCorrectionCalculator() {
 
     const clinicalOrder = severe
       ? [
-        `Hiponatremia sintomática grave (Na ${round(na)} mEq/L). Indicar NaCl 3% 100-150 mL EV en 10-20 min ahora.`,
-        'Reevaluar clínica y Na; repetir bolo cada 10-20 min hasta 3 veces si persisten convulsión, coma o vómitos, buscando aumento inicial 4-6 mEq/L.',
+        `Indicar NaCl 3% 100-150 mL EV en 10-20 min ahora.`,
+        'Repetir bolo cada 10-20 min hasta 3 veces si persisten síntomas graves, buscando aumento inicial 4-6 mEq/L.',
         `No sobrepasar corrección de ${limit24} mEq/L en 24 h (${v.highRisk ? 'alto riesgo de mielinolisis' : 'límite prudente'}). Control de Na cada 1-2 h durante rescate.`,
-        'Monitorización, balance hídrico estricto, diuresis horaria si posible, medir/corregir K y considerar DDAVP si ascenso rápido.',
-        'Preparación si no hay NaCl 3% listo: 385 mL SF 0,9% + 115 mL NaCl 10% para ~500 mL de NaCl 3%; confirmar con farmacia/local.',
       ]
       : [
-        `Hiponatremia ${classification.toLowerCase()} sin síntomas graves ingresados (Na ${round(na)} mEq/L). Corrección planificada y controlada.`,
         volumePlan[v.volume],
         `Meta máxima: subir Na ≤ ${limit24} mEq/L en 24 h y ≤ ${v.highRisk ? 12 : 18} mEq/L en 48 h. Control de Na cada 2-4 h al inicio si hospitalizado o Na <125.`,
         tbw !== null ? `Déficit aproximado para subir ${round(targetDelta)} mEq/L: ${round(naDeficitToTarget, 0)} mEq de Na; ajustar por controles y causa.` : 'Ingresar peso para estimar déficit y respuesta esperada.',
-        'Medir osmolalidad plasmática/urinaria, Na urinario, glicemia, TSH/cortisol si corresponde; corregir K porque aumenta Na efectivo.',
       ];
+
+    const finalIndication = clinicalOrder[0];
+    const safetyChecks = [
+      severe ? 'Control de Na cada 1-2 h durante rescate.' : 'Control de Na cada 2-4 h al inicio si hospitalizado o Na <125.',
+      `Límite: no subir Na >${limit24} mEq/L en 24 h ni >${v.highRisk ? 12 : 18} mEq/L en 48 h.`,
+      'Medir y corregir K: la reposición de K también sube el Na efectivo.',
+      v.chronicity === 'aguda' ? 'Aguda documentada: puede corregirse más rápido solo con monitorización estrecha.' : 'Cronicidad desconocida/>48 h: tratar como crónica.',
+    ];
 
     const calcResult = {
       score: round(na),
       label: `${classification} · meta inicial +${round(targetDelta)} mEq/L`,
       color,
-      interpretation: `Na ${round(na)} mEq/L. Apoyo para ordenar la corrección inicial; la decisión depende del estado de volumen, síntomas, cronicidad y controles seriados.`,
+      interpretation: tbw !== null
+        ? `ACT ≈ ${round(tbw)} L. Déficit para subir ${round(targetDelta)} mEq/L ≈ ${round(naDeficitToTarget, 0)} mEq.`
+        : 'Ingresar peso permite estimar ACT y déficit.',
+      finalIndication,
       clinicalOrder,
       medicationCards,
-      recommendations,
+      safetyChecks,
     };
     setResult(calcResult);
     return calcResult;
@@ -209,13 +202,12 @@ export default function HyponatremiaCorrectionCalculator() {
             <div className="text-3xl font-bold text-slate-900">{result.score}<span className="text-base text-slate-500"> mEq/L</span></div>
             <p className="mt-2 text-sm text-slate-600">{result.label}</p>
           </div>
-          <div className="mt-4 rounded-2xl border-2 border-blue-400 bg-blue-50 p-4 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-wide text-blue-800">Indicación sugerida para ficha clínica</p>
-            <div className="mt-3 space-y-2">
-              {result.clinicalOrder.map((item, i) => (
-                <p key={i} className="text-sm font-semibold leading-relaxed text-blue-950">{item}</p>
-              ))}
-            </div>
+          <div className="mt-4 rounded-2xl border-2 border-blue-500 bg-white p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-blue-700">Indicación final sugerida</p>
+            <p className="mt-2 text-xl font-black leading-snug text-blue-950">{result.finalIndication}</p>
+            {result.clinicalOrder.slice(1).map((item, i) => (
+              <p key={i} className="mt-2 text-sm font-semibold leading-relaxed text-blue-900">{item}</p>
+            ))}
           </div>
           {result.medicationCards?.length > 0 && (
             <div className="mt-4 grid gap-3">
@@ -229,7 +221,7 @@ export default function HyponatremiaCorrectionCalculator() {
                     <p className="text-xl font-black text-blue-900">{card.dose}</p>
                   </div>
                   <div className="mt-3 space-y-1.5">
-                    {card.details.map((d, di) => (
+                    {card.details.slice(0, 2).map((d, di) => (
                       <div key={di} className="flex items-start gap-2 text-sm text-slate-700">
                         <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
                         <span>{d}</span>
@@ -240,13 +232,17 @@ export default function HyponatremiaCorrectionCalculator() {
               ))}
             </div>
           )}
-          <div className="mt-4 space-y-2">
-            {result.recommendations.map((item, i) => (
+          <div className="mt-4 rounded-xl border border-white/80 bg-white/80 p-4">
+            <p className="text-sm font-bold text-slate-900">Controles clave</p>
+            <p className="mt-1 text-sm text-slate-600">{result.interpretation}</p>
+            <div className="mt-3 space-y-2">
+            {result.safetyChecks.map((item, i) => (
               <div key={i} className="flex items-start gap-2 text-sm text-slate-700">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                 <span>{item}</span>
               </div>
             ))}
+            </div>
           </div>
         </div>
       )}

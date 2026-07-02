@@ -50,6 +50,7 @@ import { cn } from '@/medispense/lib/utils';
 import { RiskWarnings } from '@/medispense/components/prescription/RiskWarnings';
 import { PresentationSelector } from '@/medispense/components/prescription/PresentationSelector';
 import { logAudit } from '@/medispense/lib/audit';
+import { filterLocallyAvailableMedications } from '@/lib/localArsenal';
 
 interface Medication {
   id: string;
@@ -146,6 +147,136 @@ const formatTablets = (tablets: number | null | undefined): string => {
   return tablets.toString();
 };
 
+const hasUnitsPerDoseDescription = (aiDescription: string | null): boolean =>
+  !!aiDescription && /(½|¼|¾|\d+½|\d+(?:\.\d+)?)\s*(?:comprimido|cápsula|tableta|comp)/i.test(aiDescription);
+
+const normalizeText = (value: string | null | undefined): string =>
+  (value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b\d+[\.,]?\d*\s*(mg|mcg|ug|µg|ml|ui|u|g|%)\b/g, ' ')
+    .replace(/\b(comprimidos?|comp|tabletas?|tab|capsulas?|caps|jarabe|solucion|gotas|ampollas?|inyectable|suspension)\b/g, ' ')
+    .replace(/\b(potasico|sodico|acido|humana|isofana)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const normalizeMedName = (name: string): string => normalizeText(name);
+
+const normalizePresentation = (value: string | null | undefined): string =>
+  (value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const normalizeUnit = (unit: string | null | undefined): string => {
+  const normalized = normalizeText(unit).replace(/\s+/g, '');
+  if (['ug', 'mcg', 'microgramo', 'microgramos'].includes(normalized)) return 'mcg';
+  if (['u', 'ui', 'iu', 'unidad', 'unidades'].includes(normalized)) return 'ui';
+  if (['mililitro', 'mililitros'].includes(normalized)) return 'ml';
+  if (['gramo', 'gramos'].includes(normalized)) return 'g';
+  return normalized;
+};
+
+const doseToMg = (dose: number, unit: string): number | null => {
+  const normalized = normalizeUnit(unit);
+  if (!Number.isFinite(dose)) return null;
+  if (normalized === 'mg') return dose;
+  if (normalized === 'g') return dose * 1000;
+  if (normalized === 'mcg') return dose / 1000;
+  return null;
+};
+
+const sameDoseUnitFamily = (unitA: string, unitB: string): boolean => {
+  const normalizedA = normalizeUnit(unitA);
+  const normalizedB = normalizeUnit(unitB);
+  if (normalizedA === normalizedB) return true;
+  return doseToMg(1, normalizedA) !== null && doseToMg(1, normalizedB) !== null;
+};
+
+const isSolidPresentation = (presentation: string | null | undefined): boolean => {
+  const normalized = normalizePresentation(presentation);
+  return /\b(comp|comprimido|tableta|tab|capsula|caps)\b/.test(normalized);
+};
+
+const isSplittablePresentation = (presentation: string | null | undefined): boolean => {
+  const normalized = normalizePresentation(presentation);
+  if (!/\b(comp|comprimido|tableta|tab)\b/.test(normalized)) return false;
+  return !/\b(lp|liberacion prolongada|retard|extendida|entero|recubierto|capsula|caps)\b/.test(normalized);
+};
+
+const calculateUnitsPerDose = (
+  prescribedDose: number | null | undefined,
+  prescribedUnit: string | null | undefined,
+  medication: Medication | null | undefined
+): number | null => {
+  if (!medication || prescribedDose == null || !prescribedUnit || medication.dose_value <= 0) return null;
+  if (!sameDoseUnitFamily(prescribedUnit, medication.dose_unit)) return null;
+
+  const prescribedMg = doseToMg(prescribedDose, prescribedUnit);
+  const arsenalMg = doseToMg(medication.dose_value, medication.dose_unit);
+  const ratio = prescribedMg !== null && arsenalMg !== null
+    ? prescribedMg / arsenalMg
+    : prescribedDose / medication.dose_value;
+
+  if (!Number.isFinite(ratio) || ratio <= 0 || ratio > 12) return null;
+  const rounded = Math.round(ratio * 4) / 4;
+  const units = Math.abs(rounded - ratio) < 0.03 ? rounded : Number(ratio.toFixed(2));
+  const hasFraction = Math.abs(units - Math.round(units)) > 0.001;
+
+  if (hasFraction && !isSplittablePresentation(medication.presentation)) return null;
+  if (!hasFraction && !isSolidPresentation(medication.presentation)) return null;
+
+  return units;
+};
+
+const findBestArsenalMatch = (
+  medications: Medication[],
+  name: string,
+  dose: number | null | undefined,
+  unit: string | null | undefined,
+  matchedId?: string | null
+): { medication: Medication | null; unitsPerDose: number | null } => {
+  const byId = matchedId ? medications.find(m => m.id === matchedId) || null : null;
+  if (byId) {
+    return { medication: byId, unitsPerDose: calculateUnitsPerDose(dose, unit, byId) };
+  }
+
+  const searchName = normalizeText(name).replace('acetilsalicilico', 'aspirina');
+  if (!searchName) return { medication: null, unitsPerDose: null };
+
+  const candidates = medications
+    .map(med => {
+      const medName = normalizeText(med.name).replace('acetilsalicilico', 'aspirina');
+      const activeIngredient = normalizeText(med.active_ingredient).replace('acetilsalicilico', 'aspirina');
+      const nameMatch = medName.includes(searchName) || searchName.includes(medName) ||
+        activeIngredient.includes(searchName) || searchName.includes(activeIngredient);
+      if (!nameMatch) return null;
+
+      const unitsPerDose = calculateUnitsPerDose(dose, unit, med);
+      const exactDose = dose != null && unit != null &&
+        sameDoseUnitFamily(unit, med.dose_unit) &&
+        Math.abs((doseToMg(dose, unit) ?? dose) - (doseToMg(med.dose_value, med.dose_unit) ?? med.dose_value)) < 0.01;
+      if (dose != null && unit && !exactDose && unitsPerDose === null) return null;
+      const nameScore = activeIngredient === searchName || medName === searchName ? 8 : 4;
+      const doseScore = exactDose ? 12 : unitsPerDose ? 6 : 0;
+      const presentationScore = isSolidPresentation(med.presentation) ? 2 : 0;
+
+      return { medication: med, unitsPerDose, score: nameScore + doseScore + presentationScore };
+    })
+    .filter((candidate): candidate is { medication: Medication; unitsPerDose: number | null; score: number } => !!candidate)
+    .sort((a, b) => b.score - a.score || a.medication.dose_value - b.medication.dose_value);
+
+  const bestWithDose = candidates.find(candidate => candidate.unitsPerDose !== null);
+  const best = bestWithDose || candidates[0];
+
+  return best
+    ? { medication: best.medication, unitsPerDose: best.unitsPerDose }
+    : { medication: null, unitsPerDose: null };
+};
+
 const createEmptyGroup = (index: number): PrescriptionGroup => ({
   id: `group-${Date.now()}-${index}`,
   label: `Receta ${index + 1}`,
@@ -175,7 +306,14 @@ const mapPrescriptionItemFromRow = (
   tempIdPrefix: 'edit' | 'renew',
   idx: number
 ): PrescriptionItemInput => {
-  const matchingMed = medsData?.find(m => m.id === item.medication_id) || null;
+  const arsenalMatch = findBestArsenalMatch(
+    medsData || [],
+    item.medication_name,
+    item.prescribed_dose,
+    item.prescribed_unit,
+    item.medication_id
+  );
+  const matchingMed = arsenalMatch.medication;
   const isInsulin = isInsulinMedication(item.medication_name);
   const isWeekly = isWeeklyFrequency(item.frequency);
 
@@ -196,13 +334,19 @@ const mapPrescriptionItemFromRow = (
   }
 
   const schedule = (item.schedule as string[]) || [];
-  const tabletsPerDose = extractTabletsPerDose(item.ai_description);
+  const extractedTabletsPerDose = hasUnitsPerDoseDescription(item.ai_description)
+    ? extractTabletsPerDose(item.ai_description)
+    : null;
+  const tabletsPerDose = extractedTabletsPerDose || (!isInsulin ? arsenalMatch.unitsPerDose : null);
   const customPresentation = extractCustomPresentation(item.ai_description);
+  const displayName = matchingMed
+    ? `${matchingMed.name} ${matchingMed.dose_value}${matchingMed.dose_unit}`
+    : item.medication_name;
 
   return {
     tempId: `${tempIdPrefix}-${Date.now()}-${idx}`,
-    medication_id: item.medication_id,
-    medication_name: item.medication_name,
+    medication_id: matchingMed?.id || item.medication_id,
+    medication_name: displayName,
     prescribed_dose: item.prescribed_dose,
     prescribed_unit: item.prescribed_unit,
     frequency: item.frequency,
@@ -271,7 +415,8 @@ export default function NewPrescription() {
       .eq('is_active', true)
       .order('name');
 
-    if (medsData) setMedications(medsData);
+    const locallyAvailableMeds = filterLocallyAvailableMedications(medsData);
+    if (medsData) setMedications(locallyAvailableMeds);
 
     // Load existing prescription for edit mode
     if (editPrescriptionId && patientData) {
@@ -292,7 +437,7 @@ export default function NewPrescription() {
         const expiryDays = Math.round((expiryDate.getTime() - issueDate.getTime()) / (1000 * 60 * 60 * 24));
 
         const loadedItems: PrescriptionItemInput[] = (itemsData || []).map((item, idx) =>
-          mapPrescriptionItemFromRow(item, medsData, 'edit', idx)
+          mapPrescriptionItemFromRow(item, locallyAvailableMeds, 'edit', idx)
         );
 
         setGroups([{
@@ -317,7 +462,7 @@ export default function NewPrescription() {
 
       if (itemsData && itemsData.length > 0) {
         const loadedItems: PrescriptionItemInput[] = itemsData.map((item, idx) =>
-          mapPrescriptionItemFromRow(item, medsData, 'renew', idx)
+          mapPrescriptionItemFromRow(item, locallyAvailableMeds, 'renew', idx)
         );
 
         setGroups([{
@@ -347,38 +492,6 @@ export default function NewPrescription() {
     med.active_ingredient.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const findMatchingMedication = (name: string, dose: number, unit: string, matchedId?: string | null): Medication | null => {
-    if (matchedId) {
-      const byId = medications.find(m => m.id === matchedId);
-      if (byId) return byId;
-    }
-    
-    const searchName = name.toLowerCase()
-      .replace('potásico', '').replace('sódico', '').replace('ácido', '')
-      .replace('acetilsalicílico', 'aspirina')
-      .replace('humana', '').replace('isófana', 'nph')
-      .trim();
-    
-    const exactMatch = medications.find(med => {
-      const medName = med.name.toLowerCase();
-      const activeIngredient = med.active_ingredient.toLowerCase();
-      const nameMatch = medName.includes(searchName) || searchName.includes(medName) ||
-                       activeIngredient.includes(searchName) || searchName.includes(activeIngredient);
-      const doseMatch = Math.abs(med.dose_value - dose) < 0.01;
-      const unitMatch = med.dose_unit.toLowerCase() === unit.toLowerCase();
-      return nameMatch && doseMatch && unitMatch;
-    });
-    
-    if (exactMatch) return exactMatch;
-    
-    return medications.find(med => {
-      const medName = med.name.toLowerCase();
-      const activeIngredient = med.active_ingredient.toLowerCase();
-      return medName.includes(searchName) || searchName.includes(medName) ||
-             activeIngredient.includes(searchName) || searchName.includes(activeIngredient);
-    }) || null;
-  };
-
   const parseWithAI = async () => {
     if (!aiText.trim()) {
       toast({ title: 'Error', description: 'Escribe el texto de la prescripción', variant: 'destructive' });
@@ -389,20 +502,12 @@ export default function NewPrescription() {
 
     try {
       const { parsePrescriptionWithGemini } = await import('@/medispense/lib/geminiParse');
-      const ARSENAL_LIMIT = 150;
-      const arsenalForAI = medications.slice(0, ARSENAL_LIMIT);
-      if (medications.length > ARSENAL_LIMIT) {
-        toast({
-          title: 'Arsenal grande',
-          description: `Se enviaron a la IA solo los primeros ${ARSENAL_LIMIT} de ${medications.length} medicamentos. Si no encuentra el que buscás, agregalo manualmente.`,
-        });
-      }
 
       let data: { medications: any[] };
       try {
         data = await parsePrescriptionWithGemini(
           aiText,
-          arsenalForAI.map(m => ({
+          medications.map(m => ({
             id: m.id,
             name: m.name,
             dose_value: m.dose_value,
@@ -427,12 +532,16 @@ export default function NewPrescription() {
 
       if (data.medications && data.medications.length > 0) {
         const newItems: PrescriptionItemInput[] = data.medications.map((med: any, idx: number) => {
-          const matchingMed = findMatchingMedication(
+          const prescribedDose = Number(med.dose);
+          const prescribedUnit = med.unit || '';
+          const arsenalMatch = findBestArsenalMatch(
+            medications,
             med.matched_medication_name || med.name, 
-            med.arsenal_dose_value || med.dose, 
-            med.arsenal_dose_unit || med.unit,
+            Number.isFinite(prescribedDose) ? prescribedDose : med.arsenal_dose_value,
+            prescribedUnit || med.arsenal_dose_unit,
             med.matched_medication_id
           );
+          const matchingMed = arsenalMatch.medication;
           const isInsulin = med.is_insulin || isInsulinMedication(med.name);
           const isWeekly = med.is_weekly || isWeeklyFrequency(med.frequency || 'c/24h');
           const frequency = med.frequency || 'c/24h';
@@ -446,10 +555,8 @@ export default function NewPrescription() {
             : aiSchedule || localSchedule.schedule;
           const scheduleReason = med.schedule_reason || localSchedule.reason;
 
-          let tabletsPerDose = med.tablets_per_dose || null;
-          if (!tabletsPerDose && matchingMed && med.dose && !isInsulin) {
-            tabletsPerDose = med.dose / matchingMed.dose_value;
-          }
+          const calculatedUnitsPerDose = !isInsulin ? arsenalMatch.unitsPerDose : null;
+          const tabletsPerDose = calculatedUnitsPerDose || med.tablets_per_dose || null;
 
           let weeklyDays = emptyWeeklyDays();
           if (med.weekly_days) {
@@ -464,8 +571,8 @@ export default function NewPrescription() {
             tempId: `ai-${Date.now()}-${idx}`,
             medication_id: matchingMed?.id || null,
             medication_name: displayName,
-            prescribed_dose: med.dose,
-            prescribed_unit: med.unit,
+            prescribed_dose: Number.isFinite(prescribedDose) ? prescribedDose : med.dose,
+            prescribed_unit: prescribedUnit,
             frequency,
             duration_days: med.duration_days || activeGroup.expiryDays,
             fractionation: null,
@@ -655,10 +762,6 @@ export default function NewPrescription() {
   const hasIncompleteWeekly = groups.some(g =>
     g.items.some(it => it.isWeekly && Object.values(it.weeklyDays).filter(v => v > 0).length === 0)
   );
-
-  const normalizeMedName = (name: string): string => {
-    return name.toLowerCase().replace(/\s*\d+[\.,]?\d*\s*(mg|mcg|ml|ui|g|%)\s*/gi, '').trim();
-  };
 
   const autoAnnulDuplicateMeds = async (newPrescriptionId: string, newItems: PrescriptionItemInput[], patientId: string) => {
     try {

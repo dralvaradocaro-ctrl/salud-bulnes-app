@@ -1,4 +1,4 @@
-import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse, Wind, ArrowRightLeft, Candy, Bone, Droplet } from 'lucide-react';
+import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse, Wind, ArrowRightLeft, Candy, Bone, Droplet, Syringe } from 'lucide-react';
 
 import NIHSSCalculator from '@/components/calculators/NIHSSCalculator';
 import HEARTScoreCalculator from '@/components/calculators/HEARTScoreCalculator';
@@ -30,10 +30,12 @@ import FibromyalgiaACRCalculator from '@/components/calculators/FibromyalgiaACRC
 import FIQRCalculator from '@/components/calculators/FIQRCalculator';
 import PSFSCalculator from '@/components/calculators/PSFSCalculator';
 import PECARNCalculator from '@/components/calculators/PECARNCalculator';
+import ProceduralSedoanalgesiaCalculator from '@/components/calculators/ProceduralSedoanalgesiaCalculator';
 
 export const calculatorsByCategory = {
   'Urgencias': [
     { id: 'sri', name: 'SRI - Intubación Rápida', component: SRICalculator, icon: Activity, includeInStats: false },
+    { id: 'procedural-sedoanalgesia', name: 'Sedoanalgesia procedural — combinación local', component: ProceduralSedoanalgesiaCalculator, icon: Syringe },
     { id: 'hyperglycemic-crisis', name: 'CAD/EHH — Criterios y manejo inicial', component: HyperglycemicCrisisCalculator, icon: Activity },
     { id: 'hypoglycemia-treatment', name: 'Hipoglicemia en urgencias — Tratamiento inicial', component: HypoglycemiaTreatmentCalculator, icon: Candy }
   ],

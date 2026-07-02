@@ -202,7 +202,6 @@ const MEDICATIONS = [
   m('Propanolol', 'Comprimido', 40, 'mg', 'Betabloqueador'),
   m('Propanolol', 'Solución inyectable', 1, 'mg/mL', 'Betabloqueador'),
   m('Labetalol', 'Solución inyectable', 5, 'mg/mL', 'Antihipertensivo'),
-  m('Amlodipino', 'Comprimido', 5, 'mg', 'Antihipertensivo'),
   m('Amlodipino', 'Comprimido', 10, 'mg', 'Antihipertensivo'),
   m('Captopril', 'Comprimido', 25, 'mg', 'IECA'),
   m('Enalapril', 'Comprimido', 10, 'mg', 'IECA'),

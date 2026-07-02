@@ -151,7 +151,6 @@ insert into public.medications (name, active_ingredient, presentation, dose_valu
   ('Propanolol', 'Propanolol', 'Comprimido', 40, 'mg', 'Betabloqueador', true),
   ('Propanolol', 'Propanolol', 'Solución inyectable', 1, 'mg/mL', 'Betabloqueador', true),
   ('Labetalol', 'Labetalol', 'Solución inyectable', 5, 'mg/mL', 'Antihipertensivo', true),
-  ('Amlodipino', 'Amlodipino', 'Comprimido', 5, 'mg', 'Antihipertensivo', true),
   ('Amlodipino', 'Amlodipino', 'Comprimido', 10, 'mg', 'Antihipertensivo', true),
   ('Captopril', 'Captopril', 'Comprimido', 25, 'mg', 'IECA', true),
   ('Enalapril', 'Enalapril', 'Comprimido', 10, 'mg', 'IECA', true),

@@ -22,6 +22,7 @@ import HypernatremiaCorrectionCalculator from '@/components/calculators/Hypernat
 import FibromyalgiaACRCalculator from '@/components/calculators/FibromyalgiaACRCalculator';
 import FIQRCalculator from '@/components/calculators/FIQRCalculator';
 import PSFSCalculator from '@/components/calculators/PSFSCalculator';
+import ProceduralSedoanalgesiaCalculator from '@/components/calculators/ProceduralSedoanalgesiaCalculator';
 
 // Renders text with inline clickable links for patterns defined in block.links.
 // block.links value can be:
@@ -752,6 +753,9 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
 
       case 'psfs_calculator':
         return <PSFSCalculator key={block.id} />;
+
+      case 'procedural_sedoanalgesia_calculator':
+        return <ProceduralSedoanalgesiaCalculator key={block.id} />;
 
       case 'image_gallery':
         return <ImageGalleryBlock key={block.id} block={block} />;

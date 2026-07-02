@@ -32,15 +32,31 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {currentPageName !== 'Home' && (
-        <Link
-          to={createPageUrl('Home')}
-          aria-label="Volver al inicio"
-          className="fixed right-4 top-4 z-[60] hidden h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-700 shadow-lg shadow-slate-900/10 backdrop-blur transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 md:flex print:hidden"
-        >
-          <Home className="h-5 w-5" />
-        </Link>
-      )}
+      <nav
+        aria-label="Navegación principal"
+        className="fixed right-4 top-4 z-[60] hidden items-center gap-1 rounded-full border border-slate-200 bg-white/90 p-1 shadow-lg shadow-slate-900/10 backdrop-blur md:flex print:hidden"
+      >
+        {navItems.map((item) => {
+          const isActive = item.active ?? currentPageName === item.page;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.name}
+              to={item.to}
+              aria-label={item.name}
+              title={item.name}
+              className={`flex h-10 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition ${
+                isActive
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              <span className="hidden xl:inline">{item.name}</span>
+            </Link>
+          );
+        })}
+      </nav>
 
       {/* Mobile bottom navigation */}
       <nav className="mobile-bottom-nav md:hidden print:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 px-2 pt-2">

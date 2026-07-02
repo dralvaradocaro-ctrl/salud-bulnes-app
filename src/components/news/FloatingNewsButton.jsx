@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
@@ -16,6 +16,7 @@ import {
   History,
   Megaphone,
   MessageCircle,
+  Minimize2,
   Pill,
   ScanLine,
   Stethoscope,
@@ -37,6 +38,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils';
 
 const RECENT_DAYS = 10;
+const NEWS_BUTTON_COLLAPSED_KEY = 'salud_bulnes_news_button_collapsed';
 
 const FREQUENT_QUERIES = [
   {
@@ -547,7 +549,15 @@ function TimelineNewsList({ items }) {
 
 export default function FloatingNewsButton({ currentPageName }) {
   const [view, setView] = useState('recent');
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(NEWS_BUTTON_COLLAPSED_KEY) === 'true';
+  });
   const hiddenInAdmin = currentPageName?.startsWith('Admin') || currentPageName === 'WelcomeLogin';
+
+  useEffect(() => {
+    window.localStorage.setItem(NEWS_BUTTON_COLLAPSED_KEY, isCollapsed ? 'true' : 'false');
+  }, [isCollapsed]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['floating-news'],
@@ -590,35 +600,68 @@ export default function FloatingNewsButton({ currentPageName }) {
 
   return (
     <Sheet>
-      <SheetTrigger asChild>
-        <button
-          type="button"
-          className="fixed bottom-20 right-3 z-40 flex items-center gap-2 rounded-full border border-blue-100 bg-white/95 px-3 py-2 text-xs font-semibold text-slate-700 shadow-lg shadow-slate-900/10 backdrop-blur transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 md:bottom-5 md:right-5 print:hidden"
-          aria-label="Abrir novedades"
-        >
-          <span className="relative">
-            <Bell className="h-4 w-4" />
-            {recentCount > 0 && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-blue-500" />}
-          </span>
-          <span>Novedades</span>
-          {recentCount > 0 && (
-            <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] text-white">{recentCount}</span>
-          )}
-        </button>
-      </SheetTrigger>
+      <div className="fixed bottom-20 right-3 z-40 flex items-center gap-1 md:bottom-5 md:right-5 print:hidden">
+        <SheetTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              'flex items-center rounded-full border border-blue-100 bg-white/95 text-xs font-semibold text-slate-700 shadow-lg shadow-slate-900/10 backdrop-blur transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700',
+              isCollapsed ? 'h-11 w-11 justify-center' : 'gap-2 px-3 py-2'
+            )}
+            aria-label="Abrir novedades"
+          >
+            <span className="relative">
+              <Bell className="h-4 w-4" />
+              {recentCount > 0 && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-blue-500" />}
+            </span>
+            {!isCollapsed && (
+              <>
+                <span>Novedades</span>
+                {recentCount > 0 && (
+                  <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] text-white">{recentCount}</span>
+                )}
+              </>
+            )}
+          </button>
+        </SheetTrigger>
+        {!isCollapsed && (
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-500 shadow-md shadow-slate-900/10 backdrop-blur transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+            aria-label="Contraer novedades"
+            title="Contraer novedades"
+          >
+            <Minimize2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
 
       <SheetContent className="flex w-full flex-col overflow-hidden p-0 sm:max-w-md">
         <SheetHeader className="border-b border-slate-200 px-5 py-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-              <Bell className="h-4 w-4" />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                <Bell className="h-4 w-4" />
+              </div>
+              <div>
+                <SheetTitle className="text-base">Novedades</SheetTitle>
+                <SheetDescription className="text-xs">
+                  Últimos {RECENT_DAYS} días y protocolos recién agregados.
+                </SheetDescription>
+              </div>
             </div>
-            <div>
-              <SheetTitle className="text-base">Novedades</SheetTitle>
-              <SheetDescription className="text-xs">
-                Últimos {RECENT_DAYS} días y protocolos recién agregados.
-              </SheetDescription>
-            </div>
+            {isCollapsed && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-full px-3 text-xs"
+                onClick={() => setIsCollapsed(false)}
+              >
+                Mostrar texto
+              </Button>
+            )}
           </div>
         </SheetHeader>
 

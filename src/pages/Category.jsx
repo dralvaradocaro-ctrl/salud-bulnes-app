@@ -36,6 +36,7 @@ import { Input } from '@/components/ui/input';
 import { isHiddenClinicalTool, isHiddenGesConstanciaTool } from '@/components/utils/hiddenContent';
 import { getProtocolValidityStatus } from '@/lib/protocolUtils';
 import { getTopicProtocolStatus, hasSsnProtocolBadge, hasMinsalOrdinarioBadge, hasSsnOrdinarioBadge } from '@/lib/topicStatus';
+import { filterLocallyAvailableMedications } from '@/lib/localArsenal';
 import { supabase } from '@/lib/supabase';
 import {
   Tooltip,
@@ -127,7 +128,7 @@ export default function Category() {
         .eq('is_active', true)
         .order('name');
       if (error) throw error;
-      return data || [];
+      return filterLocallyAvailableMedications(data);
     },
     enabled: activeTab === 'gestiones' && hasHospitalizados,
   });

@@ -138,39 +138,32 @@ export default function HypokalemiaCorrectionCalculator() {
       },
     ];
 
-    const recommendations = [
-      `Déficit estimado para meta ${target} mEq/L: ${round(deficitLow, 0)}-${round(deficitHigh, 0)} mEq. Es una aproximación: redistribución y pérdidas activas cambian la respuesta.`,
-      `Ruta sugerida: ${recommendedRoute}.`,
-      correctedK !== null ? `K corregido aproximado a pH 7,40: ${round(correctedK, 1)} mEq/L. Regla usada: variación ~0,6 mEq/L por cada 0,1 de pH; usar con cautela.` : 'Si hay alcalosis/acidosis, interpreta K con pH: los cambios de pH desplazan K entre intra y extracelular.',
-      glucose !== null && glucose > 250 ? 'Hiperglicemia/insulinopenia puede ocultar déficit corporal de K; al iniciar insulina el K puede caer rápido. Reponer y monitorizar más estrecho.' : 'Glicemia sin alerta mayor para desplazamiento por insulina según dato ingresado.',
-      values.magnesiumLow ? 'Corregir magnesio: hipomagnesemia hace refractaria la reposición de K y aumenta riesgo arrítmico.' : 'Medir Mg plasmático; si está bajo, corregirlo junto con K.',
-      values.ongoingLosses ? 'Hay pérdidas activas: diarrea, SNG, diuréticos o poliuria pueden exigir dosis mayores y controles más frecuentes.' : 'Buscar y tratar causa: pérdidas GI, diuréticos, alcalosis, hiperaldosteronismo, redistribución o baja ingesta.',
-      urgent ? 'Urgente: ECG/telemetría, vía EV, control K cada 2-4 h y considerar mayor nivel de cuidado si arritmia, parálisis o K muy bajo.' : 'No urgente: reposición fraccionada y control de K en 6-24 h según severidad y función renal.',
-      values.renalRisk ? 'Riesgo renal/oliguria: reducir dosis, evitar sobrecorrección y controlar K/creatinina estrechamente.' : 'Confirmar diuresis y función renal antes de reposición EV significativa.',
-    ];
-
     const clinicalOrder = urgent || recommendedRoute.includes('EV')
       ? [
-        `Hipokalemia ${classification.label.toLowerCase()} (K ${round(k, 1)} mEq/L). Solicitar ECG/monitorización, Mg, creatinina y control de K seriado.`,
         `Indicar KCl 10% ${ampsPerBag} ampollas (${BAG_MEQ} mEq) en ${volPerBag} mL de SF 0,9% EV periférico, pasar en ${hoursPerBag} h. Repetir según control hasta meta ${round(target, 1)} mEq/L.`,
-        `Déficit estimado ${round(deficitLow, 0)}-${round(deficitHigh, 0)} mEq: considerar ${bagsLow}-${bagsHigh} bolsas en total, ajustando a K de control, diuresis y función renal.`,
-        values.magnesiumLow ? 'Corregir magnesio en paralelo por hipomagnesemia conocida/sospechada.' : 'Medir magnesio y corregir si bajo, especialmente si reposición refractaria o riesgo arrítmico.',
+        `Déficit estimado ${round(deficitLow, 0)}-${round(deficitHigh, 0)} mEq: considerar ${bagsLow}-${bagsHigh} bolsas en total, ajustando a K de control.`,
       ]
       : [
-        `Hipokalemia ${classification.label.toLowerCase()} (K ${round(k, 1)} mEq/L), sin criterios de urgencia ingresados.`,
         `Indicar KCl VO 600 mg: déficit estimado ${round(deficitLow, 0)}-${round(deficitHigh, 0)} mEq, equivalente a ${oralTabletsLow}-${oralTabletsHigh} comprimidos en total. Fraccionar en tomas de hasta 5 comprimidos (40 mEq) y controlar K.`,
         `Meta inicial ${round(target, 1)} mEq/L. Control de K en 6-24 h según severidad, función renal y pérdidas activas.`,
-        values.ongoingLosses ? 'Registrar pérdidas activas y corregir causa; puede requerir reposición adicional.' : 'Buscar causa: pérdidas GI/urinarias, diuréticos, alcalosis, redistribución o baja ingesta.',
       ];
+
+    const finalIndication = clinicalOrder[0];
+    const safetyChecks = [
+      urgent ? 'ECG/telemetría y control de K cada 2-4 h.' : 'Control de K en 6-24 h; adelantar si K <3,0 o pérdidas activas.',
+      values.magnesiumLow ? 'Corregir magnesio en paralelo.' : 'Medir Mg y corregir si está bajo.',
+      values.renalRisk ? 'Riesgo renal/oliguria: reducir dosis y vigilar sobrecorrección.' : 'Confirmar diuresis y creatinina antes de reposición EV relevante.',
+    ];
 
     const calcResult = {
       score: classification.label,
       label: `K ${round(k, 1)} mEq/L → meta ${round(target, 1)} mEq/L`,
-      interpretation: 'Apoyo para ordenar reposición inicial. La respuesta real depende de pH, insulina, magnesio, función renal y pérdidas activas.',
+      interpretation: correctedK !== null ? `K corregido aprox. a pH 7,40: ${round(correctedK, 1)} mEq/L.` : 'Interpretar con pH, Mg, función renal y pérdidas activas.',
       color: classification.color,
+      finalIndication,
       clinicalOrder,
-      medicationCards,
-      recommendations,
+      medicationCards: urgent || recommendedRoute.includes('EV') ? [medicationCards[1]] : [medicationCards[0]],
+      safetyChecks,
     };
     setResult(calcResult);
     return calcResult;
@@ -257,17 +250,12 @@ export default function HypokalemiaCorrectionCalculator() {
             <div className="text-3xl font-bold text-slate-900">{result.score}</div>
             <p className="mt-2 text-sm text-slate-600">{result.label}</p>
           </div>
-          <div className="mt-4 rounded-lg border border-white/80 bg-white/80 p-4">
-            <h4 className="mb-2 text-sm font-bold text-slate-900">Advertencia</h4>
-            <p className="text-sm leading-relaxed text-slate-700">{result.interpretation}</p>
-          </div>
-          <div className="mt-4 rounded-2xl border-2 border-blue-400 bg-blue-50 p-4 shadow-sm">
-            <p className="text-xs font-black uppercase tracking-wide text-blue-800">Indicación sugerida para ficha clínica</p>
-            <div className="mt-3 space-y-2">
-              {result.clinicalOrder.map((item, index) => (
-                <p key={index} className="text-sm font-semibold leading-relaxed text-blue-950">{item}</p>
-              ))}
-            </div>
+          <div className="mt-4 rounded-2xl border-2 border-blue-500 bg-white p-5 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-wide text-blue-700">Indicación final sugerida</p>
+            <p className="mt-2 text-xl font-black leading-snug text-blue-950">{result.finalIndication}</p>
+            {result.clinicalOrder.slice(1).map((item, index) => (
+              <p key={index} className="mt-2 text-sm font-semibold leading-relaxed text-blue-900">{item}</p>
+            ))}
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {result.medicationCards.map((card, index) => (
@@ -283,7 +271,7 @@ export default function HypokalemiaCorrectionCalculator() {
                   <p className="text-2xl font-black text-blue-900">{card.dose}</p>
                 </div>
                 <div className="mt-3 space-y-1.5">
-                  {card.details.map((detail, detailIndex) => (
+                  {card.details.slice(0, 2).map((detail, detailIndex) => (
                     <div key={detailIndex} className="flex items-start gap-2 text-sm text-slate-700">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
                       <span>{detail}</span>
@@ -293,13 +281,17 @@ export default function HypokalemiaCorrectionCalculator() {
               </div>
             ))}
           </div>
-          <div className="mt-4 space-y-2">
-            {result.recommendations.map((item, index) => (
+          <div className="mt-4 rounded-xl border border-white/80 bg-white/80 p-4">
+            <p className="text-sm font-bold text-slate-900">Controles clave</p>
+            <p className="mt-1 text-sm text-slate-600">{result.interpretation}</p>
+            <div className="mt-3 space-y-2">
+            {result.safetyChecks.map((item, index) => (
               <div key={index} className="flex items-start gap-2 text-sm text-slate-700">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
                 <span>{item}</span>
               </div>
             ))}
+            </div>
           </div>
         </div>
       )}
