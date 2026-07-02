@@ -26,6 +26,18 @@ const references = [
 
 const content_blocks = [
   {
+    id: 'sedo-header',
+    type: 'protocol_header',
+    ordinario: 'REFERENCIA CLÍNICA',
+    title: 'Sedoanalgesia procedural en urgencias',
+    institution: 'HCSF Bulnes',
+    department: 'Síntesis local basada en evidencia y arsenal vigente',
+    date: 'Julio 2026',
+    summary:
+      'Contenido médico práctico para seleccionar y combinar analgésico + sedante en cardioversión, reducciones ortopédicas y procedimientos breves. No corresponde a protocolo institucional; debe aplicarse con juicio clínico, monitorización y capacidad de rescate.',
+    order: 1,
+  },
+  {
     id: 'sedo-resumen',
     type: 'text',
     tab: 'Estrategia',
@@ -154,7 +166,7 @@ const payload = {
   authors: [{ name: 'Equipo Clínico HCSF Bulnes', role: 'Síntesis local basada en evidencia' }],
   published_date: new Date().toISOString(),
   last_updated: new Date().toISOString(),
-  layout_mode: 'protocol',
+  layout_mode: 'tabs',
   tipo_contenido: ['contenido_medico', 'herramienta_clinica'],
   clasificacion_ges: 'No GES',
   has_local_protocol: false,

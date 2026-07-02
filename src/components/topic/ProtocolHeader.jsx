@@ -13,12 +13,16 @@ const INSTITUTIONAL_PROTOCOLS_FOLDER_URL =
 export default function ProtocolHeader({ topic }) {
   const downloadUrl = topic.protocol_file_url || INSTITUTIONAL_PROTOCOLS_FOLDER_URL;
   const isFolderFallback = !topic.protocol_file_url;
+  const isMedicalReference =
+    (topic.tipo_contenido || []).includes('contenido_medico') &&
+    !topic.has_local_protocol &&
+    /referencia clinica|referencia clínica|contenido medico|contenido médico/i.test(topic.protocol_code || '');
 
   const handleDownload = () => {
     window.open(downloadUrl, '_blank', 'noopener,noreferrer');
   };
 
-  if (!topic.protocol_code && !topic.protocol_authors?.length) {
+  if (isMedicalReference || (!topic.protocol_code && !topic.protocol_authors?.length)) {
     return null;
   }
 

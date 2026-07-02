@@ -16,7 +16,6 @@ import {
   History,
   Megaphone,
   MessageCircle,
-  Minimize2,
   Pill,
   ScanLine,
   Stethoscope,
@@ -39,6 +38,7 @@ import { cn } from '@/lib/utils';
 
 const RECENT_DAYS = 10;
 const NEWS_BUTTON_COLLAPSED_KEY = 'salud_bulnes_news_button_collapsed';
+const NEWS_BUTTON_AUTO_COLLAPSE_MS = 15_000;
 
 const FREQUENT_QUERIES = [
   {
@@ -559,6 +559,14 @@ export default function FloatingNewsButton({ currentPageName }) {
     window.localStorage.setItem(NEWS_BUTTON_COLLAPSED_KEY, isCollapsed ? 'true' : 'false');
   }, [isCollapsed]);
 
+  useEffect(() => {
+    if (hiddenInAdmin || isCollapsed) return undefined;
+    const timeout = window.setTimeout(() => {
+      setIsCollapsed(true);
+    }, NEWS_BUTTON_AUTO_COLLAPSE_MS);
+    return () => window.clearTimeout(timeout);
+  }, [hiddenInAdmin, isCollapsed]);
+
   const { data, isLoading } = useQuery({
     queryKey: ['floating-news'],
     queryFn: fetchNewsData,
@@ -624,17 +632,6 @@ export default function FloatingNewsButton({ currentPageName }) {
             )}
           </button>
         </SheetTrigger>
-        {!isCollapsed && (
-          <button
-            type="button"
-            onClick={() => setIsCollapsed(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white/95 text-slate-500 shadow-md shadow-slate-900/10 backdrop-blur transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-            aria-label="Contraer novedades"
-            title="Contraer novedades"
-          >
-            <Minimize2 className="h-3.5 w-3.5" />
-          </button>
-        )}
       </div>
 
       <SheetContent className="flex w-full flex-col overflow-hidden p-0 sm:max-w-md">

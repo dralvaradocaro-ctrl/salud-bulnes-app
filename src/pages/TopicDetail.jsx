@@ -371,6 +371,8 @@ export default function TopicDetail() {
   const TopicIcon = topicVisual.icon;
   const isGesTopic = topic.clasificacion_ges === 'GES';
   const { area: gesArea, theme: gesTheme } = isGesTopic ? getGesTopicMeta(topic.name) : { area: null, theme: null };
+  const topicStatus = getTopicProtocolStatus(topic);
+  const protocolValidityStatus = getProtocolValidityStatus(topic.protocol_validity);
 
   const enhancedBlocks = topic.content_blocks || [];
 
@@ -392,20 +394,68 @@ export default function TopicDetail() {
                 <ChevronLeft className="h-5 w-5" />
             </Button>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 text-sm text-slate-500 mb-1">
-                {category && (
-                  <>
-                    <span>{category.name}</span>
-                    {topic.subcategory && (
-                      <>
-                        <span>/</span>
-                        <span>{topic.subcategory}</span>
-                      </>
-                    )}
-                  </>
-                )}
+              <div className="mb-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                <div className="flex min-w-0 items-center gap-2">
+                  {category && (
+                    <>
+                      <span className="truncate">{category.name}</span>
+                      {topic.subcategory && (
+                        <>
+                          <span>/</span>
+                          <span className="truncate">{topic.subcategory}</span>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {topicStatus === 'local' && (
+                    <Badge className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Protocolo local
+                    </Badge>
+                  )}
+                  {topicStatus === 'checklist' && (
+                    <Badge className="bg-amber-50 text-amber-800 border-amber-200 flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold">
+                      <CheckCircle2 className="h-3 w-3" />
+                      Pauta de cotejo
+                    </Badge>
+                  )}
+                  {protocolValidityStatus && (
+                    <Badge className={`flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold ${
+                      protocolValidityStatus === 'vigente'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : protocolValidityStatus === 'proximo'
+                          ? 'bg-amber-50 text-amber-700 border-amber-300'
+                          : 'bg-red-50 text-red-700 border-red-200'
+                    }`}>
+                      {{ vigente: 'Vigente', proximo: 'Próximo a vencer', vencido: 'Vencido' }[protocolValidityStatus]}
+                    </Badge>
+                  )}
+                  {hasSsnProtocolBadge(topic) && (
+                    <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 px-2 py-0.5 text-[11px] font-semibold">
+                      Protocolo SSÑ
+                    </Badge>
+                  )}
+                  {hasMinsalOrdinarioBadge(topic) && (
+                    <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 px-2 py-0.5 text-[11px] font-semibold">
+                      Ordinario MINSAL
+                    </Badge>
+                  )}
+                  {hasSsnOrdinarioBadge(topic) && (
+                    <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 px-2 py-0.5 text-[11px] font-semibold">
+                      Ordinario SSÑ
+                    </Badge>
+                  )}
+                  {(topic.tipo_contenido || []).includes('flujo_local') && (
+                    <Badge className="bg-sky-50 text-sky-700 border-sky-200 flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold">
+                      <ClipboardList className="h-3 w-3" />
+                      Flujo local
+                    </Badge>
+                  )}
+                </div>
               </div>
-              <h1 className="text-xl font-bold text-slate-900 truncate">{topic.name}</h1>
+              <h1 className="min-w-0 truncate text-xl font-bold text-slate-900">{topic.name}</h1>
             </div>
           </div>
           <GlobalSearch />
@@ -521,81 +571,22 @@ export default function TopicDetail() {
                   </div>
                 );
               })() : (
-              <div className="flex flex-col gap-5 md:flex-row md:items-start">
-                <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.5rem] bg-gradient-to-br ${topicVisual.gradient} shadow-lg shadow-slate-200`}>
-                  <TopicIcon className="h-8 w-8 text-white" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-3 mb-4">
-                    {(() => {
-                      const s = getTopicProtocolStatus(topic);
-                      if (s === 'local') {
-                        return (
-                          <Badge className="bg-green-100 text-green-700 border-green-200 flex items-center gap-1 px-3 py-1.5">
-                            <CheckCircle2 className="h-4 w-4" />
-                            Protocolo local establecido
-                          </Badge>
-                        );
-                      }
-                      if (s === 'checklist') {
-                        return (
-                          <Badge className="bg-amber-100 text-amber-800 border-amber-200 flex items-center gap-1 px-3 py-1.5">
-                            <CheckCircle2 className="h-4 w-4" />
-                            Pauta de cotejo
-                          </Badge>
-                        );
-                      }
-                      return null;
-                    })()}
-                    {(() => {
-                      const vs = getProtocolValidityStatus(topic.protocol_validity);
-                      if (!vs) return null;
-                      const styles = {
-                        vigente: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                        proximo: 'bg-amber-50 text-amber-700 border-amber-300',
-                        vencido: 'bg-red-50 text-red-700 border-red-200',
-                      };
-                      const labels = { vigente: 'Vigente', proximo: 'Próximo a vencer', vencido: 'Vencido' };
-                      return (
-                        <Badge className={`${styles[vs]} flex items-center gap-1 px-3 py-1.5`}>
-                          {labels[vs]}
-                        </Badge>
-                      );
-                    })()}
-                    {hasSsnProtocolBadge(topic) && (
-                      <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 flex items-center gap-1 px-3 py-1.5 font-semibold">
-                        Protocolo SSÑ
-                      </Badge>
-                    )}
-                    {hasMinsalOrdinarioBadge(topic) && (
-                      <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center gap-1 px-3 py-1.5 font-semibold">
-                        Ordinario MINSAL
-                      </Badge>
-                    )}
-                    {hasSsnOrdinarioBadge(topic) && (
-                      <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 flex items-center gap-1 px-3 py-1.5 font-semibold">
-                        Ordinario SSÑ
-                      </Badge>
-                    )}
-                    {(topic.tipo_contenido || []).includes('flujo_local') && (
-                      <Badge className="bg-sky-100 text-sky-700 border-sky-200 flex items-center gap-1 px-3 py-1.5 font-semibold">
-                        <ClipboardList className="h-4 w-4" />
-                        Flujo local
-                      </Badge>
-                    )}
-                    {topic.tags?.map((tag, idx) => (
-                      <Badge key={idx} variant="outline" className="flex items-center gap-1">
+              <div className="space-y-5">
+                {topic.description && (
+                  <p className="max-w-4xl text-lg leading-relaxed text-slate-600">
+                    {topic.description}
+                  </p>
+                )}
+                {topic.tags?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
+                    {topic.tags.map((tag, idx) => (
+                      <Badge key={idx} variant="outline" className="flex items-center gap-1 border-slate-200 bg-white/70 text-slate-600">
                         <Tag className="h-3 w-3" />
                         {tag}
                       </Badge>
                     ))}
                   </div>
-                  {topic.description && (
-                    <p className="text-lg text-slate-600 leading-relaxed">
-                      {topic.description}
-                    </p>
-                  )}
-                </div>
+                )}
               </div>
             )}
           </motion.div>

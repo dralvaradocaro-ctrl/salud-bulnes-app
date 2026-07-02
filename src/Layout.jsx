@@ -34,7 +34,7 @@ export default function Layout({ children, currentPageName }) {
     <div className="min-h-screen bg-slate-50">
       <nav
         aria-label="Navegación principal"
-        className="fixed right-4 top-4 z-[60] hidden items-center gap-1 rounded-full border border-slate-200 bg-white/90 p-1 shadow-lg shadow-slate-900/10 backdrop-blur md:flex print:hidden"
+        className="fixed bottom-5 left-1/2 z-[60] hidden -translate-x-1/2 items-center gap-1 rounded-full border border-white/45 bg-white/60 p-1.5 shadow-[0_18px_45px_rgba(15,23,42,0.16)] backdrop-blur-2xl supports-[backdrop-filter]:bg-white/45 md:flex print:hidden"
       >
         {navItems.map((item) => {
           const isActive = item.active ?? currentPageName === item.page;
@@ -47,8 +47,8 @@ export default function Layout({ children, currentPageName }) {
               title={item.name}
               className={`flex h-10 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition ${
                 isActive
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  ? 'bg-white/90 text-blue-700 shadow-sm shadow-slate-900/10'
+                  : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -82,7 +82,7 @@ export default function Layout({ children, currentPageName }) {
       </nav>
 
       {/* Content with bottom padding for mobile nav */}
-      <main className="mobile-bottom-content md:pb-0">
+      <main className="mobile-bottom-content md:pb-24">
         {children}
       </main>
       <FloatingNewsButton currentPageName={currentPageName} />
