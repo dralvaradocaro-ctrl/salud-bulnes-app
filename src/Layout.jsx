@@ -30,18 +30,18 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Plantillas', page: 'Templates', icon: ClipboardList, to: createPageUrl('Templates') },
   ];
 
-  // Don't show nav on home page
-  if (currentPageName === 'Home') {
-    return (
-      <>
-        {children}
-        <FloatingNewsButton currentPageName={currentPageName} />
-      </>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-slate-50">
+      {currentPageName !== 'Home' && (
+        <Link
+          to={createPageUrl('Home')}
+          aria-label="Volver al inicio"
+          className="fixed right-4 top-4 z-[60] hidden h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-700 shadow-lg shadow-slate-900/10 backdrop-blur transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 md:flex print:hidden"
+        >
+          <Home className="h-5 w-5" />
+        </Link>
+      )}
+
       {/* Mobile bottom navigation */}
       <nav className="mobile-bottom-nav md:hidden print:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 px-2 pt-2">
         <div className="flex justify-around">

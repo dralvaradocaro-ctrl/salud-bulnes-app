@@ -24,7 +24,7 @@ import { getTopicVisual } from '@/lib/topicVisuals';
 import { hasGuaranteeContent, extractGuaranteeStages } from '@/lib/guarantees';
 import { getProtocolValidityStatus } from '@/lib/protocolUtils';
 import { getGesTopicMeta } from '@/lib/ges';
-import { getTopicProtocolStatus, hasSsnProtocolBadge, hasMinsalOrdinarioBadge } from '@/lib/topicStatus';
+import { getTopicProtocolStatus, hasSsnProtocolBadge, hasMinsalOrdinarioBadge, hasSsnOrdinarioBadge } from '@/lib/topicStatus';
 import ReactMarkdown from 'react-markdown';
 import {
   ChevronLeft,
@@ -570,6 +570,11 @@ export default function TopicDetail() {
                     {hasMinsalOrdinarioBadge(topic) && (
                       <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 flex items-center gap-1 px-3 py-1.5 font-semibold">
                         Ordinario MINSAL
+                      </Badge>
+                    )}
+                    {hasSsnOrdinarioBadge(topic) && (
+                      <Badge className="bg-cyan-50 text-cyan-700 border-cyan-200 flex items-center gap-1 px-3 py-1.5 font-semibold">
+                        Ordinario SSÑ
                       </Badge>
                     )}
                     {(topic.tipo_contenido || []).includes('flujo_local') && (

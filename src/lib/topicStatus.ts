@@ -60,6 +60,22 @@ export function hasMinsalOrdinarioBadge(topic: TopicLike | null | undefined): bo
   );
 }
 
+export function hasSsnOrdinarioBadge(topic: TopicLike | null | undefined): boolean {
+  if (!topic) return false;
+  const labels = [
+    normalizeLabel(topic.protocol_code),
+    ...(Array.isArray(topic.tags) ? topic.tags.map(normalizeLabel) : []),
+  ];
+  return labels.some((label) =>
+    label === 'ordinario ssn' ||
+    label === 'ordinario ssnuble' ||
+    label === 'ordinario servicio de salud nuble' ||
+    label === 'ordinario red asistencial' ||
+    label.includes('ord. 5 n 783') ||
+    label.includes('ord 5 n 783')
+  );
+}
+
 export const TOPIC_STATUS_LABELS: Record<TopicProtocolStatus, string> = {
   local: 'Protocolo local activo',
   checklist: 'Pauta de cotejo',
