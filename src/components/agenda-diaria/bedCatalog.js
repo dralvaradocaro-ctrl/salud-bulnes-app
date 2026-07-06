@@ -73,12 +73,13 @@ export const BED_STATE = {
   EMPTY: 'empty', // disponible
 };
 
-// Ciclo al hacer click: disponible → ocupada → no disponible → social → disponible.
+// Ciclo al hacer click: ocupada → libre → no disponible → social → ocupada.
+// Las camas nacen ocupadas (ver defaultBedState): el primer click las libera.
 export const NEXT_STATE_CYCLE = {
-  [BED_STATE.VISIT]: BED_STATE.NOVISIT,
+  [BED_STATE.VISIT]: BED_STATE.EMPTY,
+  [BED_STATE.EMPTY]: BED_STATE.NOVISIT,
   [BED_STATE.NOVISIT]: BED_STATE.BLOCKED,
-  [BED_STATE.BLOCKED]: BED_STATE.EMPTY,
-  [BED_STATE.EMPTY]: BED_STATE.VISIT,
+  [BED_STATE.BLOCKED]: BED_STATE.VISIT,
 };
 
 // ─── Camas SOCIALES ────────────────────────────────────────────────────────
@@ -93,8 +94,10 @@ export const SOCIAL_BED_CODES = new Set([
 ]);
 
 // Estado por defecto de una cama (cuando no hay estado guardado ni heredado).
+// Por defecto todas las camas nacen OCUPADAS (visita): el médico solo destilda
+// las que quedan libres. Las sociales nacen bloqueadas.
 export function defaultBedState(code) {
-  return SOCIAL_BED_CODES.has(code) ? BED_STATE.BLOCKED : BED_STATE.EMPTY;
+  return SOCIAL_BED_CODES.has(code) ? BED_STATE.BLOCKED : BED_STATE.VISIT;
 }
 
 // Plantilla inicial cargada desde la agenda vigente enviada el 25-06-2026.

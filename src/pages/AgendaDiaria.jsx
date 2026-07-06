@@ -1058,8 +1058,8 @@ function PostWizard({
         <div>
           <h2 className="text-lg font-semibold text-slate-900 mb-1">Distribución de camas</h2>
           <p className="text-sm text-slate-500 mb-4">
-            Deja en <span className="font-medium text-emerald-700">verde</span> las disponibles, en{' '}
-            <span className="font-medium text-red-700">rojo</span> las ocupadas, en{' '}
+            Todas las camas nacen <span className="font-medium text-red-700">ocupadas</span>: haz click en las que estén{' '}
+            <span className="font-medium text-emerald-700">libres</span> para liberarlas. Deja en{' '}
             <span className="font-medium text-violet-700">morado</span> las sociales y con{' '}
             <span className="font-medium">línea suspensiva</span> las no disponibles. Quedan{' '}
             <span className="font-semibold text-blue-700">{visitBedCodes.length} pacientes con visita</span>{' '}
