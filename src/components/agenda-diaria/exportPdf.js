@@ -105,7 +105,7 @@ export async function exportDailyAgendaPdf({ date, day, result, telemed = [], ex
     doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
     bloqueos.forEach((b) => {
       if (y > H - M) { doc.addPage(); y = M; }
-      const doctors = blockDoctorIds(b).map(docName).join(' + ');
+      const doctors = b?.all_doctors ? 'Todos' : blockDoctorIds(b).map(docName).join(' + ');
       const line = `${b.from ? `${hhmm(b.from)}-${hhmm(b.to)}` : ''}  ${doctors ? `${doctors} ` : ''}${b.name || 'Bloqueo'}`;
       doc.text(line, M, y); y += 14;
     });

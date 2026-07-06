@@ -161,7 +161,7 @@ const blockDoctorIds = (b) =>
 function PrintPreview({ roster, date, day, telemed }) {
   const bloqueos = (day?.bloqueos || []).filter((b) => !b.suspended && b.category !== 'feriado');
   const doctorName = (id) => roster.rows.find((r) => r.id === id)?.name || String(id || '').toUpperCase();
-  const blockDoctors = (b) => blockDoctorIds(b).map(doctorName).join(' + ');
+  const blockDoctors = (b) => (b?.all_doctors ? 'Todos' : blockDoctorIds(b).map(doctorName).join(' + '));
   return (
     <section className="print-preview rounded-lg border border-slate-300 bg-white p-5 shadow-sm print:block print:rounded-none print:border-0 print:p-0 print:shadow-none">
       <div className="mb-4 flex items-start gap-3">

@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { createPageUrl } from '@/utils';
 import { useSdmWeeklyAgenda } from '@/components/sdm/lib/useSdmWeeklyAgenda';
 import { getMondayOfWeek, fmtDate, weekDates } from '@/components/sdm/lib/generateAgenda';
@@ -695,18 +697,25 @@ function StepAgenda({ day, docName, doctors, externalConfirm, setExternalConfirm
     day.refuerzos?.pm,
   ].filter(Boolean));
   const allBlockDoctorIds = (doctors || []).map((d) => d.id).filter((id) => !excludedFromAll.has(id));
-  const blockTargetsAll = (b) => {
-    const ids = doctorIds(b);
-    return allBlockDoctorIds.length > 0
-      && ids.length >= allBlockDoctorIds.length
-      && allBlockDoctorIds.every((id) => ids.includes(id));
-  };
+  const blockTargetsAll = (b) => b?.all_doctors === true;
   const setBlockDoctor = (index, doctorId) => {
     if (doctorId === ALL_DOCTORS) {
-      updateBlock(index, { doctor_ids: allBlockDoctorIds, doctor_id: allBlockDoctorIds[0] || null });
+      updateBlock(index, { doctor_ids: allBlockDoctorIds, doctor_id: allBlockDoctorIds[0] || null, all_doctors: true });
       return;
     }
-    updateBlock(index, { doctor_ids: doctorId === EMPTY_DOCTOR ? [] : [doctorId], doctor_id: doctorId === EMPTY_DOCTOR ? null : doctorId });
+    updateBlock(index, {
+      doctor_ids: doctorId === EMPTY_DOCTOR ? [] : [doctorId],
+      doctor_id: doctorId === EMPTY_DOCTOR ? null : doctorId,
+      all_doctors: false,
+    });
+  };
+  // Agrega/quita un médico del bloqueo (selección múltiple). Al tocar uno se
+  // deja de considerar "todos": el bloqueo pasa a la lista explícita de apellidos.
+  const toggleBlockDoctor = (index, doctorId) => {
+    const ids = new Set(doctorIds(bloqueos[index]));
+    if (ids.has(doctorId)) ids.delete(doctorId); else ids.add(doctorId);
+    const next = [...ids];
+    updateBlock(index, { doctor_ids: next, doctor_id: next[0] || null, all_doctors: false });
   };
   const addBlock = () => updateDay('bloqueos', [...bloqueos, newBlock()]);
   const removeBlock = (index) => updateDay('bloqueos', bloqueos.filter((_, i) => i !== index));
@@ -813,7 +822,13 @@ function StepAgenda({ day, docName, doctors, externalConfirm, setExternalConfirm
                   <Input type="time" value={b.from || ''} onChange={(e) => updateBlock(i, { from: e.target.value })} className="w-28 h-8 text-xs" />
                   <Input type="time" value={b.to || ''} onChange={(e) => updateBlock(i, { to: e.target.value })} className="w-28 h-8 text-xs" />
                   <Input value={b.name || ''} onChange={(e) => updateBlock(i, { name: e.target.value })} className="min-w-[180px] flex-1 h-8 text-xs" />
-                  <DoctorPick value={blockTargetsAll(b) ? ALL_DOCTORS : (b.doctor_id || EMPTY_DOCTOR)} doctors={doctors} onChange={(v) => setBlockDoctor(i, v)} allowEmpty allowAll />
+                  <BlockDoctorMultiPick
+                    doctors={doctors}
+                    selectedIds={doctorIds(b)}
+                    allSelected={blockTargetsAll(b)}
+                    onToggleAll={(checked) => setBlockDoctor(i, checked ? ALL_DOCTORS : EMPTY_DOCTOR)}
+                    onToggleDoctor={(id) => toggleBlockDoctor(i, id)}
+                  />
                   <Button variant="ghost" size="icon" onClick={() => removeBlock(i)}>
                     <Trash2 className="h-4 w-4 text-slate-400" />
                   </Button>
@@ -1216,6 +1231,47 @@ function DoctorPick({ label, value, doctors, onChange, allowEmpty = false, allow
         ))}
       </select>
     </label>
+  );
+}
+
+// Selector de médicos de un bloqueo con selección MÚLTIPLE + opción "Todos".
+function BlockDoctorMultiPick({ doctors, selectedIds = [], allSelected = false, onToggleAll, onToggleDoctor }) {
+  const [open, setOpen] = useState(false);
+  const nameOf = (id) => (doctors || []).find((d) => d.id === id)?.display_name || String(id || '').toUpperCase();
+  const summary = allSelected
+    ? 'Todos los médicos'
+    : selectedIds.length === 0
+      ? 'Médico…'
+      : selectedIds.length <= 2
+        ? selectedIds.map(nameOf).join(', ')
+        : `${selectedIds.length} médicos`;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={`h-8 min-w-[150px] max-w-[240px] truncate rounded-md border bg-white px-2 text-left text-xs ${allSelected || selectedIds.length ? 'border-slate-300 text-slate-700' : 'border-slate-200 text-slate-400'}`}
+        >
+          {summary}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="max-h-72 w-60 overflow-auto p-1">
+        <label className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-xs font-medium hover:bg-slate-50">
+          <Checkbox checked={allSelected} onCheckedChange={(c) => onToggleAll(!!c)} />
+          Todos los médicos
+        </label>
+        <div className="my-1 border-t border-slate-100" />
+        {(doctors || []).map((d) => (
+          <label key={d.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-xs text-slate-700 hover:bg-slate-50">
+            <Checkbox
+              checked={allSelected || selectedIds.includes(d.id)}
+              onCheckedChange={() => onToggleDoctor(d.id)}
+            />
+            {d.display_name}
+          </label>
+        ))}
+      </PopoverContent>
+    </Popover>
   );
 }
 
