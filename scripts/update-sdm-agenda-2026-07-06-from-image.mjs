@@ -128,7 +128,7 @@ const bloqueosOverrides = {
     block('2026-07-07', 9, '14:00', '16:00', ['cordero'], 'Reunión SDM'),
     block('2026-07-07', 10, '14:00', '15:00', ['carreno'], 'Gestión PROA + Visita PROA', { block_id: 'visita_proa' }),
     block('2026-07-07', 11, '15:00', '15:40', ['enriquez'], 'Reg. IC', { block_id: 'regulacion_ic' }),
-    block('2026-07-07', 12, '16:00', '17:00', allDoctorIds, 'Reunión de salud familiar'),
+    block('2026-07-07', 12, '16:00', '17:00', allDoctorIds, 'Reunión de salud familiar', { all_doctors: true }),
   ],
   '2026-07-08': [
     block('2026-07-08', 1, '08:00', '11:00', ['alvarado'], 'Selector de demanda', { block_id: 'selector_demanda' }),
