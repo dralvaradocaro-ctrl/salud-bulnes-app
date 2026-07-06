@@ -147,6 +147,33 @@ const formatTablets = (tablets: number | null | undefined): string => {
   return tablets.toString();
 };
 
+const getDosePresentationLabel = (item: Pick<PrescriptionItemInput, 'useCustomPresentation' | 'customPresentation' | 'arsenalPresentation'>): string => {
+  const raw = item.useCustomPresentation && item.customPresentation
+    ? item.customPresentation
+    : item.arsenalPresentation || 'comprimido';
+  const normalized = normalizePresentation(raw);
+  if (/\b(comp|comprimido)\b/.test(normalized)) return 'comprimido';
+  if (/\b(tab|tableta)\b/.test(normalized)) return 'tableta';
+  if (/\b(caps|capsula)\b/.test(normalized)) return 'cápsula';
+  return raw.toLowerCase().trim() || 'comprimido';
+};
+
+const pluralizePresentation = (label: string, quantity: number | null | undefined): string => {
+  if (quantity == null || quantity <= 1) return label;
+  if (label === 'cápsula') return 'cápsulas';
+  if (label.endsWith('s')) return label;
+  return `${label}s`;
+};
+
+const formatPresentationDose = (
+  quantity: number | null | undefined,
+  item: Pick<PrescriptionItemInput, 'useCustomPresentation' | 'customPresentation' | 'arsenalPresentation'>
+): string => {
+  const safeQuantity = quantity ?? 1;
+  const label = getDosePresentationLabel(item);
+  return `${formatTablets(safeQuantity)} ${pluralizePresentation(label, safeQuantity)}`;
+};
+
 const hasUnitsPerDoseDescription = (aiDescription: string | null): boolean =>
   !!aiDescription && /(½|¼|¾|\d+½|\d+(?:\.\d+)?)\s*(?:comprimido|cápsula|tableta|comp)/i.test(aiDescription);
 
@@ -731,16 +758,10 @@ export default function NewPrescription() {
     }
     
     if (item.dosesBySchedule && item.dosesBySchedule.length > 0) {
-      const presLabel = item.useCustomPresentation && item.customPresentation
-        ? item.customPresentation.toLowerCase()
-        : item.arsenalPresentation?.toLowerCase() || 'comp';
-      const doseStr = item.dosesBySchedule.map(d => `${formatTablets(d.tablets)} ${presLabel} a las ${d.time}`).join(', ');
+      const doseStr = item.dosesBySchedule.map(d => `${formatPresentationDose(d.tablets, item)} a las ${d.time}`).join(', ');
       parts.push(doseStr);
-    } else if (item.tabletsPerDose && item.tabletsPerDose !== 1 && !item.isInsulin) {
-      const presLabel = item.useCustomPresentation && item.customPresentation
-        ? item.customPresentation.toLowerCase()
-        : item.arsenalPresentation?.toLowerCase() || 'comp';
-      parts.push(`${formatTablets(item.tabletsPerDose)} ${presLabel}`);
+    } else if (item.tabletsPerDose && !item.isInsulin) {
+      parts.push(formatPresentationDose(item.tabletsPerDose, item));
     }
     
     if (item.isWeekly) {
