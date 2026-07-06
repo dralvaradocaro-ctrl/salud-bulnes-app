@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/med
 import { Button } from '@/medispense/components/ui/button';
 import { Badge } from '@/medispense/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/medispense/components/ui/tooltip';
-import { ArrowLeft, Plus, Clock, Pill, Calendar, QrCode, User, Printer, Info, ChevronDown, ChevronUp, Pencil, BookOpen, Trash2, HeartPulse, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Plus, Clock, Pill, Calendar, QrCode, User, Printer, Info, ChevronDown, ChevronUp, Pencil, BookOpen, Trash2, HeartPulse, ExternalLink, Sunrise, Sun, Sunset, Moon, type LucideIcon } from 'lucide-react';
 import { routes } from '@/medispense/lib/routes';
 import { QRCodeSVG } from 'qrcode.react';
 import {
@@ -131,6 +131,334 @@ interface Prescription {
   items: PrescriptionItem[];
 }
 
+type CalendarSlot = 'Mañana' | 'Mediodía' | 'Tarde' | 'Noche';
+
+interface PrintableDailyMed {
+  uid: string;
+  medicationName: string;
+  doseText: string | null;
+  frequency: string;
+  time: string;
+  slot: CalendarSlot;
+}
+
+interface WeeklyMedicationNote {
+  uid: string;
+  medicationName: string;
+  day: string;
+  doseText: string;
+  frequency: string;
+}
+
+const CALENDAR_SLOTS: { id: CalendarSlot; label: string; range: string; icon: LucideIcon; printIcon: string }[] = [
+  { id: 'Mañana', label: 'Mañana', range: '06:00 - 11:59', icon: Sunrise, printIcon: '☀' },
+  { id: 'Mediodía', label: 'Mediodía', range: '12:00 - 15:59', icon: Sun, printIcon: '◎' },
+  { id: 'Tarde', label: 'Tarde', range: '16:00 - 19:59', icon: Sunset, printIcon: '◒' },
+  { id: 'Noche', label: 'Noche', range: '20:00 - 05:59', icon: Moon, printIcon: '☾' },
+];
+
+const isDailyCalendarMed = (frequency: string): boolean => {
+  const value = (frequency || '').toLowerCase();
+  if (isWeeklyMed(value)) return false;
+  if (value.includes('48h') || value.includes('48 h') || value.includes('cada 2')) return false;
+  return ['c/6h', 'c/8h', 'c/12h', 'c/24h', 'bid', 'tid', 'qid', 'diario', 'día', 'dia'].some((token) => value.includes(token));
+};
+
+const getSlotForTime = (time: string): CalendarSlot => {
+  const hour = Number.parseInt((time || '08:00').split(':')[0] || '8', 10);
+  if (hour >= 6 && hour < 12) return 'Mañana';
+  if (hour >= 12 && hour < 16) return 'Mediodía';
+  if (hour >= 16 && hour < 20) return 'Tarde';
+  return 'Noche';
+};
+
+const getMedicationDoseText = (item: PrescriptionItem, overrideDose?: string | number | null): string | null => {
+  if (overrideDose !== undefined && overrideDose !== null && `${overrideDose}` !== '') {
+    return `${overrideDose} UI`;
+  }
+  const isInsulin = item.medication_name.toLowerCase().includes('insulina') || item.medication_name.toLowerCase().includes('nph');
+  if (isInsulin) return `${item.prescribed_dose} UI`;
+  const tabletMatch = item.ai_description?.match(/(½|¼|¾|\d+½|\d+(?:\.\d+)?)\s*(?:comprimido|cápsula|capsula|tableta|comp\.?)/i);
+  if (tabletMatch) return `${tabletMatch[1]} comp.`;
+  if (item.prescribed_dose && item.prescribed_unit) return `${item.prescribed_dose}${item.prescribed_unit}`;
+  return null;
+};
+
+const buildPrintableDailyMeds = (prescriptions: Prescription[]): PrintableDailyMed[] => {
+  return prescriptions.flatMap((prescription) =>
+    prescription.items
+      .filter((item) => !item.is_annulled && !item.is_sos && isDailyCalendarMed(item.frequency))
+      .flatMap((item) => {
+        const isInsulin = item.medication_name.toLowerCase().includes('insulina') || item.medication_name.toLowerCase().includes('nph');
+        const schedule = item.schedule?.length ? item.schedule : ['08:00'];
+
+        if (isInsulin && item.fractionation && schedule.length >= 2) {
+          const parts = item.fractionation.split('-').map(Number);
+          if (parts.length >= 2 && parts.every((part) => !Number.isNaN(part))) {
+            return schedule.map((time, idx) => ({
+              uid: `${item.id}-${time}-${idx}`,
+              medicationName: item.medication_name,
+              doseText: getMedicationDoseText(item, parts[idx] ?? parts[0]),
+              frequency: item.frequency,
+              time,
+              slot: getSlotForTime(time),
+            }));
+          }
+        }
+
+        return schedule.map((time, idx) => ({
+          uid: `${item.id}-${time}-${idx}`,
+          medicationName: item.medication_name,
+          doseText: getMedicationDoseText(item),
+          frequency: item.frequency,
+          time,
+          slot: getSlotForTime(time),
+        }));
+      })
+  );
+};
+
+const buildWeeklyMedicationNotes = (prescriptions: Prescription[]): WeeklyMedicationNote[] => {
+  return prescriptions.flatMap((prescription) =>
+    prescription.items
+      .filter((item) => !item.is_annulled && !item.is_sos && isWeeklyMed(item.frequency))
+      .flatMap((item) =>
+        DAY_FULL.map((day, dayIndex) => {
+          const dose = getWeeklyDoseForDay(item.fractionation, dayIndex);
+          if (dose <= 0) return null;
+          return {
+            uid: `${item.id}-${dayIndex}`,
+            medicationName: item.medication_name,
+            day,
+            doseText: `${formatTablets(dose)} comp.`,
+            frequency: item.frequency,
+          };
+        }).filter(Boolean) as WeeklyMedicationNote[]
+      )
+  );
+};
+
+function PrintableMedicationCalendarDialog({
+  open,
+  onOpenChange,
+  patient,
+  dailyMeds,
+  weeklyNotes,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  patient: Patient;
+  dailyMeds: PrintableDailyMed[];
+  weeklyNotes: WeeklyMedicationNote[];
+}) {
+  const [items, setItems] = useState<PrintableDailyMed[]>(dailyMeds);
+  const [selectedUid, setSelectedUid] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setItems(dailyMeds);
+      setSelectedUid(null);
+    }
+  }, [open]);
+
+  const moveItemToSlot = (uid: string, slot: CalendarSlot) => {
+    setItems((current) => current.map((item) => item.uid === uid ? { ...item, slot } : item));
+    setSelectedUid(null);
+  };
+
+  const handlePrint = () => {
+    const html = buildCalendarPrintHtml(patient, items, weeklyNotes);
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 300);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[92vh] w-[96vw] max-w-6xl overflow-y-auto p-4 sm:p-6">
+        <DialogHeader className="pr-8">
+          <DialogTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            Calendario imprimible de medicamentos
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/40 p-3">
+            <div>
+              <p className="text-sm font-semibold">{patient.full_name}</p>
+              <p className="text-xs text-muted-foreground">ID: {patient.patient_code} · Solo medicamentos diarios</p>
+            </div>
+            <Button onClick={handlePrint} disabled={items.length === 0}>
+              <Printer className="mr-2 h-4 w-4" /> Imprimir
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Para editar: arrastra un medicamento a otro bloque horario. En móvil también puedes tocar un medicamento y luego tocar el bloque destino.
+          </p>
+
+          <div id="printable-med-calendar" className="rounded-xl border bg-white">
+            <div className="grid gap-0 md:grid-cols-4">
+              {CALENDAR_SLOTS.map((slot) => (
+                (() => {
+                  const SlotIcon = slot.icon;
+                  return (
+                    <section
+                      key={slot.id}
+                      className={cn(
+                        'min-h-[260px] border-b p-3 md:border-b-0 md:border-r md:last:border-r-0',
+                        selectedUid && 'bg-primary/5'
+                      )}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => {
+                        const uid = event.dataTransfer.getData('text/plain');
+                        if (uid) moveItemToSlot(uid, slot.id);
+                      }}
+                      onClick={() => selectedUid && moveItemToSlot(selectedUid, slot.id)}
+                    >
+                      <div className="mb-3 flex items-center gap-3 rounded-lg bg-slate-50 p-3">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-primary shadow-sm">
+                          <SlotIcon className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <p className="text-base font-bold text-slate-900">{slot.label}</p>
+                          <p className="text-xs text-slate-500">{slot.range}</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {items.filter((item) => item.slot === slot.id).map((item) => (
+                          <button
+                            key={item.uid}
+                            draggable
+                            onDragStart={(event) => event.dataTransfer.setData('text/plain', item.uid)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedUid((current) => current === item.uid ? null : item.uid);
+                            }}
+                            className={cn(
+                              'w-full rounded-lg border px-3 py-2.5 text-left text-sm leading-tight shadow-sm transition',
+                              selectedUid === item.uid
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-blue-100 bg-blue-50 text-blue-950 hover:border-primary/60'
+                            )}
+                          >
+                            <span className="block font-semibold">{item.medicationName}</span>
+                            <span className="text-xs opacity-80">{item.doseText || item.frequency}</span>
+                          </button>
+                        ))}
+                        {items.filter((item) => item.slot === slot.id).length === 0 && (
+                          <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
+                            Sin medicamentos diarios
+                          </div>
+                        )}
+                      </div>
+                    </section>
+                  );
+                })()
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border bg-amber-50 p-3">
+            <p className="mb-2 text-sm font-bold text-amber-950">Medicamentos semanales excluidos del calendario diario</p>
+            {weeklyNotes.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {weeklyNotes.map((note) => (
+                  <Badge key={note.uid} variant="outline" className="border-amber-300 bg-white text-amber-950">
+                    {note.medicationName}: {note.doseText} · {note.day}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-amber-900/80">No hay medicamentos semanales activos.</p>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function buildCalendarPrintHtml(patient: Patient, items: PrintableDailyMed[], weeklyNotes: WeeklyMedicationNote[]) {
+  const medForSlot = (slot: CalendarSlot) => items.filter((item) => item.slot === slot);
+  const weeklyHtml = weeklyNotes.length
+    ? weeklyNotes.map((note) => `<span class="weekly">${note.medicationName}: ${note.doseText} · ${note.day}</span>`).join('')
+    : '<span class="muted">Sin medicamentos semanales activos.</span>';
+
+  return `
+    <html>
+      <head>
+        <title>Calendario medicamentos - ${patient.patient_code}</title>
+        <style>
+          @page { size: A4 landscape; margin: 8mm; }
+          * { box-sizing: border-box; }
+          body { margin: 0; font-family: Arial, sans-serif; color: #0f172a; }
+          .header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 8px; }
+          h1 { margin: 0; font-size: 18px; }
+          .meta { font-size: 11px; color: #475569; margin-top: 2px; }
+          .tag { border: 1px solid #cbd5e1; border-radius: 999px; padding: 4px 8px; font-size: 10px; color: #334155; white-space: nowrap; }
+          .day-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; }
+          .slot { min-height: 128mm; border-right: 1px solid #cbd5e1; padding: 8px; }
+          .slot:last-child { border-right: 0; }
+          .slot-head { background: #f1f5f9; border-radius: 8px; padding: 8px; margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+          .slot-icon { width: 24px; height: 24px; border-radius: 999px; background: #fff; border: 1px solid #cbd5e1; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; color: #2563eb; flex: 0 0 auto; }
+          .slot-title { font-weight: 700; font-size: 15px; }
+          .slot-range { color: #64748b; font-size: 10px; margin-top: 2px; }
+          .med { border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 8px; padding: 8px; margin-bottom: 7px; break-inside: avoid; }
+          .med-name { display: block; font-weight: 700; font-size: 13px; line-height: 1.2; }
+          .med-dose { display: block; color: #334155; font-size: 11px; margin-top: 3px; }
+          .empty { border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px; color: #64748b; font-size: 11px; text-align: center; }
+          .weekly-box { margin-top: 8px; border: 1px solid #fcd34d; background: #fffbeb; border-radius: 8px; padding: 7px; }
+          .weekly-title { margin: 0 0 5px; font-weight: 700; font-size: 11px; }
+          .weekly { display: inline-block; border: 1px solid #fbbf24; background: white; border-radius: 999px; padding: 3px 7px; margin: 2px; font-size: 10px; }
+          .muted { color: #64748b; font-size: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <h1>Calendario diario de medicamentos</h1>
+            <div class="meta">${patient.full_name} · ID ${patient.patient_code}${patient.age ? ` · ${patient.age} años` : ''}</div>
+          </div>
+          <div class="tag">Solo medicamentos diarios</div>
+        </div>
+        <div class="day-grid">
+          ${CALENDAR_SLOTS.map((slot) => {
+            const meds = medForSlot(slot.id);
+            return `
+              <section class="slot">
+                <div class="slot-head">
+                  <span class="slot-icon">${slot.printIcon}</span>
+                  <div>
+                    <div class="slot-title">${slot.label}</div>
+                    <div class="slot-range">${slot.range}</div>
+                  </div>
+                </div>
+                ${meds.length > 0 ? meds.map((item) => `
+                  <div class="med">
+                    <span class="med-name">${item.medicationName}</span>
+                    <span class="med-dose">${item.doseText || item.frequency}</span>
+                  </div>
+                `).join('') : '<div class="empty">Sin medicamentos diarios</div>'}
+              </section>
+            `;
+          }).join('')}
+        </div>
+        <div class="weekly-box">
+          <p class="weekly-title">Medicamentos semanales excluidos del calendario diario</p>
+          ${weeklyHtml}
+        </div>
+      </body>
+    </html>
+  `;
+}
+
 export default function PatientDetail() {
   const { canDelete, role } = useUserRole();
   const { user } = useAuth();
@@ -150,6 +478,7 @@ export default function PatientDetail() {
   const [deletingPatient, setDeletingPatient] = useState(false);
   const [renewingPrescription, setRenewingPrescription] = useState(false);
   const [showPscvModal, setShowPscvModal] = useState(false);
+  const [showMedicationCalendar, setShowMedicationCalendar] = useState(false);
 
   // Use sessionStorage to persist PSCV modal state across navigations within the same session
   const pscvSessionKey = `pscv_shown_${patientCode}`;
@@ -407,6 +736,8 @@ export default function PatientDetail() {
     return d <= 0 && d > -30;
   });
   const archivedPrescriptions = prescriptions.filter(p => getDaysUntilExpiry(p.expiry_date) <= -30);
+  const printableDailyMeds = buildPrintableDailyMeds(activePrescriptions);
+  const weeklyMedicationNotes = buildWeeklyMedicationNotes(activePrescriptions);
 
   // Meds for selected day (only from active prescriptions)
   const allScheduledMeds = activePrescriptions.flatMap(p =>
@@ -482,6 +813,9 @@ export default function PatientDetail() {
           </Button>
           <Button variant="outline" size="sm" onClick={() => window.open(routes.portal(patientCode!), '_blank')}>
             <ExternalLink className="h-4 w-4 mr-2" /> Ver Portal Paciente
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowMedicationCalendar(true)} disabled={activePrescriptions.length === 0}>
+            <Calendar className="h-4 w-4 mr-2" /> Calendario diario
           </Button>
           {educationPages.length > 0 && (
             <DropdownMenu>
@@ -789,6 +1123,16 @@ export default function PatientDetail() {
       </Dialog>
 
       {/* Content */}
+      {patient && (
+        <PrintableMedicationCalendarDialog
+          open={showMedicationCalendar}
+          onOpenChange={setShowMedicationCalendar}
+          patient={patient}
+          dailyMeds={printableDailyMeds}
+          weeklyNotes={weeklyMedicationNotes}
+        />
+      )}
+
       {prescriptions.length > 0 ? (
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Left: Timeline with day selector */}
