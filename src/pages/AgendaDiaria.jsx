@@ -152,6 +152,40 @@ const INITIAL_DAILY_AGENDAS = {
 
 const initialDailyAgendaForDate = (date) => INITIAL_DAILY_AGENDAS[String(date || '').slice(0, 10)] || {};
 
+// ── Rotaciones de internos ───────────────────────────────────────────────────
+// Los internos rotan por bloques de ~2 semanas. Se precargan (nombre + camas
+// fijas de la captura) para TODO su período; pasado el rango dejan de aparecer
+// automáticamente (se retiran de la herencia día-a-día).
+const INTERN_ROTATIONS = [
+  {
+    from: '2026-07-06',
+    to: '2026-07-17', // 2 semanas: lun 6 → vie 17 jul 2026
+    interns: [
+      { name: 'María J. Molina', beds: ['03MQB-03', '03MQB-04', '03MQB-05'] }, // MQ1 SALA 3
+      { name: 'Catalina Soto', beds: ['S2MQMCHB-1', 'S2MQMCHB-4', 'S2MQMCHB-5'] }, // MQ2 SALA 2
+      { name: 'Juan Hollander', beds: ['02MQB-01', '02MQB-04', '02MQB-05'] }, // MQ1 SALA 2
+    ],
+  },
+];
+// Todos los nombres que alguna vez rotaron (para retirarlos al expirar su rango).
+const ROTATION_INTERN_NAMES = new Set(
+  INTERN_ROTATIONS.flatMap((r) => r.interns.map((i) => i.name)),
+);
+// Rotación activa para una fecha (o null si ninguna la cubre).
+const internRotationForDate = (date) => {
+  const d = String(date || '').slice(0, 10);
+  return INTERN_ROTATIONS.find((r) => d >= r.from && d <= r.to) || null;
+};
+// Internos ({id,name,isNew}) y bedOverrides ({code:internId}) de la fecha.
+const rotationInternsForDate = (date) => {
+  const rot = internRotationForDate(date);
+  if (!rot) return { internos: [], bedOverrides: {} };
+  const internos = rot.interns.map((i) => ({ id: slugifyName(i.name), name: i.name, isNew: false }));
+  const bedOverrides = {};
+  rot.interns.forEach((i) => i.beds.forEach((c) => { bedOverrides[c] = slugifyName(i.name); }));
+  return { internos, bedOverrides };
+};
+
 function buildVisitaOverride(baseDay, editedDay) {
   const base = new Set(idsOf(baseDay?.visita || []));
   const edited = idsOf(editedDay?.visita || []);
@@ -289,13 +323,15 @@ export default function AgendaDiaria() {
       if (row?.data) {
         const dd = row.data;
         const initial = initialDailyAgendaForDate(selectedDate);
+        const rotation = rotationInternsForDate(selectedDate);
         setDayOverrides(Object.keys(dd.dayOverrides || {}).length ? dd.dayOverrides : (initial.dayOverrides || {}));
         setBedStates(Object.keys(dd.bedStates || {}).length ? dd.bedStates : initialBedStatesForDate(selectedDate));
         setTelemed((dd.telemed || []).length ? dd.telemed : (initial.telemed || []));
-        setInternos((dd.internos || []).length ? dd.internos : (initial.internos || []));
+        // Si el día guardado no trae internos, usa la rotación vigente (o la plantilla).
+        setInternos((dd.internos || []).length ? dd.internos : (rotation.internos.length ? rotation.internos : (initial.internos || [])));
         setExtraBlocks(dd.extraBlocks || []);
         setDoctorSeed(dd.doctorSeed || 0);
-        setBedOverrides(dd.bedOverrides || {});
+        setBedOverrides(Object.keys(dd.bedOverrides || {}).length ? dd.bedOverrides : rotation.bedOverrides);
         setSupervisorOverrides(dd.supervisorOverrides || {});
         setPriorAssignments(dd.assigned || {}); // reproduce el reparto guardado
         setSavedExists(true);
@@ -313,13 +349,19 @@ export default function AgendaDiaria() {
         const pd = prev?.data || {};
         const initial = initialDailyAgendaForDate(selectedDate);
         const initialBeds = initialBedStatesForDate(selectedDate);
+        const rotation = rotationInternsForDate(selectedDate);
+        // Internos: rotación vigente > plantilla de fecha > herencia (sin internos
+        // de rotaciones ya expiradas, que quedan fuera automáticamente).
+        const baseInterns = rotation.internos.length
+          ? rotation.internos
+          : (initial.internos || (pd.internos || []).filter((i) => !ROTATION_INTERN_NAMES.has(i.name)));
         setDayOverrides(initial.dayOverrides || {});
         setBedStates(Object.keys(initialBeds).length ? initialBeds : (pd.bedStates || {})); // plantilla vigente o herencia
         setTelemed(initial.telemed || []);             // telemedicinas del día si hay plantilla
-        setInternos((initial.internos || (pd.internos || [])).map((i) => ({ ...i, isNew: false }))); // plantilla o misma rotación
+        setInternos(baseInterns.map((i) => ({ ...i, isNew: false })));
         setExtraBlocks([]);
         setDoctorSeed(0);
-        setBedOverrides({});
+        setBedOverrides(rotation.bedOverrides); // camas fijas de los internos de rotación
         setSupervisorOverrides(pd.supervisorOverrides || {});
         setPriorAssignments(pd.assigned || {});     // seguimiento médico↔paciente
         setSavedExists(false);
