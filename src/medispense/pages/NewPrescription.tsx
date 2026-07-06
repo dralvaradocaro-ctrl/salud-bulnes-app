@@ -550,6 +550,8 @@ export default function NewPrescription() {
           description = 'Cuota de Gemini agotada. Esperá unos segundos o revisá tu plan en https://ai.google.dev.';
         } else if (raw.includes('404')) {
           description = 'El modelo de Gemini configurado no está disponible. Avisá al equipo técnico.';
+        } else if (raw.includes('AI_CONFIG_MISSING') || /VITE_GEMINI_API_KEY|VITE_AI_API_KEY/i.test(raw)) {
+          description = 'La IA no está configurada en este entorno. Si estás en local, reinicia el servidor después de cargar .env; si es producción, agrega la variable de IA en el panel de despliegue.';
         } else if (/network|fetch|failed to fetch/i.test(raw)) {
           description = 'Error de red al contactar Gemini. Verificá tu conexión y reintentá.';
         }

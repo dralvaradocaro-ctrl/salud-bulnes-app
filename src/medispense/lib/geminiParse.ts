@@ -166,26 +166,18 @@ export async function parsePrescriptionWithGemini(
   medicationsList: MedicationFromDB[]
 ): Promise<{ medications: ParsedMedication[] }> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      'VITE_GEMINI_API_KEY no está configurada. Crea un .env.local con tu key gratis de https://aistudio.google.com/apikey'
-    );
+  const medsContext = buildMedsContext(medicationsList);
+  const systemPrompt = buildSystemPrompt(medsContext);
+
+  if (!apiKey && import.meta.env.VITE_AI_API_KEY) {
+    return parsePrescriptionWithFallbackLLM(prescriptionText, systemPrompt);
   }
 
-  const medsContext =
-    medicationsList && medicationsList.length > 0
-      ? `\n\nMedicamentos disponibles en el arsenal (USA estos nombres y dosis exactos cuando sea posible):\n${medicationsList
-          .slice(0, 150)
-          .map(
-            (m) =>
-              `- ID:${m.id} | ${m.name} ${m.dose_value}${m.dose_unit} | PA: ${
-                m.active_ingredient || 'N/A'
-              } | Presentación: ${m.presentation || 'N/A'}`
-          )
-          .join('\n')}`
-      : '';
-
-  const systemPrompt = buildSystemPrompt(medsContext);
+  if (!apiKey) {
+    throw new Error(
+      'AI_CONFIG_MISSING: falta configurar VITE_GEMINI_API_KEY en el entorno de la app. En local, reinicia Vite después de editar .env.'
+    );
+  }
 
   const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
     method: 'POST',
@@ -225,4 +217,35 @@ export async function parsePrescriptionWithGemini(
   } catch (e: any) {
     throw new Error(`No se pudo parsear JSON: ${e.message}. Texto recibido: ${text.slice(0, 200)}`);
   }
+}
+
+function buildMedsContext(medicationsList: MedicationFromDB[]): string {
+  return medicationsList && medicationsList.length > 0
+    ? `\n\nMedicamentos disponibles en el arsenal (USA estos nombres y dosis exactos cuando sea posible):\n${medicationsList
+        .slice(0, 150)
+        .map(
+          (m) =>
+            `- ID:${m.id} | ${m.name} ${m.dose_value}${m.dose_unit} | PA: ${
+              m.active_ingredient || 'N/A'
+            } | Presentación: ${m.presentation || 'N/A'}`
+        )
+        .join('\n')}`
+    : '';
+}
+
+async function parsePrescriptionWithFallbackLLM(
+  prescriptionText: string,
+  systemPrompt: string
+): Promise<{ medications: ParsedMedication[] }> {
+  const { invokeLLM } = await import('@/lib/gemini');
+  const parsed = await invokeLLM({
+    prompt: `${systemPrompt}\n\nInterpreta esta prescripción y devuelve SOLO el JSON:\n\n${prescriptionText}`,
+    response_json_schema: true,
+  });
+
+  if (!parsed?.medications || !Array.isArray(parsed.medications)) {
+    throw new Error('La IA de respaldo no devolvió una estructura válida de medicamentos.');
+  }
+
+  return parsed;
 }
