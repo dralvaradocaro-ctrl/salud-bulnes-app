@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { Component, useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -90,6 +90,43 @@ const FLOW_COLORS = {
   orange: { bg: 'bg-orange-50', border: 'border-orange-200', circle: 'bg-orange-600', badge: 'bg-orange-100 text-orange-700', bar: 'from-orange-500 to-amber-500' },
   red:    { bg: 'bg-red-50',    border: 'border-red-200',    circle: 'bg-red-600',    badge: 'bg-red-100 text-red-700',    bar: 'from-rose-500 to-red-500' },
 };
+
+function TopicBlockRenderError({ title }) {
+  return (
+    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+        <div>
+          <p className="font-semibold">No se pudo mostrar este bloque.</p>
+          {title && <p className="mt-1 text-xs text-amber-800">{title}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+class TopicBlockErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error) {
+    console.error('Topic block render error:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <TopicBlockRenderError title={this.props.blockTitle} />;
+    }
+
+    return this.props.children;
+  }
+}
 
 const CLINICAL_SECTIONS_META = [
   { key: 0, icon: Eye,          color: 'amber',  bg: 'bg-amber-50',   border: 'border-amber-100',  label_color: 'text-amber-800',  icon_bg: 'bg-amber-100',  icon_color: 'text-amber-700' },
@@ -1145,6 +1182,30 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     }
   };
 
+  const renderSafeBlock = (block) => {
+    try {
+      const rendered = renderBlock(block);
+      if (!rendered) return null;
+
+      return (
+        <TopicBlockErrorBoundary
+          key={block?.id || `${block?.type || 'block'}-${block?.title || 'untitled'}`}
+          blockTitle={block?.title}
+        >
+          {rendered}
+        </TopicBlockErrorBoundary>
+      );
+    } catch (error) {
+      console.error('Topic block render error:', error);
+      return (
+        <TopicBlockRenderError
+          key={block?.id || `${block?.type || 'block'}-${block?.title || 'untitled'}`}
+          title={block?.title}
+        />
+      );
+    }
+  };
+
   const safeBlocks = blocks || [];
   const tabValues = [...new Set(safeBlocks.map(b => b.tab).filter(Boolean))];
   const hasTabs = tabValues.length > 0;
@@ -1533,7 +1594,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
       {/* ── Pinned protocol header (above all tabs) ── */}
       {pinnedHeaderBlocks.length > 0 && (
         <div className="space-y-5">
-          {pinnedHeaderBlocks.map(renderBlock).filter(Boolean)}
+          {pinnedHeaderBlocks.map(renderSafeBlock).filter(Boolean)}
         </div>
       )}
 
@@ -1585,14 +1646,14 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
               safeBlocks
                 .filter(b => b.local_protocol === true)
                 .sort((a, b) => (a.order || 0) - (b.order || 0))
-                .map(renderBlock)
+                .map(renderSafeBlock)
                 .filter(Boolean)
             }
             {localTab === 'checklist' &&
-              safeBlocks.filter(b => b.type === 'checklist').map(renderBlock).filter(Boolean)
+              safeBlocks.filter(b => b.type === 'checklist').map(renderSafeBlock).filter(Boolean)
             }
             {localTab === 'algoritmo' &&
-              safeBlocks.filter(b => b.type === 'mermaid').map(renderBlock).filter(Boolean)
+              safeBlocks.filter(b => b.type === 'mermaid').map(renderSafeBlock).filter(Boolean)
             }
           </div>
         </>
@@ -1630,8 +1691,8 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
 
           <div className="space-y-5">
             {gesTab === 'protocolo'
-              ? gesProtocolBlocks.map(renderBlock).filter(Boolean)
-              : gesMermaidBlocks.map(renderBlock).filter(Boolean)
+              ? gesProtocolBlocks.map(renderSafeBlock).filter(Boolean)
+              : gesMermaidBlocks.map(renderSafeBlock).filter(Boolean)
             }
           </div>
         </>
@@ -1667,7 +1728,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
             <>
               {commonMainBlocks.length > 0 && (
                 <div className="space-y-5">
-                  {commonMainBlocks.map(renderBlock).filter(Boolean)}
+                  {commonMainBlocks.map(renderSafeBlock).filter(Boolean)}
                 </div>
               )}
               {/* Sub-tab bar — sticky apilada justo debajo de la barra principal */}
@@ -1689,17 +1750,17 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                 </div>
               </div>
               <div className="space-y-5">
-                {subMainBlocks.map(renderBlock).filter(Boolean)}
+                {subMainBlocks.map(renderSafeBlock).filter(Boolean)}
               </div>
             </>
           ) : (
             <div className="space-y-5">
-              {mainBlocks.map(renderBlock).filter(Boolean)}
+              {mainBlocks.map(renderSafeBlock).filter(Boolean)}
             </div>
           )}
           {sidebarBlocks.length > 0 && (
             <div className={sidebarBlocks.length > 1 ? 'grid gap-5 sm:grid-cols-2' : ''}>
-              {sidebarBlocks.map(renderBlock).filter(Boolean)}
+              {sidebarBlocks.map(renderSafeBlock).filter(Boolean)}
             </div>
           )}
         </>

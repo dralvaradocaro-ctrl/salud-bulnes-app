@@ -3,12 +3,21 @@ import mermaid from 'mermaid';
 
 let initialized = false;
 
+function normalizeMermaidChart(chart) {
+  return String(chart || '')
+    .replace(/<br\s*\/?>/gi, '<br>')
+    .trim();
+}
+
 export default function MermaidDiagram({ chart }) {
   const [svg, setSvg] = useState('');
   const [error, setError] = useState('');
   const id = useRef(`mmd-${Math.random().toString(36).slice(2)}`);
 
   useEffect(() => {
+    let cancelled = false;
+    const normalizedChart = normalizeMermaidChart(chart);
+
     if (!initialized) {
       mermaid.initialize({
         startOnLoad: false,
@@ -19,13 +28,39 @@ export default function MermaidDiagram({ chart }) {
       });
       initialized = true;
     }
-    if (!chart) return;
-    mermaid.render(id.current, chart)
-      .then(({ svg }) => { setSvg(svg); setError(''); })
-      .catch(() => setError('Error al renderizar diagrama'));
+
+    setSvg('');
+    setError('');
+
+    if (!normalizedChart) {
+      setError('Diagrama no disponible');
+      return () => { cancelled = true; };
+    }
+
+    Promise.resolve()
+      .then(() => mermaid.render(`${id.current}-${Date.now()}`, normalizedChart))
+      .then(({ svg }) => {
+        if (cancelled) return;
+        setSvg(svg);
+        setError('');
+      })
+      .catch((renderError) => {
+        if (cancelled) return;
+        console.error('Mermaid render error:', renderError);
+        setSvg('');
+        setError('No se pudo mostrar este algoritmo. Revisa el contenido clínico en las otras pestañas.');
+      });
+
+    return () => { cancelled = true; };
   }, [chart]);
 
-  if (error) return <p className="text-xs text-red-500 p-3">{error}</p>;
+  if (error) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-medium text-amber-800">
+        {error}
+      </div>
+    );
+  }
   if (!svg) return <div className="h-24 animate-pulse rounded bg-slate-100" />;
 
   return (
