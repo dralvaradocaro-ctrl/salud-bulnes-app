@@ -4,11 +4,10 @@ import { sdmSupabase as supabase, explainSdmWriteError, insertOneoffBlock } from
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ChevronLeft, ChevronRight, RefreshCw, Save, Printer, Plus, Trash2, Edit3, Sparkles, Download, FileText } from 'lucide-react';
-import { generateAgenda, validateAgenda, getMondayOfWeek, fmtDate, dayKeyForDate, sortReinforcements, optimizeForTitulars, balanceLoad, HIERARCHICAL_BLOCK_IDS, findReplacementForBlock, blockDoctorIds, blockHasDoctor } from './lib/generateAgenda';
+import { validateAgenda, getMondayOfWeek, fmtDate, dayKeyForDate, sortReinforcements, optimizeForTitulars, balanceLoad, HIERARCHICAL_BLOCK_IDS, findReplacementForBlock, blockDoctorIds, blockHasDoctor } from './lib/generateAgenda';
 import AIFixModal from './AIFixModal';
 import SdmCoverageDialog from './SdmCoverageDialog';
 import { suggestFixForError } from './lib/aiAssistant';
@@ -314,7 +313,8 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
               const ids = Array.isArray(b.doctor_ids) && b.doctor_ids.length
                 ? b.doctor_ids : (b.doctor_id ? [b.doctor_id] : []);
               let docs;
-              if (!ids.length) docs = '⚠ SIN ASIGNAR';
+              if (!ids.length && b.external_label) docs = esc(b.external_label);
+              else if (!ids.length) docs = '⚠ SIN ASIGNAR';
               else if (isAllDoctorsBlock(b, d)) docs = '<b>TODOS</b>';
               else docs = ids.map(id => esc(doctorName(id))).join(' + ');
               const hora = b.from && b.to ? `${b.from}–${b.to} ` : '';
@@ -325,7 +325,7 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       const visita = d.is_holiday
         ? '—'
         : (d.visita || [])
-            .map(v => `${esc(doctorName(v.doctor_id))}${v.capacity != null && v.capacity < 5 ? ` (${v.capacity})` : ''}`)
+            .map(v => `${esc(doctorName(v.doctor_id))}${v.capacity != null && v.capacity !== 5 ? ` (${v.capacity})` : ''}`)
             .join('<br/>');
       const poli8amFullDay = d.poli_8am?.full_day
         ? `<div>${esc(doctorName(d.poli_8am.full_day.doctor_id))} <span style="color:#475569;">${d.poli_8am.full_day.from}–${d.poli_8am.full_day.to}</span></div>`
@@ -333,7 +333,14 @@ export default function AgendaSemanal({ weeklyAgenda, setMonday }) {
       const poli8amRefPm = d.poli_8am?.ref_pm
         ? `<div>${esc(doctorName(d.poli_8am.ref_pm.doctor_id))} <span style="color:#475569;">${d.poli_8am.ref_pm.from}–${d.poli_8am.ref_pm.to}</span></div>`
         : '';
-      const poli8am = d.is_holiday ? '—' : (poli8amFullDay + poli8amRefPm) || '—';
+      const poli8amExtra = Array.isArray(d.poli_8am?.extra)
+        ? d.poli_8am.extra.map(item => (
+            item?.doctor_id
+              ? `<div>${esc(doctorName(item.doctor_id))} ${item.from && item.to ? `<span style="color:#475569;">${item.from}–${item.to}</span>` : ''}${item.note ? ` <span style="color:#64748b;">${esc(item.note)}</span>` : ''}</div>`
+              : `<div>${esc(item?.label || item?.note || '')}</div>`
+          )).join('')
+        : '';
+      const poli8am = d.is_holiday ? '—' : (poli8amFullDay + poli8amRefPm + poli8amExtra) || '—';
       const policlinico = d.is_holiday
         ? '—'
         : d.policlinico
@@ -1695,6 +1702,7 @@ ${table}
                                 <>
                                   {(() => {
                                     const ids = blockDoctorIds(b);
+                                    if (!ids.length && b.external_label) return <span className="font-semibold">{b.external_label}</span>;
                                     if (!ids.length) return b.suspended ? '' : '⚠ SIN ASIGNAR';
                                     if (isAllDoctorsBlock(b, day)) return <span className="font-bold">TODOS</span>;
                                     return ids.map(doctorName).join(' + ');
@@ -1780,7 +1788,7 @@ ${table}
                               <div key={i} className="flex items-center gap-1 group/v">
                                 <span>
                                   {doctorName(v.doctor_id)}
-                                  {v.capacity != null && v.capacity < 5 && <span className="ml-1 text-slate-500">({v.capacity})</span>}
+                                  {v.capacity != null && v.capacity !== 5 && <span className="ml-1 text-slate-500">({v.capacity})</span>}
                                 </span>
                                 {v.manual ? (
                                   <>
@@ -1889,6 +1897,19 @@ ${table}
                       >✕</button>
                     </div>
                   )}
+                  {Array.isArray(day.poli_8am.extra) && day.poli_8am.extra.map((item, idx) => (
+                    <div key={`poli-extra-${idx}`}>
+                      {item.doctor_id ? (
+                        <>
+                          <span className="font-semibold">{doctorName(item.doctor_id)}</span>{' '}
+                          {item.from && item.to && <span className="text-slate-500">{item.from}–{item.to}</span>}
+                          {item.note && <span className="ml-1 text-slate-500">{item.note}</span>}
+                        </>
+                      ) : (
+                        <span className="text-slate-500">{item.label || item.note}</span>
+                      )}
+                    </div>
+                  ))}
                   {!day.poli_8am.ref_pm && poliDisabled?.[day.date]?.pm && (
                     <div className="flex items-center gap-1">
                       <span className="flex-1 text-slate-400 italic">Poli PM apagado</span>
@@ -1899,7 +1920,7 @@ ${table}
                       >↺</button>
                     </div>
                   )}
-                  {!day.poli_8am.full_day && !day.poli_8am.ref_pm && !day.poli_8am.full_day_editable && <span className="text-slate-400 italic">–</span>}
+                  {!day.poli_8am.full_day && !day.poli_8am.ref_pm && !day.poli_8am.full_day_editable && !(day.poli_8am.extra || []).length && <span className="text-slate-400 italic">–</span>}
                   </>}
                 </td>
               </tr>

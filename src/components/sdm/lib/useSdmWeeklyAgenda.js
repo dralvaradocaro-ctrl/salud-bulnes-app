@@ -39,6 +39,9 @@ function applyDailyOverridesToAgenda(agenda, dailyOverrides = {}) {
       refuerzos: ov.refuerzos || day.refuerzos || { am: null, pm: null },
       bloqueos: ov.bloqueos || day.bloqueos || [],
       visita: ov.visita || day.visita || [],
+      policlinico: Object.prototype.hasOwnProperty.call(ov, 'policlinico') ? ov.policlinico : day.policlinico,
+      poli_8am: Object.prototype.hasOwnProperty.call(ov, 'poli_8am') ? ov.poli_8am : day.poli_8am,
+      external_visitors: ov.external_visitors || day.external_visitors || [],
       daily_override: true,
     };
   });

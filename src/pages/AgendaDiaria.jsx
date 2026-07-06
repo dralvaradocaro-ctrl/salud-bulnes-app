@@ -70,6 +70,9 @@ const applyDayOverrides = (baseDay, overrides = {}) => {
     refuerzos: overrides.refuerzos || baseDay.refuerzos || { am: null, pm: null },
     bloqueos: (overrides.bloqueos || baseDay.bloqueos || []).map(normalizeDailyBlock),
     visita: uniqueVisits(overrides.visita || baseDay.visita || []),
+    policlinico: Object.prototype.hasOwnProperty.call(overrides, 'policlinico') ? overrides.policlinico : baseDay.policlinico,
+    poli_8am: Object.prototype.hasOwnProperty.call(overrides, 'poli_8am') ? overrides.poli_8am : baseDay.poli_8am,
+    external_visitors: overrides.external_visitors || baseDay.external_visitors || [],
   };
 };
 
