@@ -30,6 +30,9 @@ const todayIso = () => fmtDate(new Date());
 
 const DAY_SHORT = { lun: 'Lun', mar: 'Mar', mie: 'Mié', jue: 'Jue', vie: 'Vie' };
 const EMPTY_DOCTOR = '__empty__';
+// Valor centinela para un bloqueo que aplica a TODOS los médicos del día
+// (salvo urgencias/turnos y refuerzos). Al elegirlo se materializan todos los apellidos.
+const ALL_DOCTORS = '__all__';
 
 const newBlock = () => ({
   block_id: `daily-${crypto.randomUUID()}`,
@@ -685,7 +688,26 @@ function StepAgenda({ day, docName, doctors, externalConfirm, setExternalConfirm
       return normalizeDailyBlock(next);
     }));
   };
-  const setBlockDoctor = (index, doctorId) => updateBlock(index, { doctor_ids: doctorId === EMPTY_DOCTOR ? [] : [doctorId], doctor_id: doctorId === EMPTY_DOCTOR ? null : doctorId });
+  // "Todos los médicos": todos los apellidos de la agenda salvo urgencias (turnos) y refuerzos.
+  const excludedFromAll = new Set([
+    ...idsOf(turnos),
+    day.refuerzos?.am,
+    day.refuerzos?.pm,
+  ].filter(Boolean));
+  const allBlockDoctorIds = (doctors || []).map((d) => d.id).filter((id) => !excludedFromAll.has(id));
+  const blockTargetsAll = (b) => {
+    const ids = doctorIds(b);
+    return allBlockDoctorIds.length > 0
+      && ids.length >= allBlockDoctorIds.length
+      && allBlockDoctorIds.every((id) => ids.includes(id));
+  };
+  const setBlockDoctor = (index, doctorId) => {
+    if (doctorId === ALL_DOCTORS) {
+      updateBlock(index, { doctor_ids: allBlockDoctorIds, doctor_id: allBlockDoctorIds[0] || null });
+      return;
+    }
+    updateBlock(index, { doctor_ids: doctorId === EMPTY_DOCTOR ? [] : [doctorId], doctor_id: doctorId === EMPTY_DOCTOR ? null : doctorId });
+  };
   const addBlock = () => updateDay('bloqueos', [...bloqueos, newBlock()]);
   const removeBlock = (index) => updateDay('bloqueos', bloqueos.filter((_, i) => i !== index));
 
@@ -791,7 +813,7 @@ function StepAgenda({ day, docName, doctors, externalConfirm, setExternalConfirm
                   <Input type="time" value={b.from || ''} onChange={(e) => updateBlock(i, { from: e.target.value })} className="w-28 h-8 text-xs" />
                   <Input type="time" value={b.to || ''} onChange={(e) => updateBlock(i, { to: e.target.value })} className="w-28 h-8 text-xs" />
                   <Input value={b.name || ''} onChange={(e) => updateBlock(i, { name: e.target.value })} className="min-w-[180px] flex-1 h-8 text-xs" />
-                  <DoctorPick value={b.doctor_id || EMPTY_DOCTOR} doctors={doctors} onChange={(v) => setBlockDoctor(i, v)} allowEmpty />
+                  <DoctorPick value={blockTargetsAll(b) ? ALL_DOCTORS : (b.doctor_id || EMPTY_DOCTOR)} doctors={doctors} onChange={(v) => setBlockDoctor(i, v)} allowEmpty allowAll />
                   <Button variant="ghost" size="icon" onClick={() => removeBlock(i)}>
                     <Trash2 className="h-4 w-4 text-slate-400" />
                   </Button>
@@ -1178,7 +1200,7 @@ function MiniButton({ children, onClick }) {
   );
 }
 
-function DoctorPick({ label, value, doctors, onChange, allowEmpty = false }) {
+function DoctorPick({ label, value, doctors, onChange, allowEmpty = false, allowAll = false }) {
   return (
     <label className="inline-flex items-center gap-1 text-xs text-slate-500">
       {label && <span className="font-semibold">{label}</span>}
@@ -1188,6 +1210,7 @@ function DoctorPick({ label, value, doctors, onChange, allowEmpty = false }) {
         className="h-8 rounded-md border border-slate-200 bg-white px-2 text-xs text-slate-700"
       >
         {allowEmpty && <option value={EMPTY_DOCTOR}>—</option>}
+        {allowAll && <option value={ALL_DOCTORS}>Todos los médicos</option>}
         {(doctors || []).map((d) => (
           <option key={d.id} value={d.id}>{d.display_name}</option>
         ))}
