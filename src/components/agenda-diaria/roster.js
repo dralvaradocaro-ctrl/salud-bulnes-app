@@ -8,6 +8,7 @@
 //    (ej. Selector de Demanda, Gestión GES/PSCV…). Las que empiezan más tarde
 //    (Poli TACO 12:00, Regulación IC 16:00, Cuidados Paliativos 14:00) no salen.
 import { groupBeds } from './distribute';
+import { bedCellByCode } from './bedCatalog';
 
 const AUS_LABEL = {
   FL: 'FERIADO LEGAL', P: 'PERMISO', A: 'ADMINISTRATIVO', DT: 'DÍAS LIBRES',
@@ -39,6 +40,13 @@ const KIND_ORDER = { admin: 0, turno: 1, posturno: 2, refuerzo: 3, gestion: 4, v
 
 export const groupLabel = (codes) =>
   groupBeds(codes).map((g) => `${g.label} (${g.count})`).join(' + ');
+
+// Igual que groupLabel pero detallando el número de cada cama, ej.
+// "MQ1 SALA 3 (3-3, 3-4, 3-5)" en vez de "MQ1 SALA 3 (3)". Usado para internos.
+export const groupLabelDetailed = (codes) =>
+  groupBeds(codes)
+    .map((g) => `${g.label} (${g.codes.map((c) => bedCellByCode[c] || c).join(', ')})`)
+    .join(' + ');
 
 /**
  * @returns { rows: [{ id, name, parts:[{text,kind}], num }], interns: [{ id, name, label, num }] }
@@ -81,7 +89,7 @@ export function buildRoster({ day, result, extraBlocks = [], docName }) {
 
   const interns = (result.interns || [])
     .filter((it) => it.beds.length > 0)
-    .map((it) => ({ id: it.id, name: it.name, label: groupLabel(it.beds), num: it.beds.length }));
+    .map((it) => ({ id: it.id, name: it.name, label: groupLabelDetailed(it.beds), num: it.beds.length }));
 
   return { rows: ordered, interns };
 }

@@ -135,16 +135,29 @@ export function initialBedStatesForDate(date) {
   return INITIAL_BED_STATES_BY_DATE[String(date || '').slice(0, 10)] || {};
 }
 
+// Etiqueta corta de la cama dentro de su sala (ej. "3-3", "Aisl5-1").
+// Es la misma numeración que muestra el mapa de camas, sin el prefijo de servicio.
+function bedCellLabel(salaLabel, idx, code) {
+  const m = /SALA\s*0*(\d+)/i.exec(salaLabel || '');
+  if (m) return `${m[1]}-${idx + 1}`;
+  const iso = /AISLAMIENTO\s*0*(\d+)/i.exec(salaLabel || '');
+  if (iso) return `Aislamiento ${iso[1]}`;
+  const a = /AISL\s*0*(\d+)/i.exec(salaLabel || '');
+  if (a) return `Aisl${a[1]}-${idx + 1}`;
+  return code;
+}
+
 // Lista plana de todas las camas con su servicio y sala (para distribución).
 export const ALL_BEDS = BED_CATALOG.flatMap((svc) =>
   svc.salas.flatMap((sala) =>
-    sala.beds.map((b) => ({
+    sala.beds.map((b, idx) => ({
       code: b.code,
       serviceId: svc.id,
       serviceShort: svc.short,
       salaId: sala.id,
       salaLabel: sala.label,
       aggregateBy: svc.aggregateBy,
+      cell: bedCellLabel(sala.label, idx, b.code),
     })),
   ),
 );
@@ -152,6 +165,13 @@ export const ALL_BEDS = BED_CATALOG.flatMap((svc) =>
 export const bedByCode = (() => {
   const m = {};
   ALL_BEDS.forEach((b) => { m[b.code] = b; });
+  return m;
+})();
+
+// Número corto de cama por código, ej. "03MQB-03" → "3-3".
+export const bedCellByCode = (() => {
+  const m = {};
+  ALL_BEDS.forEach((b) => { m[b.code] = b.cell; });
   return m;
 })();
 
