@@ -192,6 +192,27 @@ const getMedicationDoseText = (item: PrescriptionItem, overrideDose?: string | n
   return null;
 };
 
+const normalizeMedicationText = (value: string | null | undefined): string =>
+  (value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+const getLogicalSosMedicationText = (item: PrescriptionItem): { doseText: string; frequencyText: string } => {
+  const name = normalizeMedicationText(item.medication_name);
+  const baseDose = getMedicationDoseText(item) || `${item.prescribed_dose}${item.prescribed_unit}`;
+
+  if (name.includes('paracetamol') && item.prescribed_unit?.toLowerCase() === 'mg' && item.prescribed_dose <= 500) {
+    return { doseText: '2 comp.', frequencyText: 'cada 8 horas' };
+  }
+
+  if (name.includes('celecoxib')) {
+    return { doseText: '1 comp.', frequencyText: 'cada 24 horas' };
+  }
+
+  return { doseText: baseDose, frequencyText: formatFrequencyText(item.frequency) };
+};
+
 const formatFrequencyText = (frequency: string): string => {
   const value = (frequency || '').toLowerCase();
   if (value.includes('c/6h')) return 'cada 6 horas';
@@ -261,13 +282,16 @@ const buildSosMedicationNotes = (prescriptions: Prescription[]): SosMedicationNo
   return prescriptions.flatMap((prescription) =>
     prescription.items
       .filter((item) => !item.is_annulled && item.is_sos)
-      .map((item) => ({
-        uid: item.id,
-        medicationName: item.medication_name,
-        doseText: getMedicationDoseText(item) || `${item.prescribed_dose}${item.prescribed_unit}`,
-        frequencyText: formatFrequencyText(item.frequency),
-        reason: item.sos_reason,
-      }))
+      .map((item) => {
+        const logical = getLogicalSosMedicationText(item);
+        return {
+          uid: item.id,
+          medicationName: item.medication_name,
+          doseText: logical.doseText,
+          frequencyText: logical.frequencyText,
+          reason: item.sos_reason,
+        };
+      })
   );
 };
 
@@ -1328,7 +1352,7 @@ export default function PatientDetail() {
                           onEdit={() => navigate(routes.editPrescription(patientCode!, prescription.id))}
                           onRenewOnly={() => handleRenewOnly(prescription.id)}
                           onRenewAndEdit={() => navigate(routes.renewPrescription(patientCode!, prescription.id))}
-                          canDelete={canDelete}
+                          canDelete
                         />
                       </div>
                     </div>
@@ -1414,7 +1438,7 @@ export default function PatientDetail() {
                                 prescriptionDate={prescription.issue_date}
                                 onDeleted={() => fetchPatientData()}
                                 onEdit={() => navigate(routes.editPrescription(patientCode!, prescription.id))}
-                                canDelete={canDelete}
+                                canDelete
                               />
                             </div>
                           </div>

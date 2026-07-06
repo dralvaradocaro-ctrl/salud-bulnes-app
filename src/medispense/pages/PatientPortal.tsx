@@ -118,6 +118,25 @@ function extractTabletInfo(aiDescription: string | null, hour: number): string |
   return match ? match[0].replace(/a las \d+:\d+/i, '').trim() : null;
 }
 
+const normalizeMedicationText = (value: string | null | undefined): string =>
+  (value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+const formatLogicalSosInstruction = (item: PrescriptionItem): string => {
+  const name = normalizeMedicationText(item.medication_name);
+  if (name.includes('paracetamol') && item.prescribed_unit?.toLowerCase() === 'mg' && item.prescribed_dose <= 500) {
+    return '2 comp. cada 8 horas';
+  }
+  if (name.includes('celecoxib')) {
+    return '1 comp. cada 24 horas';
+  }
+  const tabletDisplay = extractTabletDisplay(item.ai_description);
+  const dose = tabletDisplay || `${item.prescribed_dose}${item.prescribed_unit}`;
+  return `${dose} ${item.frequency}`;
+};
+
 export default function PatientPortal() {
   const { patientCode } = useParams<{ patientCode: string }>();
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -341,7 +360,7 @@ export default function PatientPortal() {
     if (sosMeds.length > 0) {
       const sosText = sosMeds.map(m => {
         const reason = m.sos_reason ? `, ${m.sos_reason}` : '';
-        return `${m.medication_name}, ${m.frequency}${reason}`;
+        return `${m.medication_name}, ${formatLogicalSosInstruction(m)}${reason}`;
       }).join('. ');
       sections.push({
         id: 'sos-section',
@@ -898,7 +917,7 @@ export default function PatientPortal() {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {med.frequency} • Máx. {med.prescribed_dose}{med.prescribed_unit} por toma
+                        {formatLogicalSosInstruction(med)}
                       </p>
                       {med.sos_reason && (
                         <p className="text-xs text-foreground mt-1 font-semibold">

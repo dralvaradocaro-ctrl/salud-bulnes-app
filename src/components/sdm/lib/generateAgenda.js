@@ -3,7 +3,7 @@
  * Toma catálogos + ausencias + bloqueos puntuales y devuelve la grilla 5×8.
  */
 import { BLOCK_SPECS, isDailyBlock } from './blockSpec';
-import { PROTECTED_PRIORITY_BLOCK_IDS, STRICT_TITULAR_BLOCKS, FLEXIBLE_BLOCKS, buildEffectiveProgramAssignments } from './programPriorityDefaults';
+import { PROTECTED_PRIORITY_BLOCK_IDS, STRICT_TITULAR_BLOCKS, buildEffectiveProgramAssignments } from './programPriorityDefaults';
 import { priorityFor as buildPriorityFor } from './buildPriorityOrder';
 
 const DAYS = ['lun', 'mar', 'mie', 'jue', 'vie'];
@@ -169,15 +169,7 @@ function getCalendarVisitors(cal) {
   return { hasOverride: false, visitors: [] };
 }
 
-function sandovalTargetDate(days, calByDate) {
-  const thursday = days.find(d => d.day === 'jue');
-  const friday = days.find(d => d.day === 'vie');
-  if (!thursday || !friday) return thursday?.date || null;
-  return calByDate[thursday.date]?.is_holiday ? friday.date : thursday.date;
-}
-
-function defaultExternalVisitorsForDay(day, days, calByDate) {
-  const sandovalDate = sandovalTargetDate(days, calByDate);
+function defaultExternalVisitorsForDay(day, calByDate) {
   const defaults = [];
   const add = (visitor) => {
     defaults.push({
@@ -195,29 +187,13 @@ function defaultExternalVisitorsForDay(day, days, calByDate) {
       no_show: !!calByDate[day.date]?.is_holiday,
       notes: calByDate[day.date]?.is_holiday
         ? 'No viene por feriado; mover si corresponde'
-        : '3 visitas por defecto; resto del tiempo a criterio del especialista',
-    });
-  }
-  if (day.date === sandovalDate) {
-    add({
-      name: 'Dr. R. Sandoval',
-      specialty: 'Internista',
-      notes: day.day === 'vie' ? 'Movido desde jueves por feriado/bloqueo' : 'Visita habitual de jueves',
-      moved_from: day.day === 'vie' ? days.find(d => d.day === 'jue')?.date : null,
+      : '3 visitas por defecto; resto del tiempo a criterio del especialista',
     });
   }
   if (day.day === 'mie') add({ name: 'Dra. Rissi', specialty: 'Pediatría' });
   if (day.day === 'jue') add({ name: 'Dra. Riquelme', specialty: 'Neurología' });
   if (day.day === 'vie') add({ name: 'Dra. Figueroa', specialty: 'Neurología infantil' });
   return defaults;
-}
-
-// El bloque "Visita de servicio - Dr. R. Sandoval" se dispara el día que
-// Sandoval esté efectivamente como visitante externo (no por fecha hardcodeada).
-// Esto cubre default jue/vie y cualquier movimiento manual a otro día.
-function sandovalIsVisitingOnDay(externalVisitors) {
-  if (!Array.isArray(externalVisitors)) return false;
-  return externalVisitors.some(v => v && !v.no_show && typeof v.name === 'string' && /sandoval/i.test(v.name));
 }
 
 export function isMonthlyMatch(date, rule) {
@@ -309,7 +285,7 @@ export function generateAgenda({
       ? externalVisitorOverrides[d.date]
       : savedVisitors.hasOverride
       ? savedVisitors.visitors
-      : defaultExternalVisitorsForDay(d, days, calByDate);
+      : defaultExternalVisitorsForDay(d, calByDate);
     
     if (d.day === 'jue' && isHoliday && !externalVisitors.some(v => /rubilar/i.test(v?.name || ''))) {
       const rubilarMoved = Object.values(externalVisitorOverrides).flat().some(v => 
@@ -561,11 +537,6 @@ export function generateAgenda({
         }));
       });
 
-    // El bloque "Visita de servicio - Dr. R. Sandoval" se inyecta más abajo,
-    // después del override, para que aparezca en cualquier día donde Sandoval
-    // esté como visitante (incluido cuando se corre por feriado).
-
-
     // Post-pass SDM (regla prospectiva ≥ 2026-06-01):
     //  - Titulares SDM = Alvarado · Cordero · Fasani.
     //  - Si los 3 están en posturno/feriado/ausencia/admin/licencia, se SUSPENDE
@@ -720,64 +691,6 @@ export function generateAgenda({
           });
         });
       bloqueos = [...overrideBlocks, ...missingOneoffs];
-    }
-
-    // Bloque "Visita de servicio - Dr. R. Sandoval": se inyecta DESPUÉS del
-    // override para que aparezca el día efectivo de la visita (default jue/vie
-    // o el día al que se movió manualmente), aunque haya ediciones guardadas.
-    // Si el override ya tiene un bloque con este block_id (porque el usuario
-    // editó manualmente el acompañante, p.ej.), se respeta tal cual.
-    const sandovalBlockId = `external_sandoval_service_visit_${d.date}`;
-    const sandovalAlreadyInOverride = bloqueos.some(b => b.block_id === sandovalBlockId);
-    if (!sandovalAlreadyInOverride && sandovalIsVisitingOnDay(externalVisitors) && !isHoliday) {
-      const isViernesSandoval = d.day === 'vie';
-      const visitFrom = isViernesSandoval ? '14:00' : '15:00';
-      const visitTo   = isViernesSandoval ? '16:00' : '17:00';
-      const sandovalId = doctorById.sandoval ? 'sandoval' : null;
-      // Acompañante: san_martin > grupo {alvarado, carreno, v_aguilera, toledo,
-      // r_aguilera, sbarbaro, enriquez, rivas, troncoso}. Empates → menor carga del día.
-      const COMPANION_TIERS = [
-        ['san_martin'],
-        ['alvarado', 'carreno', 'v_aguilera', 'toledo', 'r_aguilera', 'sbarbaro', 'enriquez', 'rivas', 'troncoso'],
-      ];
-      const companionConflict = (id) => bloqueos.some(b =>
-        !b.suspended && blockHasDoctor(b, id) && b.from && b.to &&
-        b.from < visitTo && b.to > visitFrom
-      );
-      const companionAvailable = (id) =>
-        id && id !== sandovalId &&
-        doctorById[id] && doctorById[id].active !== false &&
-        !urgentologistIds.has(id) &&
-        !turnoIds_inner.has(id) && !postIds_inner.has(id) &&
-        !ausIds_inner.has(id) && !poliIds.has(id) &&
-        refuerzos.am !== id && refuerzos.pm !== id &&
-        !companionConflict(id);
-      const dayLoad = (id) => bloqueos.filter(b => !b.suspended && blockHasDoctor(b, id)).length;
-      let companionId = null;
-      for (const tier of COMPANION_TIERS) {
-        const avail = tier.filter(companionAvailable);
-        if (avail.length) {
-          avail.sort((a, b) => dayLoad(a) - dayLoad(b) || (weeklyDoctorLoad[a] || 0) - (weeklyDoctorLoad[b] || 0));
-          companionId = avail[0];
-          break;
-        }
-      }
-      const ids = [sandovalId, companionId].filter(Boolean);
-      bloqueos.push(normalizeBlock({
-        block_id: sandovalBlockId,
-        name: 'Visita de servicio - Dr. R. Sandoval',
-        from: visitFrom,
-        to: visitTo,
-        doctor_ids: ids,
-        unassigned: ids.length === 0,
-        auto_assigned: !!companionId,
-        category: 'clinico',
-        source: 'external_default',
-        external_visitor: true,
-      }));
-      if (companionId) {
-        weeklyDoctorLoad[companionId] = (weeklyDoctorLoad[companionId] || 0) + 1;
-      }
     }
 
     // Regla operativa: nadie sale después del cierre de jornada. Si un bloqueo

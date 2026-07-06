@@ -174,6 +174,12 @@ const formatPresentationDose = (
   return `${formatTablets(safeQuantity)} ${pluralizePresentation(label, safeQuantity)}`;
 };
 
+const TABLET_FRACTION_OPTIONS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4];
+
+const formatDoseValue = (value: number): string => (
+  Number.isInteger(value) ? value.toString() : value.toFixed(2).replace(/\.?0+$/, '')
+);
+
 const hasUnitsPerDoseDescription = (aiDescription: string | null): boolean =>
   !!aiDescription && /(½|¼|¾|\d+½|\d+(?:\.\d+)?)\s*(?:comprimido|cápsula|tableta|comp)/i.test(aiDescription);
 
@@ -704,6 +710,35 @@ export default function NewPrescription() {
       return updated;
     });
     setItems(updatedItems);
+  };
+
+  const updateTabletDose = (tempId: string, tablets: number | null) => {
+    const item = activeGroup.items.find(i => i.tempId === tempId);
+    if (!item || !tablets || !item.arsenalDoseValue || !item.arsenalDoseUnit) return;
+    updateItem(tempId, {
+      tabletsPerDose: tablets,
+      prescribed_dose: Number(formatDoseValue(item.arsenalDoseValue * tablets)),
+      prescribed_unit: item.arsenalDoseUnit,
+      dosesBySchedule: null,
+    });
+  };
+
+  const updatePrescribedDoseFromInput = (tempId: string, doseValue: number | null) => {
+    const item = activeGroup.items.find(i => i.tempId === tempId);
+    if (!item || doseValue == null || !item.arsenalDoseValue || !item.arsenalDoseUnit) return;
+    const match = findBestArsenalMatch(
+      medications,
+      item.medication_name,
+      doseValue,
+      item.arsenalDoseUnit,
+      item.medication_id
+    );
+    updateItem(tempId, {
+      prescribed_dose: doseValue,
+      prescribed_unit: item.arsenalDoseUnit,
+      tabletsPerDose: match.unitsPerDose ?? item.tabletsPerDose,
+      dosesBySchedule: null,
+    });
   };
 
   const updateWeeklyDay = (tempId: string, day: keyof WeeklyDays, value: number) => {
@@ -1335,6 +1370,52 @@ export default function NewPrescription() {
                             item={item}
                             onUpdate={(updates) => updateItem(item.tempId, updates)}
                           />
+                        )}
+
+                        {item.arsenalPresentation && !item.isInsulin && isSplittablePresentation(item.arsenalPresentation) && (
+                          <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <Label className="text-xs font-semibold">Dosis por toma</Label>
+                              <span className="text-xs text-muted-foreground">
+                                Arsenal: {item.arsenalDoseValue}{item.arsenalDoseUnit} por {getDosePresentationLabel(item)}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {TABLET_FRACTION_OPTIONS.map(value => (
+                                <Button
+                                  key={value}
+                                  type="button"
+                                  variant={item.tabletsPerDose === value ? 'default' : 'outline'}
+                                  size="sm"
+                                  className="h-8 px-2 text-xs"
+                                  onClick={() => updateTabletDose(item.tempId, value)}
+                                >
+                                  {formatTablets(value)} comp.
+                                </Button>
+                              ))}
+                            </div>
+                            <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">O indicar gramaje por toma</Label>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={item.prescribed_dose || ''}
+                                  onChange={(e) => updatePrescribedDoseFromInput(
+                                    item.tempId,
+                                    e.target.value ? Number(e.target.value) : null
+                                  )}
+                                  className="h-9"
+                                />
+                              </div>
+                              <span className="pb-2 text-xs font-medium text-muted-foreground">{item.prescribed_unit}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Se imprimirá como {formatPresentationDose(item.tabletsPerDose || 1, item)}
+                              {item.prescribed_dose ? ` (${formatDoseValue(item.prescribed_dose)}${item.prescribed_unit})` : ''}.
+                            </p>
+                          </div>
                         )}
 
                         {/* Schedule */}
