@@ -150,6 +150,14 @@ interface WeeklyMedicationNote {
   frequency: string;
 }
 
+interface SosMedicationNote {
+  uid: string;
+  medicationName: string;
+  doseText: string;
+  frequencyText: string;
+  reason: string | null;
+}
+
 const CALENDAR_SLOTS: { id: CalendarSlot; label: string; range: string; icon: LucideIcon; printIcon: string }[] = [
   { id: 'Mañana', label: 'Mañana', range: '06:00 - 11:59', icon: Sunrise, printIcon: '☀' },
   { id: 'Mediodía', label: 'Mediodía', range: '12:00 - 15:59', icon: Sun, printIcon: '◎' },
@@ -178,10 +186,21 @@ const getMedicationDoseText = (item: PrescriptionItem, overrideDose?: string | n
   }
   const isInsulin = item.medication_name.toLowerCase().includes('insulina') || item.medication_name.toLowerCase().includes('nph');
   if (isInsulin) return `${item.prescribed_dose} UI`;
-  const tabletMatch = item.ai_description?.match(/(½|¼|¾|\d+½|\d+(?:\.\d+)?)\s*(?:comprimido|cápsula|capsula|tableta|comp\.?)/i);
+  const tabletMatch = item.ai_description?.match(/(½|¼|¾|\d+½|\d+(?:\.\d+)?)\s*(?:comprimidos?|cápsulas?|capsulas?|tabletas?|comp\.?)/i);
   if (tabletMatch) return `${tabletMatch[1]} comp.`;
   if (item.prescribed_dose && item.prescribed_unit) return `${item.prescribed_dose}${item.prescribed_unit}`;
   return null;
+};
+
+const formatFrequencyText = (frequency: string): string => {
+  const value = (frequency || '').toLowerCase();
+  if (value.includes('c/6h')) return 'cada 6 horas';
+  if (value.includes('c/8h')) return 'cada 8 horas';
+  if (value.includes('c/12h')) return 'cada 12 horas';
+  if (value.includes('c/24h')) return 'cada 24 horas';
+  if (value.includes('c/48h')) return 'cada 48 horas';
+  if (value.includes('c/7d') || value.includes('semanal')) return 'semanal';
+  return frequency;
 };
 
 const buildPrintableDailyMeds = (prescriptions: Prescription[]): PrintableDailyMed[] => {
@@ -238,18 +257,34 @@ const buildWeeklyMedicationNotes = (prescriptions: Prescription[]): WeeklyMedica
   );
 };
 
+const buildSosMedicationNotes = (prescriptions: Prescription[]): SosMedicationNote[] => {
+  return prescriptions.flatMap((prescription) =>
+    prescription.items
+      .filter((item) => !item.is_annulled && item.is_sos)
+      .map((item) => ({
+        uid: item.id,
+        medicationName: item.medication_name,
+        doseText: getMedicationDoseText(item) || `${item.prescribed_dose}${item.prescribed_unit}`,
+        frequencyText: formatFrequencyText(item.frequency),
+        reason: item.sos_reason,
+      }))
+  );
+};
+
 function PrintableMedicationCalendarDialog({
   open,
   onOpenChange,
   patient,
   dailyMeds,
   weeklyNotes,
+  sosNotes,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   patient: Patient;
   dailyMeds: PrintableDailyMed[];
   weeklyNotes: WeeklyMedicationNote[];
+  sosNotes: SosMedicationNote[];
 }) {
   const [items, setItems] = useState<PrintableDailyMed[]>(dailyMeds);
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
@@ -267,7 +302,7 @@ function PrintableMedicationCalendarDialog({
   };
 
   const handlePrint = () => {
-    const html = buildCalendarPrintHtml(patient, items, weeklyNotes);
+    const html = buildCalendarPrintHtml(patient, items, weeklyNotes, sosNotes);
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
     printWindow.document.write(html);
@@ -366,18 +401,37 @@ function PrintableMedicationCalendarDialog({
           </div>
 
           <div className="rounded-xl border bg-amber-50 p-3">
-            <p className="mb-2 text-sm font-bold text-amber-950">Medicamentos semanales excluidos del calendario diario</p>
-            {weeklyNotes.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {weeklyNotes.map((note) => (
-                  <Badge key={note.uid} variant="outline" className="border-amber-300 bg-white text-amber-950">
-                    {note.medicationName}: {note.doseText} · {note.day}
-                  </Badge>
-                ))}
+            <p className="mb-2 text-sm font-bold text-amber-950">Medicamentos fuera del calendario diario</p>
+            <div className="space-y-3">
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-900">Semanales</p>
+                {weeklyNotes.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {weeklyNotes.map((note) => (
+                      <Badge key={note.uid} variant="outline" className="border-amber-300 bg-white text-amber-950">
+                        {note.medicationName}: {note.doseText} · {note.day}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-amber-900/80">No hay medicamentos semanales activos.</p>
+                )}
               </div>
-            ) : (
-              <p className="text-sm text-amber-900/80">No hay medicamentos semanales activos.</p>
-            )}
+              <div>
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amber-900">SOS / a demanda</p>
+                {sosNotes.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {sosNotes.map((note) => (
+                      <Badge key={note.uid} variant="outline" className="border-amber-300 bg-white text-amber-950">
+                        {note.medicationName}: {note.doseText} · {note.frequencyText}{note.reason ? ` · ${note.reason}` : ''}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-amber-900/80">No hay medicamentos SOS activos.</p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </DialogContent>
@@ -385,11 +439,19 @@ function PrintableMedicationCalendarDialog({
   );
 }
 
-function buildCalendarPrintHtml(patient: Patient, items: PrintableDailyMed[], weeklyNotes: WeeklyMedicationNote[]) {
+function buildCalendarPrintHtml(
+  patient: Patient,
+  items: PrintableDailyMed[],
+  weeklyNotes: WeeklyMedicationNote[],
+  sosNotes: SosMedicationNote[]
+) {
   const medForSlot = (slot: CalendarSlot) => items.filter((item) => item.slot === slot);
   const weeklyHtml = weeklyNotes.length
     ? weeklyNotes.map((note) => `<span class="weekly">${note.medicationName}: ${note.doseText} · ${note.day}</span>`).join('')
     : '<span class="muted">Sin medicamentos semanales activos.</span>';
+  const sosHtml = sosNotes.length
+    ? sosNotes.map((note) => `<span class="weekly">${note.medicationName}: ${note.doseText} · ${note.frequencyText}${note.reason ? ` · ${note.reason}` : ''}</span>`).join('')
+    : '<span class="muted">Sin medicamentos SOS activos.</span>';
 
   return `
     <html>
@@ -416,6 +478,7 @@ function buildCalendarPrintHtml(patient: Patient, items: PrintableDailyMed[], we
           .empty { border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px; color: #64748b; font-size: 11px; text-align: center; }
           .weekly-box { margin-top: 8px; border: 1px solid #fcd34d; background: #fffbeb; border-radius: 8px; padding: 7px; }
           .weekly-title { margin: 0 0 5px; font-weight: 700; font-size: 11px; }
+          .weekly-subtitle { margin: 5px 0 3px; font-weight: 700; font-size: 9px; text-transform: uppercase; color: #92400e; }
           .weekly { display: inline-block; border: 1px solid #fbbf24; background: white; border-radius: 999px; padding: 3px 7px; margin: 2px; font-size: 10px; }
           .muted { color: #64748b; font-size: 10px; }
         </style>
@@ -451,8 +514,11 @@ function buildCalendarPrintHtml(patient: Patient, items: PrintableDailyMed[], we
           }).join('')}
         </div>
         <div class="weekly-box">
-          <p class="weekly-title">Medicamentos semanales excluidos del calendario diario</p>
+          <p class="weekly-title">Medicamentos fuera del calendario diario</p>
+          <p class="weekly-subtitle">Semanales</p>
           ${weeklyHtml}
+          <p class="weekly-subtitle">SOS / a demanda</p>
+          ${sosHtml}
         </div>
       </body>
     </html>
@@ -738,6 +804,7 @@ export default function PatientDetail() {
   const archivedPrescriptions = prescriptions.filter(p => getDaysUntilExpiry(p.expiry_date) <= -30);
   const printableDailyMeds = buildPrintableDailyMeds(activePrescriptions);
   const weeklyMedicationNotes = buildWeeklyMedicationNotes(activePrescriptions);
+  const sosMedicationNotes = buildSosMedicationNotes(activePrescriptions);
 
   // Meds for selected day (only from active prescriptions)
   const allScheduledMeds = activePrescriptions.flatMap(p =>
@@ -1130,6 +1197,7 @@ export default function PatientDetail() {
           patient={patient}
           dailyMeds={printableDailyMeds}
           weeklyNotes={weeklyMedicationNotes}
+          sosNotes={sosMedicationNotes}
         />
       )}
 
