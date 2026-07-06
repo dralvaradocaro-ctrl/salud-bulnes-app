@@ -716,7 +716,7 @@ export default function PatientDetail() {
         <Card>
           <CardContent className="pt-6 text-center">
             <p className="text-muted-foreground mb-4">¿Deseas crear este paciente?</p>
-            <Button onClick={() => navigate(routes.newPatient())}>
+            <Button onClick={() => navigate(routes.newPatient(patientCode))}>
               <Plus className="h-4 w-4 mr-2" /> Crear Paciente
             </Button>
           </CardContent>

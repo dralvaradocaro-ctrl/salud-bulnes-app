@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/medispense/components/ui/card';
 import { Input } from '@/medispense/components/ui/input';
 import { Button } from '@/medispense/components/ui/button';
@@ -22,16 +22,26 @@ interface EducationPage {
   title: string;
 }
 
+const formatPatientCode = (value: string): string => {
+  let clean = value.replace(/-/g, '').toUpperCase();
+  if (clean.length > 5) clean = clean.slice(0, 5);
+  if (clean.length >= 5) return `${clean.slice(0, 4)}-${clean.slice(4)}`;
+  else if (clean.length === 4) return `${clean}-`;
+  return clean;
+};
+
 export default function NewPatient() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [educationPages, setEducationPages] = useState<EducationPage[]>([]);
   const [enableEducation, setEnableEducation] = useState(false);
+  const initialPatientCode = formatPatientCode(searchParams.get('code') || '');
   
   const [formData, setFormData] = useState({
-    patientCode: '',
+    patientCode: initialPatientCode,
     age: '',
     diagnoses: [] as string[],
     educationTools: [] as string[],
@@ -59,14 +69,6 @@ export default function NewPatient() {
     } else {
       setFormData({ ...formData, educationTools: formData.educationTools.filter(id => id !== pageId) });
     }
-  };
-
-  const formatPatientCode = (value: string): string => {
-    let clean = value.replace(/-/g, '').toUpperCase();
-    if (clean.length > 5) clean = clean.slice(0, 5);
-    if (clean.length >= 5) return `${clean.slice(0, 4)}-${clean.slice(4)}`;
-    else if (clean.length === 4) return `${clean}-`;
-    return clean;
   };
 
   const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {

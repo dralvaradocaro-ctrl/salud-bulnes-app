@@ -163,6 +163,8 @@ export default function Dashboard() {
   };
 
   const filteredPatients = searchResults !== null ? searchResults : patients;
+  const searchedCode = searchQuery.trim();
+  const newPatientRoute = routes.newPatient(searchedCode || undefined);
 
   const urgentPrescriptions = patients.filter(p => 
     p.daysUntilExpiry !== null && p.daysUntilExpiry <= alertThreshold
@@ -184,7 +186,7 @@ export default function Dashboard() {
               />
             </div>
             <Button asChild>
-              <Link to={routes.newPatient()}>
+              <Link to={newPatientRoute}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nuevo Paciente
               </Link>
@@ -266,11 +268,13 @@ export default function Dashboard() {
               ) : (
                 <div className="text-center py-8">
                   <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-4">No hay pacientes registrados</p>
+                  <p className="text-muted-foreground mb-4">
+                    {searchedCode ? `No hay pacientes registrados para "${searchedCode}"` : 'No hay pacientes registrados'}
+                  </p>
                   <Button asChild>
-                    <Link to={routes.newPatient()}>
+                    <Link to={newPatientRoute}>
                       <Plus className="h-4 w-4 mr-2" />
-                      Agregar Primer Paciente
+                      {searchedCode ? 'Crear con este ID' : 'Agregar Primer Paciente'}
                     </Link>
                   </Button>
                 </div>
@@ -343,9 +347,9 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="pt-0 space-y-2">
               <Button variant="outline" className="w-full justify-start" asChild>
-                <Link to={routes.newPatient()}>
+                <Link to={newPatientRoute}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Nuevo Paciente
+                  {searchedCode ? 'Crear paciente buscado' : 'Nuevo Paciente'}
                 </Link>
               </Button>
               <Button variant="outline" className="w-full justify-start" asChild>
