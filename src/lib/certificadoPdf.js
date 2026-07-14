@@ -125,7 +125,6 @@ export async function buildCertificadoPdf(cert) {
   dato('Paciente', cert.paciente, COL1_X, y + 20);
   dato('RUT', cert.rut, COL2_X, y + 20);
   dato('Fecha de emisión', `${centro.ciudad}, ${fechaLarga(cert.fecha)}`, COL1_X, y + 52);
-  dato('Código único', cert.code, COL2_X, y + 52);
   y += BOX_H + 36;
 
   // Zonas fijas del pie: a la izquierda el recuadro de firma electrónica, a la
