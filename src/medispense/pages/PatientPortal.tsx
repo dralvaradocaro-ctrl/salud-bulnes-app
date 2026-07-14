@@ -4,7 +4,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/med
 import { Badge } from '@/medispense/components/ui/badge';
 import { Button } from '@/medispense/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/medispense/components/ui/tooltip';
-import { Clock, Pill, Calendar, AlertCircle, CheckCircle2, Info, ChevronDown, ChevronUp, BookOpen, ShieldAlert, Bell } from 'lucide-react';
+import { Clock, Pill, Calendar, AlertCircle, CheckCircle2, Info, ChevronDown, ChevronUp, BookOpen, ShieldAlert, Bell, CalendarPlus } from 'lucide-react';
+import { downloadMedicationIcs } from '@/medispense/lib/medication-ics';
+import { useToast } from '@/medispense/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/medispense/components/ui/dialog';
 import { supabase } from '@/medispense/integrations/supabase/client';
 import { ExpiryBanner } from '@/medispense/components/patient-portal/ExpiryBanner';
@@ -153,6 +155,24 @@ export default function PatientPortal() {
   const [showSosDialog, setShowSosDialog] = useState(false);
   const [showNotifDialog, setShowNotifDialog] = useState(false);
   const tts = useSpeechSynthesis();
+  const { toast } = useToast();
+
+  const handleAddToCalendar = () => {
+    const ok = downloadMedicationIcs(activePrescriptions, patient?.full_name ?? 'Paciente');
+    if (ok) {
+      toast({
+        title: 'Calendario descargado',
+        description:
+          'Abre el archivo "medicamentos.ics" y acepta agregarlo: tu teléfono te avisará 20 minutos antes de cada toma.',
+      });
+    } else {
+      toast({
+        title: 'Sin medicamentos con horario',
+        description: 'No hay medicamentos activos con horario para agendar.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   useEffect(() => {
     if (patientCode) fetchPatientData();
@@ -548,6 +568,16 @@ export default function PatientPortal() {
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={handleAddToCalendar}
+                    >
+                      <CalendarPlus className="h-3.5 w-3.5 mr-1" />
+                      <span className="hidden sm:inline">Recordar mis tomas</span>
+                      <span className="sm:hidden">Recordatorios</span>
+                    </Button>
                     {sosMeds.length > 0 && (
                       <Button
                         variant="outline"
