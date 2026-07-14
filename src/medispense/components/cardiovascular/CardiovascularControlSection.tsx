@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { HeartPulse, CalendarIcon, AlertCircle, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/medispense/lib/utils';
 import { supabase } from '@/medispense/integrations/supabase/client';
+import { maskDateInput, parseDateInput } from '@/medispense/lib/date-input';
 import { useAuth } from '@/medispense/contexts/AuthContext';
 import { useToast } from '@/medispense/hooks/use-toast';
 import {
@@ -62,27 +63,6 @@ interface CardiovascularControlSectionProps {
   onSaved: () => void;
 }
 
-/**
- * Parse a date string in dd-mm-yyyy or yyyy-mm-dd format.
- * Returns null if invalid.
- */
-function parseDateInput(value: string): Date | null {
-  if (!value) return null;
-  // Try dd-mm-yyyy
-  const dmy = value.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-  if (dmy) {
-    const d = new Date(parseInt(dmy[3]), parseInt(dmy[2]) - 1, parseInt(dmy[1]));
-    if (!isNaN(d.getTime())) return d;
-  }
-  // Try yyyy-mm-dd
-  const ymd = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (ymd) {
-    const d = new Date(parseInt(ymd[1]), parseInt(ymd[2]) - 1, parseInt(ymd[3]));
-    if (!isNaN(d.getTime())) return d;
-  }
-  return null;
-}
-
 function DateInputWithCalendar({
   value,
   onChange,
@@ -105,7 +85,7 @@ function DateInputWithCalendar({
   }, [value]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value;
+    const v = maskDateInput(e.target.value);
     setTextValue(v);
     const parsed = parseDateInput(v);
     if (parsed) {
@@ -115,7 +95,8 @@ function DateInputWithCalendar({
       setError(false);
       onChange(undefined);
     } else {
-      setError(true);
+      // Mientras la fecha está a medio escribir no se marca error.
+      setError(v.replace(/\D/g, '').length >= 8);
     }
   };
 
@@ -125,6 +106,8 @@ function DateInputWithCalendar({
         value={textValue}
         onChange={handleTextChange}
         placeholder="dd-mm-aaaa"
+        inputMode="numeric"
+        maxLength={10}
         className={cn(
           size === 'sm' ? 'h-7 text-xs w-28' : 'h-8 text-sm w-32',
           error && 'border-destructive'

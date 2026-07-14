@@ -1,22 +1,46 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
+import { es } from "date-fns/locale";
 
 import { cn } from "@/medispense/lib/utils";
 import { buttonVariants } from "@/medispense/components/ui/button";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+const ANIO_ACTUAL = new Date().getFullYear();
+
+function Calendar({
+  className,
+  classNames,
+  showOutsideDays = true,
+  captionLayout = "dropdown-buttons",
+  fromYear = 1920,
+  toYear = ANIO_ACTUAL + 5,
+  locale = es,
+  ...props
+}: CalendarProps) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      captionLayout={captionLayout}
+      fromYear={fromYear}
+      toYear={toYear}
+      locale={locale}
       className={cn("p-3 pointer-events-auto", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-sm font-medium",
+        caption_label: "flex items-center gap-1 rounded-md border border-input px-2 py-1 text-sm font-medium capitalize",
+        caption_dropdowns: "flex items-center justify-center gap-1",
+        dropdown_month: "relative inline-flex items-center",
+        dropdown_year: "relative inline-flex items-center",
+        // El <select> va transparente encima de la etiqueta: se ve la pastilla
+        // pero se despliega el selector nativo (rueda de mes/año en iOS).
+        dropdown: "absolute inset-0 h-full w-full cursor-pointer opacity-0",
+        dropdown_icon: "h-3.5 w-3.5 shrink-0 opacity-60",
+        vhidden: "sr-only",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
           buttonVariants({ variant: "outline" }),

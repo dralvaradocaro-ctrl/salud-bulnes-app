@@ -52,6 +52,8 @@ import {
 } from '@/medispense/lib/cardiovascular';
 import { Switch } from '@/medispense/components/ui/switch';
 import { Label } from '@/medispense/components/ui/label';
+import { Input } from '@/medispense/components/ui/input';
+import { maskDateInput, parseDateInput, toIsoDate } from '@/medispense/lib/date-input';
 import { useAuth } from '@/medispense/contexts/AuthContext';
 import { logAudit } from '@/medispense/lib/audit';
 import { AuditHistory } from '@/medispense/components/patient-portal/AuditHistory';
@@ -569,6 +571,8 @@ export default function PatientDetail() {
   const [renewingPrescription, setRenewingPrescription] = useState(false);
   const [showPscvModal, setShowPscvModal] = useState(false);
   const [showMedicationCalendar, setShowMedicationCalendar] = useState(false);
+  // Fechas de exámenes que se pueden anotar (opcionalmente) al confirmar el control CV
+  const [pscvExamDates, setPscvExamDates] = useState({ lab: '', ecg: '', fundoscopia: '' });
 
   // Use sessionStorage to persist PSCV modal state across navigations within the same session
   const pscvSessionKey = `pscv_shown_${patientCode}`;
@@ -1089,11 +1093,49 @@ export default function PatientDetail() {
               Este paciente está en el Programa de Salud Cardiovascular (PSCV). ¿Esta atención corresponde a un control cardiovascular?
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {/* Opcional: anotar de una vez las fechas de los exámenes */}
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <p className="mb-2 text-sm font-medium">
+              Fechas de exámenes <span className="font-normal text-muted-foreground">(opcional)</span>
+            </p>
+            <div className="space-y-2">
+              {[
+                { key: 'lab' as const, label: 'Laboratorio' },
+                { key: 'ecg' as const, label: 'ECG' },
+                ...(patient.diagnoses?.includes('diabetes_tipo2')
+                  ? [{ key: 'fundoscopia' as const, label: 'Fondo de ojo' }]
+                  : []),
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center gap-2">
+                  <Label htmlFor={`pscv-${key}`} className="w-28 shrink-0 text-sm font-normal">
+                    {label}
+                  </Label>
+                  <Input
+                    id={`pscv-${key}`}
+                    value={pscvExamDates[key]}
+                    onChange={(e) =>
+                      setPscvExamDates((prev) => ({ ...prev, [key]: maskDateInput(e.target.value) }))
+                    }
+                    placeholder="dd-mm-aaaa"
+                    inputMode="numeric"
+                    maxLength={10}
+                    className="h-8 w-32 text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Puedes dejarlas en blanco: sólo se guardan las que completes.
+            </p>
+          </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel
               onClick={() => {
                 setIsThisCvControl(false);
                 sessionStorage.setItem(cvControlSessionKey, 'false');
+                setPscvExamDates({ lab: '', ecg: '', fundoscopia: '' });
                 toast({
                   title: 'No es control cardiovascular',
                   description: 'Esta atención se ha marcado como no correspondiente a control cardiovascular.',
@@ -1111,9 +1153,53 @@ export default function PatientDetail() {
                 const now = new Date();
                 const formattedDate = now.toLocaleDateString('es-CL');
                 const formattedTime = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+
+                // Sólo se guardan las fechas que se completaron y son válidas.
+                const examUpdate: Record<string, string> = {};
+                const campos = [
+                  { key: 'lab' as const, columna: 'last_lab_review_date' },
+                  { key: 'ecg' as const, columna: 'last_ecg_date' },
+                  { key: 'fundoscopia' as const, columna: 'last_fundoscopy_date' },
+                ];
+                const invalidas: string[] = [];
+                campos.forEach(({ key, columna }) => {
+                  const texto = pscvExamDates[key].trim();
+                  if (!texto) return;
+                  const fecha = parseDateInput(texto);
+                  if (fecha) examUpdate[columna] = toIsoDate(fecha);
+                  else invalidas.push(texto);
+                });
+
+                let examenesGuardados = 0;
+                if (Object.keys(examUpdate).length > 0) {
+                  const { error } = await supabase
+                    .from('patients')
+                    .update(examUpdate)
+                    .eq('id', patient.id);
+                  if (error) {
+                    toast({
+                      title: 'No se pudieron guardar las fechas de exámenes',
+                      description: 'El control quedó marcado igual; puedes anotarlas en Vigencia de Exámenes.',
+                      variant: 'destructive',
+                    });
+                  } else {
+                    examenesGuardados = Object.keys(examUpdate).length;
+                    await fetchPatientData();
+                  }
+                }
+                setPscvExamDates({ lab: '', ecg: '', fundoscopia: '' });
+
+                const detalleExamenes = examenesGuardados
+                  ? ` Se guardaron ${examenesGuardados} fecha(s) de exámenes.`
+                  : '';
+                const detalleInvalidas = invalidas.length
+                  ? ` No se guardó ${invalidas.join(', ')}: fecha inválida.`
+                  : '';
                 toast({
                   title: 'Control cardiovascular activado',
-                  description: `Activado por: ${userName} el ${formattedDate} a las ${formattedTime}`,
+                  description:
+                    `Activado por: ${userName} el ${formattedDate} a las ${formattedTime}.` +
+                    detalleExamenes + detalleInvalidas,
                 });
               }}
             >
