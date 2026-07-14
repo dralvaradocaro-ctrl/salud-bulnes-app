@@ -8,7 +8,15 @@ import { Bell, BellOff, Mail, CheckCircle2, AlertCircle, Smartphone } from 'luci
 import { supabase } from '@/medispense/integrations/supabase/client';
 import { useToast } from '@/medispense/hooks/use-toast';
 
-const VAPID_PUBLIC_KEY = 'BFg5YykfLE7_1veXuGTimDxAjZjw1Yay7llvuhlcZrN15PuVTg8PXnfGPPpEv7hkfdMGnWKHI_OAGPZ2hBuJODc';
+// Clave pública VAPID del par con el que firma la Edge Function
+// enviar-avisos-diarios. Sin la variable de entorno, el push queda
+// deshabilitado (la clave antigua no tenía contraparte privada: las
+// suscripciones creadas con ella jamás podían recibir nada).
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
+
+// El correo se recuerda por dispositivo: la lectura anónima de datos de
+// contacto quedó bloqueada en la base (privacidad).
+const emailCacheKey = (patientId: string) => `notif_email_${patientId}`;
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -44,20 +52,32 @@ export function NotificationSettings({ patientId }: NotificationSettingsProps) {
   }, [patientId]);
 
   const loadSettings = async () => {
+    // Sólo columnas legibles por anon (email y push_subscription están
+    // bloqueadas a nivel de columna por privacidad).
     const { data } = await supabase
       .from('patient_notifications')
-      .select('*')
+      .select('id, push_enabled')
       .eq('patient_id', patientId)
       .maybeSingle();
 
-    if (data) {
-      setPushEnabled(data.push_enabled || false);
-      setEmail(data.email || '');
-      setSavedEmail(data.email || '');
-    }
+    if (data) setPushEnabled(data.push_enabled || false);
+
+    try {
+      const cached = localStorage.getItem(emailCacheKey(patientId)) || '';
+      setEmail(cached);
+      setSavedEmail(cached);
+    } catch { /* modo privado */ }
   };
 
   const enablePush = async () => {
+    if (!VAPID_PUBLIC_KEY) {
+      toast({
+        title: 'Notificaciones no disponibles',
+        description: 'El servicio de avisos aún no está configurado en este servidor.',
+        variant: 'destructive',
+      });
+      return;
+    }
     setLoading(true);
     try {
       const permission = await Notification.requestPermission();
@@ -78,7 +98,7 @@ export function NotificationSettings({ patientId }: NotificationSettingsProps) {
 
       const subscription = await (registration as any).pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY!),
       });
 
       const subscriptionJson = subscription.toJSON();
@@ -176,6 +196,7 @@ export function NotificationSettings({ patientId }: NotificationSettingsProps) {
           });
       }
 
+      try { localStorage.setItem(emailCacheKey(patientId), trimmedEmail); } catch { /* modo privado */ }
       setSavedEmail(trimmedEmail);
       toast({
         title: trimmedEmail ? '✅ Correo guardado' : 'Correo eliminado',
