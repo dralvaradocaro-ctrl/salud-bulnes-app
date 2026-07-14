@@ -326,7 +326,7 @@ function CertificadoMedico() {
 }
 
 export default conPuertaAcceso(CertificadoMedico, {
-  codigo: 'FERNANDO12BULNES',
+  codigo: 'SALUDBULNES',
   storageKey: 'certificado_medico_acceso',
   descripcion: 'Ingresa el código de acceso para usar el generador de certificados.',
 });
