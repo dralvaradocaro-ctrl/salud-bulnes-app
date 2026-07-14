@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
+import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PROA_BED_MAP } from '@/lib/hospitalSuggestions';
@@ -91,7 +92,7 @@ function findServiceForBed(bedCode) {
   ))?.servicio || '';
 }
 
-export default function GestionPROA() {
+function GestionPROA() {
   const navigate = useNavigate();
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -520,3 +521,8 @@ function MovePatientControl({ records, selectedBed, sourceBedToMove, setSourceBe
     </div>
   );
 }
+
+export default conPuertaAcceso(GestionPROA, {
+  storageKey: 'acceso_medico',
+  descripcion: 'Ingresa el código de acceso para usar Gestión PROA.',
+});

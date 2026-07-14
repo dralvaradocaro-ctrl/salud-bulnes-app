@@ -17,6 +17,7 @@ import {
 
 import GlobalSearch from '@/components/search/GlobalSearch';
 import { Button } from '@/components/ui/button';
+import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -488,7 +489,7 @@ function buildIndications(context) {
   return buildBronquitis(context);
 }
 
-export default function IndicacionesUrgencia() {
+function IndicacionesUrgencia() {
   const navigate = useNavigate();
   const [syndrome, setSyndrome] = useState('bronquitis');
   const [destination, setDestination] = useState('domicilio');
@@ -798,3 +799,8 @@ export default function IndicacionesUrgencia() {
     </div>
   );
 }
+
+export default conPuertaAcceso(IndicacionesUrgencia, {
+  storageKey: 'acceso_medico',
+  descripcion: 'Ingresa el código de acceso para usar Indicaciones prehechas de Urgencia.',
+});

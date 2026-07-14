@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { ChevronLeft, Printer, RotateCcw, Plus, Trash2, ShieldPlus, Sparkles, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { invokeLLM } from '@/lib/gemini';
@@ -623,7 +624,7 @@ function HospitalLogo({ height = 46 }) {
   );
 }
 
-export default function VisitaPROA() {
+function VisitaPROA() {
   const navigate = useNavigate();
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -1761,3 +1762,8 @@ const tbl       = { width: '100%', borderCollapse: 'collapse', fontSize: '9.5pt'
 const cellHead  = { border: '0.5pt solid #555', padding: '3pt 5pt', textAlign: 'left', fontSize: '9pt' };
 const cell      = { border: '0.5pt solid #555', padding: '3pt 5pt', fontSize: '9.5pt' };
 const box       = { border: '0.75pt solid #000', padding: '4pt 6pt', minHeight: '40pt', whiteSpace: 'pre-wrap' };
+
+export default conPuertaAcceso(VisitaPROA, {
+  storageKey: 'acceso_medico',
+  descripcion: 'Ingresa el código de acceso para usar Visita PROA.',
+});
