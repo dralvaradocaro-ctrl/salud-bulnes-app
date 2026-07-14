@@ -1,18 +1,24 @@
 // PÁGINA OCULTA — destino del QR impreso en el certificado. Sólo por link directo.
-import { useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
-import { ShieldCheck, ShieldAlert } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Search, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { fechaLarga, getInstitucion } from '@/lib/certificadoPdf';
 import { decodePayload, leerRegistro } from '@/lib/certificadoCodigo';
 
 export default function VerificarCertificado() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [entrada, setEntrada] = useState('');
+  const [aviso, setAviso] = useState('');
 
   const { cert, error, emitidoAqui } = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const code = params.get('c');
     const data = params.get('d');
-    if (!code || !data) return { cert: null, error: 'Falta el código o los datos del certificado.' };
+    // Sin parámetros no es un error: la página se abrió para buscar a mano.
+    if (!code && !data) return { cert: null, error: null };
+    if (!code || !data) return { cert: null, error: 'El enlace está incompleto: falta el código o los datos del certificado.' };
     try {
       const p = decodePayload(data);
       if (p.c !== code) return { cert: null, error: 'El código no coincide con los datos del documento.' };
@@ -38,6 +44,38 @@ export default function VerificarCertificado() {
 
   const centro = getInstitucion(cert?.institucion);
 
+  // Acepta el enlace completo del QR o, si el certificado fue emitido en este
+  // dispositivo, sólo el código: los datos viajan dentro del enlace, no en un
+  // servidor, así que un código suelto de otro equipo no se puede reconstruir.
+  const buscar = (e) => {
+    e.preventDefault();
+    const valor = entrada.trim();
+    if (!valor) return;
+    setAviso('');
+
+    if (/VerificarCertificado\?/i.test(valor)) {
+      const query = valor.slice(valor.indexOf('?'));
+      navigate(`/VerificarCertificado${query}`);
+      setEntrada('');
+      return;
+    }
+
+    const codigo = valor.toUpperCase();
+    const registro = leerRegistro().find((r) => r.code?.toUpperCase() === codigo);
+    if (registro?.verifyUrl) {
+      const query = registro.verifyUrl.slice(registro.verifyUrl.indexOf('?'));
+      navigate(`/VerificarCertificado${query}`);
+      setEntrada('');
+      return;
+    }
+
+    setAviso(
+      'Ese código no figura entre los certificados emitidos desde este dispositivo. ' +
+      'Los datos del certificado viajan dentro del QR, no en un servidor: escanea el ' +
+      'QR del documento o pega aquí el enlace completo de verificación.',
+    );
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10">
       <div className="mx-auto max-w-2xl">
@@ -48,6 +86,35 @@ export default function VerificarCertificado() {
             <p className="text-xs text-slate-500">Verificación de certificado médico</p>
           </div>
         </div>
+
+        <form
+          onSubmit={buscar}
+          className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+        >
+          <label htmlFor="codigo" className="mb-1 block text-sm font-semibold text-slate-700">
+            Verificar un certificado
+          </label>
+          <p className="mb-3 text-xs text-slate-500">
+            Escribe el código de verificación (ej. CM-20260714-K7P2QX) o pega el enlace impreso bajo el QR.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              id="codigo"
+              value={entrada}
+              onChange={(e) => setEntrada(e.target.value)}
+              placeholder="Código o enlace de verificación"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+            <Button type="submit" disabled={!entrada.trim()} className="gap-1.5 sm:w-auto">
+              <Search className="h-4 w-4" /> Verificar
+            </Button>
+          </div>
+          {aviso && (
+            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {aviso}
+            </p>
+          )}
+        </form>
 
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
