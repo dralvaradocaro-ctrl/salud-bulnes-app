@@ -151,9 +151,11 @@ export async function buildCertificadoPdf(cert) {
   const parrafos = (cert.texto || '').split(/\n{1,}/);
   parrafos.forEach((p) => {
     const lines = doc.splitTextToSize(p.trim() || ' ', CW);
-    lines.forEach((line) => {
+    lines.forEach((line, i) => {
       if (y > LINE_Y - ESPACIO_FIRMA - 24) { doc.addPage(); y = M; }
-      doc.text(line, M, y, { maxWidth: CW });
+      // Justificado salvo la última línea del párrafo, que iría con huecos.
+      const esUltima = i === lines.length - 1;
+      doc.text(line, M, y, esUltima ? { maxWidth: CW } : { maxWidth: CW, align: 'justify' });
       y += 18;
     });
     y += 8;
