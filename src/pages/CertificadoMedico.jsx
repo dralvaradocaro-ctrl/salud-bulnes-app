@@ -21,6 +21,17 @@ const hoyIso = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+// Estampa de fecha del sello, al estilo de los visores de PDF: 2026.07.14 12:35:44 -04'00'
+const selloFecha = () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  const off = -d.getTimezoneOffset();
+  const signo = off >= 0 ? '+' : '-';
+  const offTxt = `${signo}${p(Math.floor(Math.abs(off) / 60))}'${p(Math.abs(off) % 60)}'`;
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ` +
+    `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())} ${offTxt}`;
+};
+
 const slug = (s) =>
   (s || 'paciente')
     .normalize('NFD')
@@ -70,10 +81,9 @@ export default function CertificadoMedico() {
       fecha,
       texto: texto.trim(),
       verifyUrl,
+      verifyBaseUrl: `${window.location.origin}/VerificarCertificado`,
       qrDataUrl,
-      emitidoEn: new Date().toLocaleString('es-CL', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-      }),
+      emitidoEn: selloFecha(),
     });
   };
 
@@ -250,8 +260,9 @@ export default function CertificadoMedico() {
             <div className="mt-4 border-t border-slate-100 pt-3 text-sm">
               <p className="font-semibold text-slate-900">{MEDICO.nombre}</p>
               <p className="text-slate-500">{MEDICO.titulo} · RUT {MEDICO.rut}</p>
-              <p className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800">
-                El PDF lleva sello de firma electrónica (sin firma manuscrita).
+              <p className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                El PDF lleva recuadro de <span className="font-semibold">firma electrónica simple</span> (sin
+                validez legal de FEA) y deja espacio en blanco sobre la línea para tu firma y timbre reales.
               </p>
               <p className="mt-2 text-xs text-slate-500">{fechaLarga(fecha)}</p>
             </div>

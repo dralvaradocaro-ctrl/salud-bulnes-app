@@ -128,13 +128,15 @@ export async function buildCertificadoPdf(cert) {
   dato('Código único', cert.code, COL2_X, y + 52);
   y += BOX_H + 36;
 
-  // Zonas fijas del pie: sello de firma electrónica sobre la línea con los
-  // datos del médico, y ésta sobre el bloque QR.
-  const QR_TOP = H - 150;
-  const LINE_Y = QR_TOP - 66;
-  const SELLO_W = 250;
-  const SELLO_H = 54;
-  const SELLO_TOP = LINE_Y - SELLO_H - 10;
+  // Zonas fijas del pie: a la izquierda el recuadro de firma electrónica, a la
+  // derecha el espacio en blanco para la firma manuscrita sobre la línea con
+  // los datos del médico; abajo, el bloque de verificación con el QR.
+  const QR_TOP = H - 136;
+  const LINE_Y = QR_TOP - 62;
+  const ESPACIO_FIRMA = 62; // aire sobre la línea para firmar a mano
+  const SELLO_W = 236;
+  const SELLO_H = 74;
+  const SELLO_TOP = LINE_Y - 40;
 
   // ── Cuerpo: texto libre del certificado ──────────────────────────────
   doc.setFont('helvetica', 'normal');
@@ -144,64 +146,88 @@ export async function buildCertificadoPdf(cert) {
   parrafos.forEach((p) => {
     const lines = doc.splitTextToSize(p.trim() || ' ', CW);
     lines.forEach((line) => {
-      if (y > SELLO_TOP - 24) { doc.addPage(); y = M; }
+      if (y > LINE_Y - ESPACIO_FIRMA - 24) { doc.addPage(); y = M; }
       doc.text(line, M, y, { maxWidth: CW });
       y += 18;
     });
     y += 8;
   });
 
-  // ── Sello de firma electrónica ───────────────────────────────────────
-  const sx = W / 2 - SELLO_W / 2;
-  doc.setDrawColor(30, 64, 120);
-  doc.setLineWidth(0.9);
-  doc.setFillColor(240, 245, 252);
-  doc.roundedRect(sx, SELLO_TOP, SELLO_W, SELLO_H, 5, 5, 'FD');
-  doc.setTextColor(30, 64, 120);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.text('FIRMADO ELECTRÓNICAMENTE', W / 2, SELLO_TOP + 16, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text(`${MEDICO.nombre} · RUT ${MEDICO.rut}`, W / 2, SELLO_TOP + 29, { align: 'center' });
-  doc.text(`${cert.code} · ${cert.emitidoEn || fechaLarga(cert.fecha)}`, W / 2, SELLO_TOP + 41, {
-    align: 'center',
-  });
-  doc.setTextColor(15, 23, 42);
-
-  doc.setDrawColor(60, 70, 85);
-  doc.setLineWidth(0.8);
-  doc.line(W / 2 - 130, LINE_Y, W / 2 + 130, LINE_Y);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text(MEDICO.nombre, W / 2, LINE_Y + 18, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
-  doc.text(`${MEDICO.titulo} · RUT ${MEDICO.rut}`, W / 2, LINE_Y + 33, { align: 'center' });
-
-  // ── Pie: QR de verificación + código único ───────────────────────────
-  doc.setDrawColor(200, 208, 218);
+  // ── Recuadro de firma electrónica ────────────────────────────────────
+  doc.setDrawColor(190, 198, 210);
   doc.setLineWidth(0.7);
-  doc.line(M, QR_TOP - 16, W - M, QR_TOP - 16);
+  doc.rect(M, SELLO_TOP, SELLO_W, SELLO_H);
 
-  if (cert.qrDataUrl) {
-    doc.addImage(cert.qrDataUrl, 'PNG', M, QR_TOP, 84, 84);
-  }
-  const tx = M + 98;
+  const stx = M + 10;
+  doc.setTextColor(70, 80, 95);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text('Firmado electrónicamente por', stx, SELLO_TOP + 14);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('Verifique la autenticidad de este documento escaneando este código QR.', tx, QR_TOP + 16);
+  doc.setTextColor(15, 23, 42);
+  doc.text(MEDICO.nombre.toUpperCase(), stx, SELLO_TOP + 28);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(70, 80, 95);
+  doc.text(`RUT: ${MEDICO.rut}`, stx, SELLO_TOP + 40);
+  doc.text(`Fecha: ${cert.emitidoEn || fechaLarga(cert.fecha)}`, stx, SELLO_TOP + 51);
+  doc.setFontSize(6.5);
+  doc.setTextColor(140, 150, 165);
+  doc.text('Firma electrónica simple, sin validez legal de firma', stx, SELLO_TOP + 62);
+  doc.text('electrónica avanzada.', stx, SELLO_TOP + 70);
+  doc.setTextColor(15, 23, 42);
+
+  // ── Espacio de firma manuscrita + línea con los datos del médico ─────
+  const FIRMA_CX = W - M - 110; // eje de la columna derecha
+  doc.setDrawColor(60, 70, 85);
+  doc.setLineWidth(0.8);
+  doc.line(FIRMA_CX - 110, LINE_Y, FIRMA_CX + 110, LINE_Y);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text(`Código único: ${cert.code}`, tx, QR_TOP + 40);
+  doc.text(MEDICO.nombre, FIRMA_CX, LINE_Y + 18, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.text(`${MEDICO.titulo} · RUT ${MEDICO.rut}`, FIRMA_CX, LINE_Y + 32, { align: 'center' });
+  doc.setFontSize(7.5);
+  doc.setTextColor(140, 150, 165);
+  doc.text('Firma y timbre', FIRMA_CX, LINE_Y + 44, { align: 'center' });
+  doc.setTextColor(15, 23, 42);
+
+  // ── Bloque de verificación: QR + URL + código ────────────────────────
+  doc.setDrawColor(200, 208, 218);
+  doc.setLineWidth(0.7);
+  doc.line(M, QR_TOP - 14, W - M, QR_TOP - 14);
+
+  const QR_SIZE = 76;
+  if (cert.qrDataUrl) {
+    doc.addImage(cert.qrDataUrl, 'PNG', M, QR_TOP, QR_SIZE, QR_SIZE);
+  }
+  const tx = M + QR_SIZE + 14;
+  const tw = W - M - tx;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('Verifique la autenticidad de este documento en:', tx, QR_TOP + 12);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
+  doc.setTextColor(30, 64, 120);
+  doc.text(doc.splitTextToSize(cert.verifyBaseUrl || cert.verifyUrl, tw), tx, QR_TOP + 24);
+  doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('Código de verificación:', tx, QR_TOP + 42);
+  doc.setFont('helvetica', 'bold');
+  doc.text(cert.code, tx + doc.getTextWidth('Código de verificación: '), QR_TOP + 42);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
   doc.setTextColor(120, 130, 145);
-  const pie = doc.splitTextToSize(
-    `${centro.nombre} · ${centro.direccion} · Fono ${centro.fono}`,
-    W - tx - M,
+  doc.text(
+    doc.splitTextToSize(`${centro.nombre} · ${centro.direccion} · Fono ${centro.fono}`, tw),
+    tx,
+    QR_TOP + 60,
   );
-  doc.text(pie, tx, QR_TOP + 70);
   doc.setTextColor(15, 23, 42);
 
   return doc;
