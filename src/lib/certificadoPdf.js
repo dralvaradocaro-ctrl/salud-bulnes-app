@@ -192,8 +192,8 @@ export async function buildCertificadoPdf(cert) {
       const firma = await loadImage(centro.firma);
       const fw = 190;
       const fh = fw * (centro.firmaProporcion || 0.67);
-      // Superpuesta sobre la línea: su base cae unos puntos bajo LINE_Y.
-      doc.addImage(firma, 'PNG', FIRMA_CX - fw / 2, LINE_Y + 6 - fh, fw, fh);
+      // Superpuesta sobre la línea: la firma la cruza y su base queda bajo LINE_Y.
+      doc.addImage(firma, 'PNG', FIRMA_CX - fw / 2, LINE_Y + 20 - fh, fw, fh);
     } catch { /* si no carga, queda el espacio en blanco para firmar a mano */ }
   }
 

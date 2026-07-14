@@ -15,6 +15,8 @@ import {
   MEDICO,
 } from '@/lib/certificadoPdf';
 import { generarCodigo, encodePayload, registrarCertificado } from '@/lib/certificadoCodigo';
+import { guardarCertificadoRemoto } from '@/lib/certificadosStore';
+import { toast } from 'sonner';
 
 const hoyIso = () => {
   const d = new Date();
@@ -128,7 +130,7 @@ export default function CertificadoMedico() {
     return `${origin}/VerificarCertificado?c=${encodeURIComponent(code)}&d=${payload}`;
   }, [code, paciente, rut, fecha, texto, institucionId]);
 
-  const construirPdf = async () => {
+  const construirPdf = async (emitidoEn) => {
     const canvas = qrRef.current?.querySelector('canvas');
     const qrDataUrl = canvas ? canvas.toDataURL('image/png') : '';
     return buildCertificadoPdf({
@@ -141,7 +143,7 @@ export default function CertificadoMedico() {
       verifyUrl,
       verifyBaseUrl: `${window.location.origin}/VerificarCertificado`,
       qrDataUrl,
-      emitidoEn: selloFecha(),
+      emitidoEn,
     });
   };
 
@@ -149,15 +151,37 @@ export default function CertificadoMedico() {
     if (!puedeGenerar) return;
     setGenerando(true);
     try {
-      const doc = await construirPdf();
+      const emitidoEn = selloFecha();
+      const doc = await construirPdf(emitidoEn);
       if (modo === 'preview') {
         window.open(doc.output('bloburl'), '_blank');
-      } else {
-        doc.save(`Certificado_${slug(paciente)}_${code}.pdf`);
+        return; // la previsualización no emite: no registra nada
       }
-      registrarCertificado({
-        code, institucion: institucionId, paciente: paciente.trim(), rut, fecha, verifyUrl,
-      });
+      doc.save(`Certificado_${slug(paciente)}_${code}.pdf`);
+
+      const emitido = {
+        code,
+        institucion: institucionId,
+        paciente: paciente.trim(),
+        rut,
+        fecha,
+        texto: texto.trim(),
+        medico: MEDICO.nombre,
+        medicoRut: MEDICO.rut,
+        emitidoEn,
+      };
+      registrarCertificado({ ...emitido, verifyUrl });
+
+      // El registro central habilita verificar por código desde otro equipo. Si
+      // falla, el certificado sigue siendo verificable por su QR/enlace.
+      try {
+        await guardarCertificadoRemoto(emitido);
+        toast.success('Certificado emitido y registrado para verificación por código.');
+      } catch {
+        toast.warning(
+          'Certificado emitido, pero no se pudo registrar en línea: sólo será verificable por su QR o enlace.',
+        );
+      }
     } finally {
       setGenerando(false);
     }

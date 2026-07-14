@@ -1,79 +1,111 @@
 // PÁGINA OCULTA — destino del QR impreso en el certificado. Sólo por link directo.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Search, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Loader2, Search, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { fechaLarga, getInstitucion } from '@/lib/certificadoPdf';
 import { decodePayload, leerRegistro } from '@/lib/certificadoCodigo';
+import { buscarCertificadoRemoto } from '@/lib/certificadosStore';
+
+const desdePayload = (p) => ({
+  code: p.c,
+  paciente: p.n,
+  rut: p.r,
+  fecha: p.f,
+  texto: p.t,
+  medico: p.m,
+  medicoRut: p.mr,
+  institucion: p.i,
+});
+
+// El certificado emitido en este dispositivo queda con su enlace completo, así
+// que su payload sirve de respaldo si el registro central no responde.
+const buscarEnRegistroLocal = (code) => {
+  const r = leerRegistro().find((x) => x.code?.toUpperCase() === code.toUpperCase());
+  if (!r?.verifyUrl) return null;
+  try {
+    const d = new URLSearchParams(r.verifyUrl.slice(r.verifyUrl.indexOf('?'))).get('d');
+    return d ? desdePayload(decodePayload(d)) : null;
+  } catch {
+    return null;
+  }
+};
 
 export default function VerificarCertificado() {
   const location = useLocation();
   const navigate = useNavigate();
   const [entrada, setEntrada] = useState('');
-  const [aviso, setAviso] = useState('');
+  const [remoto, setRemoto] = useState({ cert: null, error: null, cargando: false });
 
-  const { cert, error, emitidoAqui } = useMemo(() => {
+  // El enlace del QR trae los datos dentro (verificación sin servidor).
+  const desdeEnlace = useMemo(() => {
     const params = new URLSearchParams(location.search);
     const code = params.get('c');
     const data = params.get('d');
-    // Sin parámetros no es un error: la página se abrió para buscar a mano.
-    if (!code && !data) return { cert: null, error: null };
-    if (!code || !data) return { cert: null, error: 'El enlace está incompleto: falta el código o los datos del certificado.' };
+    if (!code) return { cert: null, error: null, code: null };
+    if (!data) return { cert: null, error: null, code }; // sólo el código: se busca en el registro
     try {
       const p = decodePayload(data);
-      if (p.c !== code) return { cert: null, error: 'El código no coincide con los datos del documento.' };
-      const emitido = leerRegistro().some((r) => r.code === code);
-      return {
-        cert: {
-          code: p.c,
-          paciente: p.n,
-          rut: p.r,
-          fecha: p.f,
-          texto: p.t,
-          medico: p.m,
-          medicoRut: p.mr,
-          institucion: p.i,
-        },
-        error: null,
-        emitidoAqui: emitido,
-      };
+      if (p.c !== code) {
+        return { cert: null, error: 'El código no coincide con los datos del documento.', code };
+      }
+      return { cert: desdePayload(p), error: null, code };
     } catch {
-      return { cert: null, error: 'No fue posible leer los datos del certificado.' };
+      return { cert: null, error: 'No fue posible leer los datos del certificado.', code };
     }
   }, [location.search]);
 
+  // Con sólo el código, se consulta el registro central de certificados emitidos.
+  const codigoSuelto = desdeEnlace.code && !desdeEnlace.cert && !desdeEnlace.error
+    ? desdeEnlace.code
+    : null;
+
+  useEffect(() => {
+    if (!codigoSuelto) {
+      setRemoto({ cert: null, error: null, cargando: false });
+      return;
+    }
+    let vigente = true;
+    setRemoto({ cert: null, error: null, cargando: true });
+    buscarCertificadoRemoto(codigoSuelto)
+      .then((cert) => {
+        if (!vigente) return;
+        const encontrado = cert || buscarEnRegistroLocal(codigoSuelto);
+        setRemoto({
+          cert: encontrado,
+          error: encontrado ? null : 'No existe ningún certificado emitido con ese código.',
+          cargando: false,
+        });
+      })
+      .catch(() => {
+        if (!vigente) return;
+        const local = buscarEnRegistroLocal(codigoSuelto);
+        setRemoto({
+          cert: local,
+          error: local
+            ? null
+            : 'No fue posible consultar el registro de certificados. Escanea el QR del documento o pega el enlace completo.',
+          cargando: false,
+        });
+      });
+    return () => { vigente = false; };
+  }, [codigoSuelto]);
+
+  const cert = desdeEnlace.cert || remoto.cert;
+  const error = desdeEnlace.error || remoto.error;
+  const cargando = remoto.cargando;
   const centro = getInstitucion(cert?.institucion);
 
-  // Acepta el enlace completo del QR o, si el certificado fue emitido en este
-  // dispositivo, sólo el código: los datos viajan dentro del enlace, no en un
-  // servidor, así que un código suelto de otro equipo no se puede reconstruir.
   const buscar = (e) => {
     e.preventDefault();
     const valor = entrada.trim();
     if (!valor) return;
-    setAviso('');
-
     if (/VerificarCertificado\?/i.test(valor)) {
-      const query = valor.slice(valor.indexOf('?'));
-      navigate(`/VerificarCertificado${query}`);
-      setEntrada('');
-      return;
+      navigate(`/VerificarCertificado${valor.slice(valor.indexOf('?'))}`);
+    } else {
+      navigate(`/VerificarCertificado?c=${encodeURIComponent(valor.toUpperCase())}`);
     }
-
-    const codigo = valor.toUpperCase();
-    const registro = leerRegistro().find((r) => r.code?.toUpperCase() === codigo);
-    if (registro?.verifyUrl) {
-      const query = registro.verifyUrl.slice(registro.verifyUrl.indexOf('?'));
-      navigate(`/VerificarCertificado${query}`);
-      setEntrada('');
-      return;
-    }
-
-    setAviso(
-      'Ese código no figura entre los certificados emitidos desde este dispositivo. ' +
-      'Los datos del certificado viajan dentro del QR, no en un servidor: escanea el ' +
-      'QR del documento o pega aquí el enlace completo de verificación.',
-    );
+    setEntrada('');
   };
 
   return (
@@ -105,18 +137,20 @@ export default function VerificarCertificado() {
               placeholder="Código o enlace de verificación"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
-            <Button type="submit" disabled={!entrada.trim()} className="gap-1.5 sm:w-auto">
-              <Search className="h-4 w-4" /> Verificar
+            <Button type="submit" disabled={!entrada.trim() || cargando} className="gap-1.5 sm:w-auto">
+              {cargando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              Verificar
             </Button>
           </div>
-          {aviso && (
-            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              {aviso}
-            </p>
-          )}
         </form>
 
-        {error && (
+        {cargando && (
+          <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+            <Loader2 className="h-4 w-4 animate-spin" /> Consultando el registro de certificados…
+          </div>
+        )}
+
+        {!cargando && error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
             <div className="flex items-center gap-2 font-semibold text-red-800">
               <ShieldAlert className="h-5 w-5" /> Certificado no verificable
@@ -125,7 +159,7 @@ export default function VerificarCertificado() {
           </div>
         )}
 
-        {cert && (
+        {!cargando && cert && (
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center gap-2 border-b border-emerald-100 bg-emerald-50 px-6 py-4 font-semibold text-emerald-800">
               <ShieldCheck className="h-5 w-5" /> Certificado válido
@@ -159,12 +193,6 @@ export default function VerificarCertificado() {
                 <p className="font-semibold text-slate-900">{cert.medico}</p>
                 <p className="text-slate-500">Médico Cirujano · RUT {cert.medicoRut}</p>
               </div>
-
-              {emitidoAqui && (
-                <p className="text-xs text-emerald-700">
-                  Este código coincide con un certificado emitido desde este dispositivo.
-                </p>
-              )}
             </div>
           </div>
         )}
