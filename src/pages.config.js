@@ -74,6 +74,9 @@ import SolicitudFarmacoRestringido from './pages/SolicitudFarmacoRestringido';
 import GestionPROA from './pages/GestionPROA';
 import VisitaPROA from './pages/VisitaPROA';
 import AgendaDiaria from './pages/AgendaDiaria';
+import IndicacionesUrgencia from './pages/IndicacionesUrgencia';
+import CertificadoMedico from './pages/CertificadoMedico';
+import VerificarCertificado from './pages/VerificarCertificado';
 import __Layout from './Layout.jsx';
 
 export const PAGES = {
@@ -104,6 +107,10 @@ export const PAGES = {
     "GestionPROA": GestionPROA,
     "VisitaPROA": VisitaPROA,
     "AgendaDiaria": AgendaDiaria,
+    "IndicacionesUrgencia": IndicacionesUrgencia,
+    // Páginas ocultas: no aparecen en ninguna navegación, sólo por link directo
+    "CertificadoMedico": CertificadoMedico,
+    "VerificarCertificado": VerificarCertificado,
 }
 
 export const pagesConfig = {

@@ -1,0 +1,230 @@
+// PÁGINA OCULTA — no está enlazada desde ninguna navegación.
+// Sólo se accede por link directo: /CertificadoMedico
+import { useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { QRCodeCanvas } from 'qrcode.react';
+import { ChevronLeft, Download, Eye, RotateCcw, ShieldCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { formatRut, validateRut } from '@/lib/rut-ges';
+import { buildCertificadoPdf, CENTRO, MEDICO, fechaLarga } from '@/lib/certificadoPdf';
+import { generarCodigo, encodePayload, registrarCertificado } from '@/lib/certificadoCodigo';
+
+const hoyIso = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const slug = (s) =>
+  (s || 'paciente')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_|_$/g, '');
+
+export default function CertificadoMedico() {
+  const navigate = useNavigate();
+  const qrRef = useRef(null);
+
+  const [paciente, setPaciente] = useState('');
+  const [rut, setRut] = useState('');
+  const [fecha, setFecha] = useState(hoyIso);
+  const [texto, setTexto] = useState('');
+  const [code, setCode] = useState(() => generarCodigo(hoyIso()));
+  const [generando, setGenerando] = useState(false);
+
+  const rutValido = rut.length > 0 && validateRut(rut);
+  const puedeGenerar = paciente.trim() && rutValido && texto.trim() && !generando;
+
+  const verifyUrl = useMemo(() => {
+    const payload = encodePayload({
+      c: code,
+      n: paciente.trim(),
+      r: rut,
+      f: fecha,
+      t: texto.trim(),
+      m: MEDICO.nombre,
+      mr: MEDICO.rut,
+    });
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${origin}/VerificarCertificado?c=${encodeURIComponent(code)}&d=${payload}`;
+  }, [code, paciente, rut, fecha, texto]);
+
+  const construirPdf = async () => {
+    const canvas = qrRef.current?.querySelector('canvas');
+    const qrDataUrl = canvas ? canvas.toDataURL('image/png') : '';
+    return buildCertificadoPdf({
+      code,
+      paciente: paciente.trim(),
+      rut,
+      fecha,
+      texto: texto.trim(),
+      verifyUrl,
+      qrDataUrl,
+    });
+  };
+
+  const handleGenerar = async (modo) => {
+    if (!puedeGenerar) return;
+    setGenerando(true);
+    try {
+      const doc = await construirPdf();
+      if (modo === 'preview') {
+        window.open(doc.output('bloburl'), '_blank');
+      } else {
+        doc.save(`Certificado_${slug(paciente)}_${code}.pdf`);
+      }
+      registrarCertificado({ code, paciente: paciente.trim(), rut, fecha, verifyUrl });
+    } finally {
+      setGenerando(false);
+    }
+  };
+
+  const nuevoCertificado = () => {
+    setPaciente('');
+    setRut('');
+    setTexto('');
+    setFecha(hoyIso());
+    setCode(generarCodigo(hoyIso()));
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 pb-24">
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Volver">
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div className="min-w-0">
+            <h1 className="truncate text-base font-semibold text-slate-900">Certificado médico</h1>
+            <p className="truncate text-xs text-slate-500">{CENTRO.nombre} · Fono {CENTRO.fono}</p>
+          </div>
+          <Button variant="outline" size="sm" className="ml-auto gap-1.5" onClick={nuevoCertificado}>
+            <RotateCcw className="h-4 w-4" /> Nuevo
+          </Button>
+        </div>
+      </header>
+
+      <main className="mx-auto grid max-w-5xl gap-6 px-4 py-6 lg:grid-cols-[1.15fr_1fr]">
+        {/* Formulario */}
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="paciente" className="mb-1 block text-sm font-semibold text-slate-700">
+                Nombre del paciente
+              </label>
+              <input
+                id="paciente"
+                value={paciente}
+                onChange={(e) => setPaciente(e.target.value)}
+                placeholder="Nombre completo"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="rut" className="mb-1 block text-sm font-semibold text-slate-700">
+                  RUT
+                </label>
+                <input
+                  id="rut"
+                  value={rut}
+                  onChange={(e) => setRut(formatRut(e.target.value))}
+                  placeholder="12.345.678-9"
+                  inputMode="text"
+                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 ${
+                    rut && !rutValido
+                      ? 'border-red-400 focus:border-red-500 focus:ring-red-100'
+                      : 'border-slate-300 focus:border-blue-500 focus:ring-blue-100'
+                  }`}
+                />
+                {rut && !rutValido && (
+                  <p className="mt-1 text-xs font-medium text-red-600">RUT inválido (dígito verificador).</p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="fecha" className="mb-1 block text-sm font-semibold text-slate-700">
+                  Fecha de emisión
+                </label>
+                <input
+                  id="fecha"
+                  type="date"
+                  value={fecha}
+                  onChange={(e) => setFecha(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="texto" className="mb-1 block text-sm font-semibold text-slate-700">
+                Texto del certificado
+              </label>
+              <textarea
+                id="texto"
+                rows={9}
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+                placeholder="Se encuentra en control médico por…, indicándose reposo por … días a contar del …"
+                className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm leading-relaxed outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Se imprime bajo la frase «Certifico que {paciente.trim() || 'el/la paciente'}…». Los saltos de línea se respetan.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button onClick={() => handleGenerar('download')} disabled={!puedeGenerar} className="gap-1.5">
+                <Download className="h-4 w-4" /> Descargar PDF
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleGenerar('preview')}
+                disabled={!puedeGenerar}
+                className="gap-1.5"
+              >
+                <Eye className="h-4 w-4" /> Previsualizar
+              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Panel lateral: médico, código y QR */}
+        <aside className="space-y-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <img src={CENTRO.logo} alt="" className="h-12 w-12 rounded-lg object-contain" />
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-900">{CENTRO.nombre}</p>
+                <p className="text-xs text-slate-500">{CENTRO.direccion}</p>
+              </div>
+            </div>
+            <div className="mt-4 border-t border-slate-100 pt-3 text-sm">
+              <p className="font-semibold text-slate-900">{MEDICO.nombre}</p>
+              <p className="text-slate-500">{MEDICO.titulo} · RUT {MEDICO.rut}</p>
+              <p className="mt-2 text-xs text-slate-500">{fechaLarga(fecha)}</p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <ShieldCheck className="h-4 w-4 text-emerald-600" /> Verificación
+            </div>
+            <div ref={qrRef} className="flex items-center gap-4">
+              <QRCodeCanvas value={verifyUrl} size={148} level="L" marginSize={2} />
+              <div className="min-w-0 text-xs text-slate-600">
+                <p className="font-semibold text-slate-900">Código único</p>
+                <p className="mt-0.5 break-all font-mono text-[13px] text-blue-700">{code}</p>
+                <p className="mt-2 leading-relaxed">
+                  El QR del PDF abre <span className="font-medium">/VerificarCertificado</span> con los datos del
+                  documento emitido.
+                </p>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+  );
+}
