@@ -14,6 +14,7 @@ export const MEDICO = {
   nombre: 'Fernando Alvarado Caro',
   rut: '20.238.504-4',
   titulo: 'Médico Cirujano',
+  firma: '/firma-alvarado.png', // firma manuscrita + timbre
 };
 
 const MESES = [
@@ -105,32 +106,41 @@ export async function buildCertificadoPdf(cert) {
   doc.text(doc.splitTextToSize(intro, CW), M, y);
   y += 26;
 
+  // Zonas fijas del pie: firma/timbre sobre el bloque QR.
+  const QR_TOP = H - 150;
+  const FIRMA_W = 200;
+  const FIRMA_H = Math.round(FIRMA_W * (682 / 1012)); // proporción de la imagen
+  const FIRMA_TOP = QR_TOP - FIRMA_H - 20;
+
   doc.setFont('helvetica', 'normal');
   const parrafos = (cert.texto || '').split(/\n{1,}/);
   parrafos.forEach((p) => {
     const lines = doc.splitTextToSize(p.trim() || ' ', CW);
     lines.forEach((line) => {
-      if (y > H - 230) { doc.addPage(); y = M; }
+      if (y > FIRMA_TOP - 20) { doc.addPage(); y = M; }
       doc.text(line, M, y, { maxWidth: CW });
       y += 17;
     });
     y += 6;
   });
 
-  // ── Firma (anclada al pie, sobre el bloque QR) ───────────────────────
-  const QR_TOP = H - 150;
-  let sy = Math.max(y + 40, QR_TOP - 90);
-  doc.setDrawColor(60, 70, 85);
-  doc.setLineWidth(0.8);
-  doc.line(W / 2 - 90, sy, W / 2 + 90, sy);
-  sy += 15;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text(MEDICO.nombre, W / 2, sy, { align: 'center' });
-  sy += 14;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
-  doc.text(`${MEDICO.titulo} · RUT ${MEDICO.rut}`, W / 2, sy, { align: 'center' });
+  // ── Firma y timbre ───────────────────────────────────────────────────
+  try {
+    const firma = await loadImage(MEDICO.firma);
+    doc.addImage(firma, 'PNG', W / 2 - FIRMA_W / 2, FIRMA_TOP, FIRMA_W, FIRMA_H);
+  } catch {
+    // Sin la imagen, se cae al bloque de firma en texto.
+    const sy = FIRMA_TOP + FIRMA_H - 26;
+    doc.setDrawColor(60, 70, 85);
+    doc.setLineWidth(0.8);
+    doc.line(W / 2 - 90, sy, W / 2 + 90, sy);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(MEDICO.nombre, W / 2, sy + 15, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.text(`${MEDICO.titulo} · RUT ${MEDICO.rut}`, W / 2, sy + 29, { align: 'center' });
+  }
 
   // ── Pie: QR de verificación + código único ───────────────────────────
   doc.setDrawColor(200, 208, 218);
@@ -144,18 +154,9 @@ export async function buildCertificadoPdf(cert) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.text('Verifique la autenticidad de este documento escaneando este código QR.', tx, QR_TOP + 16);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(70, 80, 95);
-  doc.text(
-    'El QR abre la verificación en línea con los datos del certificado emitido.',
-    tx,
-    QR_TOP + 32,
-  );
-  doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text(`Código único: ${cert.code}`, tx, QR_TOP + 58);
+  doc.text(`Código único: ${cert.code}`, tx, QR_TOP + 40);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(120, 130, 145);

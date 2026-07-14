@@ -203,6 +203,11 @@ export default function CertificadoMedico() {
             <div className="mt-4 border-t border-slate-100 pt-3 text-sm">
               <p className="font-semibold text-slate-900">{MEDICO.nombre}</p>
               <p className="text-slate-500">{MEDICO.titulo} · RUT {MEDICO.rut}</p>
+              <img
+                src={MEDICO.firma}
+                alt="Firma y timbre"
+                className="mt-3 h-24 w-auto max-w-full object-contain"
+              />
               <p className="mt-2 text-xs text-slate-500">{fechaLarga(fecha)}</p>
             </div>
           </div>
