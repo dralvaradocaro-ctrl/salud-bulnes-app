@@ -7,6 +7,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/medispense/components
 import { Clock, Pill, Calendar, AlertCircle, CheckCircle2, Info, ChevronDown, ChevronUp, BookOpen, ShieldAlert, Bell, CalendarPlus } from 'lucide-react';
 import { downloadMedicationIcs } from '@/medispense/lib/medication-ics';
 import { useToast } from '@/medispense/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/medispense/components/ui/dropdown-menu';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/medispense/components/ui/dialog';
 import { supabase } from '@/medispense/integrations/supabase/client';
 import { ExpiryBanner } from '@/medispense/components/patient-portal/ExpiryBanner';
@@ -157,7 +165,21 @@ export default function PatientPortal() {
   const tts = useSpeechSynthesis();
   const { toast } = useToast();
 
-  const handleAddToCalendar = () => {
+  // Suscripción (webcal): el calendario se refresca solo desde el servidor, así
+  // que un cambio de receta se refleja sin volver a agregar nada. Es la opción
+  // recomendada; la descarga queda como respaldo si la suscripción falla.
+  const handleSubscribeCalendar = () => {
+    if (!patient?.patient_code) return;
+    const url = `${SUPABASE_URL}/functions/v1/calendario-medicamentos?code=${encodeURIComponent(patient.patient_code)}`;
+    window.location.href = url.replace(/^https?:/, 'webcal:');
+    toast({
+      title: 'Suscripción al calendario',
+      description:
+        'Acepta agregar el calendario: te avisará 20 minutos antes de cada toma y se actualizará solo si cambia tu receta.',
+    });
+  };
+
+  const handleDownloadCalendar = () => {
     const ok = downloadMedicationIcs(
       activePrescriptions,
       patient?.full_name ?? 'Paciente',
@@ -572,16 +594,29 @@ export default function PatientPortal() {
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={handleAddToCalendar}
-                    >
-                      <CalendarPlus className="h-3.5 w-3.5 mr-1" />
-                      <span className="hidden sm:inline">Recordar mis tomas</span>
-                      <span className="sm:hidden">Recordatorios</span>
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-7 text-xs">
+                          <CalendarPlus className="h-3.5 w-3.5 mr-1" />
+                          <span className="hidden sm:inline">Recordar mis tomas</span>
+                          <span className="sm:hidden">Recordatorios</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-72">
+                        <DropdownMenuItem onClick={handleSubscribeCalendar} className="flex-col items-start gap-0.5">
+                          <span className="font-medium">Agregar a mi calendario</span>
+                          <span className="text-xs text-muted-foreground">
+                            Se actualiza solo si cambia tu receta. Recomendado.
+                          </span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleDownloadCalendar} className="flex-col items-start gap-0.5">
+                          <span className="font-medium">Descargar archivo (.ics)</span>
+                          <span className="text-xs text-muted-foreground">
+                            Si lo anterior no funciona en tu teléfono.
+                          </span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     {sosMeds.length > 0 && (
                       <Button
                         variant="outline"
