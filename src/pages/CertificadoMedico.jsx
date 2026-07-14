@@ -60,6 +60,9 @@ export default function CertificadoMedico() {
       texto: texto.trim(),
       verifyUrl,
       qrDataUrl,
+      emitidoEn: new Date().toLocaleString('es-CL', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      }),
     });
   };
 
@@ -203,11 +206,9 @@ export default function CertificadoMedico() {
             <div className="mt-4 border-t border-slate-100 pt-3 text-sm">
               <p className="font-semibold text-slate-900">{MEDICO.nombre}</p>
               <p className="text-slate-500">{MEDICO.titulo} · RUT {MEDICO.rut}</p>
-              <img
-                src={MEDICO.firma}
-                alt="Firma y timbre"
-                className="mt-3 h-24 w-auto max-w-full object-contain"
-              />
+              <p className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800">
+                El PDF lleva sello de firma electrónica (sin firma manuscrita).
+              </p>
               <p className="mt-2 text-xs text-slate-500">{fechaLarga(fecha)}</p>
             </div>
           </div>

@@ -14,7 +14,6 @@ export const MEDICO = {
   nombre: 'Fernando Alvarado Caro',
   rut: '20.238.504-4',
   titulo: 'Médico Cirujano',
-  firma: '/firma-alvarado.png', // firma manuscrita + timbre
 };
 
 const MESES = [
@@ -106,31 +105,43 @@ export async function buildCertificadoPdf(cert) {
   doc.text(doc.splitTextToSize(intro, CW), M, y);
   y += 26;
 
-  // Zonas fijas del pie: firma/timbre justo sobre la línea de firma, y ésta
-  // sobre el bloque QR.
+  // Zonas fijas del pie: sello de firma electrónica sobre la línea con los
+  // datos del médico, y ésta sobre el bloque QR.
   const QR_TOP = H - 150;
   const LINE_Y = QR_TOP - 66;
-  const FIRMA_W = 200;
-  const FIRMA_H = Math.round(FIRMA_W * (682 / 1012)); // proporción de la imagen
-  const FIRMA_TOP = LINE_Y - FIRMA_H;
+  const SELLO_W = 250;
+  const SELLO_H = 54;
+  const SELLO_TOP = LINE_Y - SELLO_H - 10;
 
   doc.setFont('helvetica', 'normal');
   const parrafos = (cert.texto || '').split(/\n{1,}/);
   parrafos.forEach((p) => {
     const lines = doc.splitTextToSize(p.trim() || ' ', CW);
     lines.forEach((line) => {
-      if (y > FIRMA_TOP - 20) { doc.addPage(); y = M; }
+      if (y > SELLO_TOP - 20) { doc.addPage(); y = M; }
       doc.text(line, M, y, { maxWidth: CW });
       y += 17;
     });
     y += 6;
   });
 
-  // ── Firma y timbre, sobre la línea con los datos del médico ──────────
-  try {
-    const firma = await loadImage(MEDICO.firma);
-    doc.addImage(firma, 'PNG', W / 2 - FIRMA_W / 2, FIRMA_TOP, FIRMA_W, FIRMA_H);
-  } catch { /* sin la imagen queda sólo la línea de firma */ }
+  // ── Sello de firma electrónica ───────────────────────────────────────
+  const sx = W / 2 - SELLO_W / 2;
+  doc.setDrawColor(30, 64, 120);
+  doc.setLineWidth(0.9);
+  doc.setFillColor(240, 245, 252);
+  doc.roundedRect(sx, SELLO_TOP, SELLO_W, SELLO_H, 5, 5, 'FD');
+  doc.setTextColor(30, 64, 120);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text('FIRMADO ELECTRÓNICAMENTE', W / 2, SELLO_TOP + 16, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`${MEDICO.nombre} · RUT ${MEDICO.rut}`, W / 2, SELLO_TOP + 29, { align: 'center' });
+  doc.text(`${cert.code} · ${cert.emitidoEn || fechaLarga(cert.fecha)}`, W / 2, SELLO_TOP + 41, {
+    align: 'center',
+  });
+  doc.setTextColor(15, 23, 42);
 
   doc.setDrawColor(60, 70, 85);
   doc.setLineWidth(0.8);
