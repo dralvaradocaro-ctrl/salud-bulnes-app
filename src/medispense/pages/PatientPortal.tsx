@@ -158,7 +158,11 @@ export default function PatientPortal() {
   const { toast } = useToast();
 
   const handleAddToCalendar = () => {
-    const ok = downloadMedicationIcs(activePrescriptions, patient?.full_name ?? 'Paciente');
+    const ok = downloadMedicationIcs(
+      activePrescriptions,
+      patient?.full_name ?? 'Paciente',
+      patient?.patient_code ?? 'paciente',
+    );
     if (ok) {
       toast({
         title: 'Calendario descargado',
