@@ -12,6 +12,9 @@ export const INSTITUCIONES = {
     ciudad: 'Santiago',
     logo: '/logo-inalab.jpg',
     logoFormato: 'JPEG',
+    // Firma manuscrita + timbre, superpuesta sobre la línea de firma.
+    firma: '/firma-alvarado.png',
+    firmaProporcion: 682 / 1012,
   },
   bulnes: {
     id: 'bulnes',
@@ -44,11 +47,15 @@ export function fechaLarga(iso) {
   return `${d} de ${MESES[m - 1]} de ${y}`;
 }
 
+// Devuelve el asset como data URL. Se lo pasamos así a jsPDF en vez de un
+// elemento <img>: evita el canvas intermedio (y con él el riesgo de canvas
+// "tainted") y hace la generación verificable fuera del navegador.
 async function loadImage(src) {
-  const img = new Image();
-  img.src = src;
-  await img.decode();
-  return img;
+  const buf = await (await fetch(src)).arrayBuffer();
+  let bin = '';
+  new Uint8Array(buf).forEach((b) => { bin += String.fromCharCode(b); });
+  const mime = src.endsWith('.png') ? 'image/png' : 'image/jpeg';
+  return `data:${mime};base64,${btoa(bin)}`;
 }
 
 /**
@@ -177,8 +184,19 @@ export async function buildCertificadoPdf(cert) {
   doc.text('electrónica avanzada.', stx, SELLO_TOP + 70);
   doc.setTextColor(15, 23, 42);
 
-  // ── Espacio de firma manuscrita + línea con los datos del médico ─────
+  // ── Firma manuscrita (si la institución la tiene) + línea con los datos ─
   const FIRMA_CX = W - M - 110; // eje de la columna derecha
+
+  if (centro.firma) {
+    try {
+      const firma = await loadImage(centro.firma);
+      const fw = 190;
+      const fh = fw * (centro.firmaProporcion || 0.67);
+      // Superpuesta sobre la línea: su base cae unos puntos bajo LINE_Y.
+      doc.addImage(firma, 'PNG', FIRMA_CX - fw / 2, LINE_Y + 6 - fh, fw, fh);
+    } catch { /* si no carga, queda el espacio en blanco para firmar a mano */ }
+  }
+
   doc.setDrawColor(60, 70, 85);
   doc.setLineWidth(0.8);
   doc.line(FIRMA_CX - 110, LINE_Y, FIRMA_CX + 110, LINE_Y);
@@ -188,10 +206,12 @@ export async function buildCertificadoPdf(cert) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.text(`${MEDICO.titulo} · RUT ${MEDICO.rut}`, FIRMA_CX, LINE_Y + 32, { align: 'center' });
-  doc.setFontSize(7.5);
-  doc.setTextColor(140, 150, 165);
-  doc.text('Firma y timbre', FIRMA_CX, LINE_Y + 44, { align: 'center' });
-  doc.setTextColor(15, 23, 42);
+  if (!centro.firma) {
+    doc.setFontSize(7.5);
+    doc.setTextColor(140, 150, 165);
+    doc.text('Firma y timbre', FIRMA_CX, LINE_Y + 44, { align: 'center' });
+    doc.setTextColor(15, 23, 42);
+  }
 
   // ── Bloque de verificación: QR + URL + código ────────────────────────
   doc.setDrawColor(200, 208, 218);

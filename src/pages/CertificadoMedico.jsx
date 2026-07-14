@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
-import { ChevronLeft, Download, Eye, RotateCcw, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, Download, Eye, Lock, RotateCcw, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatRut, validateRut } from '@/lib/rut-ges';
 import {
@@ -39,10 +39,68 @@ const slug = (s) =>
     .replace(/[^a-zA-Z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
 
+// Puerta de acceso. Es una barrera de conveniencia, no seguridad real: el
+// código viaja en el bundle del navegador.
+const CODIGO_ACCESO = 'FERNANDO12BULNES';
+const ACCESO_KEY = 'certificado_medico_acceso';
+
+function PuertaAcceso({ onAutorizar, onSalir }) {
+  const [valor, setValor] = useState('');
+  const [error, setError] = useState(false);
+
+  const enviar = (e) => {
+    e.preventDefault();
+    if (valor.trim().toUpperCase() === CODIGO_ACCESO) {
+      sessionStorage.setItem(ACCESO_KEY, 'ok');
+      onAutorizar();
+    } else {
+      setError(true);
+      setValor('');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm">
+      <form
+        onSubmit={enviar}
+        className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl"
+      >
+        <div className="mb-2 flex items-center gap-2 text-slate-900">
+          <Lock className="h-5 w-5 text-blue-600" />
+          <h2 className="text-base font-semibold">Acceso restringido</h2>
+        </div>
+        <p className="mb-4 text-sm text-slate-500">
+          Ingresa el código de acceso para usar el generador de certificados.
+        </p>
+        <input
+          type="password"
+          autoFocus
+          value={valor}
+          onChange={(e) => { setValor(e.target.value); setError(false); }}
+          placeholder="Código de acceso"
+          className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 ${
+            error
+              ? 'border-red-400 focus:border-red-500 focus:ring-red-100'
+              : 'border-slate-300 focus:border-blue-500 focus:ring-blue-100'
+          }`}
+        />
+        {error && <p className="mt-2 text-xs font-medium text-red-600">Código incorrecto.</p>}
+        <div className="mt-4 flex gap-2">
+          <Button type="submit" disabled={!valor.trim()} className="flex-1">Entrar</Button>
+          <Button type="button" variant="outline" onClick={onSalir}>Salir</Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function CertificadoMedico() {
   const navigate = useNavigate();
   const qrRef = useRef(null);
 
+  const [autorizado, setAutorizado] = useState(
+    () => sessionStorage.getItem(ACCESO_KEY) === 'ok',
+  );
   const [institucionId, setInstitucionId] = useState(INSTITUCION_POR_DEFECTO);
   const [paciente, setPaciente] = useState('');
   const [rut, setRut] = useState('');
@@ -112,6 +170,10 @@ export default function CertificadoMedico() {
     setFecha(hoyIso());
     setCode(generarCodigo(hoyIso()));
   };
+
+  if (!autorizado) {
+    return <PuertaAcceso onAutorizar={() => setAutorizado(true)} onSalir={() => navigate(-1)} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
@@ -260,9 +322,19 @@ export default function CertificadoMedico() {
             <div className="mt-4 border-t border-slate-100 pt-3 text-sm">
               <p className="font-semibold text-slate-900">{MEDICO.nombre}</p>
               <p className="text-slate-500">{MEDICO.titulo} · RUT {MEDICO.rut}</p>
-              <p className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+              {centro.firma ? (
+                <img
+                  src={centro.firma}
+                  alt="Firma y timbre"
+                  className="mt-2 h-24 w-auto max-w-full object-contain"
+                />
+              ) : null}
+              <p className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
                 El PDF lleva recuadro de <span className="font-semibold">firma electrónica simple</span> (sin
-                validez legal de FEA) y deja espacio en blanco sobre la línea para tu firma y timbre reales.
+                validez legal de FEA)
+                {centro.firma
+                  ? ' y la firma manuscrita con timbre sobre la línea.'
+                  : ' y deja espacio en blanco sobre la línea para tu firma y timbre reales.'}
               </p>
               <p className="mt-2 text-xs text-slate-500">{fechaLarga(fecha)}</p>
             </div>
