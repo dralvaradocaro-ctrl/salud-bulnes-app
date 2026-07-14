@@ -6,7 +6,14 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { ChevronLeft, Download, Eye, RotateCcw, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatRut, validateRut } from '@/lib/rut-ges';
-import { buildCertificadoPdf, CENTRO, MEDICO, fechaLarga } from '@/lib/certificadoPdf';
+import {
+  buildCertificadoPdf,
+  fechaLarga,
+  getInstitucion,
+  INSTITUCIONES,
+  INSTITUCION_POR_DEFECTO,
+  MEDICO,
+} from '@/lib/certificadoPdf';
 import { generarCodigo, encodePayload, registrarCertificado } from '@/lib/certificadoCodigo';
 
 const hoyIso = () => {
@@ -25,6 +32,7 @@ export default function CertificadoMedico() {
   const navigate = useNavigate();
   const qrRef = useRef(null);
 
+  const [institucionId, setInstitucionId] = useState(INSTITUCION_POR_DEFECTO);
   const [paciente, setPaciente] = useState('');
   const [rut, setRut] = useState('');
   const [fecha, setFecha] = useState(hoyIso);
@@ -32,6 +40,7 @@ export default function CertificadoMedico() {
   const [code, setCode] = useState(() => generarCodigo(hoyIso()));
   const [generando, setGenerando] = useState(false);
 
+  const centro = getInstitucion(institucionId);
   const rutValido = rut.length > 0 && validateRut(rut);
   const puedeGenerar = paciente.trim() && rutValido && texto.trim() && !generando;
 
@@ -44,16 +53,18 @@ export default function CertificadoMedico() {
       t: texto.trim(),
       m: MEDICO.nombre,
       mr: MEDICO.rut,
+      i: institucionId,
     });
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     return `${origin}/VerificarCertificado?c=${encodeURIComponent(code)}&d=${payload}`;
-  }, [code, paciente, rut, fecha, texto]);
+  }, [code, paciente, rut, fecha, texto, institucionId]);
 
   const construirPdf = async () => {
     const canvas = qrRef.current?.querySelector('canvas');
     const qrDataUrl = canvas ? canvas.toDataURL('image/png') : '';
     return buildCertificadoPdf({
       code,
+      institucion: institucionId,
       paciente: paciente.trim(),
       rut,
       fecha,
@@ -76,7 +87,9 @@ export default function CertificadoMedico() {
       } else {
         doc.save(`Certificado_${slug(paciente)}_${code}.pdf`);
       }
-      registrarCertificado({ code, paciente: paciente.trim(), rut, fecha, verifyUrl });
+      registrarCertificado({
+        code, institucion: institucionId, paciente: paciente.trim(), rut, fecha, verifyUrl,
+      });
     } finally {
       setGenerando(false);
     }
@@ -99,7 +112,7 @@ export default function CertificadoMedico() {
           </Button>
           <div className="min-w-0">
             <h1 className="truncate text-base font-semibold text-slate-900">Certificado médico</h1>
-            <p className="truncate text-xs text-slate-500">{CENTRO.nombre} · Fono {CENTRO.fono}</p>
+            <p className="truncate text-xs text-slate-500">{centro.nombre} · Fono {centro.fono}</p>
           </div>
           <Button variant="outline" size="sm" className="ml-auto gap-1.5" onClick={nuevoCertificado}>
             <RotateCcw className="h-4 w-4" /> Nuevo
@@ -111,6 +124,36 @@ export default function CertificadoMedico() {
         {/* Formulario */}
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="space-y-4">
+            <div>
+              <p className="mb-1 block text-sm font-semibold text-slate-700">Institución</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {Object.values(INSTITUCIONES).map((inst) => {
+                  const activa = inst.id === institucionId;
+                  return (
+                    <button
+                      key={inst.id}
+                      type="button"
+                      onClick={() => setInstitucionId(inst.id)}
+                      aria-pressed={activa}
+                      className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${
+                        activa
+                          ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-100'
+                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <img src={inst.logo} alt="" className="h-9 w-9 shrink-0 object-contain" />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-slate-900">
+                          {inst.id === 'bulnes' ? 'Hospital de Bulnes' : 'Inalab Centro Médico'}
+                        </span>
+                        <span className="block truncate text-xs text-slate-500">Fono {inst.fono}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div>
               <label htmlFor="paciente" className="mb-1 block text-sm font-semibold text-slate-700">
                 Nombre del paciente
@@ -169,11 +212,11 @@ export default function CertificadoMedico() {
                 rows={9}
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
-                placeholder="Se encuentra en control médico por…, indicándose reposo por … días a contar del …"
+                placeholder="Certifico que el paciente individualizado se encuentra en control médico por…, indicándose reposo por … días a contar del …"
                 className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm leading-relaxed outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               />
               <p className="mt-1 text-xs text-slate-500">
-                Se imprime bajo la frase «Certifico que {paciente.trim() || 'el/la paciente'}…». Los saltos de línea se respetan.
+                Texto libre: se imprime tal cual bajo el cuadro del paciente. Los saltos de línea se respetan.
               </p>
             </div>
 
@@ -197,10 +240,11 @@ export default function CertificadoMedico() {
         <aside className="space-y-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center gap-3">
-              <img src={CENTRO.logo} alt="" className="h-12 w-12 rounded-lg object-contain" />
+              <img src={centro.logo} alt="" className="h-12 w-12 rounded-lg object-contain" />
               <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-900">{CENTRO.nombre}</p>
-                <p className="text-xs text-slate-500">{CENTRO.direccion}</p>
+                <p className="text-sm font-bold text-slate-900">{centro.nombre}</p>
+                <p className="text-xs text-slate-500">{centro.direccion}</p>
+                <p className="text-xs text-slate-500">Fono {centro.fono}</p>
               </div>
             </div>
             <div className="mt-4 border-t border-slate-100 pt-3 text-sm">

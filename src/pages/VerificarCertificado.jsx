@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ShieldCheck, ShieldAlert } from 'lucide-react';
-import { CENTRO, fechaLarga } from '@/lib/certificadoPdf';
+import { fechaLarga, getInstitucion } from '@/lib/certificadoPdf';
 import { decodePayload, leerRegistro } from '@/lib/certificadoCodigo';
 
 export default function VerificarCertificado() {
@@ -26,6 +26,7 @@ export default function VerificarCertificado() {
           texto: p.t,
           medico: p.m,
           medicoRut: p.mr,
+          institucion: p.i,
         },
         error: null,
         emitidoAqui: emitido,
@@ -35,13 +36,15 @@ export default function VerificarCertificado() {
     }
   }, [location.search]);
 
+  const centro = getInstitucion(cert?.institucion);
+
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10">
       <div className="mx-auto max-w-2xl">
         <div className="mb-5 flex items-center gap-3">
-          <img src={CENTRO.logo} alt="" className="h-12 w-12 rounded-lg object-contain" />
+          <img src={centro.logo} alt="" className="h-12 w-12 rounded-lg object-contain" />
           <div>
-            <p className="text-sm font-bold text-slate-900">{CENTRO.nombre}</p>
+            <p className="text-sm font-bold text-slate-900">{centro.nombre}</p>
             <p className="text-xs text-slate-500">Verificación de certificado médico</p>
           </div>
         </div>

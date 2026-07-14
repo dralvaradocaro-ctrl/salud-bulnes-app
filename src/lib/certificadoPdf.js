@@ -1,14 +1,32 @@
-// PDF del certificado médico de INALAB CENTRO MÉDICO.
+// PDF del certificado médico.
 // Tipografía Helvetica: es la fuente base del PDF metricamente equivalente a Arial
 // (los visores la sustituyen por Arial), evita embeber una fuente con licencia.
 import { jsPDF } from 'jspdf';
 
-export const CENTRO = {
-  nombre: 'INALAB CENTRO MÉDICO',
-  direccion: 'Rosa Eguigurén 813, Oficina 86-61, Santiago Centro',
-  fono: '26324285',
-  logo: '/logo-inalab.jpg',
+export const INSTITUCIONES = {
+  inalab: {
+    id: 'inalab',
+    nombre: 'INALAB CENTRO MÉDICO',
+    direccion: 'Rosa Eguigurén 813, Oficina 86-61, Santiago Centro',
+    fono: '26324285',
+    ciudad: 'Santiago',
+    logo: '/logo-inalab.jpg',
+    logoFormato: 'JPEG',
+  },
+  bulnes: {
+    id: 'bulnes',
+    nombre: 'HOSPITAL COMUNITARIO DE SALUD FAMILIAR DE BULNES',
+    direccion: 'Balmaceda N° 431, Bulnes, Región de Ñuble',
+    fono: '42-2585960',
+    ciudad: 'Bulnes',
+    logo: '/logo-hospital.png',
+    logoFormato: 'PNG',
+  },
 };
+
+export const INSTITUCION_POR_DEFECTO = 'inalab';
+
+export const getInstitucion = (id) => INSTITUCIONES[id] || INSTITUCIONES[INSTITUCION_POR_DEFECTO];
 
 export const MEDICO = {
   nombre: 'Fernando Alvarado Caro',
@@ -23,7 +41,7 @@ const MESES = [
 
 export function fechaLarga(iso) {
   const [y, m, d] = iso.split('-').map(Number);
-  return `Santiago, ${d} de ${MESES[m - 1]} de ${y}`;
+  return `${d} de ${MESES[m - 1]} de ${y}`;
 }
 
 async function loadImage(src) {
@@ -46,22 +64,34 @@ export async function buildCertificadoPdf(cert) {
   const CW = W - 2 * M; // ancho útil
   let y = M;
 
-  // ── Encabezado: logo + datos del centro ──────────────────────────────
+  // ── Encabezado: logo + datos de la institución ───────────────────────
+  const centro = getInstitucion(cert.institucion);
+  const TEXT_X = M + 72;
+  const TEXT_W = W - M - TEXT_X;
+
   try {
-    const logo = await loadImage(CENTRO.logo);
-    doc.addImage(logo, 'JPEG', M, y, 58, 58);
+    const logo = await loadImage(centro.logo);
+    doc.addImage(logo, centro.logoFormato, M, y, 58, 58);
   } catch { /* sin logo el documento sigue siendo válido */ }
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.text(CENTRO.nombre, M + 72, y + 20);
+  doc.setFontSize(centro.nombre.length > 32 ? 12 : 15);
+  const nombreLineas = doc.splitTextToSize(centro.nombre, TEXT_W);
+  let hy = y + 18;
+  nombreLineas.forEach((linea) => {
+    doc.text(linea, TEXT_X, hy);
+    hy += 15;
+  });
+
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.setTextColor(70, 80, 95);
-  doc.text(CENTRO.direccion, M + 72, y + 36);
-  doc.text(`Fono: ${CENTRO.fono}`, M + 72, y + 50);
+  hy += 2;
+  doc.text(centro.direccion, TEXT_X, hy);
+  hy += 14;
+  doc.text(`Fono: ${centro.fono}`, TEXT_X, hy);
   doc.setTextColor(15, 23, 42);
-  y += 74;
+  y = Math.max(y + 58, hy + 8) + 12;
 
   doc.setDrawColor(30, 64, 120);
   doc.setLineWidth(1.4);
@@ -71,39 +101,32 @@ export async function buildCertificadoPdf(cert) {
   // ── Título ───────────────────────────────────────────────────────────
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text('CERTIFICADO MÉDICO', W / 2, y, { align: 'center' });
-  y += 26;
+  doc.text('CERTIFICADO MÉDICO', W / 2, y, { align: 'center', charSpace: 1.4 });
+  y += 30;
 
   // ── Cuadro con la información del paciente ───────────────────────────
-  const BOX_H = 74;
-  doc.setDrawColor(150, 160, 175);
-  doc.setLineWidth(0.9);
-  doc.setFillColor(244, 247, 251);
-  doc.rect(M, y, CW, BOX_H, 'FD');
+  const BOX_H = 78;
+  doc.setDrawColor(180, 190, 205);
+  doc.setLineWidth(0.8);
+  doc.rect(M, y, CW, BOX_H); // sólo contorno, sin relleno
 
-  const labelX = M + 14;
-  const valueX = M + 100;
-  let by = y + 22;
-  const fila = (label, value) => {
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10.5);
-    doc.text(label, labelX, by);
+  const COL1_X = M + 18;
+  const COL2_X = M + Math.round(CW * 0.62);
+  const dato = (label, value, x, ly) => {
     doc.setFont('helvetica', 'normal');
-    doc.text(String(value || '—'), valueX, by);
-    by += 18;
+    doc.setFontSize(7.5);
+    doc.setTextColor(120, 130, 145);
+    doc.text(label.toUpperCase(), x, ly, { charSpace: 0.6 });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(String(value || '—'), x, ly + 14);
   };
-  fila('Paciente:', cert.paciente);
-  fila('RUT:', cert.rut);
-  fila('Fecha:', fechaLarga(cert.fecha));
-  y += BOX_H + 32;
-
-  // ── Cuerpo del certificado ───────────────────────────────────────────
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(11.5);
-  const intro = `Certifico que ${cert.paciente || 'el/la paciente'}, RUT ${cert.rut || '—'}:`;
-  doc.setFont('helvetica', 'bold');
-  doc.text(doc.splitTextToSize(intro, CW), M, y);
-  y += 26;
+  dato('Paciente', cert.paciente, COL1_X, y + 20);
+  dato('RUT', cert.rut, COL2_X, y + 20);
+  dato('Fecha de emisión', `${centro.ciudad}, ${fechaLarga(cert.fecha)}`, COL1_X, y + 52);
+  dato('Código único', cert.code, COL2_X, y + 52);
+  y += BOX_H + 36;
 
   // Zonas fijas del pie: sello de firma electrónica sobre la línea con los
   // datos del médico, y ésta sobre el bloque QR.
@@ -113,16 +136,19 @@ export async function buildCertificadoPdf(cert) {
   const SELLO_H = 54;
   const SELLO_TOP = LINE_Y - SELLO_H - 10;
 
+  // ── Cuerpo: texto libre del certificado ──────────────────────────────
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11.5);
+  doc.setTextColor(15, 23, 42);
   const parrafos = (cert.texto || '').split(/\n{1,}/);
   parrafos.forEach((p) => {
     const lines = doc.splitTextToSize(p.trim() || ' ', CW);
     lines.forEach((line) => {
-      if (y > SELLO_TOP - 20) { doc.addPage(); y = M; }
+      if (y > SELLO_TOP - 24) { doc.addPage(); y = M; }
       doc.text(line, M, y, { maxWidth: CW });
-      y += 17;
+      y += 18;
     });
-    y += 6;
+    y += 8;
   });
 
   // ── Sello de firma electrónica ───────────────────────────────────────
@@ -171,7 +197,11 @@ export async function buildCertificadoPdf(cert) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(120, 130, 145);
-  doc.text(`${CENTRO.nombre} · ${CENTRO.direccion} · Fono ${CENTRO.fono}`, tx, QR_TOP + 76);
+  const pie = doc.splitTextToSize(
+    `${centro.nombre} · ${centro.direccion} · Fono ${centro.fono}`,
+    W - tx - M,
+  );
+  doc.text(pie, tx, QR_TOP + 70);
   doc.setTextColor(15, 23, 42);
 
   return doc;
