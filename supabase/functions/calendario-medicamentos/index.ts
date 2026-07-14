@@ -15,7 +15,7 @@
  * El patient_code actúa como capacidad de acceso, igual que en el portal.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { buildMedicationIcs } from '../../../src/medispense/lib/medication-ics.ts';
+import { buildMedicationIcs } from '../_shared/medication-ics.ts';
 
 Deno.serve(async (req) => {
   const code = new URL(req.url).searchParams.get('code')?.trim();
