@@ -106,11 +106,13 @@ export async function buildCertificadoPdf(cert) {
   doc.text(doc.splitTextToSize(intro, CW), M, y);
   y += 26;
 
-  // Zonas fijas del pie: firma/timbre sobre el bloque QR.
+  // Zonas fijas del pie: firma/timbre justo sobre la línea de firma, y ésta
+  // sobre el bloque QR.
   const QR_TOP = H - 150;
+  const LINE_Y = QR_TOP - 66;
   const FIRMA_W = 200;
   const FIRMA_H = Math.round(FIRMA_W * (682 / 1012)); // proporción de la imagen
-  const FIRMA_TOP = QR_TOP - FIRMA_H - 20;
+  const FIRMA_TOP = LINE_Y - FIRMA_H;
 
   doc.setFont('helvetica', 'normal');
   const parrafos = (cert.texto || '').split(/\n{1,}/);
@@ -124,23 +126,21 @@ export async function buildCertificadoPdf(cert) {
     y += 6;
   });
 
-  // ── Firma y timbre ───────────────────────────────────────────────────
+  // ── Firma y timbre, sobre la línea con los datos del médico ──────────
   try {
     const firma = await loadImage(MEDICO.firma);
     doc.addImage(firma, 'PNG', W / 2 - FIRMA_W / 2, FIRMA_TOP, FIRMA_W, FIRMA_H);
-  } catch {
-    // Sin la imagen, se cae al bloque de firma en texto.
-    const sy = FIRMA_TOP + FIRMA_H - 26;
-    doc.setDrawColor(60, 70, 85);
-    doc.setLineWidth(0.8);
-    doc.line(W / 2 - 90, sy, W / 2 + 90, sy);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text(MEDICO.nombre, W / 2, sy + 15, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9.5);
-    doc.text(`${MEDICO.titulo} · RUT ${MEDICO.rut}`, W / 2, sy + 29, { align: 'center' });
-  }
+  } catch { /* sin la imagen queda sólo la línea de firma */ }
+
+  doc.setDrawColor(60, 70, 85);
+  doc.setLineWidth(0.8);
+  doc.line(W / 2 - 130, LINE_Y, W / 2 + 130, LINE_Y);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text(MEDICO.nombre, W / 2, LINE_Y + 18, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.text(`${MEDICO.titulo} · RUT ${MEDICO.rut}`, W / 2, LINE_Y + 33, { align: 'center' });
 
   // ── Pie: QR de verificación + código único ───────────────────────────
   doc.setDrawColor(200, 208, 218);
