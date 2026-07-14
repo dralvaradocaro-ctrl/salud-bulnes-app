@@ -111,6 +111,9 @@ export default function Category() {
   const hasHospitalizados = topics.some(t => t.subcategory === 'Hospitalizados') ||
     category?.slug?.includes('hospitaliz') ||
     category?.name?.toLowerCase().includes('hospitaliz');
+  const hasUrgencias = topics.some(t => t.subcategory?.toLowerCase().includes('urgenc')) ||
+    category?.slug?.includes('urgenc') ||
+    category?.name?.toLowerCase().includes('urgenc');
 
   const { data: templates = [] } = useQuery({
     queryKey: ['templates', categoryId],
@@ -468,7 +471,7 @@ export default function Category() {
               Herramientas ({visibleTools.length})
             </button>
           )}
-          {(templates.length > 0 || hasPolicinico || hasHospitalizados || hasGesConstancia) && (
+          {(templates.length > 0 || hasPolicinico || hasHospitalizados || hasUrgencias || hasGesConstancia) && (
             <button
               onClick={() => setActiveTab('templates')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
@@ -897,6 +900,21 @@ export default function Category() {
                   <div className="min-w-0">
                     <p className="font-semibold text-slate-900">Informe Biomédico Funcional</p>
                     <p className="text-sm text-slate-500 truncate">Formulario oficial editable con fecha automática, imprimible · Gobierno de Chile / MINSAL</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+
+            {/* Indicaciones clínicas prehechas – solo en Urgencias */}
+            {hasUrgencias && (
+              <Link to={createPageUrl('IndicacionesUrgencia')} className="block">
+                <div className={`${FORM_CARD_CLASS} border-rose-200 bg-rose-50/80 hover:border-rose-300`}>
+                  <div className={`${FORM_ICON_CLASS} bg-rose-600`}>
+                    <ShieldPlus className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900">Indicaciones prehechas de Urgencia</p>
+                    <p className="text-sm text-slate-500 truncate">Plantillas editables por síndrome, edad, peso, destino y alergias.</p>
                   </div>
                 </div>
               </Link>

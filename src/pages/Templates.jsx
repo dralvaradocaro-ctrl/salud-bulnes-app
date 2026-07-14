@@ -27,6 +27,7 @@ const typeIcons = {
   'Estudio Endoscópico': Microscope,
   'Interconsulta': MessageSquare,
   'Formulario Oficial': FileText,
+  'Indicaciones clínicas': ClipboardList,
   'Otro': FileText
 };
 
@@ -36,6 +37,7 @@ const typeColors = {
   'Estudio Endoscópico': 'from-emerald-500 to-emerald-600',
   'Interconsulta': 'from-amber-500 to-amber-600',
   'Formulario Oficial': 'from-cyan-500 to-blue-600',
+  'Indicaciones clínicas': 'from-rose-500 to-red-600',
   'Otro': 'from-slate-500 to-slate-600'
 };
 
@@ -84,6 +86,13 @@ export const EXTERNAL_TEMPLATES = [
     type: 'Formulario Oficial',
     instructions: 'Comité de Farmacia / MPJC — Antibióticos amplio espectro, fármacos de uso ocasional.',
     external_route: 'SolicitudFarmacoRestringido',
+  },
+  {
+    id: 'ext-indicaciones-urgencia',
+    name: 'Indicaciones prehechas de Urgencia',
+    type: 'Indicaciones clínicas',
+    instructions: 'Genera indicaciones editables por síndrome, destino, edad, peso y alergias.',
+    external_route: 'IndicacionesUrgencia',
   },
 ];
 
