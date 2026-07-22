@@ -1145,6 +1145,23 @@ function PostWizard({
     if (!bedCode || !doctorId) return;
     setBedOverrides(prev => ({ ...prev, [bedCode]: doctorId }));
   };
+  const clearBedFromDoctor = (bedCode, doctorId) => {
+    setBedOverrides(prev => {
+      if (prev[bedCode] !== doctorId) return prev;
+      const next = { ...prev };
+      delete next[bedCode];
+      return next;
+    });
+  };
+  const clearSalaFromDoctor = (salaId, doctorId) => {
+    setBedOverrides(prev => {
+      const next = { ...prev };
+      ALL_BEDS.filter(bed => bed.salaId === salaId).forEach(bed => {
+        if (next[bed.code] === doctorId) delete next[bed.code];
+      });
+      return next;
+    });
+  };
   const toggleVisitDoctor = (doctorId, active) => {
     setDayOverrides(prev => {
       const current = prev.visita || day?.visita || [];
@@ -1183,6 +1200,8 @@ function PostWizard({
               bedOverrides={bedOverrides}
               onAssignSala={assignSalaToDoctor}
               onAssignBed={assignBedToDoctor}
+              onClearSala={clearSalaFromDoctor}
+              onClearBed={clearBedFromDoctor}
               onToggleDoctor={toggleVisitDoctor}
             />
           </div>

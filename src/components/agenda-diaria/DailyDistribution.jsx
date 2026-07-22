@@ -156,7 +156,7 @@ export default function DailyDistribution({
 
 export function DoctorLoadPanel({
   result, roster, visitDocs, doctors, docName, selectedDoctor, onSelectDoctor,
-  visitBedCodes, bedOverrides, onAssignSala, onAssignBed, onToggleDoctor,
+  visitBedCodes, bedOverrides, onAssignSala, onAssignBed, onClearSala, onClearBed, onToggleDoctor,
 }) {
   const [assignmentChoice, setAssignmentChoice] = useState('');
   const activeIds = new Set(visitDocs.map(item => item.doctor_id));
@@ -187,6 +187,7 @@ export function DoctorLoadPanel({
           {visitDocs.map(item => {
             const distribution = resultByDoctor[item.doctor_id];
             const selected = selectedDoctor === item.doctor_id;
+            const manualCount = visitBedCodes.filter(code => bedOverrides[code] === item.doctor_id).length;
             return (
               <div
                 key={item.doctor_id}
@@ -222,10 +223,11 @@ export function DoctorLoadPanel({
                         setAssignmentChoice(value);
                         if (value.startsWith('sala:')) onAssignSala(value.slice(5), item.doctor_id);
                         if (value.startsWith('cama:')) onAssignBed(value.slice(5), item.doctor_id);
+                        setTimeout(() => setAssignmentChoice(''), 0);
                       }}
                     >
-                      <SelectTrigger className={`h-8 w-full text-xs ${assignmentChoice ? 'border-emerald-400 bg-emerald-50 text-emerald-800' : 'bg-white'}`}>
-                        <SelectValue placeholder="Elegir sala o cama…" />
+                      <SelectTrigger className={`h-8 w-full text-xs ${manualCount ? 'border-emerald-400 bg-emerald-50 text-emerald-800' : 'bg-white'}`}>
+                        <SelectValue placeholder={manualCount ? `${manualCount} asignación(es) fijada(s)` : 'Elegir sala o cama…'} />
                       </SelectTrigger>
                       <SelectContent>
                         {salas.map(sala => {
@@ -249,6 +251,41 @@ export function DoctorLoadPanel({
                         })}
                       </SelectContent>
                     </Select>
+                    {manualCount > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {salas.flatMap(sala => {
+                          const assignedCodes = sala.codes.filter(code => bedOverrides[code] === item.doctor_id);
+                          if (!assignedCodes.length) return [];
+                          if (assignedCodes.length === sala.codes.length) {
+                            return [(
+                              <button
+                                key={`clear-${sala.id}`}
+                                type="button"
+                                onClick={() => onClearSala(sala.id, item.doctor_id)}
+                                className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-800 hover:bg-red-50 hover:text-red-700"
+                                title="Quitar asignación manual de la sala"
+                              >
+                                {sala.label} completa <X className="h-3 w-3" />
+                              </button>
+                            )];
+                          }
+                          return assignedCodes.map(code => {
+                            const bed = ALL_BEDS.find(candidate => candidate.code === code);
+                            return (
+                              <button
+                                key={`clear-${code}`}
+                                type="button"
+                                onClick={() => onClearBed(code, item.doctor_id)}
+                                className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-800 hover:bg-red-50 hover:text-red-700"
+                                title="Quitar asignación manual de la cama"
+                              >
+                                {sala.label} · {bed?.cell || code} <X className="h-3 w-3" />
+                              </button>
+                            );
+                          });
+                        })}
+                      </div>
+                    )}
                     <p className="mt-1.5 text-[10px] leading-snug text-violet-600">La selección queda fija sobre la propuesta automática.</p>
                   </div>
                 )}
