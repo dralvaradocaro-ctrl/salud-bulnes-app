@@ -1180,6 +1180,7 @@ function PostWizard({
               selectedDoctor={selectedBedDoctor}
               onSelectDoctor={setSelectedBedDoctor}
               visitBedCodes={visitBedCodes}
+              bedOverrides={bedOverrides}
               onAssignSala={assignSalaToDoctor}
               onAssignBed={assignBedToDoctor}
               onToggleDoctor={toggleVisitDoctor}

@@ -156,7 +156,7 @@ export default function DailyDistribution({
 
 export function DoctorLoadPanel({
   result, roster, visitDocs, doctors, docName, selectedDoctor, onSelectDoctor,
-  visitBedCodes, onAssignSala, onAssignBed, onToggleDoctor,
+  visitBedCodes, bedOverrides, onAssignSala, onAssignBed, onToggleDoctor,
 }) {
   const [assignmentChoice, setAssignmentChoice] = useState('');
   const activeIds = new Set(visitDocs.map(item => item.doctor_id));
@@ -190,7 +190,10 @@ export function DoctorLoadPanel({
             return (
               <div
                 key={item.doctor_id}
-                onClick={() => onSelectDoctor(item.doctor_id)}
+                onClick={() => {
+                  if (selectedDoctor !== item.doctor_id) setAssignmentChoice('');
+                  onSelectDoctor(item.doctor_id);
+                }}
                 className={`w-full cursor-pointer rounded-lg border p-2.5 text-left transition ${selected ? 'border-emerald-600 bg-white ring-2 ring-emerald-200' : 'border-emerald-100 bg-white/80 hover:border-emerald-300'}`}
               >
                 <span className="block truncate text-sm font-bold text-slate-900">{doctorById[item.doctor_id]?.display_name || doctorById[item.doctor_id]?.name || docName(item.doctor_id)}</span>
@@ -219,28 +222,31 @@ export function DoctorLoadPanel({
                         setAssignmentChoice(value);
                         if (value.startsWith('sala:')) onAssignSala(value.slice(5), item.doctor_id);
                         if (value.startsWith('cama:')) onAssignBed(value.slice(5), item.doctor_id);
-                        setTimeout(() => setAssignmentChoice(''), 0);
                       }}
                     >
-                      <SelectTrigger className="h-8 w-full bg-white text-xs">
+                      <SelectTrigger className={`h-8 w-full text-xs ${assignmentChoice ? 'border-emerald-400 bg-emerald-50 text-emerald-800' : 'bg-white'}`}>
                         <SelectValue placeholder="Elegir sala o cama…" />
                       </SelectTrigger>
                       <SelectContent>
-                        {salas.map(sala => (
+                        {salas.map(sala => {
+                          const fullSalaAssigned = sala.codes.every(code => bedOverrides[code] === item.doctor_id);
+                          return (
                           <React.Fragment key={sala.id}>
-                            <SelectItem value={`sala:${sala.id}`} className="font-semibold">
-                              {sala.label} completa ({sala.count})
+                            <SelectItem value={`sala:${sala.id}`} className={fullSalaAssigned ? 'bg-emerald-50 font-semibold text-emerald-700' : 'font-semibold'}>
+                              {fullSalaAssigned ? '✓ ' : ''}{sala.label} completa ({sala.count})
                             </SelectItem>
                             {sala.codes.map(code => {
                               const bed = ALL_BEDS.find(candidate => candidate.code === code);
+                              const assigned = bedOverrides[code] === item.doctor_id;
                               return (
-                                <SelectItem key={code} value={`cama:${code}`}>
-                                  ↳ {sala.label} · Cama {bed?.cell || code}
+                                <SelectItem key={code} value={`cama:${code}`} className={assigned ? 'bg-emerald-50 text-emerald-700' : ''}>
+                                  {assigned ? '✓' : '↳'} {sala.label} · Cama {bed?.cell || code}
                                 </SelectItem>
                               );
                             })}
                           </React.Fragment>
-                        ))}
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     <p className="mt-1.5 text-[10px] leading-snug text-violet-600">La selección queda fija sobre la propuesta automática.</p>
