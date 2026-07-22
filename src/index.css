@@ -307,7 +307,7 @@
 }
 
 @media print {
-  @page { size: A4 portrait; margin: 10mm 12mm; }
+  @page { size: A4 portrait; margin: 8mm 10mm; }
   /* Forzar fondo blanco en TODA la cadena de ancestros para evitar la franja
      gris (bg-slate-100 del wrapper de la pagina) al imprimir. */
   html, body, #root,
@@ -315,24 +315,94 @@
     background: #fff !important;
     background-color: #fff !important;
   }
-  body { margin: 0 !important; padding: 0 !important; font-size: 13px !important; }
-  .ges-formulario-wrapper { background: #fff !important; padding: 0 !important; }
-  /* El form llena el printable area; padding minimo porque @page ya tiene 10/12mm */
-  .ges-form { box-shadow: none !important; margin: 0 auto !important; padding: 0 !important; max-width: none !important; width: 100% !important; font-size: 13px !important; }
-  /* Espacios aumentados para que el contenido ocupe la pagina entera sin
-     exceder A4. La firma se empuja hacia abajo con margin-top mayor en sig-line. */
-  .ges-form-title { font-size: 18px !important; margin-bottom: 2px !important; }
-  .ges-form-subtitle { font-size: 11.5px !important; margin-bottom: 8px !important; }
-  .ges-section-title { font-size: 13.5px !important; margin-top: 6px !important; margin-bottom: 4px !important; padding: 3px 0 2px !important; }
-  .f-label, .f-input, .f-chk span, .f-chk-large span { font-size: 12px !important; }
-  .f-row { margin-bottom: 4px !important; min-height: 22px !important; gap: 6px !important; }
-  .f-input { min-height: 20px !important; padding: 2px 5px !important; background: #e8e8e8 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-  .sig-line { font-size: 11.5px !important; margin-top: 48px !important; min-width: 180px !important; }
-  .sig-caption { font-size: 10px !important; }
-  .ges-section-body { padding: 3px 0 5px !important; }
-  .ges-line { margin: 5px 0 !important; }
+  body { margin: 0 !important; padding: 0 !important; font-size: 12px !important; }
+  .ges-formulario-wrapper {
+    background: #fff !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+  }
+  /* 190 × 281 mm: toda el area imprimible de un A4 con los margenes de @page. */
+  .ges-form {
+    box-sizing: border-box !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 190mm !important;
+    min-height: 281mm !important;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+  }
+  .ges-form-title { font-size: 17px !important; margin-bottom: 0 !important; line-height: 1.15 !important; }
+  .ges-form-subtitle { font-size: 11.5px !important; margin-bottom: 4px !important; line-height: 1.15 !important; }
+  .ges-section-title {
+    font-size: 13.5px !important;
+    line-height: 1.15 !important;
+    margin-top: 3px !important;
+    margin-bottom: 2px !important;
+    padding: 2px 0 1px !important;
+  }
+  .f-label, .f-input, .f-chk span, .f-chk-large span { font-size: 11.5px !important; }
+  .f-row {
+    margin-bottom: 3px !important;
+    min-height: 21px !important;
+    gap: 5px !important;
+  }
+  .f-input {
+    box-sizing: border-box !important;
+    min-height: 20px !important;
+    height: 20px !important;
+    padding: 2px 4px !important;
+    background: #e8e8e8 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  .f-chk, .f-chk-large { margin-right: 8px !important; gap: 3px !important; }
+  .f-chk input[type="checkbox"], .f-chk-large input[type="checkbox"] {
+    width: 14px !important;
+    height: 14px !important;
+  }
+  .ges-section-body { padding: 2px 0 4px !important; }
+  .ges-line { margin: 4px 0 !important; }
+
+  /* El pad sirve para firmar en pantalla; en papel solo se reserva la altura
+     natural de una firma y se elimina su marco. */
+  .print-signatures { padding: 0 !important; min-height: 25mm !important; align-items: flex-end !important; }
+  .ges-signature { gap: 0 !important; }
+  .ges-signature-canvas,
+  .ges-signature-image {
+    box-sizing: border-box !important;
+    width: 48mm !important;
+    height: 15mm !important;
+    border: 0 !important;
+  }
+  .ges-signature-canvas canvas {
+    width: 48mm !important;
+    height: 15mm !important;
+  }
+  .sig-line {
+    width: 72mm !important;
+    min-width: 0 !important;
+    margin-top: 0 !important;
+    padding-top: 1px !important;
+    font-size: 11.5px !important;
+  }
+  .sig-caption { font-size: 9.5px !important; line-height: 1.15 !important; }
   .no-print, .print\:hidden { display: none !important; }
-  .print-constancia-text { font-size: 11.5px !important; line-height: 1.35 !important; margin-bottom: 5px !important; }
-  .print-signatures { padding: 6px 0 !important; }
-  .print-teleconsulta-note, .print-representante, .print-important { font-size: 11px !important; padding: 5px 0 !important; }
+  .print-constancia-text { font-size: 11.5px !important; line-height: 1.3 !important; margin-bottom: 4px !important; }
+  .print-teleconsulta-note, .print-representante, .print-important {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+    padding: 3px 0 !important;
+  }
+  .print-teleconsulta-note p,
+  .print-representante p,
+  .print-important p { margin: 0 !important; }
+
+  .ges-section-title,
+  .ges-section-body,
+  .print-signatures,
+  .print-teleconsulta-note,
+  .print-representante,
+  .print-important { break-inside: avoid !important; page-break-inside: avoid !important; }
 }

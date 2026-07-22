@@ -26,6 +26,10 @@ const defaultForm = {
   repNombre: '', repRun: '', repTelefono: '', repCorreo: '',
 };
 
+const PRESTADORES_PREGRABADOS = [
+  { run: '20.238.504-4', nombre: 'Fernando Alvarado Caro' },
+];
+
 function getNow() {
   const now = new Date();
   const y = now.getFullYear();
@@ -70,6 +74,46 @@ function Chk({ label, checked, onChange }) {
   );
 }
 
+function PrestadorRutField({ value, onChange, onSelect }) {
+  const enteredDigits = value.replace(/\D/g, '');
+  const suggestions = enteredDigits.length >= 4
+    ? PRESTADORES_PREGRABADOS.filter(({ run }) => run.replace(/\D/g, '').startsWith(enteredDigits))
+    : [];
+
+  return (
+    <>
+      <span className="f-label">RUN:</span>
+      <div className="relative" style={{ flex: 1, maxWidth: '35%' }}>
+        <input
+          className="f-input w-full"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          autoComplete="off"
+        />
+        {suggestions.length > 0 && value !== suggestions[0].run && (
+          <div className="no-print absolute z-40 left-0 right-0 top-full bg-white border border-gray-300 shadow-lg">
+            {suggestions.map(persona => (
+              <button
+                key={persona.run}
+                type="button"
+                className="w-full px-2 py-2 text-left hover:bg-gray-100"
+                style={{ fontSize: '12px' }}
+                onMouseDown={e => {
+                  e.preventDefault();
+                  onSelect(persona);
+                }}
+              >
+                <span className="block font-semibold">{persona.nombre}</span>
+                <span className="block text-gray-500">{persona.run}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 export default function GesFormulario() {
   const [form, setForm] = useState(() => ({ ...defaultForm, fechaNotificacion: getNow() }));
   const [rutError, setRutError] = useState('');
@@ -107,6 +151,16 @@ export default function GesFormulario() {
     const fmt = formatRut(val);
     u(key, fmt);
     if (key === 'pacienteRun') setRutError(fmt.length > 3 && !validateRut(fmt) ? 'RUT inválido' : '');
+  };
+
+  const handlePrestadorRut = (val) => {
+    const fmt = formatRut(val);
+    const persona = PRESTADORES_PREGRABADOS.find(({ run }) => run === fmt);
+    setForm(prev => ({
+      ...prev,
+      prestadorRun: fmt,
+      ...(persona ? { nombreNotifica: persona.nombre } : {}),
+    }));
   };
 
   const handleGesSelect = (p) => {
@@ -155,7 +209,15 @@ export default function GesFormulario() {
             <F label="Nombre persona que notifica:" value={form.nombreNotifica} onChange={v => u('nombreNotifica', v)} />
           </div>
           <div className="f-row">
-            <F label="RUN:" value={form.prestadorRun} onChange={v => handleRut('prestadorRun', v)} w="35%" />
+            <PrestadorRutField
+              value={form.prestadorRun}
+              onChange={handlePrestadorRut}
+              onSelect={persona => setForm(prev => ({
+                ...prev,
+                prestadorRun: persona.run,
+                nombreNotifica: persona.nombre,
+              }))}
+            />
           </div>
         </div>
 

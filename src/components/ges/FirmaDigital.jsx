@@ -16,17 +16,17 @@ export default function FirmaDigital({ onSave, value }) {
   };
 
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="ges-signature flex flex-col items-center gap-1">
       {value ? (
-        <div className="flex flex-col items-center gap-1">
-          <img src={value} alt="Firma" className="border" style={{ width: 200, height: 80 }} />
+        <div className="ges-signature-content flex flex-col items-center gap-1">
+          <img src={value} alt="Firma" className="ges-signature-image border" style={{ width: 200, height: 80 }} />
           <button type="button" className="text-xs underline text-muted-foreground no-print" onClick={clear}>
             Borrar firma
           </button>
         </div>
       ) : (
         <>
-          <div className="border" style={{ width: 200, height: 80 }}>
+          <div className="ges-signature-canvas border" style={{ width: 200, height: 80 }}>
             <SignatureCanvas
               ref={sigRef}
               penColor="black"
