@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Shuffle, Pencil, X, Save, FileDown, Printer } from 'lucide-react';
+import { Shuffle, Pencil, X, Save, FileDown, Printer, UserCheck, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -150,6 +151,138 @@ export default function DailyDistribution({
         </div>
       )}
     </div>
+  );
+}
+
+export function DoctorLoadPanel({
+  result, roster, visitDocs, doctors, docName, selectedDoctor, onSelectDoctor,
+  visitBedCodes, onAssignSala, onAssignBed, onToggleDoctor,
+}) {
+  const [assignmentChoice, setAssignmentChoice] = useState('');
+  const activeIds = new Set(visitDocs.map(item => item.doctor_id));
+  const resultByDoctor = Object.fromEntries(result.doctors.map(item => [item.doctor_id, item]));
+  const doctorById = Object.fromEntries(doctors.map(doctor => [doctor.id, doctor]));
+  const rosterByDoctor = Object.fromEntries(roster.rows.map(row => [row.id, row]));
+  const inactiveDoctors = doctors.filter(doctor => !activeIds.has(doctor.id));
+  const visitSet = new Set(visitBedCodes);
+  const salas = [];
+  const seenSalas = new Set();
+  ALL_BEDS.forEach(bed => {
+    if (seenSalas.has(bed.salaId)) return;
+    seenSalas.add(bed.salaId);
+    const codes = ALL_BEDS.filter(item => item.salaId === bed.salaId && visitSet.has(item.code)).map(item => item.code);
+    if (codes.length) salas.push({ id: bed.salaId, label: `${bed.serviceShort} ${bed.salaLabel}`, count: codes.length, codes });
+  });
+
+  return (
+    <aside className="no-print space-y-3 xl:sticky xl:top-20">
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="flex items-center gap-2 text-sm font-bold text-emerald-900">
+            <UserCheck className="h-4 w-4" /> Médicos activos
+          </p>
+          <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-bold text-white">{visitDocs.length}</span>
+        </div>
+        <div className="space-y-2">
+          {visitDocs.map(item => {
+            const distribution = resultByDoctor[item.doctor_id];
+            const selected = selectedDoctor === item.doctor_id;
+            return (
+              <div
+                key={item.doctor_id}
+                onClick={() => onSelectDoctor(item.doctor_id)}
+                className={`w-full cursor-pointer rounded-lg border p-2.5 text-left transition ${selected ? 'border-emerald-600 bg-white ring-2 ring-emerald-200' : 'border-emerald-100 bg-white/80 hover:border-emerald-300'}`}
+              >
+                <span className="block truncate text-sm font-bold text-slate-900">{doctorById[item.doctor_id]?.display_name || doctorById[item.doctor_id]?.name || docName(item.doctor_id)}</span>
+                <span className="mt-1 flex items-center justify-between text-xs">
+                  <span className="text-slate-500">Potencial: <strong className="text-slate-700">{item.capacity ?? 'sin tope'}</strong></span>
+                  <span className="text-emerald-700">Propuesta: <strong>{distribution?.total ?? 0}</strong></span>
+                </span>
+                {distribution?.supervised?.length > 0 && (
+                  <span className="mt-1 block text-[11px] text-slate-500">Incluye {distribution.supervised.length} interno(s) supervisado(s)</span>
+                )}
+                <span className="mt-2 flex items-center justify-between border-t border-emerald-100 pt-2 text-[11px] font-semibold text-emerald-800">
+                  Activo para visita
+                  <Switch
+                    checked
+                    aria-label={`Desactivar a ${docName(item.doctor_id)}`}
+                    onClick={event => event.stopPropagation()}
+                    onCheckedChange={() => onToggleDoctor?.(item.doctor_id, false)}
+                  />
+                </span>
+                {selected && (
+                  <div className="mt-2 border-t border-violet-100 pt-2" onClick={event => event.stopPropagation()}>
+                    <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-violet-700">Fijar asignación</p>
+                    <Select
+                      value={assignmentChoice}
+                      onValueChange={value => {
+                        setAssignmentChoice(value);
+                        if (value.startsWith('sala:')) onAssignSala(value.slice(5), item.doctor_id);
+                        if (value.startsWith('cama:')) onAssignBed(value.slice(5), item.doctor_id);
+                        setTimeout(() => setAssignmentChoice(''), 0);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-full bg-white text-xs">
+                        <SelectValue placeholder="Elegir sala o cama…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {salas.map(sala => (
+                          <React.Fragment key={sala.id}>
+                            <SelectItem value={`sala:${sala.id}`} className="font-semibold">
+                              {sala.label} completa ({sala.count})
+                            </SelectItem>
+                            {sala.codes.map(code => {
+                              const bed = ALL_BEDS.find(candidate => candidate.code === code);
+                              return (
+                                <SelectItem key={code} value={`cama:${code}`}>
+                                  ↳ {sala.label} · Cama {bed?.cell || code}
+                                </SelectItem>
+                              );
+                            })}
+                          </React.Fragment>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1.5 text-[10px] leading-snug text-violet-600">La selección queda fija sobre la propuesta automática.</p>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="flex items-center gap-2 text-sm font-bold text-slate-700">
+            <UserX className="h-4 w-4" /> Médicos inactivos
+          </p>
+          <span className="rounded-full bg-slate-300 px-2 py-0.5 text-xs font-bold text-slate-700">{inactiveDoctors.length}</span>
+        </div>
+        {inactiveDoctors.length ? (
+          <div className="space-y-1.5">
+            {inactiveDoctors.map(doctor => {
+              const row = rosterByDoctor[doctor.id];
+              const reason = row?.parts.filter(part => part.kind !== 'visita').map(part => part.text).join(' · ') || 'Sin visita asignada';
+              return (
+                <div key={doctor.id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold text-slate-700">{doctor.display_name || doctor.name || docName(doctor.id)}</p>
+                    <p className="mt-0.5 truncate text-[11px] text-slate-500">{reason}</p>
+                  </div>
+                  <Switch
+                    checked={false}
+                    aria-label={`Reactivar a ${doctor.display_name || doctor.name || docName(doctor.id)}`}
+                    onCheckedChange={() => onToggleDoctor?.(doctor.id, true)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ) : <p className="text-xs text-slate-400">No hay médicos inactivos registrados.</p>}
+      </div>
+
+    </aside>
   );
 }
 

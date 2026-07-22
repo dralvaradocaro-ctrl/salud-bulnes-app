@@ -18,7 +18,7 @@ import {
   BED_STATE, NEXT_STATE_CYCLE, ALL_BEDS, defaultBedState, initialBedStatesForDate,
 } from '@/components/agenda-diaria/bedCatalog';
 import { hashStr, slugifyName, distributeDay } from '@/components/agenda-diaria/distribute';
-import DailyDistribution from '@/components/agenda-diaria/DailyDistribution';
+import DailyDistribution, { DoctorLoadPanel } from '@/components/agenda-diaria/DailyDistribution';
 import { exportDailyAgendaPdf } from '@/components/agenda-diaria/exportPdf';
 import { buildRoster } from '@/components/agenda-diaria/roster';
 
@@ -1131,6 +1131,31 @@ function PostWizard({
   onSave, saving, savedExists, dirty, onExportPdf,
   date, day, doctors, setDayOverrides,
 }) {
+  const [selectedBedDoctor, setSelectedBedDoctor] = useState('');
+  const assignSalaToDoctor = (salaId, doctorId) => {
+    if (!doctorId) return;
+    const visitSet = new Set(visitBedCodes);
+    const codes = ALL_BEDS.filter((bed) => bed.salaId === salaId && visitSet.has(bed.code)).map((bed) => bed.code);
+    setBedOverrides(prev => ({
+      ...prev,
+      ...Object.fromEntries(codes.map(code => [code, doctorId])),
+    }));
+  };
+  const assignBedToDoctor = (bedCode, doctorId) => {
+    if (!bedCode || !doctorId) return;
+    setBedOverrides(prev => ({ ...prev, [bedCode]: doctorId }));
+  };
+  const toggleVisitDoctor = (doctorId, active) => {
+    setDayOverrides(prev => {
+      const current = prev.visita || day?.visita || [];
+      const next = active
+        ? (current.some(item => item.doctor_id === doctorId) ? current : [...current, { doctor_id: doctorId, capacity: 5 }])
+        : current.filter(item => item.doctor_id !== doctorId);
+      return { ...prev, visita: next };
+    });
+    if (!active && selectedBedDoctor === doctorId) setSelectedBedDoctor('');
+  };
+
   return (
     <div className="space-y-5">
       {section === 'camas' && (
@@ -1144,7 +1169,22 @@ function PostWizard({
             <span className="font-semibold text-blue-700">{visitBedCodes.length} pacientes con visita</span>{' '}
             para repartir entre {visitDocs.length} médicos.
           </p>
-          <BedMap bedStates={bedStates} onToggle={onToggleBed} />
+          <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <BedMap bedStates={bedStates} onToggle={onToggleBed} />
+            <DoctorLoadPanel
+              result={result}
+              roster={roster}
+              visitDocs={visitDocs}
+              doctors={doctors}
+              docName={docName}
+              selectedDoctor={selectedBedDoctor}
+              onSelectDoctor={setSelectedBedDoctor}
+              visitBedCodes={visitBedCodes}
+              onAssignSala={assignSalaToDoctor}
+              onAssignBed={assignBedToDoctor}
+              onToggleDoctor={toggleVisitDoctor}
+            />
+          </div>
         </div>
       )}
 

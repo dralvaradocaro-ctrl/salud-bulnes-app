@@ -832,6 +832,21 @@ export default function Category() {
 
             {/* Solicitud de Exámenes – solo en Hospitalizados */}
             {hasHospitalizados && (
+              <Link to={createPageUrl('NotaEvolucion')} className="block">
+                <div className={`${FORM_CARD_CLASS} border-slate-200 bg-white hover:border-slate-400`}>
+                  <div className={`${FORM_ICON_CLASS} bg-slate-700`}>
+                    <FileText className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900">Nota de evolución</p>
+                    <p className="text-sm text-slate-500 truncate">Evolución clínica con anamnesis, examen físico, indicaciones y firma médica.</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+
+            {/* Solicitud de Exámenes – solo en Hospitalizados */}
+            {hasHospitalizados && (
               <Link to={createPageUrl('SolicitudExamenes')} className="block">
                 <div className={`${FORM_CARD_CLASS} border-blue-200 bg-blue-50/80 hover:border-blue-300`}>
                   <div className={`${FORM_ICON_CLASS} bg-blue-600`}>

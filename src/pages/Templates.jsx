@@ -46,6 +46,13 @@ const typeColors = {
 // page builder dedicado en vez de abrir el RequestForm generico.
 export const EXTERNAL_TEMPLATES = [
   {
+    id: 'ext-nota-evolucion',
+    name: 'Nota de evolución',
+    type: 'Formulario Oficial',
+    instructions: 'Documento para hospitalizados con anamnesis, examen físico, indicaciones y firma médica.',
+    external_route: 'NotaEvolucion',
+  },
+  {
     id: 'ext-solicitud-examenes',
     name: 'Solicitud de Exámenes — Hospital de Bulnes',
     type: 'Formulario Oficial',

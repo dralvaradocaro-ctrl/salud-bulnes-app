@@ -26,6 +26,17 @@ const IMAGE_TYPE = 'Protocolo Imágenes';
 
 const EXTERNAL_FORMS = [
   {
+    id: 'ext-nota-evolucion',
+    name: 'Nota de evolución',
+    type: 'Hospitalizados',
+    description: 'Evolución clínica imprimible con firma médica.',
+    route: 'NotaEvolucion',
+    shared_fields: [
+      { field_name: 'patient_name', field_label: 'Nombre del paciente', field_type: 'text' },
+      { field_name: 'patient_rut', field_label: 'RUT del paciente', field_type: 'text' },
+    ],
+  },
+  {
     id: 'ext-solicitud-examenes',
     name: 'Solicitud de Exámenes — Hospital de Bulnes',
     type: 'Hospitalizados',

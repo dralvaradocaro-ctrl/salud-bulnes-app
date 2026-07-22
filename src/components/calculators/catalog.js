@@ -31,6 +31,7 @@ import FIQRCalculator from '@/components/calculators/FIQRCalculator';
 import PSFSCalculator from '@/components/calculators/PSFSCalculator';
 import PECARNCalculator from '@/components/calculators/PECARNCalculator';
 import ProceduralSedoanalgesiaCalculator from '@/components/calculators/ProceduralSedoanalgesiaCalculator';
+import AntidepressantSwitchCalculator from '@/components/calculators/AntidepressantSwitchCalculator';
 
 export const calculatorsByCategory = {
   'Urgencias': [
@@ -68,7 +69,8 @@ export const calculatorsByCategory = {
     { id: 'light-criteria', name: 'Criterios de Light — Líquido pleural', component: LightCriteriaCalculator, icon: Wind }
   ],
   'Salud Mental': [
-    { id: 'sad-persons', name: 'SAD PERSONS — Riesgo Suicida', component: SadPersonsCalculator, icon: HeartPulse }
+    { id: 'sad-persons', name: 'SAD PERSONS — Riesgo Suicida', component: SadPersonsCalculator, icon: HeartPulse },
+    { id: 'antidepressant-switch', name: 'Cambio de antidepresivo (switch)', component: AntidepressantSwitchCalculator, icon: ArrowRightLeft }
   ],
   'Gastroenterología': [
     { id: 'meld', name: 'MELD 3.0', component: MELDCalculator, icon: Pill },

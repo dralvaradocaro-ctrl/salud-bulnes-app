@@ -75,6 +75,135 @@
   }
 }
 
+/* Nota de evolución — documento simple para Hospitalizados */
+.evolution-editor,
+.evolution-print-sheet {
+  font-family: Arial, sans-serif;
+}
+
+.evolution-print-sheet { display: none; }
+
+.evolution-live-preview {
+  box-sizing: border-box;
+  min-height: 277mm;
+  padding: 12mm 14mm;
+  color: #000;
+  font-family: Arial, sans-serif;
+}
+.evolution-preview-heading {
+  display: grid;
+  grid-template-columns: 42mm 1fr 42mm;
+  align-items: center;
+  margin-bottom: 8mm;
+}
+.evolution-preview-heading img { width: 38mm; max-height: 18mm; object-fit: contain; }
+.evolution-preview-heading h1 { grid-column: 2; margin: 0; text-align: center; font-size: 20px; }
+.evolution-preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; border-bottom: 1px solid #000; padding-bottom: 10px; }
+.evolution-preview-grid label { display: flex; align-items: baseline; gap: 6px; font-size: 14px; }
+.evolution-preview-grid input { flex: 1; min-width: 0; border: 0; border-bottom: 1px solid #777; outline: none; font: inherit; }
+.evolution-preview-section { margin-top: 18px; }
+.evolution-preview-section h2 { margin: 0 0 5px; font-size: 14px; text-transform: uppercase; }
+.evolution-preview-section textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 35mm;
+  resize: vertical;
+  border: 0;
+  outline: 1px dashed transparent;
+  padding: 0 2px;
+  font: 14px/7mm Arial, sans-serif;
+  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(7mm - 1px), #aaa calc(7mm - 1px), #aaa 7mm);
+}
+.evolution-preview-section textarea:focus { outline-color: #94a3b8; }
+.evolution-preview-signature { width: 75mm; margin: 12mm 0 0 auto; text-align: center; }
+.evolution-preview-signature input { width: 100%; border: 0; border-top: 1px solid #000; padding-top: 4px; text-align: center; font: 700 14px Arial, sans-serif; outline: none; }
+.evolution-preview-signature span { display: block; font-size: 12px; }
+
+@media print {
+  .evolution-print-sheet {
+    display: block !important;
+    width: 100%;
+    color: #000;
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+  .evolution-print-heading {
+    display: grid;
+    grid-template-columns: 42mm 1fr 42mm;
+    align-items: center;
+    margin-bottom: 8mm;
+  }
+  .evolution-print-heading img {
+    width: 38mm;
+    max-height: 18mm;
+    object-fit: contain;
+  }
+  .evolution-print-sheet h1 {
+    grid-column: 2;
+    margin: 0;
+    text-align: center;
+    font-size: 16pt;
+    font-weight: 700;
+  }
+  .evolution-patient-grid {
+    display: grid;
+    grid-template-columns: 1fr 62mm;
+    gap: 3mm 8mm;
+    margin-bottom: 7mm;
+    padding-bottom: 3mm;
+    border-bottom: 1px solid #000;
+  }
+  .evolution-patient-grid p { margin: 0; }
+  .evolution-patient-grid p:first-child { grid-column: 1 / -1; }
+  .evolution-print-section {
+    margin: 0 0 6mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .evolution-print-section h2 {
+    margin: 0 0 1.5mm;
+    font-size: 11pt;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .evolution-ruled-text {
+    min-height: 28mm;
+    padding: 0 1mm;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 7mm;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(7mm - 0.3mm),
+      #777 calc(7mm - 0.3mm),
+      #777 7mm
+    );
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .evolution-signature {
+    width: 75mm;
+    margin: 10mm 0 0 auto;
+    text-align: center;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .evolution-signature-space { height: 18mm; }
+  .evolution-signature img {
+    display: block;
+    width: 48mm;
+    height: 15mm;
+    margin: -15mm auto 0;
+    object-fit: contain;
+  }
+  .evolution-signature-line { border-top: 1px solid #000; margin-bottom: 1.5mm; }
+  .evolution-signature strong,
+  .evolution-signature span { display: block; }
+  .evolution-signature span { font-size: 9pt; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
