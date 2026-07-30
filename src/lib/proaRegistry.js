@@ -224,6 +224,16 @@ export async function moveProaRecordToBed(sourceBedCode, targetBedCode, targetSe
   return { ...src, bedCode: targetBedCode, servicio: targetService || src.servicio || '', updatedAt: now, evolutions: movedEvolutions };
 }
 
+export async function deleteProaRecord(bedCode) {
+  if (!bedCode) return;
+  const { error } = await supabase
+    .from('proa_records')
+    .delete()
+    .eq('bed_code', bedCode);
+  if (error) throw error;
+  writeProaRegistry(readProaRegistry().filter((record) => record.bedCode !== bedCode));
+}
+
 export function getLatestProaForm(record) {
   return record?.evolutions?.[0]?.form || null;
 }

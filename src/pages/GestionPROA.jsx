@@ -7,10 +7,20 @@ import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PROA_BED_MAP } from '@/lib/hospitalSuggestions';
-import { fetchProaRecords, getLatestProaForm, moveProaRecordToBed, readProaRegistry, saveProaPreAdmission, setPendingProaForm } from '@/lib/proaRegistry';
+import { deleteProaRecord, fetchProaRecords, getLatestProaForm, moveProaRecordToBed, readProaRegistry, saveProaPreAdmission, setPendingProaForm } from '@/lib/proaRegistry';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, DIAGNOSTICOS_INFECTO, PRESENTACIONES_ATB } from '@/pages/VisitaPROA';
 import {
   ArrowRight,
@@ -19,7 +29,9 @@ import {
   ClipboardList,
   Clock3,
   FileSpreadsheet,
+  Copy,
   Plus,
+  Printer,
   RotateCw,
   ShieldPlus,
   Trash2,
@@ -166,6 +178,47 @@ function formatAntimicrobial(item, form) {
   };
 }
 
+const TABLE_HEADERS = ['Paciente', 'Cama', 'Edad', 'Fecha de ingreso', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'];
+
+function buildProaTableRows(records) {
+  return records.map((record) => {
+    const form = getLatestProaForm(record) || {};
+    const antimicrobials = (form.antibioticos || []).filter((item) => item?.nombre);
+    const formatted = antimicrobials.map((item) => formatAntimicrobial(item, form));
+    const plan = [
+      ...(form.recomendaciones || []),
+      form.recomendaciones_otra,
+      form.plan_duracion,
+      form.proxima_revision && `Próxima revisión: ${form.proxima_revision}`,
+    ].filter(Boolean).join(' · ');
+    return [
+      record.code,
+      record.bedCode,
+      form.edad ? `${form.edad} años` : '—',
+      form.fecha_ingreso || 'Sin fecha',
+      form.diagnostico_actual || '—',
+      form.funcion_renal || '—',
+      form.antibioterapia_preingreso || antimicrobials.map((item) => item.nombre).join(', ') || '—',
+      form.diagnostico_microbiologico || '—',
+      formatMicroStudies(form),
+      getLastInflammatoryRows(form).map(formatInflammatoryRow).join('\n') || '—',
+      formatted.map((item) => item.name).join('\n') || '—',
+      formatted.map((item) => item.dose).join('\n') || '—',
+      formatted.map((item) => item.duration).join('\n') || '—',
+      plan || '—',
+    ];
+  });
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function GestionPROA() {
   const navigate = useNavigate();
   const goBack = () => {
@@ -182,6 +235,10 @@ function GestionPROA() {
   const [savingPreAdmission, setSavingPreAdmission] = useState(false);
   const [preAdmissionError, setPreAdmissionError] = useState('');
   const [preAdmissionReplaceConfirmed, setPreAdmissionReplaceConfirmed] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState(null);
+  const [deletingRecord, setDeletingRecord] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [tableCopied, setTableCopied] = useState(false);
   const [preAdmission, setPreAdmission] = useState({
     cama: '',
     edad: '',
@@ -230,7 +287,11 @@ function GestionPROA() {
     };
   }, [records]);
 
-  const refreshRecords = () => { fetchProaRecords().then(setRecords); };
+  const refreshRecords = () => fetchProaRecords().then((nextRecords) => {
+    setRecords(nextRecords);
+    return nextRecords;
+  });
+  const tableRows = useMemo(() => buildProaTableRows(records), [records]);
 
   // Cargar desde Supabase al montar (fuente de verdad, multi-dispositivo).
   useEffect(() => { fetchProaRecords().then(setRecords); }, []);
@@ -367,6 +428,80 @@ function GestionPROA() {
       ? [{ ...EMPTY_PRE_ANTIBIOTIC }]
       : current.antibioticos.filter((_, itemIndex) => itemIndex !== index),
   }));
+
+  const printProaTable = () => {
+    const printWindow = window.open('', '_blank', 'width=1400,height=900');
+    if (!printWindow) return;
+    const headerHtml = TABLE_HEADERS.map((header) => `<th>${escapeHtml(header)}</th>`).join('');
+    const rowsHtml = tableRows.map((row) => (
+      `<tr>${row.map((cell) => `<td>${escapeHtml(cell).replace(/\n/g, '<br>')}</td>`).join('')}</tr>`
+    )).join('');
+    printWindow.document.write(`<!doctype html>
+      <html lang="es">
+        <head>
+          <meta charset="utf-8">
+          <title>Tabla de pacientes PROA</title>
+          <style>
+            @page { size: A4 landscape; margin: 7mm; }
+            * { box-sizing: border-box; }
+            body { margin: 0; color: #0f172a; font-family: Arial, sans-serif; }
+            h1 { margin: 0 0 3px; font-size: 16px; }
+            .meta { margin: 0 0 8px; color: #475569; font-size: 9px; }
+            table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+            th, td { border: 1px solid #94a3b8; padding: 3px; vertical-align: top; overflow-wrap: anywhere; }
+            th { background: #e2e8f0; font-size: 6.5px; text-transform: uppercase; }
+            td { font-size: 6.5px; line-height: 1.2; }
+            tr { break-inside: avoid; page-break-inside: avoid; }
+          </style>
+        </head>
+        <body>
+          <h1>Tabla de pacientes PROA</h1>
+          <p class="meta">Hospital Comunitario de Salud Familiar de Bulnes · ${new Date().toLocaleString('es-CL')}</p>
+          <table><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>
+          <script>window.addEventListener('load', () => { window.print(); });<\/script>
+        </body>
+      </html>`);
+    printWindow.document.close();
+  };
+
+  const copyProaTable = async () => {
+    const clipboardText = [
+      TABLE_HEADERS,
+      ...tableRows,
+    ].map((row) => row.map((cell) => String(cell ?? '').replace(/\t/g, ' ').replace(/\n/g, ' · ')).join('\t')).join('\n');
+    try {
+      await navigator.clipboard.writeText(clipboardText);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = clipboardText;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      textarea.remove();
+    }
+    setTableCopied(true);
+    window.setTimeout(() => setTableCopied(false), 2500);
+  };
+
+  const confirmDeleteRecord = async () => {
+    if (!recordToDelete) return;
+    setDeletingRecord(true);
+    setDeleteError('');
+    try {
+      await deleteProaRecord(recordToDelete.bedCode);
+      setRecords((current) => current.filter((record) => record.bedCode !== recordToDelete.bedCode));
+      if (selectedBed === recordToDelete.bedCode) setSelectedBed('');
+      setRecordToDelete(null);
+      await refreshRecords();
+    } catch (error) {
+      console.error('Error eliminando paciente PROA:', error);
+      setDeleteError('No fue posible borrar el paciente del servidor. Intenta nuevamente.');
+    } finally {
+      setDeletingRecord(false);
+    }
+  };
 
   const modules = [
     {
@@ -689,7 +824,7 @@ function GestionPROA() {
         </section>
 
         <section ref={tableRef} className="mt-6 scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-2 border-b border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
                 <FileSpreadsheet className="h-5 w-5 text-teal-700" />
@@ -697,18 +832,27 @@ function GestionPROA() {
               </h2>
               <p className="text-sm text-slate-500">Resumen del último preingreso o evolución formal disponible por cama.</p>
             </div>
-            <Button variant="outline" size="sm" onClick={refreshRecords} className="gap-2 self-start">
-              <RotateCw className="h-4 w-4" /> Actualizar
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={printProaTable} disabled={records.length === 0} className="gap-2">
+                <Printer className="h-4 w-4" /> Imprimir tabla
+              </Button>
+              <Button variant="outline" size="sm" onClick={copyProaTable} disabled={records.length === 0} className="gap-2 border-emerald-300 text-emerald-800">
+                <Copy className="h-4 w-4" /> {tableCopied ? 'Tabla copiada' : 'Copiar para Sheets'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={refreshRecords} className="gap-2">
+                <RotateCw className="h-4 w-4" /> Actualizar
+              </Button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-[1500px] w-full border-collapse text-xs">
+            <table className="min-w-[1580px] w-full border-collapse text-xs">
               <thead className="bg-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
                   {['Paciente / cama', 'Edad / ingreso', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'].map((heading) => (
                     <th key={heading} className="border-b border-r border-slate-200 px-3 py-2 font-bold last:border-r-0">{heading}</th>
                   ))}
+                  <th className="sticky right-0 border-b border-l border-slate-200 bg-slate-100 px-3 py-2 font-bold">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -759,12 +903,26 @@ function GestionPROA() {
                         {formattedAntimicrobials.length ? formattedAntimicrobials.map((item, index) => <span key={index} className="mb-1 block">{item.duration}</span>) : '—'}
                       </td>
                       <td className="max-w-[240px] border-b border-slate-200 px-3 py-3">{plan || '—'}</td>
+                      <td className="sticky right-0 border-b border-l border-slate-200 bg-white px-2 py-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setDeleteError('');
+                            setRecordToDelete(record);
+                          }}
+                          className="h-8 gap-1 border-red-200 px-2 text-red-700 hover:bg-red-50 hover:text-red-800"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Borrar
+                        </Button>
+                      </td>
                     </tr>
                   );
                 })}
                 {records.length === 0 && (
                   <tr>
-                    <td colSpan={12} className="px-4 py-10 text-center text-sm text-slate-500">No hay pacientes PROA registrados.</td>
+                    <td colSpan={13} className="px-4 py-10 text-center text-sm text-slate-500">No hay pacientes PROA registrados.</td>
                   </tr>
                 )}
               </tbody>
@@ -873,6 +1031,38 @@ function GestionPROA() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!recordToDelete} onOpenChange={(open) => {
+        if (!open && !deletingRecord) {
+          setRecordToDelete(null);
+          setDeleteError('');
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Borrar paciente PROA?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se eliminará el paciente anonimizado <strong>{recordToDelete?.code}</strong> de la cama{' '}
+              <strong>{recordToDelete?.bedCode}</strong>, incluyendo su preingreso y todas sus evoluciones PROA.
+              Esta acción se replicará inmediatamente en la tabla y en el mapa de camas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && <p className="text-sm font-medium text-red-600">{deleteError}</p>}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingRecord}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                confirmDeleteRecord();
+              }}
+              disabled={deletingRecord}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {deletingRecord ? 'Borrando…' : 'Sí, borrar paciente'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
