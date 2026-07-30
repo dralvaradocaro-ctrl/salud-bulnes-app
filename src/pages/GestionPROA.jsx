@@ -205,6 +205,18 @@ function formatAntimicrobial(item, form) {
   };
 }
 
+function recordOccupiesDateRange(record, dateFrom, dateTo) {
+  if (!dateFrom && !dateTo) return true;
+  const form = getLatestProaForm(record) || {};
+  const admission = form.fecha_ingreso || '';
+  const discharge = isHistoricalProaRecord(record)
+    ? String(form.proa_archived_at || record.updatedAt || '').slice(0, 10)
+    : '';
+  if (dateTo && admission && admission > dateTo) return false;
+  if (dateFrom && discharge && discharge < dateFrom) return false;
+  return true;
+}
+
 const TABLE_HEADERS = ['Código PROA', 'Nombre', 'RUT', 'Cama', 'Estado', 'Edad', 'Fecha de ingreso', 'Días de estadía', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'];
 
 function buildProaTableRows(records) {
@@ -274,6 +286,9 @@ function GestionPROA() {
   const [tableCopied, setTableCopied] = useState(false);
   const [tableScope, setTableScope] = useState('actuales');
   const [tableAntibioticFilter, setTableAntibioticFilter] = useState('');
+  const [tableBedFilter, setTableBedFilter] = useState('');
+  const [tableDateFrom, setTableDateFrom] = useState('');
+  const [tableDateTo, setTableDateTo] = useState('');
   const [preAdmission, setPreAdmission] = useState({
     cama: '',
     paciente: '',
@@ -327,11 +342,26 @@ function GestionPROA() {
         ? records
         : currentRecords;
     const query = tableAntibioticFilter.trim().toLowerCase();
-    if (!query) return scoped;
-    return scoped.filter((record) => (
-      (getLatestProaForm(record)?.antibioticos || []).some((item) => item?.nombre?.toLowerCase().includes(query))
-    ));
-  }, [currentRecords, historicalRecords, records, tableAntibioticFilter, tableScope]);
+    return scoped.filter((record) => {
+      const form = getLatestProaForm(record) || {};
+      const effectiveBed = form.cama || record.bedCode;
+      const matchesBed = !tableBedFilter || effectiveBed === tableBedFilter;
+      const matchesAntibiotic = !query || (form.antibioticos || [])
+        .some((item) => item?.nombre?.toLowerCase().includes(query));
+      return matchesBed
+        && matchesAntibiotic
+        && recordOccupiesDateRange(record, tableDateFrom, tableDateTo);
+    });
+  }, [
+    currentRecords,
+    historicalRecords,
+    records,
+    tableAntibioticFilter,
+    tableBedFilter,
+    tableDateFrom,
+    tableDateTo,
+    tableScope,
+  ]);
   const tableRows = useMemo(() => buildProaTableRows(visibleTableRecords), [visibleTableRecords]);
 
   // Cargar desde Supabase al montar (fuente de verdad, multi-dispositivo).
@@ -963,16 +993,48 @@ function GestionPROA() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-end">
-            <div className="space-y-1">
+          <div className="grid gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+            <div className="space-y-1 lg:col-span-2">
               <Label className="text-xs">Estado del paciente</Label>
-              <select value={tableScope} onChange={(event) => setTableScope(event.target.value)} className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm">
+              <select value={tableScope} onChange={(event) => setTableScope(event.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm">
                 <option value="actuales">Pacientes actuales ({currentRecords.length})</option>
                 <option value="historicos">Pacientes históricos ({historicalRecords.length})</option>
                 <option value="todos">Todos ({records.length})</option>
               </select>
             </div>
-            <div className="min-w-[260px] flex-1 space-y-1">
+            <div className="space-y-1 lg:col-span-2">
+              <Label className="text-xs">Cama actual o histórica</Label>
+              <select
+                value={tableBedFilter}
+                onChange={(event) => setTableBedFilter(event.target.value)}
+                className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+              >
+                <option value="">Todas las camas</option>
+                {ALL_PROA_BEDS.map(({ bed, servicio }) => (
+                  <option key={bed} value={bed}>{servicio} · {bed}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1 lg:col-span-2">
+              <Label className="text-xs">Desde</Label>
+              <Input
+                type="date"
+                value={tableDateFrom}
+                onChange={(event) => setTableDateFrom(event.target.value)}
+                className="h-9"
+              />
+            </div>
+            <div className="space-y-1 lg:col-span-2">
+              <Label className="text-xs">Hasta</Label>
+              <Input
+                type="date"
+                min={tableDateFrom || undefined}
+                value={tableDateTo}
+                onChange={(event) => setTableDateTo(event.target.value)}
+                className="h-9"
+              />
+            </div>
+            <div className="space-y-1 lg:col-span-3">
               <Label className="text-xs">Filtrar por antibiótico</Label>
               <Input
                 value={tableAntibioticFilter}
@@ -981,12 +1043,18 @@ function GestionPROA() {
                 className="h-9"
               />
             </div>
-            {(tableAntibioticFilter || tableScope !== 'actuales') && (
+            {(tableAntibioticFilter || tableBedFilter || tableDateFrom || tableDateTo || tableScope !== 'actuales') && (
               <Button type="button" variant="ghost" size="sm" onClick={() => {
                 setTableScope('actuales');
                 setTableAntibioticFilter('');
-              }}>Limpiar filtros</Button>
+                setTableBedFilter('');
+                setTableDateFrom('');
+                setTableDateTo('');
+              }} className="lg:col-span-2">Limpiar filtros</Button>
             )}
+            <p className="text-xs text-slate-500 sm:col-span-2 lg:col-span-12">
+              {visibleTableRecords.length} paciente{visibleTableRecords.length === 1 ? '' : 's'} en el listado. El rango muestra pacientes cuya estadía coincidió total o parcialmente con esas fechas.
+            </p>
           </div>
 
           <div className="overflow-x-auto">
