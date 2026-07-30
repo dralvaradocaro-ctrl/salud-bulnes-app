@@ -866,6 +866,7 @@ function GestionPROA() {
                     sourceBedToMove={sourceBedToMove}
                     setSourceBedToMove={setSourceBedToMove}
                     onMove={movePatientToSelectedBed}
+                    onDelete={(record) => setRecordToDelete(record)}
                   />
                 </div>
               )}
@@ -932,6 +933,7 @@ function GestionPROA() {
                     sourceBedToMove={sourceBedToMove}
                     setSourceBedToMove={setSourceBedToMove}
                     onMove={movePatientToSelectedBed}
+                    onDelete={(record) => setRecordToDelete(record)}
                   />
                 </div>
               )}
@@ -1324,8 +1326,9 @@ function GestionPROA() {
   );
 }
 
-function MovePatientControl({ records, selectedBed, sourceBedToMove, setSourceBedToMove, onMove }) {
+function MovePatientControl({ records, selectedBed, sourceBedToMove, setSourceBedToMove, onMove, onDelete }) {
   const movableRecords = records.filter((record) => !isHistoricalProaRecord(record) && record.bedCode !== selectedBed);
+  const selectedSourceRecord = movableRecords.find((record) => record.bedCode === sourceBedToMove);
   if (!selectedBed || movableRecords.length === 0) return null;
 
   return (
@@ -1351,9 +1354,19 @@ function MovePatientControl({ records, selectedBed, sourceBedToMove, setSourceBe
         className="w-full"
       >
         Mover a cama {selectedBed}
-                  </Button>
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => onDelete(selectedSourceRecord)}
+        disabled={!selectedSourceRecord}
+        className="w-full border-red-300 text-red-700 hover:bg-red-50"
+      >
+        <Trash2 className="mr-2 h-4 w-4" />
+        Eliminar paciente seleccionado
+      </Button>
       <p className="text-[11px] leading-relaxed text-slate-500">
-        La identificación y el historial PROA pasan a esta cama. Si esta cama tenía otro registro, será reemplazado.
+        Puedes mover el paciente a esta cama o eliminar completamente su registro PROA. La eliminación siempre solicitará confirmación.
       </p>
     </div>
   );
