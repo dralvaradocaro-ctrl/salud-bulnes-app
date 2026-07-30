@@ -196,6 +196,20 @@ const normalizeText = (value: string | null | undefined): string =>
 
 const normalizeMedName = (name: string): string => normalizeText(name);
 
+const MEDICATION_ALIASES: Record<string, string> = {
+  mtf: 'metformina',
+  met: 'metformina',
+  atv: 'atorvastatina',
+  atorva: 'atorvastatina',
+  hct: 'hidroclorotiazida',
+  hctz: 'hidroclorotiazida',
+  aas: 'aspirina',
+  lvtx: 'levotiroxina',
+  levo: 'levotiroxina',
+  los: 'losartan',
+  amlo: 'amlodipino',
+};
+
 const normalizePresentation = (value: string | null | undefined): string =>
   (value || '')
     .toLowerCase()
@@ -233,6 +247,9 @@ const isSolidPresentation = (presentation: string | null | undefined): boolean =
   const normalized = normalizePresentation(presentation);
   return /\b(comp|comprimido|tableta|tab|capsula|caps)\b/.test(normalized);
 };
+
+const isPresentationUnit = (unit: string | null | undefined): boolean =>
+  /^(comp|comprimido|comprimidos|tab|tableta|tabletas|caps|capsula|capsulas)$/i.test(normalizePresentation(unit));
 
 const isSplittablePresentation = (presentation: string | null | undefined): boolean => {
   const normalized = normalizePresentation(presentation);
@@ -277,7 +294,8 @@ const findBestArsenalMatch = (
     return { medication: byId, unitsPerDose: calculateUnitsPerDose(dose, unit, byId) };
   }
 
-  const searchName = normalizeText(name).replace('acetilsalicilico', 'aspirina');
+  const rawSearchName = normalizeText(name).replace('acetilsalicilico', 'aspirina');
+  const searchName = MEDICATION_ALIASES[rawSearchName] || rawSearchName;
   if (!searchName) return { medication: null, unitsPerDose: null };
 
   const candidates = medications
@@ -288,11 +306,12 @@ const findBestArsenalMatch = (
         activeIngredient.includes(searchName) || searchName.includes(activeIngredient);
       if (!nameMatch) return null;
 
-      const unitsPerDose = calculateUnitsPerDose(dose, unit, med);
+      const shorthandUnits = isPresentationUnit(unit) && dose != null && Number.isFinite(dose) ? dose : null;
+      const unitsPerDose = shorthandUnits ?? calculateUnitsPerDose(dose, unit, med);
       const exactDose = dose != null && unit != null &&
         sameDoseUnitFamily(unit, med.dose_unit) &&
         Math.abs((doseToMg(dose, unit) ?? dose) - (doseToMg(med.dose_value, med.dose_unit) ?? med.dose_value)) < 0.01;
-      if (dose != null && unit && !exactDose && unitsPerDose === null) return null;
+      if (dose != null && unit && !isPresentationUnit(unit) && !exactDose && unitsPerDose === null) return null;
       const nameScore = activeIngredient === searchName || medName === searchName ? 8 : 4;
       const doseScore = exactDose ? 12 : unitsPerDose ? 6 : 0;
       const presentationScore = isSolidPresentation(med.presentation) ? 2 : 0;
@@ -318,6 +337,18 @@ const createEmptyGroup = (index: number): PrescriptionGroup => ({
   expiryDays: 365,
   notes: '',
 });
+
+const normalizeScheduleForFrequency = (schedule: string[], frequency: string): string[] => {
+  const unique = [...new Set(schedule.filter(Boolean))];
+  const expectedCount = frequency === 'c/24h' || frequency === 'c/7d'
+    ? 1
+    : frequency === 'c/12h'
+      ? 2
+      : frequency === 'c/8h'
+        ? 3
+        : null;
+  return expectedCount ? unique.slice(0, expectedCount) : unique;
+};
 
 interface PrescriptionItemRow {
   medication_id: string | null;
@@ -585,9 +616,10 @@ export default function NewPrescription() {
           const aiSchedule = med.default_schedule && med.default_schedule.length > 0 ? med.default_schedule : null;
           const dosesBySchedule: DoseBySchedule[] | null = med.doses_by_schedule || null;
           const localSchedule = getDefaultSchedule(medicationName, frequency);
-          const schedule = dosesBySchedule
+          const rawSchedule = dosesBySchedule
             ? dosesBySchedule.map((d: DoseBySchedule) => d.time)
             : aiSchedule || localSchedule.schedule;
+          const schedule = normalizeScheduleForFrequency(rawSchedule, frequency);
           const scheduleReason = med.schedule_reason || localSchedule.reason;
 
           const calculatedUnitsPerDose = !isInsulin ? arsenalMatch.unitsPerDose : null;

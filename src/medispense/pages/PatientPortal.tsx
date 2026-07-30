@@ -78,6 +78,7 @@ interface Patient {
   has_diabetic_retinopathy?: boolean;
   show_exam_dates_to_patient?: boolean;
   is_cardiovascular_program?: boolean;
+  sector?: number | null;
 }
 
 const DAY_LABELS = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'];
@@ -217,7 +218,7 @@ export default function PatientPortal() {
     try {
       const { data: patientData, error: patientError } = await supabase
         .from('patients')
-        .select('id, patient_code, full_name, age, diagnoses, education_tools, cardiovascular_risk, last_cv_control_date, last_cv_control_professional, next_cv_control_date, next_cv_control_professional, show_exam_reminder, last_ecg_date, last_fundoscopy_date, last_lab_review_date, has_diabetic_retinopathy, show_exam_dates_to_patient, is_cardiovascular_program')
+        .select('id, patient_code, full_name, age, diagnoses, education_tools, cardiovascular_risk, last_cv_control_date, last_cv_control_professional, next_cv_control_date, next_cv_control_professional, show_exam_reminder, last_ecg_date, last_fundoscopy_date, last_lab_review_date, has_diabetic_retinopathy, show_exam_dates_to_patient, is_cardiovascular_program, sector')
         .ilike('patient_code', patientCode || '')
         .maybeSingle();
 
@@ -551,6 +552,7 @@ export default function PatientPortal() {
                 nextControlProfessional={patient.next_cv_control_professional || null}
                 cardiovascularRisk={patient.cardiovascular_risk || null}
                 diagnoses={patient.diagnoses}
+                sector={patient.sector || null}
               />
             )}
           </div>

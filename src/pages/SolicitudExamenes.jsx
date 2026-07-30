@@ -336,7 +336,7 @@ export default function SolicitudExamenes() {
   const selectedCount = selected.size;
 
   return (
-    <div className="min-h-screen bg-slate-100 print:bg-white">
+    <div className="lab-print-root min-h-screen bg-slate-100 print:bg-white">
 
       {/* ── Navbar (screen only) ── */}
       <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur print:hidden">
@@ -522,7 +522,7 @@ export default function SolicitudExamenes() {
       {/* ══════════════════════════════════════════════════
           VISTA IMPRESIÓN
       ══════════════════════════════════════════════════ */}
-      <div className="hidden print:block" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10.5px', padding: '5mm 7mm', maxWidth: '210mm', margin: '0 auto', color: '#000' }}>
+      <div className="lab-print-page hidden print:block" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10.5px', padding: '5mm 7mm', maxWidth: '210mm', margin: '0 auto', color: '#000' }}>
 
         {/* Encabezado */}
         <div style={{ display: 'flex', alignItems: 'stretch', marginBottom: '5px', gap: '8px' }}>
@@ -639,7 +639,7 @@ export default function SolicitudExamenes() {
         </div>
 
         {/* Firma */}
-        <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div className="lab-print-signature" style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <div style={{ fontSize: '8px', color: '#888' }}>COD. 32</div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ borderTop: '1px solid #333', width: '220px', paddingTop: '2px', fontSize: '9px', fontWeight: 'bold', letterSpacing: '0.05em' }}>

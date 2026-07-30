@@ -91,6 +91,7 @@ interface Patient {
   diagnoses: string[] | null;
   email: string | null;
   phone: string | null;
+  sector?: number | null;
   education_tools?: string[] | null;
   cardiovascular_risk?: string | null;
   last_cv_control_date?: string | null;
@@ -891,6 +892,7 @@ export default function PatientDetail() {
             <div className="flex items-center gap-2 text-muted-foreground">
               <span>ID: {patient.patient_code}</span>
               {patient.age && <span>• {patient.age} años</span>}
+              {patient.sector && <span>• Sector {patient.sector}</span>}
             </div>
           </div>
         </div>

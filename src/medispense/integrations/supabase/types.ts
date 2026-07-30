@@ -252,6 +252,7 @@ export type Database = {
           next_cv_control_professional: string | null
           patient_code: string
           phone: string | null
+          sector: number | null
           show_exam_dates_to_patient: boolean | null
           show_exam_reminder: boolean | null
           updated_at: string
@@ -282,6 +283,7 @@ export type Database = {
           next_cv_control_professional?: string | null
           patient_code: string
           phone?: string | null
+          sector?: number | null
           show_exam_dates_to_patient?: boolean | null
           show_exam_reminder?: boolean | null
           updated_at?: string
@@ -312,6 +314,7 @@ export type Database = {
           next_cv_control_professional?: string | null
           patient_code?: string
           phone?: string | null
+          sector?: number | null
           show_exam_dates_to_patient?: boolean | null
           show_exam_reminder?: boolean | null
           updated_at?: string

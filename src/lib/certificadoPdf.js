@@ -149,13 +149,34 @@ export async function buildCertificadoPdf(cert) {
   doc.setFontSize(11.5);
   doc.setTextColor(15, 23, 42);
   const parrafos = (cert.texto || '').split(/\n{1,}/);
+  const escribirLineaJustificada = (linea, x, ly, ancho) => {
+    const palabras = linea.trim().split(/\s+/);
+    if (palabras.length < 2) {
+      doc.text(linea, x, ly);
+      return;
+    }
+
+    const anchoPalabras = palabras.reduce((total, palabra) => total + doc.getTextWidth(palabra), 0);
+    const espacio = (ancho - anchoPalabras) / (palabras.length - 1);
+    let cursorX = x;
+
+    palabras.forEach((palabra, index) => {
+      doc.text(palabra, cursorX, ly);
+      if (index < palabras.length - 1) {
+        cursorX += doc.getTextWidth(palabra) + espacio;
+      }
+    });
+  };
+
   parrafos.forEach((p) => {
     const lines = doc.splitTextToSize(p.trim() || ' ', CW);
     lines.forEach((line, i) => {
       if (y > LINE_Y - ESPACIO_FIRMA - 24) { doc.addPage(); y = M; }
-      // Justificado salvo la última línea del párrafo, que iría con huecos.
+      // Justificar manualmente: al enviar cada línea por separado, jsPDF la
+      // considera una última línea y no aplica correctamente align: justify.
       const esUltima = i === lines.length - 1;
-      doc.text(line, M, y, esUltima ? { maxWidth: CW } : { maxWidth: CW, align: 'justify' });
+      if (esUltima) doc.text(line, M, y);
+      else escribirLineaJustificada(line, M, y, CW);
       y += 18;
     });
     y += 8;

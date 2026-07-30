@@ -23,6 +23,7 @@ interface EditPatientDialogProps {
     id: string;
     age: number | null;
     diagnoses: string[] | null;
+    sector?: number | null;
     education_tools?: string[] | null;
   };
   onSaved: () => void;
@@ -32,6 +33,7 @@ export function EditPatientDialog({ open, onOpenChange, patient, onSaved }: Edit
   const { toast } = useToast();
   const [age, setAge] = useState(patient.age?.toString() || '');
   const [diagnoses, setDiagnoses] = useState<string[]>(patient.diagnoses || []);
+  const [sector, setSector] = useState(patient.sector?.toString() || '');
   const [educationTools, setEducationTools] = useState<string[]>((patient as any).education_tools || []);
   const [enableEducation, setEnableEducation] = useState(((patient as any).education_tools || []).length > 0);
   const [educationPages, setEducationPages] = useState<EducationPage[]>([]);
@@ -46,6 +48,7 @@ export function EditPatientDialog({ open, onOpenChange, patient, onSaved }: Edit
   useEffect(() => {
     setAge(patient.age?.toString() || '');
     setDiagnoses(patient.diagnoses || []);
+    setSector(patient.sector?.toString() || '');
     setEducationTools((patient as any).education_tools || []);
     setEnableEducation(((patient as any).education_tools || []).length > 0);
   }, [patient]);
@@ -65,6 +68,7 @@ export function EditPatientDialog({ open, onOpenChange, patient, onSaved }: Edit
       .update({
         age: age ? parseInt(age) : null,
         diagnoses,
+        sector: sector ? Number(sector) : null,
         education_tools: enableEducation ? educationTools : [],
       })
       .eq('id', patient.id);
@@ -113,6 +117,21 @@ export function EditPatientDialog({ open, onOpenChange, patient, onSaved }: Edit
               value={age}
               onChange={(e) => setAge(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-sector">Sector SOME</Label>
+            <select
+              id="edit-sector"
+              value={sector}
+              onChange={(event) => setSector(event.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Sin registrar</option>
+              <option value="1">Sector 1</option>
+              <option value="2">Sector 2</option>
+              <option value="3">Sector 3</option>
+            </select>
           </div>
 
           <div className="space-y-3">

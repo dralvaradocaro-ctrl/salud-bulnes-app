@@ -13,7 +13,7 @@ import { SERVICIOS, CAMAS } from '@/lib/hospitalSuggestions';
 import { saveProaRecord, takePendingProaForm } from '@/lib/proaRegistry';
 
 // ── Catálogos ──────────────────────────────────────────────
-const ANTIBIOTICOS = [
+export const ANTIBIOTICOS = [
   'Ampicilina', 'Ampicilina + sulbactam', 'Amoxicilina', 'Amoxicilina + ácido clavulánico',
   'Cloxacilina', 'Penicilina G sódica',
   'Cefazolina', 'Cefuroxima', 'Cefotaxima', 'Ceftriaxona', 'Ceftazidima', 'Cefepime',
@@ -30,7 +30,7 @@ const ANTIBIOTICOS = [
 ];
 
 // Presentaciones disponibles para construir dosis concretas por administración.
-const PRESENTACIONES_ATB = {
+export const PRESENTACIONES_ATB = {
   'Amikacina': [{ label: 'Ampolla 500 mg/2 mL', cantidad: 500, unidad: 'mg', envase: 'ampolla' }, { label: 'Ampolla 100 mg/2 mL', cantidad: 100, unidad: 'mg', envase: 'ampolla' }],
   'Gentamicina': [{ label: 'Ampolla 80 mg/2 mL', cantidad: 80, unidad: 'mg', envase: 'ampolla' }],
   'Ceftriaxona': [{ label: 'Frasco ampolla 1 g', cantidad: 1, unidad: 'g', envase: 'frasco ampolla' }, { label: 'Frasco ampolla 2 g', cantidad: 2, unidad: 'g', envase: 'frasco ampolla' }],
@@ -55,7 +55,7 @@ const PRESENTACIONES_ATB = {
   'Fluconazol': [{ label: 'Frasco 200 mg/100 mL EV', cantidad: 200, unidad: 'mg', envase: 'frasco' }, { label: 'Cápsula 150 mg', cantidad: 150, unidad: 'mg', envase: 'cápsula' }],
 };
 
-const DEFAULT_DOSIS_ATB = {
+export const DEFAULT_DOSIS_ATB = {
   'Amikacina': { presentacion: 'Ampolla 500 mg/2 mL', dosis_por_kg: 15, dosis_unidad: 'mg', intervalo_horas: '24', via: 'EV' },
   'Gentamicina': { presentacion: 'Ampolla 80 mg/2 mL', dosis_por_kg: 5, dosis_unidad: 'mg', intervalo_horas: '24', via: 'EV' },
   'Vancomicina': { presentacion: 'Frasco ampolla 1 g', dosis_por_kg: 15, dosis_unidad: 'mg', intervalo_horas: '12', via: 'EV' },
@@ -156,7 +156,7 @@ const SENSIBILIDAD_OPCIONES = ['Pendiente', 'Sensible al esquema actual', 'Resis
 
 // Diagnósticos infectológicos típicos del adulto hospitalizado. Lista cerrada
 // para autocomplete; el campo igual permite escribir libre si no está aquí.
-const DIAGNOSTICOS_INFECTO = [
+export const DIAGNOSTICOS_INFECTO = [
   'Neumonía adquirida en la comunidad (NAC)',
   'Neumonía nosocomial / asociada al cuidado de salud',
   'Neumonía asociada a ventilación mecánica (NAVM)',
@@ -632,14 +632,27 @@ function VisitaPROA() {
   };
   const [f, setF] = useState(() => {
     const pending = takePendingProaForm();
-    return {
+    const merged = {
       ...EMPTY,
       ...(pending || {}),
+      proa_entry_type: 'evolucion',
       fecha: todayIso(),
       hora: currentTime(),
       paciente: '',
       rut: '',
       n_ficha: '',
+    };
+    return {
+      ...merged,
+      parametros_inflamatorios: merged.parametros_inflamatorios?.length
+        ? merged.parametros_inflamatorios
+        : [{ ...EMPTY_PARAM_ROW }],
+      estudios_micro: merged.estudios_micro?.length
+        ? merged.estudios_micro
+        : [{ ...EMPTY_CULT }],
+      antibioticos: merged.antibioticos?.length
+        ? merged.antibioticos
+        : [{ ...EMPTY_ATB }],
     };
   });
   const [showPreview, setShowPreview] = useState(false);
@@ -841,7 +854,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <ShieldPlus className="h-4 w-4 text-teal-600" />
-              Visita PROA — Evolución
+              Evolución PROA
             </h1>
             <p className="text-xs text-slate-500">Programa de Optimización del Uso de Antimicrobianos · HCSFB</p>
           </div>
@@ -1505,7 +1518,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
             </div>
 
             <h1 style={{ textAlign: 'center', fontSize: '13pt', fontWeight: 'bold', textDecoration: 'underline', margin: '6pt 0 8pt' }}>
-              EVOLUCIÓN DE VISITA PROA
+              EVOLUCIÓN PROA
             </h1>
 
             <PrintBlock title="Identificación">
@@ -1765,5 +1778,5 @@ const box       = { border: '0.75pt solid #000', padding: '4pt 6pt', minHeight: 
 
 export default conPuertaAcceso(VisitaPROA, {
   storageKey: 'acceso_medico',
-  descripcion: 'Ingresa el código de acceso para usar Visita PROA.',
+  descripcion: 'Ingresa el código de acceso para registrar una Evolución PROA.',
 });

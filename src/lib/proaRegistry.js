@@ -130,6 +130,63 @@ export async function saveProaRecord(form, options = {}) {
   return record;
 }
 
+export async function saveProaPreAdmission(preAdmission) {
+  const structuredAntibiotics = Array.isArray(preAdmission.antibioticos)
+    ? preAdmission.antibioticos.filter((item) => item?.nombre)
+    : [];
+  const antibioticLines = structuredAntibiotics.length
+    ? []
+    : String(preAdmission.antibioterapia || '').split(/\n|;/).map((line) => line.trim()).filter(Boolean);
+  const parsedAntibiotics = antibioticLines.map((line) => {
+    const doseIndex = line.search(/\s+(?=\d+(?:[.,]\d+)?\s*(?:mg|g|mcg|UI|U)\b)/i);
+    const nombre = doseIndex > 0 ? line.slice(0, doseIndex).trim() : line;
+    const dosis = doseIndex > 0 ? line.slice(doseIndex).trim() : '';
+    return { nombre, dosis, via: /\bVO\b/i.test(line) ? 'VO' : /\bIM\b/i.test(line) ? 'IM' : 'EV' };
+  });
+  const antibioticItems = [...structuredAntibiotics, ...parsedAntibiotics].map((item) => {
+    return {
+      nombre: item.nombre,
+      via: item.via || 'EV',
+      presentacion: item.presentacion || '',
+      dosis_modo: 'total',
+      dosis_por_kg: '',
+      dosis_cantidad: item.dosis_cantidad || '',
+      dosis_unidad: item.dosis_unidad || 'mg',
+      unidades_por_dosis: '',
+      intervalo_horas: item.intervalo_horas || '',
+      dosis: item.dosis || '',
+      inicio: item.inicio || '',
+      termino: '',
+      termino_manual: false,
+    };
+  });
+  const antibioticSummary = antibioticItems
+    .map((item) => [item.nombre, item.dosis, item.via].filter(Boolean).join(' '))
+    .join('\n');
+  const form = {
+    proa_entry_type: 'preingreso',
+    fecha: new Date().toISOString().slice(0, 10),
+    hora: new Date().toTimeString().slice(0, 5),
+    servicio: preAdmission.servicio || '',
+    cama: preAdmission.cama || '',
+    edad: preAdmission.edad || '',
+    fecha_ingreso: preAdmission.fecha_ingreso || '',
+    diagnostico_actual: preAdmission.diagnostico || '',
+    antibioterapia_preingreso: antibioticSummary,
+    antibioticos: antibioticItems,
+    parametros_inflamatorios: [],
+    estudios_micro: [],
+    diagnostico_microbiologico: '',
+    estudios_imagen: '',
+    recomendaciones: [],
+    plan_duracion: '',
+    proxima_revision: '',
+    evolucion: '',
+  };
+
+  return saveProaRecord(form, { replaceExisting: true });
+}
+
 export async function moveProaRecordToBed(sourceBedCode, targetBedCode, targetService = '') {
   if (!sourceBedCode || !targetBedCode || sourceBedCode === targetBedCode) return null;
 

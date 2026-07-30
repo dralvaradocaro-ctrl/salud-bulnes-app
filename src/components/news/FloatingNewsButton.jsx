@@ -155,64 +155,27 @@ const FREQUENT_QUERIES = [
     id: 'faq-atenciones-policlinico',
     title: 'Atenciones Policlínico: actividad y formulario',
     area: 'policlinico',
-    summary: 'Tabla rápida para elegir actividad REM/formulario en registros frecuentes.',
-    highlight: 'Usar la actividad exacta indicada y evitar AG_ o actividades marcadas como “No contabilizada en REM”.',
+    summary: 'Tabla rápida que separa atención, actividad REM, formulario y otros registros.',
+    highlight: 'La actividad y el formulario son campos distintos. No usar actividades AG_ ni opciones marcadas como “No contabilizada en REM”.',
     orders: [
-      { label: 'REM', value: 'Actividad exacta' },
-      { label: 'Formulario', value: 'Según programa' },
+      { label: '1', value: 'Identificar la atención' },
+      { label: '2', value: 'Registrar la actividad' },
+      { label: '3', value: 'Completar el formulario' },
     ],
     link_url: createPageUrl('TopicDetail?id=ac8e1455-7cc9-4265-8933-8fe893217201'),
-    routes: [
-      {
-        icon: HeartPulse,
-        title: 'Cardiovascular',
-        subtitle: 'Control / ingreso',
-        order: 'Salud cardiovascular integral',
-        items: ['Control salud cardiovascular', 'Ingreso HEARTS si corresponde', 'Orden interna nutricionista 3-4 meses'],
-      },
-      {
-        icon: Stethoscope,
-        title: 'ERA / IRA',
-        subtitle: 'Sala respiratoria',
-        order: 'Otros programas de salud',
-        items: ['Control sala ERA/IRA/mixta', 'Ingreso ERA: encuesta calidad de vida', 'Ingreso IRA: PedsQL por edad'],
-      },
-      {
-        icon: Brain,
-        title: 'Salud mental',
-        subtitle: 'Ingreso / control / egreso',
-        order: 'Control de salud mental',
-        items: ['Plan de cuidado integral', 'Clasificación N', 'Goldberg si ingreso/egreso'],
-      },
-      {
-        icon: Baby,
-        title: 'Niño sano 1 y 3 meses',
-        subtitle: 'Control sano',
-        order: 'Crecimiento y desarrollo',
-        items: ['Guías anticipatorias', 'Score IRA', '3 meses: GES displasia cadera + RX pelvis'],
-      },
-      {
-        icon: Pill,
-        title: 'Morbilidad / recetas',
-        subtitle: 'Registro simple',
-        order: 'Consulta otras morbilidades',
-        items: ['Morbilidad general sin formulario', 'Receta sin paciente: actividad abreviada y confección de recetas'],
-      },
-      {
-        icon: UserRound,
-        title: 'Paliativos / dependencia severa',
-        subtitle: 'Continuidad',
-        order: 'Según atención',
-        items: ['Paliativos: otros problemas + cuidados paliativos', 'Dependencia severa: visita domiciliaria no oncológica'],
-      },
-      {
-        icon: ScanLine,
-        title: 'Telemedicina',
-        subtitle: 'Nueva / control',
-        order: 'Especialidad ambulatoria por telemedicina',
-        items: ['Cardiología con ECG', 'Dermatología con fotos', 'Diabetología con perfil glicémico'],
-      },
-    ],
+    table: {
+      headers: ['Atención', 'Actividad REM', 'Formulario', 'Otros registros'],
+      rows: [
+        ['Consulta de morbilidad', 'Consulta otras morbilidades', 'Sin formulario', 'No mezclar con receta ni selector de demanda'],
+        ['Renovación de receta sin paciente', 'Actividad abreviada + confección de recetas, si corresponde', 'Sin formulario', 'Solo cuando no hay atención presencial'],
+        ['Selector de demanda', 'Consulta otras morbilidades', 'Sin formulario', 'Registrar como atención distinta de morbilidad'],
+        ['Atención a funcionarios (UST)', 'Consulta otras morbilidades + atención a funcionarios', 'Sin formulario', 'Deben quedar ambas actividades'],
+        ['Control/ingreso cardiovascular', 'Control de salud cardiovascular + ingreso HEARTS, si corresponde', 'Salud cardiovascular integral', 'Orden interna a nutricionista en 3–4 meses'],
+        ['Control Sala ERA/IRA', 'Control sala ERA/IRA/mixta', 'Control de otros programas de salud', 'Ingreso ERA: ECV + actividad de aplicación; ingreso IRA: PedsQL por edad'],
+        ['Control de salud mental', 'Controles de salud mental', 'Control de salud mental', 'Ingreso/egreso agrega consulta, plan integral, clasificación N y Goldberg'],
+        ['Telemedicina', 'Consulta de especialidad ambulatoria nueva o control realizada por telemedicina', 'Sin formulario', 'Elegir nueva o control, no ambas'],
+      ],
+    },
   },
   {
     id: 'faq-demencia-ingreso',
@@ -490,8 +453,8 @@ function NewsItem({ item }) {
             {hasDetails && <p className="whitespace-pre-line text-xs leading-relaxed text-slate-600">{details}</p>}
             <RouteQuickView item={item} />
             {item.table && (
-              <div className="mt-2 overflow-hidden rounded-lg border border-slate-200">
-                <table className="w-full border-collapse text-left text-[11px]">
+              <div className="mt-2 overflow-x-auto rounded-lg border border-slate-200">
+                <table className="min-w-[760px] border-collapse text-left text-[11px]">
                   <thead className="bg-slate-50 text-slate-500">
                     <tr>
                       {item.table.headers.map((header) => (

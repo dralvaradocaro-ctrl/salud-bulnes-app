@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HeartPulse, ChevronDown, ChevronUp } from 'lucide-react';
+import { HeartPulse, ChevronDown, ChevronUp, CalendarCheck, MapPin } from 'lucide-react';
 import { Badge } from '@/medispense/components/ui/badge';
 import { Card, CardContent } from '@/medispense/components/ui/card';
 import { Button } from '@/medispense/components/ui/button';
@@ -22,6 +22,7 @@ interface CompactCardiovascularProps {
   nextControlProfessional: string | null;
   cardiovascularRisk: string | null;
   diagnoses: string[] | null;
+  sector: number | null;
 }
 
 export function CompactCardiovascular({
@@ -31,6 +32,7 @@ export function CompactCardiovascular({
   nextControlProfessional,
   cardiovascularRisk,
   diagnoses,
+  sector,
 }: CompactCardiovascularProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -42,6 +44,13 @@ export function CompactCardiovascular({
   const nextProf = CV_PROFESSIONAL_LABELS[(nextControlProfessional as CVProfessional)] || nextControlProfessional;
   const riskBadgeClass = `${CV_RISK_COLORS[risk]} border-transparent hover:opacity-90`;
   const statusBadgeClass = `${CV_STATUS_COLORS[status]} border-transparent hover:opacity-90`;
+  const requestMonth = nextControlDate
+    ? (() => {
+        const date = new Date(`${nextControlDate}T12:00:00`);
+        date.setMonth(date.getMonth() - 1);
+        return date.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' });
+      })()
+    : null;
 
   return (
     <div id="cv-section">
@@ -86,6 +95,20 @@ export function CompactCardiovascular({
               {nextProf ? <span> · {nextProf}</span> : null}
             </p>
           </div>
+
+          {nextControlDate && (
+            <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-950">
+              <p className="flex items-center gap-1.5 font-semibold">
+                <CalendarCheck className="h-4 w-4 shrink-0" />
+                Próximo control: {nextProf || 'Profesional de salud'} · {formatDateES(nextControlDate)}
+              </p>
+              <p className="mt-1 flex items-start gap-1.5 leading-relaxed">
+                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                Durante los primeros 3 días hábiles de {requestMonth}, acuda a SOME para solicitar la hora de crónico
+                {sector ? ` correspondiente al sector ${sector}` : ' según su sector (1, 2 o 3)'}.
+              </p>
+            </div>
+          )}
 
           {expanded && (
             <div className="rounded-md border bg-card px-3 py-2 text-sm">

@@ -46,6 +46,91 @@ interface MedicationFromDB {
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
+const SHORTHAND_ALIASES: Record<string, string> = {
+  mtf: 'Metformina',
+  met: 'Metformina',
+  atv: 'Atorvastatina',
+  atorva: 'Atorvastatina',
+  hct: 'Hidroclorotiazida',
+  hctz: 'Hidroclorotiazida',
+  aas: 'Ácido acetilsalicílico',
+  lvtx: 'Levotiroxina',
+  levo: 'Levotiroxina',
+  los: 'Losartan',
+  amlo: 'Amlodipino',
+};
+
+const normalizeAlias = (value: string): string =>
+  value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\./g, '').trim();
+
+/**
+ * Interpreta la notación clínica chilena "medicamento 1-0[-1]".
+ * Esta vía es deliberadamente determinística: evita que el modelo convierta
+ * 1-0 en c/12 h o invente una dosis en mg.
+ */
+function parseStructuredShorthand(text: string): ParsedMedication[] | null {
+  const rawLines = text.split(/\n|;/).map(line => line.trim()).filter(Boolean);
+  if (rawLines.length === 0) return null;
+
+  const parsed = rawLines.map((rawLine) => {
+    const line = rawLine.replace(/^\s*\d+[\.\)\-:]\s*/, '').trim();
+    const match = line.match(/^(.+?)\s+((?:\d+(?:[.,]\d+)?|[½¼¾])(?:\s*-\s*(?:\d+(?:[.,]\d+)?|[½¼¾])){1,2})\s*$/i);
+    if (!match) return null;
+
+    const rawName = match[1].trim();
+    const aliasKey = normalizeAlias(rawName);
+    const name = SHORTHAND_ALIASES[aliasKey] || rawName;
+    const toNumber = (part: string) => {
+      if (part === '½') return 0.5;
+      if (part === '¼') return 0.25;
+      if (part === '¾') return 0.75;
+      return Number(part.replace(',', '.'));
+    };
+    const doses = match[2].split('-').map(part => toNumber(part.trim()));
+    if (doses.some(dose => !Number.isFinite(dose) || dose < 0) || doses.every(dose => dose === 0)) return null;
+
+    const slots = doses.length === 2 ? ['08:00', '20:00'] : ['08:00', '14:00', '20:00'];
+    const dosesBySchedule = doses
+      .map((tablets, index) => ({ time: slots[index], tablets }))
+      .filter(item => item.tablets > 0);
+    const administrations = dosesBySchedule.length;
+    const frequency = administrations === 1 ? 'c/24h' : administrations === 2 ? 'c/12h' : 'c/8h';
+    const indication = doses.length === 2
+      ? `${doses[0]} comprimido(s) en la mañana y ${doses[1]} en la noche`
+      : `${doses[0]} comprimido(s) en la mañana, ${doses[1]} al mediodía y ${doses[2]} en la noche`;
+
+    return {
+      name,
+      dose: dosesBySchedule[0]?.tablets || 1,
+      unit: 'comp',
+      frequency,
+      duration_days: null,
+      fractionation: match[2].replace(/\s/g, ''),
+      is_insulin: false,
+      is_weekly: false,
+      matched_medication_id: null,
+      matched_medication_name: null,
+      default_schedule: dosesBySchedule.map(item => item.time),
+      schedule_reason: 'Horario indicado explícitamente por la posología escrita',
+      tablets_per_dose: dosesBySchedule[0]?.tablets || 1,
+      arsenal_dose_value: null,
+      arsenal_dose_unit: null,
+      arsenal_presentation: null,
+      insulin_am: null,
+      insulin_pm: null,
+      weekly_days: null,
+      specific_indication: indication,
+      doses_by_schedule: dosesBySchedule,
+      is_sos: false,
+      sos_reason: null,
+    } satisfies ParsedMedication;
+  });
+
+  return parsed.every((medication): medication is ParsedMedication => medication !== null)
+    ? parsed
+    : null;
+}
+
 const SCHEDULES_PROMPT = `
 HORARIOS POR DEFECTO BASADOS EN EVIDENCIA (solo usar si no hay indicación explícita de hora/momento):
 - ESTATINAS: 22:00
@@ -125,6 +210,13 @@ REGLAS CRÍTICAS:
    - "c/8h"=cada 8h, "c/12h"=cada 12h, "c/24h"=1 vez al día
    - "c/7d"=semanal, "bid"=c/12h, "tid"=c/8h
    - "U"/"UI"=unidades, "comp"=comprimido
+   - En esquemas de comprimidos, "1-0" = 1 comprimido SOLO en la mañana (c/24h).
+   - "0-1" = 1 comprimido SOLO en la noche (c/24h).
+   - "1-1" = 1 comprimido mañana y noche (c/12h).
+   - "1-0-1" = mañana y noche (c/12h); "1-1-1" = tres veces al día (c/8h).
+   - Los ceros significan que NO hay toma: nunca generes un horario para una posición con 0.
+   - MTF=Metformina, ATV=Atorvastatina, HCT/HCTZ=Hidroclorotiazida,
+     AAS=Ácido acetilsalicílico, LVTX=Levotiroxina.
 
 ${SCHEDULES_PROMPT}
 ${medsContext}
@@ -165,6 +257,9 @@ export async function parsePrescriptionWithGemini(
   prescriptionText: string,
   medicationsList: MedicationFromDB[]
 ): Promise<{ medications: ParsedMedication[] }> {
+  const shorthand = parseStructuredShorthand(prescriptionText);
+  if (shorthand) return { medications: shorthand };
+
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const medsContext = buildMedsContext(medicationsList);
   const systemPrompt = buildSystemPrompt(medsContext);

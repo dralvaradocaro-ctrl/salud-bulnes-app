@@ -43,6 +43,7 @@ export default function NewPatient() {
   const [formData, setFormData] = useState({
     patientCode: initialPatientCode,
     age: '',
+    sector: '',
     diagnoses: [] as string[],
     educationTools: [] as string[],
   });
@@ -101,6 +102,7 @@ export default function NewPatient() {
       patient_code: patientCode,
       full_name: `Paciente ${patientCode}`,
       age: parseInt(formData.age),
+      sector: formData.sector ? Number(formData.sector) : null,
       diagnoses: formData.diagnoses,
       education_tools: enableEducation ? formData.educationTools : [],
       created_by: user.id,
@@ -199,6 +201,25 @@ export default function NewPatient() {
                 onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                 required
               />
+            </div>
+
+            {/* Diagnoses */}
+            <div className="space-y-2">
+              <Label htmlFor="sector">Sector SOME</Label>
+              <select
+                id="sector"
+                value={formData.sector}
+                onChange={(event) => setFormData({ ...formData, sector: event.target.value })}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Sin registrar</option>
+                <option value="1">Sector 1</option>
+                <option value="2">Sector 2</option>
+                <option value="3">Sector 3</option>
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Se mostrará al paciente en el aviso para solicitar su hora de crónico.
+              </p>
             </div>
 
             {/* Diagnoses */}

@@ -1,0 +1,3 @@
+ALTER TABLE public.patients
+  ADD COLUMN IF NOT EXISTS sector SMALLINT DEFAULT NULL
+  CHECK (sector IS NULL OR sector IN (1, 2, 3));

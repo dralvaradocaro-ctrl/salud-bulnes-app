@@ -2,7 +2,8 @@
  * Crea/actualiza el tema operativo "Atenciones Policlínico HCSF Bulnes" y
  * publica una novedad asociada.
  *
- * Fuente: /Users/fernandoalvarado/Downloads/ATENCIONES POLICLÍNICO HCSF BULNES.docx.pdf
+ * Fuente vigente:
+ * https://docs.google.com/document/d/12fl47llc56onEjaIh4lEw0ta6KofgXFL/edit
  *
  * Uso:
  *   node --env-file=.env scripts/create-atenciones-policlinico-v1.mjs
@@ -25,19 +26,20 @@ const supabase = createClient(
 
 const mainRows = [
   ['Control/ingreso cardiovascular', 'Control de salud cardiovascular (+ ingreso HEARTS si corresponde)', 'Salud cardiovascular integral', 'Orden interna: control con nutricionista en 3-4 meses.'],
-  ['Otras atenciones cardiovasculares', 'Consulta cardiovascular (+ poli de compensación si está descompensado)', 'Según atención', 'Incluye exámenes no actualizados, confirmación GES cardiovascular, fondo de ojo o poli descompensado.'],
+  ['Otras atenciones cardiovasculares', 'Consulta cardiovascular (+ poli de compensación si está descompensado)', 'No indicado en la fuente', 'Incluye exámenes no actualizados, confirmación GES cardiovascular, fondo de ojo o poli descompensado.'],
   ['Control no cardiovascular', 'Control otros problemas de salud no cardiovasculares', 'Formulario de control de otros programas de salud', 'Rellenar solo la patología en seguimiento: hipotiroidismo, artrosis, epilepsia, AR, LES, etc.'],
   ['Sala ERA/IRA', 'Control sala ERA/IRA/mixta', 'Formulario de control de otros programas de salud', 'Ingreso ERA: completar encuesta calidad de vida y agregar actividad "Aplicación encuesta calidad de vida". Ingreso IRA: agregar PedsQL por tramo etario.'],
-  ['Salud mental', 'Controles de salud mental', 'Control de salud mental', 'Si ingreso/egreso: consulta salud mental + plan de cuidado integral + clasificación N + cuestionario Goldberg.'],
+  ['Control de salud mental', 'Controles de salud mental', 'Control de salud mental', 'Para un control habitual.'],
+  ['Ingreso o egreso de salud mental', 'Consulta de salud mental + plan de cuidado integral + clasificación N', 'Control de salud mental', 'Completar cuestionario de salud de Goldberg. Si es demencia, agregar “Plan cuidado integral elaborado”.'],
   ['Niño sano 1 mes', 'Control de salud + entrega de guías anticipatorias', 'Control de crecimiento y desarrollo (control sano)', 'Rellenar alimentación y acompañamiento. Chile Crece. Score IRA y protocolo neurosensorial; si alterados derivar a Kine/sala de estimulación. Orden interna: control en 1 mes con enfermera.'],
   ['Niño sano 3 meses', 'Control de salud + entrega de guías anticipatorias', 'Control de crecimiento y desarrollo + score IRA', 'Orden interna: control en 1 mes con enfermera. Abrir GES sospecha displasia de cadera CIE10 Q65.8 y solicitar RX pelvis pediátrica por orden de procedimiento/imágenes.'],
   ['Consulta morbilidad', 'Consulta otras morbilidades', 'Sin formulario', 'Usar para morbilidad general.'],
   ['Renovación de receta sin paciente', 'Actividad abreviada y confección de recetas', 'Sin formulario', 'Usar si corresponde emisión de receta sin atención presencial.'],
   ['Administrativos / informe biomédico', 'Actividad abreviada (SOS actividad administrativa)', 'Sin formulario', 'Para informe biomédico u otras actividades administrativas.'],
-  ['ECICEP', 'Poner exactamente lo indicado en papel del box', 'Todos los formularios según programa atendido', 'Seguir instrucción local pegada en cada computador.'],
+  ['ECICEP', 'Seguimiento ECICEP y las actividades indicadas en el papel del box', 'Todos los formularios según programa atendido', 'Copiar exactamente las actividades de la instrucción local pegada en cada computador.'],
   ['Paliativos', 'Control otros problemas de salud no cardiovasculares + cuidados paliativos (+ otras actividades realizadas)', 'Ingreso: otros programas de salud (Otros: alivio del dolor) + formularios según atención', 'Si se realiza visita domiciliaria oncológica o control cardiovascular, agregar actividad correspondiente.'],
   ['Dependencia severa', 'Visita domiciliaria no oncológico (+ actividades según atención)', 'Formularios según programa atendido', 'Agregar cardiovascular, morbilidad u otra actividad si corresponde.'],
-  ['Telesalud', 'Telesalud - actividad realizada', 'Sin formulario', 'Registrar exactamente lo indicado en torpedo bajo teclado de computador de Telesalud.'],
+  ['Telesalud', 'Telesalud + actividad que se está realizando', 'Sin formulario', 'Registrar exactamente lo indicado en el torpedo bajo el teclado del computador de Telesalud.'],
   ['Poli TACO', 'Actividad abreviada', 'Sin formulario', 'Registro abreviado.'],
   ['Control prenatal', 'Control prenatal + entrega resultado Chagas', 'Control prenatal', 'Registrar entrega de resultado Chagas cuando corresponda.'],
   ['Control climaterio', 'Control climaterio', 'MRS', 'Usar formulario MRS.'],
@@ -177,7 +179,7 @@ const topicPayload = {
   subcategory: 'Herramientas Clínicas',
   status: 'published',
   description:
-    'Tabla operativa para registrar actividades y formularios frecuentes de Policlínico HCSF Bulnes: cardiovascular, salud mental, niño sano, ERA/IRA, paliativos, dependencia severa, TACO, telemedicina y ayudas de memoria.',
+    'Tabla operativa que separa tipo de atención, actividad REM, formulario y otras acciones de registro para las atenciones frecuentes de Policlínico HCSF Bulnes.',
   order: 118,
   tags: ['Policlínico', 'REM', 'formularios', 'consultas frecuentes', 'registro clínico', 'telemedicina'],
   authors: [{ name: 'Equipo Policlínico HCSF Bulnes', role: 'Fuente operativa local' }],
@@ -199,8 +201,8 @@ const topicPayload = {
   initial_treatment:
     'Registrar actividad y formulario según tabla. No usar actividades AG_ ni opciones marcadas como no contabilizadas en REM.',
   protocol_code: 'Guía operativa Policlínico',
-  protocol_edition: 'Documento local',
-  protocol_date: 'Junio 2026',
+  protocol_edition: 'Documento local revisado',
+  protocol_date: 'Julio 2026',
   protocol_validity: '',
   protocol_authors: [{ name: 'Equipo Policlínico HCSF Bulnes', role: 'Fuente operativa local' }],
   protocol_objective:
@@ -283,7 +285,9 @@ async function main() {
     return;
   }
 
-  const protocol_file_url = await uploadPdf();
+  // En una reedición de contenido se conserva el archivo ya publicado. El PDF
+  // local solo se sube al crear el tema por primera vez.
+  const protocol_file_url = existing?.protocol_file_url || await uploadPdf();
   const payload = { ...topicPayload, protocol_file_url };
 
   let topic;
