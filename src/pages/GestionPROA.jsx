@@ -1091,15 +1091,15 @@ function GestionPROA() {
       </main>
 
       <Dialog open={showPreAdmission} onOpenChange={setShowPreAdmission}>
-        <DialogContent className="max-w-xl">
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-2rem)] max-w-5xl overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-teal-700" />
               Agregar paciente PROA
             </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
+          <div className="grid gap-x-4 gap-y-3 md:grid-cols-12">
+            <div className="space-y-1.5 md:col-span-3">
               <Label htmlFor="proa-pre-bed">Cama *</Label>
               <select
                 id="proa-pre-bed"
@@ -1115,11 +1115,11 @@ function GestionPROA() {
                 {ALL_PROA_BEDS.map(({ bed, servicio }) => <option key={bed} value={bed}>{servicio} · {bed}</option>)}
               </select>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 md:col-span-2">
               <Label htmlFor="proa-pre-age">Edad *</Label>
               <Input id="proa-pre-age" type="number" min="0" max="120" value={preAdmission.edad} onChange={(event) => setPreAdmission((current) => ({ ...current, edad: event.target.value }))} />
             </div>
-            <div className="space-y-1.5 sm:col-span-2">
+            <div className="space-y-1.5 md:col-span-4">
               <Label htmlFor="proa-pre-name">Nombre del paciente</Label>
               <Input
                 id="proa-pre-name"
@@ -1128,7 +1128,7 @@ function GestionPROA() {
                 placeholder="Nombre y apellidos"
               />
             </div>
-            <div className="space-y-1.5 sm:col-span-2">
+            <div className="space-y-1.5 md:col-span-3">
               <Label htmlFor="proa-pre-rut">RUT</Label>
               <Input
                 id="proa-pre-rut"
@@ -1136,13 +1136,15 @@ function GestionPROA() {
                 onChange={(event) => setPreAdmission((current) => ({ ...current, rut: formatProaRut(event.target.value) }))}
                 placeholder="12.345.678-9"
               />
-              <p className="text-[11px] text-slate-500">Nombre, RUT y edad se guardan exclusivamente en Gestión/Evolución PROA.</p>
             </div>
-            <div className="space-y-1.5 sm:col-span-2">
+            <p className="text-[11px] text-slate-500 md:col-span-12">
+              Nombre, RUT y edad se guardan exclusivamente en Gestión/Evolución PROA.
+            </p>
+            <div className="space-y-1.5 md:col-span-3">
               <Label htmlFor="proa-pre-date">Fecha de ingreso *</Label>
               <Input id="proa-pre-date" type="date" value={preAdmission.fecha_ingreso} onChange={(event) => setPreAdmission((current) => ({ ...current, fecha_ingreso: event.target.value }))} />
             </div>
-            <div className="space-y-1.5 sm:col-span-2">
+            <div className="space-y-1.5 md:col-span-9">
               <Label htmlFor="proa-pre-diagnosis">Diagnóstico *</Label>
               <Input id="proa-pre-diagnosis" list="proa-pre-diagnoses" value={preAdmission.diagnostico} onChange={(event) => setPreAdmission((current) => ({ ...current, diagnostico: event.target.value }))} placeholder="Buscar diagnóstico infectológico vigente" />
               <datalist id="proa-pre-diagnoses">
@@ -1150,7 +1152,7 @@ function GestionPROA() {
               </datalist>
               <p className="text-[11px] text-slate-500">Incluye el catálogo de Evolución PROA y los diagnósticos previamente guardados.</p>
             </div>
-            <div className="space-y-1.5 sm:col-span-2">
+            <div className="space-y-1.5 md:col-span-12">
               <div className="flex items-center justify-between">
                 <Label>Antibioterapia vigente</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addPreAntibiotic} className="h-8 gap-1">
@@ -1169,8 +1171,8 @@ function GestionPROA() {
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                        <div className="space-y-1">
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-12">
+                        <div className="space-y-1 lg:col-span-4">
                           <Label className="text-[11px]">Antibiótico</Label>
                         <Input
                           list="proa-pre-antibiotics"
@@ -1179,7 +1181,7 @@ function GestionPROA() {
                           placeholder="Antimicrobiano"
                         />
                         </div>
-                        <div className="space-y-1 sm:col-span-2">
+                        <div className="space-y-1 lg:col-span-5">
                           <Label className="text-[11px]">Presentación disponible</Label>
                         <Input
                             list={presentationListId}
@@ -1189,9 +1191,13 @@ function GestionPROA() {
                         />
                           <datalist id={presentationListId}>
                             {presentationOptions.map((presentation) => <option key={presentation} value={presentation} />)}
-                        </datalist>
+                          </datalist>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 lg:col-span-3">
+                          <Label className="text-[11px]">Fecha de inicio</Label>
+                          <Input type="date" value={item.inicio} onChange={(event) => updatePreAntibiotic(index, 'inicio', event.target.value)} />
+                        </div>
+                        <div className="space-y-1 lg:col-span-4">
                           <Label className="text-[11px]">Dosis por administración</Label>
                           <div className="flex">
                             <Input type="number" min="0" step="0.1" value={item.dosis_cantidad} onChange={(event) => updatePreAntibiotic(index, 'dosis_cantidad', event.target.value)} className="rounded-r-none" placeholder="Ej.: 4,5 o 1" />
@@ -1200,22 +1206,18 @@ function GestionPROA() {
                             </select>
                           </div>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 lg:col-span-3">
                           <Label className="text-[11px]">Frecuencia</Label>
                           <Input list="proa-pre-frequencies" value={item.intervalo_horas} onChange={(event) => updatePreAntibiotic(index, 'intervalo_horas', event.target.value)} placeholder="Horas, ej.: 8" />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 lg:col-span-2">
                           <Label className="text-[11px]">Vía</Label>
                           <select value={item.via} onChange={(event) => updatePreAntibiotic(index, 'via', event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm">
                             {['EV', 'VO', 'IM', 'SC', 'Inhalado'].map((via) => <option key={via} value={via}>{via}</option>)}
                           </select>
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-[11px]">Fecha de inicio</Label>
-                          <Input type="date" value={item.inicio} onChange={(event) => updatePreAntibiotic(index, 'inicio', event.target.value)} />
-                        </div>
-                        <div className="flex items-end sm:col-span-2">
-                          <p className="rounded-md bg-white px-2 py-2 text-xs text-slate-600">{formatPreAntibiotic(item) || 'Completa el esquema antibiótico.'}</p>
+                        <div className="flex items-end lg:col-span-3">
+                          <p className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">{formatPreAntibiotic(item) || 'Completa el esquema antibiótico.'}</p>
                         </div>
                       </div>
                     </div>
@@ -1231,7 +1233,7 @@ function GestionPROA() {
               <p className="text-[11px] text-slate-500">La presentación y pauta se precargan cuando existen; todos los campos permanecen editables.</p>
             </div>
 
-            <div className="space-y-1.5 sm:col-span-2">
+            <div className="space-y-1.5 md:col-span-12">
               <div className="flex items-center justify-between">
                 <Label>Cultivos (opcional)</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addPreCulture} className="h-8 gap-1">
