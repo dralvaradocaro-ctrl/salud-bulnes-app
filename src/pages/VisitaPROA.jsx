@@ -95,7 +95,7 @@ const ANTIBIOGRAMA_POOL = [
 
 const VIAS = ['EV', 'IM', 'VO', 'SC', 'Inhalado'];
 
-const TIPOS_MUESTRA = [
+export const TIPOS_MUESTRA = [
   'Hemocultivo',
   'Urocultivo',
   'Cultivo expectoración / esputo',
@@ -113,7 +113,7 @@ const TIPOS_MUESTRA = [
   'Otro',
 ];
 
-const PATOGENOS = [
+export const PATOGENOS = [
   'Pendiente',
   'Sin desarrollo',
   'Escherichia coli',
@@ -638,8 +638,6 @@ function VisitaPROA() {
       proa_entry_type: 'evolucion',
       fecha: todayIso(),
       hora: currentTime(),
-      paciente: '',
-      rut: '',
       n_ficha: '',
     };
     return {
@@ -682,7 +680,7 @@ function VisitaPROA() {
     try {
       const record = await saveProaRecord(f, { replaceExisting: f.__proaRegistryMode === 'new_patient' });
       setF(prev => ({ ...prev, __proaRegistryMode: '' }));
-      setRegistryMessage(`✅ Registro ${record.code} guardado en cama ${record.bedCode} y sincronizado (visible desde cualquier dispositivo). No se almacenó nombre, RUT ni ficha.`);
+      setRegistryMessage(`✅ Registro ${record.code} guardado en cama ${record.bedCode} y sincronizado. En PROA se conservaron nombre, RUT y edad; la ficha clínica no fue almacenada.`);
     } catch (e) {
       setRegistryMessage(`❌ No se pudo guardar en el servidor (${e?.message || e}). Revisa tu conexión e inténtalo de nuevo.`);
     } finally {

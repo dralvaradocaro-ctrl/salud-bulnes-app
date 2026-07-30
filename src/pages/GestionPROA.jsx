@@ -20,8 +20,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PROA_BED_MAP } from '@/lib/hospitalSuggestions';
-import { deleteProaRecord, fetchProaRecords, getLatestProaForm, moveProaRecordToBed, readProaRegistry, saveProaPreAdmission, setPendingProaForm } from '@/lib/proaRegistry';
-import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, DIAGNOSTICOS_INFECTO, PRESENTACIONES_ATB } from '@/pages/VisitaPROA';
+import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, moveProaRecordToBed, readProaRegistry, saveProaPreAdmission, setPendingProaForm } from '@/lib/proaRegistry';
+import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, DIAGNOSTICOS_INFECTO, PATOGENOS, PRESENTACIONES_ATB, TIPOS_MUESTRA } from '@/pages/VisitaPROA';
 import {
   ArrowRight,
   Bed,
@@ -51,6 +51,14 @@ function formatUpdatedAt(value) {
   } catch {
     return 'Sin fecha';
   }
+}
+
+function formatProaRut(value) {
+  const clean = String(value || '').replace(/[^0-9kK]/g, '').toUpperCase();
+  if (clean.length < 2) return clean;
+  const body = clean.slice(0, -1);
+  const dv = clean.slice(-1);
+  return `${body.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}-${dv}`;
 }
 
 function summarizeLatest(form) {
@@ -85,6 +93,14 @@ function daysSince(s, { inclusive = false } = {}) {
   return inclusive ? diff + 1 : diff;
 }
 
+function hospitalStayDays(form) {
+  const start = parseProaDate(form?.fecha_ingreso);
+  if (!start) return null;
+  const end = form?.proa_archived_at ? new Date(form.proa_archived_at) : new Date();
+  const diff = Math.floor((end.getTime() - start.getTime()) / 86400000);
+  return diff >= 0 ? diff : null;
+}
+
 // Resumen para el tooltip al pasar sobre una cama ocupada (si hay info).
 function bedTooltip(form) {
   if (!form) return '';
@@ -115,20 +131,28 @@ const ALL_PROA_BEDS = PROA_BED_MAP.flatMap((service) => (
   service.groups.flatMap((group) => group.beds.map((bed) => ({ bed, servicio: service.servicio })))
 ));
 
-const EMPTY_PRE_ANTIBIOTIC = { nombre: '', dosis: '', via: 'EV' };
+const EMPTY_PRE_ANTIBIOTIC = {
+  nombre: '',
+  presentacion: '',
+  dosis_cantidad: '',
+  dosis_unidad: 'g',
+  presentacion_unidad: 'g',
+  intervalo_horas: '',
+  via: 'EV',
+  inicio: '',
+};
+const EMPTY_PRE_CULTURE = { tipo_muestra: '', fecha: '', patogeno: '', sensibilidad: 'Pendiente', resistente: [], sensible: [], intermedio: [], antibiograma_nota: '', antibiograma: '' };
 
-function defaultAntibioticDose(name) {
-  const dose = DEFAULT_DOSIS_ATB[name];
-  if (!dose) return '';
-  const amount = dose.dosis_cantidad
-    ? `${dose.dosis_cantidad} ${dose.dosis_unidad || ''}`.trim()
-    : dose.dosis_por_kg
-      ? `${dose.dosis_por_kg} ${dose.dosis_unidad || 'mg'}/kg`
-      : '';
+function formatPreAntibiotic(item) {
+  const dose = item.dosis_unidad === 'ampolla'
+    ? `${item.dosis_cantidad || ''} ${Number(item.dosis_cantidad) === 1 ? 'ampolla' : 'ampollas'}`
+    : `${item.dosis_cantidad || ''} ${item.dosis_unidad || ''}`.trim();
   return [
-    amount,
-    dose.intervalo_horas && `c/${dose.intervalo_horas} h`,
-    dose.via,
+    item.nombre,
+    item.presentacion && `(${item.presentacion})`,
+    dose,
+    item.intervalo_horas && `c/${item.intervalo_horas} h`,
+    item.via,
   ].filter(Boolean).join(' ');
 }
 
@@ -159,8 +183,11 @@ function formatMicroStudies(form) {
 }
 
 function formatAntimicrobial(item, form) {
+  const structuredDose = item.dosis_modo === 'ampolla' || item.dosis_unidad === 'ampolla'
+    ? item.unidades_por_dosis && `${item.unidades_por_dosis} ampolla${Number(item.unidades_por_dosis) === 1 ? '' : 's'}`
+    : item.dosis_cantidad && `${item.dosis_cantidad} ${item.dosis_unidad || ''}`.trim();
   const dose = item.dosis || [
-    item.dosis_cantidad && `${item.dosis_cantidad} ${item.dosis_unidad || ''}`.trim(),
+    structuredDose,
     item.intervalo_horas && `c/${item.intervalo_horas} h`,
     item.via,
   ].filter(Boolean).join(' ');
@@ -178,7 +205,7 @@ function formatAntimicrobial(item, form) {
   };
 }
 
-const TABLE_HEADERS = ['Paciente', 'Cama', 'Edad', 'Fecha de ingreso', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'];
+const TABLE_HEADERS = ['Código PROA', 'Nombre', 'RUT', 'Cama', 'Estado', 'Edad', 'Fecha de ingreso', 'Días de estadía', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'];
 
 function buildProaTableRows(records) {
   return records.map((record) => {
@@ -193,9 +220,13 @@ function buildProaTableRows(records) {
     ].filter(Boolean).join(' · ');
     return [
       record.code,
-      record.bedCode,
+      form.paciente || '—',
+      form.rut || '—',
+      form.cama || record.bedCode,
+      isHistoricalProaRecord(record) ? 'Histórico' : 'Actual',
       form.edad ? `${form.edad} años` : '—',
       form.fecha_ingreso || 'Sin fecha',
+      hospitalStayDays(form) ?? '—',
       form.diagnostico_actual || '—',
       form.funcion_renal || '—',
       form.antibioterapia_preingreso || antimicrobials.map((item) => item.nombre).join(', ') || '—',
@@ -238,17 +269,24 @@ function GestionPROA() {
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [deletingRecord, setDeletingRecord] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [recordToArchive, setRecordToArchive] = useState(null);
+  const [archivingRecord, setArchivingRecord] = useState(false);
   const [tableCopied, setTableCopied] = useState(false);
+  const [tableScope, setTableScope] = useState('actuales');
+  const [tableAntibioticFilter, setTableAntibioticFilter] = useState('');
   const [preAdmission, setPreAdmission] = useState({
     cama: '',
+    paciente: '',
+    rut: '',
     edad: '',
     fecha_ingreso: '',
     antibioticos: [{ ...EMPTY_PRE_ANTIBIOTIC }],
+    cultivos: [{ ...EMPTY_PRE_CULTURE }],
     diagnostico: '',
   });
 
   const recordsByBed = useMemo(() => (
-    records.reduce((acc, record) => {
+    records.filter((record) => !isHistoricalProaRecord(record)).reduce((acc, record) => {
       acc[record.bedCode] = record;
       return acc;
     }, {})
@@ -260,7 +298,6 @@ function GestionPROA() {
   const savedClinicalCatalog = useMemo(() => {
     const diagnoses = new Set();
     const antibiotics = new Set();
-    const dosesByAntibiotic = {};
     records.forEach((record) => {
       (record.evolutions || []).forEach((evolution) => {
         const form = evolution?.form || {};
@@ -268,22 +305,12 @@ function GestionPROA() {
         (form.antibioticos || []).forEach((item) => {
           if (!item?.nombre) return;
           antibiotics.add(item.nombre);
-          const dose = item.dosis || [
-            item.dosis_cantidad && `${item.dosis_cantidad} ${item.dosis_unidad || ''}`.trim(),
-            item.intervalo_horas && `c/${item.intervalo_horas} h`,
-            item.via,
-          ].filter(Boolean).join(' ');
-          if (dose) {
-            if (!dosesByAntibiotic[item.nombre]) dosesByAntibiotic[item.nombre] = new Set();
-            dosesByAntibiotic[item.nombre].add(dose);
-          }
         });
       });
     });
     return {
       diagnoses: [...new Set([...DIAGNOSTICOS_INFECTO, ...diagnoses])].sort((a, b) => a.localeCompare(b, 'es')),
       antibiotics: [...new Set([...ANTIBIOTICOS, ...antibiotics])].sort((a, b) => a.localeCompare(b, 'es')),
-      dosesByAntibiotic,
     };
   }, [records]);
 
@@ -291,7 +318,21 @@ function GestionPROA() {
     setRecords(nextRecords);
     return nextRecords;
   });
-  const tableRows = useMemo(() => buildProaTableRows(records), [records]);
+  const currentRecords = useMemo(() => records.filter((record) => !isHistoricalProaRecord(record)), [records]);
+  const historicalRecords = useMemo(() => records.filter(isHistoricalProaRecord), [records]);
+  const visibleTableRecords = useMemo(() => {
+    const scoped = tableScope === 'historicos'
+      ? historicalRecords
+      : tableScope === 'todos'
+        ? records
+        : currentRecords;
+    const query = tableAntibioticFilter.trim().toLowerCase();
+    if (!query) return scoped;
+    return scoped.filter((record) => (
+      (getLatestProaForm(record)?.antibioticos || []).some((item) => item?.nombre?.toLowerCase().includes(query))
+    ));
+  }, [currentRecords, historicalRecords, records, tableAntibioticFilter, tableScope]);
+  const tableRows = useMemo(() => buildProaTableRows(visibleTableRecords), [visibleTableRecords]);
 
   // Cargar desde Supabase al montar (fuente de verdad, multi-dispositivo).
   useEffect(() => { fetchProaRecords().then(setRecords); }, []);
@@ -321,6 +362,8 @@ function GestionPROA() {
     setPendingProaForm({
       cama: selectedBed,
       servicio: findServiceForBed(selectedBed),
+      paciente: selectedLatest?.paciente || '',
+      rut: selectedLatest?.rut || '',
       edad: selectedLatest?.edad || '',
       fecha_ingreso: selectedLatest?.fecha_ingreso || '',
       diagnostico_actual: selectedLatest?.diagnostico_actual || '',
@@ -354,9 +397,12 @@ function GestionPROA() {
   const openPreAdmission = (bed = '') => {
     setPreAdmission({
       cama: bed,
+      paciente: '',
+      rut: '',
       edad: '',
       fecha_ingreso: '',
       antibioticos: [{ ...EMPTY_PRE_ANTIBIOTIC }],
+      cultivos: [{ ...EMPTY_PRE_CULTURE }],
       diagnostico: '',
     });
     setPreAdmissionError('');
@@ -369,9 +415,11 @@ function GestionPROA() {
       setPreAdmissionError('Completa cama, edad, fecha de ingreso y diagnóstico.');
       return;
     }
-    const incompleteAntibiotic = preAdmission.antibioticos.some((item) => item.nombre && !item.dosis.trim());
+    const incompleteAntibiotic = preAdmission.antibioticos.some((item) => (
+      item.nombre && (!item.presentacion || !item.dosis_cantidad || !item.intervalo_horas || !item.via || !item.inicio)
+    ));
     if (incompleteAntibiotic) {
-      setPreAdmissionError('Completa la dosis de cada antimicrobiano seleccionado.');
+      setPreAdmissionError('Completa presentación, dosis, frecuencia, vía y fecha de inicio de cada antimicrobiano.');
       return;
     }
     const occupiedRecord = recordsByBed[preAdmission.cama];
@@ -405,13 +453,23 @@ function GestionPROA() {
       ...current,
       antibioticos: current.antibioticos.map((item, itemIndex) => {
         if (itemIndex !== index) return item;
+        if (key === 'presentacion') {
+          const presentationInfo = (PRESENTACIONES_ATB[item.nombre] || []).find((option) => option.label === value);
+          return { ...item, presentacion: value, presentacion_unidad: presentationInfo?.unidad || item.presentacion_unidad };
+        }
         if (key !== 'nombre') return { ...item, [key]: value };
-        const defaultDose = defaultAntibioticDose(value);
+        const preset = DEFAULT_DOSIS_ATB[value];
+        const presentation = preset?.presentacion || PRESENTACIONES_ATB[value]?.[0]?.label || '';
+        const presentationInfo = (PRESENTACIONES_ATB[value] || []).find((option) => option.label === presentation);
         return {
           ...item,
           nombre: value,
-          dosis: defaultDose || item.dosis,
-          via: DEFAULT_DOSIS_ATB[value]?.via || item.via || 'EV',
+          presentacion,
+          presentacion_unidad: presentationInfo?.unidad || preset?.dosis_unidad || item.presentacion_unidad,
+          dosis_cantidad: preset?.dosis_cantidad || preset?.unidades_por_dosis || item.dosis_cantidad,
+          dosis_unidad: preset?.dosis_modo === 'ampolla' ? 'ampolla' : (preset?.dosis_unidad || item.dosis_unidad),
+          intervalo_horas: preset?.intervalo_horas || item.intervalo_horas,
+          via: preset?.via || item.via || 'EV',
         };
       }),
     }));
@@ -427,6 +485,23 @@ function GestionPROA() {
     antibioticos: current.antibioticos.length === 1
       ? [{ ...EMPTY_PRE_ANTIBIOTIC }]
       : current.antibioticos.filter((_, itemIndex) => itemIndex !== index),
+  }));
+
+  const updatePreCulture = (index, key, value) => setPreAdmission((current) => ({
+    ...current,
+    cultivos: current.cultivos.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item),
+  }));
+
+  const addPreCulture = () => setPreAdmission((current) => ({
+    ...current,
+    cultivos: [...current.cultivos, { ...EMPTY_PRE_CULTURE }],
+  }));
+
+  const removePreCulture = (index) => setPreAdmission((current) => ({
+    ...current,
+    cultivos: current.cultivos.length === 1
+      ? [{ ...EMPTY_PRE_CULTURE }]
+      : current.cultivos.filter((_, itemIndex) => itemIndex !== index),
   }));
 
   const printProaTable = () => {
@@ -503,6 +578,22 @@ function GestionPROA() {
     }
   };
 
+  const confirmArchiveRecord = async () => {
+    if (!recordToArchive) return;
+    setArchivingRecord(true);
+    try {
+      await archiveProaRecord(recordToArchive);
+      if (selectedBed === recordToArchive.bedCode) setSelectedBed('');
+      setRecordToArchive(null);
+      await refreshRecords();
+      setTableScope('historicos');
+    } catch (error) {
+      console.error('Error archivando paciente PROA:', error);
+    } finally {
+      setArchivingRecord(false);
+    }
+  };
+
   const modules = [
     {
       title: 'Evolución PROA',
@@ -514,7 +605,7 @@ function GestionPROA() {
     },
     {
       title: 'Pacientes por cama',
-      description: 'Mapa navegable con código anonimizado, cama y última evolución PROA guardada localmente.',
+      description: 'Mapa navegable con identificación, cama y última Evolución PROA sincronizada.',
       icon: Users,
       color: 'teal',
       status: `${records.length} registros`,
@@ -603,7 +694,7 @@ function GestionPROA() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-900">Gestión PROA</h1>
-                <p className="text-sm text-slate-500">Seguimiento clínico anonimizado por cama</p>
+                <p className="text-sm text-slate-500">Seguimiento clínico e identificación exclusiva del módulo PROA</p>
               </div>
             </div>
             <Button onClick={() => openPreAdmission()} className="gap-2 bg-teal-600 hover:bg-teal-700">
@@ -623,7 +714,7 @@ function GestionPROA() {
         >
           <p className="text-lg font-bold text-slate-900">PROA</p>
           <p className="mt-1 text-sm leading-relaxed text-slate-600">
-            Los registros se guardan con código anonimizado y número de cama. Nombre, RUT y ficha no quedan almacenados.
+            En este módulo PROA se pueden guardar nombre, RUT y edad para el seguimiento intrahospitalario. La ficha clínica no se almacena y esta excepción no se extiende a otras categorías.
           </p>
         </motion.div>
 
@@ -710,7 +801,12 @@ function GestionPROA() {
                                       </div>
                                       {record ? (
                                         <>
-                                          <span className="mt-0.5 block truncate text-xs font-semibold text-emerald-800">{record.code}</span>
+                                          <span className="mt-0.5 block truncate text-xs font-semibold text-emerald-800">
+                                            {getLatestProaForm(record)?.paciente || record.code}
+                                          </span>
+                                          {getLatestProaForm(record)?.paciente && (
+                                            <span className="block truncate text-[9px] text-slate-500">{record.code}</span>
+                                          )}
                                           <span className="mt-0.5 block text-[10px] text-slate-500">{formatUpdatedAt(record.updatedAt)}</span>
                                         </>
                                       ) : (
@@ -777,8 +873,11 @@ function GestionPROA() {
               {selectedRecord && (
                 <div className="mt-3 space-y-4">
                   <div className="rounded-lg border border-emerald-200 bg-white p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Código anonimizado</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Identificación PROA</p>
                     <p className="mt-1 text-2xl font-black text-emerald-800">{selectedRecord.code}</p>
+                    {selectedLatest?.paciente && <p className="mt-2 font-bold text-slate-900">{selectedLatest.paciente}</p>}
+                    {selectedLatest?.rut && <p className="text-sm text-slate-600">RUT {selectedLatest.rut}</p>}
+                    {selectedLatest?.edad && <p className="text-sm text-slate-600">{selectedLatest.edad} años</p>}
                     <p className="mt-1 text-sm text-slate-500">Cama {selectedRecord.bedCode}</p>
                   </div>
 
@@ -808,6 +907,23 @@ function GestionPROA() {
                     <Button onClick={createFromBed} variant="outline" className="w-full border-slate-300 bg-white">
                       Nuevo paciente en esta cama
                     </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setRecordToArchive(selectedRecord)}
+                      className="w-full border-amber-300 bg-white text-amber-800 hover:bg-amber-50"
+                    >
+                      Pasar paciente a históricos
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setRecordToDelete(selectedRecord)}
+                      className="w-full border-red-300 bg-white text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Borrar paciente
+                    </Button>
                   </div>
 
                   <MovePatientControl
@@ -833,16 +949,42 @@ function GestionPROA() {
               <p className="text-sm text-slate-500">Resumen del último preingreso o evolución formal disponible por cama.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={printProaTable} disabled={records.length === 0} className="gap-2">
+              <Button variant="outline" size="sm" onClick={printProaTable} disabled={visibleTableRecords.length === 0} className="gap-2">
                 <Printer className="h-4 w-4" /> Imprimir tabla
               </Button>
-              <Button variant="outline" size="sm" onClick={copyProaTable} disabled={records.length === 0} className="gap-2 border-emerald-300 text-emerald-800">
+              <Button variant="outline" size="sm" onClick={copyProaTable} disabled={visibleTableRecords.length === 0} className="gap-2 border-emerald-300 text-emerald-800">
                 <Copy className="h-4 w-4" /> {tableCopied ? 'Tabla copiada' : 'Copiar para Sheets'}
               </Button>
               <Button variant="outline" size="sm" onClick={refreshRecords} className="gap-2">
                 <RotateCw className="h-4 w-4" /> Actualizar
               </Button>
             </div>
+          </div>
+
+          <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-end">
+            <div className="space-y-1">
+              <Label className="text-xs">Estado del paciente</Label>
+              <select value={tableScope} onChange={(event) => setTableScope(event.target.value)} className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm">
+                <option value="actuales">Pacientes actuales ({currentRecords.length})</option>
+                <option value="historicos">Pacientes históricos ({historicalRecords.length})</option>
+                <option value="todos">Todos ({records.length})</option>
+              </select>
+            </div>
+            <div className="min-w-[260px] flex-1 space-y-1">
+              <Label className="text-xs">Filtrar por antibiótico</Label>
+              <Input
+                value={tableAntibioticFilter}
+                onChange={(event) => setTableAntibioticFilter(event.target.value)}
+                placeholder="Ej.: ceftriaxona, meropenem..."
+                className="h-9"
+              />
+            </div>
+            {(tableAntibioticFilter || tableScope !== 'actuales') && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => {
+                setTableScope('actuales');
+                setTableAntibioticFilter('');
+              }}>Limpiar filtros</Button>
+            )}
           </div>
 
           <div className="overflow-x-auto">
@@ -856,7 +998,7 @@ function GestionPROA() {
                 </tr>
               </thead>
               <tbody>
-                {records.map((record) => {
+                {visibleTableRecords.map((record) => {
                   const form = getLatestProaForm(record) || {};
                   const antimicrobials = (form.antibioticos || []).filter((item) => item?.nombre);
                   const formattedAntimicrobials = antimicrobials.map((item) => formatAntimicrobial(item, form));
@@ -876,12 +1018,20 @@ function GestionPROA() {
                           scrollToBedMap();
                         }} className="text-left">
                           <span className="block font-bold text-teal-800">{record.code}</span>
-                          <span className="text-slate-600">Cama {record.bedCode}</span>
+                          {form.paciente && <span className="block font-semibold text-slate-900">{form.paciente}</span>}
+                          {form.rut && <span className="block text-slate-500">RUT {form.rut}</span>}
+                          <span className="text-slate-600">Cama {form.cama || record.bedCode}</span>
+                          <Badge className={`mt-1 ${isHistoricalProaRecord(record) ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800'}`}>
+                            {isHistoricalProaRecord(record) ? 'Histórico' : 'Actual'}
+                          </Badge>
                         </button>
                       </td>
                       <td className="border-b border-r border-slate-200 px-3 py-3">
                         <span className="block">{form.edad ? `${form.edad} años` : '—'}</span>
                         <span className="text-slate-500">{form.fecha_ingreso || 'Sin fecha'}</span>
+                        <span className="mt-1 block font-medium text-slate-700">
+                          {hospitalStayDays(form) != null ? `${hospitalStayDays(form)} días de estadía` : 'Estadía sin calcular'}
+                        </span>
                       </td>
                       <td className="max-w-[190px] border-b border-r border-slate-200 px-3 py-3">{form.diagnostico_actual || '—'}</td>
                       <td className="max-w-[160px] border-b border-r border-slate-200 px-3 py-3">{form.funcion_renal || '—'}</td>
@@ -904,23 +1054,30 @@ function GestionPROA() {
                       </td>
                       <td className="max-w-[240px] border-b border-slate-200 px-3 py-3">{plan || '—'}</td>
                       <td className="sticky right-0 border-b border-l border-slate-200 bg-white px-2 py-3">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setDeleteError('');
-                            setRecordToDelete(record);
-                          }}
-                          className="h-8 gap-1 border-red-200 px-2 text-red-700 hover:bg-red-50 hover:text-red-800"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" /> Borrar
-                        </Button>
+                        <div className="space-y-1">
+                          {!isHistoricalProaRecord(record) && (
+                            <Button type="button" variant="outline" size="sm" onClick={() => setRecordToArchive(record)} className="h-8 w-full px-2 text-slate-700">
+                              Histórico
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setDeleteError('');
+                              setRecordToDelete(record);
+                            }}
+                            className="h-8 w-full gap-1 border-red-200 px-2 text-red-700 hover:bg-red-50 hover:text-red-800"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Borrar
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   );
                 })}
-                {records.length === 0 && (
+                {visibleTableRecords.length === 0 && (
                   <tr>
                     <td colSpan={13} className="px-4 py-10 text-center text-sm text-slate-500">No hay pacientes PROA registrados.</td>
                   </tr>
@@ -961,6 +1118,25 @@ function GestionPROA() {
               <Input id="proa-pre-age" type="number" min="0" max="120" value={preAdmission.edad} onChange={(event) => setPreAdmission((current) => ({ ...current, edad: event.target.value }))} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="proa-pre-name">Nombre del paciente</Label>
+              <Input
+                id="proa-pre-name"
+                value={preAdmission.paciente}
+                onChange={(event) => setPreAdmission((current) => ({ ...current, paciente: event.target.value }))}
+                placeholder="Nombre y apellidos"
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="proa-pre-rut">RUT</Label>
+              <Input
+                id="proa-pre-rut"
+                value={preAdmission.rut}
+                onChange={(event) => setPreAdmission((current) => ({ ...current, rut: formatProaRut(event.target.value) }))}
+                placeholder="12.345.678-9"
+              />
+              <p className="text-[11px] text-slate-500">Nombre, RUT y edad se guardan exclusivamente en Gestión/Evolución PROA.</p>
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="proa-pre-date">Fecha de ingreso *</Label>
               <Input id="proa-pre-date" type="date" value={preAdmission.fecha_ingreso} onChange={(event) => setPreAdmission((current) => ({ ...current, fecha_ingreso: event.target.value }))} />
             </div>
@@ -981,37 +1157,65 @@ function GestionPROA() {
               </div>
               <div className="space-y-2">
                 {preAdmission.antibioticos.map((item, index) => {
-                  const savedDoses = [...(savedClinicalCatalog.dosesByAntibiotic[item.nombre] || [])];
-                  const presentationDoses = (PRESENTACIONES_ATB[item.nombre] || []).map((presentation) => presentation.label);
-                  const doseOptions = [...new Set([defaultAntibioticDose(item.nombre), ...savedDoses, ...presentationDoses].filter(Boolean))];
-                  const doseListId = `proa-pre-dose-${index}`;
+                  const presentationOptions = (PRESENTACIONES_ATB[item.nombre] || []).map((presentation) => presentation.label);
+                  const presentationListId = `proa-pre-presentation-${index}`;
                   return (
-                    <div key={index} className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_72px_36px]">
-                      <div>
+                    <div key={index} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-xs font-bold uppercase tracking-wide text-slate-600">Antimicrobiano {index + 1}</p>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => removePreAntibiotic(index)} className="h-7 w-7 text-red-600">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">Antibiótico</Label>
                         <Input
                           list="proa-pre-antibiotics"
                           value={item.nombre}
                           onChange={(event) => updatePreAntibiotic(index, 'nombre', event.target.value)}
                           placeholder="Antimicrobiano"
                         />
-                      </div>
-                      <div>
+                        </div>
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label className="text-[11px]">Presentación disponible</Label>
                         <Input
-                          list={doseListId}
-                          value={item.dosis}
-                          onChange={(event) => updatePreAntibiotic(index, 'dosis', event.target.value)}
-                          placeholder="Dosis y frecuencia"
+                            list={presentationListId}
+                            value={item.presentacion}
+                            onChange={(event) => updatePreAntibiotic(index, 'presentacion', event.target.value)}
+                            placeholder="Ej.: Frasco ampolla 4,5 g"
                         />
-                        <datalist id={doseListId}>
-                          {doseOptions.map((dose) => <option key={dose} value={dose} />)}
+                          <datalist id={presentationListId}>
+                            {presentationOptions.map((presentation) => <option key={presentation} value={presentation} />)}
                         </datalist>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">Dosis por administración</Label>
+                          <div className="flex">
+                            <Input type="number" min="0" step="0.1" value={item.dosis_cantidad} onChange={(event) => updatePreAntibiotic(index, 'dosis_cantidad', event.target.value)} className="rounded-r-none" placeholder="Ej.: 4,5 o 1" />
+                            <select value={item.dosis_unidad} onChange={(event) => updatePreAntibiotic(index, 'dosis_unidad', event.target.value)} className="h-10 rounded-r-md border border-l-0 border-input bg-white px-2 text-sm">
+                              {['g', 'mg', 'MUI', 'UI', 'ampolla'].map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">Frecuencia</Label>
+                          <Input list="proa-pre-frequencies" value={item.intervalo_horas} onChange={(event) => updatePreAntibiotic(index, 'intervalo_horas', event.target.value)} placeholder="Horas, ej.: 8" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">Vía</Label>
+                          <select value={item.via} onChange={(event) => updatePreAntibiotic(index, 'via', event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm">
+                            {['EV', 'VO', 'IM', 'SC', 'Inhalado'].map((via) => <option key={via} value={via}>{via}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px]">Fecha de inicio</Label>
+                          <Input type="date" value={item.inicio} onChange={(event) => updatePreAntibiotic(index, 'inicio', event.target.value)} />
+                        </div>
+                        <div className="flex items-end sm:col-span-2">
+                          <p className="rounded-md bg-white px-2 py-2 text-xs text-slate-600">{formatPreAntibiotic(item) || 'Completa el esquema antibiótico.'}</p>
+                        </div>
                       </div>
-                      <select value={item.via} onChange={(event) => updatePreAntibiotic(index, 'via', event.target.value)} className="h-10 rounded-md border border-input bg-background px-2 text-sm">
-                        {['EV', 'VO', 'IM', 'SC', 'Inhalado'].map((via) => <option key={via} value={via}>{via}</option>)}
-                      </select>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => removePreAntibiotic(index)} className="h-10 w-9 text-red-600">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
                     </div>
                   );
                 })}
@@ -1019,7 +1223,33 @@ function GestionPROA() {
               <datalist id="proa-pre-antibiotics">
                 {savedClinicalCatalog.antibiotics.map((antibiotic) => <option key={antibiotic} value={antibiotic} />)}
               </datalist>
-              <p className="text-[11px] text-slate-500">Al seleccionar un antimicrobiano se propone su dosis vigente; también aparecen dosis usadas previamente.</p>
+              <datalist id="proa-pre-frequencies">
+                {['4', '6', '8', '12', '24', '48'].map((hours) => <option key={hours} value={hours}>{`Cada ${hours} horas`}</option>)}
+              </datalist>
+              <p className="text-[11px] text-slate-500">La presentación y pauta se precargan cuando existen; todos los campos permanecen editables.</p>
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <Label>Cultivos (opcional)</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addPreCulture} className="h-8 gap-1">
+                  <Plus className="h-3.5 w-3.5" /> Agregar cultivo
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {preAdmission.cultivos.map((culture, index) => (
+                  <div key={index} className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 sm:grid-cols-[minmax(0,1fr)_140px_minmax(0,1fr)_36px]">
+                    <Input list="proa-pre-samples" value={culture.tipo_muestra} onChange={(event) => updatePreCulture(index, 'tipo_muestra', event.target.value)} placeholder="Tipo de muestra" />
+                    <Input type="date" value={culture.fecha} onChange={(event) => updatePreCulture(index, 'fecha', event.target.value)} />
+                    <Input list="proa-pre-pathogens" value={culture.patogeno} onChange={(event) => updatePreCulture(index, 'patogeno', event.target.value)} placeholder="Resultado / patógeno" />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removePreCulture(index)} className="h-10 w-9 text-red-600">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <datalist id="proa-pre-samples">{TIPOS_MUESTRA.map((sample) => <option key={sample} value={sample} />)}</datalist>
+              <datalist id="proa-pre-pathogens">{PATOGENOS.map((pathogen) => <option key={pathogen} value={pathogen} />)}</datalist>
             </div>
           </div>
           {preAdmissionError && <p className="text-sm font-medium text-red-600">{preAdmissionError}</p>}
@@ -1042,7 +1272,7 @@ function GestionPROA() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Borrar paciente PROA?</AlertDialogTitle>
             <AlertDialogDescription>
-              Se eliminará el paciente anonimizado <strong>{recordToDelete?.code}</strong> de la cama{' '}
+              Se eliminará el paciente PROA <strong>{getLatestProaForm(recordToDelete)?.paciente || recordToDelete?.code}</strong> de la cama{' '}
               <strong>{recordToDelete?.bedCode}</strong>, incluyendo su preingreso y todas sus evoluciones PROA.
               Esta acción se replicará inmediatamente en la tabla y en el mapa de camas.
             </AlertDialogDescription>
@@ -1063,12 +1293,39 @@ function GestionPROA() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={!!recordToArchive} onOpenChange={(open) => {
+        if (!open && !archivingRecord) setRecordToArchive(null);
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Pasar paciente a históricos?</AlertDialogTitle>
+            <AlertDialogDescription>
+              El paciente PROA <strong>{getLatestProaForm(recordToArchive)?.paciente || recordToArchive?.code}</strong> dejará de ocupar la cama{' '}
+              <strong>{recordToArchive?.bedCode}</strong>. Su preingreso y evoluciones se conservarán y podrán revisarse desde el filtro “Pacientes históricos”.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={archivingRecord}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                confirmArchiveRecord();
+              }}
+              disabled={archivingRecord}
+              className="bg-amber-600 text-white hover:bg-amber-700"
+            >
+              {archivingRecord ? 'Guardando…' : 'Sí, pasar a históricos'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
 
 function MovePatientControl({ records, selectedBed, sourceBedToMove, setSourceBedToMove, onMove }) {
-  const movableRecords = records.filter((record) => record.bedCode !== selectedBed);
+  const movableRecords = records.filter((record) => !isHistoricalProaRecord(record) && record.bedCode !== selectedBed);
   if (!selectedBed || movableRecords.length === 0) return null;
 
   return (
@@ -1096,7 +1353,7 @@ function MovePatientControl({ records, selectedBed, sourceBedToMove, setSourceBe
         Mover a cama {selectedBed}
                   </Button>
       <p className="text-[11px] leading-relaxed text-slate-500">
-        El código anonimizado y su historial PROA pasan a esta cama. Si esta cama tenía otro registro, será reemplazado.
+        La identificación y el historial PROA pasan a esta cama. Si esta cama tenía otro registro, será reemplazado.
       </p>
     </div>
   );

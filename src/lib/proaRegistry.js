@@ -7,8 +7,11 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 
 export function sanitizeProaRecord(form) {
   const sanitized = clone(form || {});
-  sanitized.paciente = '';
-  sanitized.rut = '';
+  // Excepción exclusiva del registro PROA: se conservan nombre, RUT y edad
+  // para facilitar el seguimiento intrahospitalario. La ficha clínica sigue
+  // excluida y ningún otro módulo usa esta persistencia.
+  sanitized.paciente = String(sanitized.paciente || '').trim();
+  sanitized.rut = String(sanitized.rut || '').trim();
   sanitized.n_ficha = '';
   delete sanitized.__proaRegistryMode;
   return sanitized;
@@ -144,15 +147,16 @@ export async function saveProaPreAdmission(preAdmission) {
     return { nombre, dosis, via: /\bVO\b/i.test(line) ? 'VO' : /\bIM\b/i.test(line) ? 'IM' : 'EV' };
   });
   const antibioticItems = [...structuredAntibiotics, ...parsedAntibiotics].map((item) => {
+    const usesAmpoules = item.dosis_unidad === 'ampolla';
     return {
       nombre: item.nombre,
       via: item.via || 'EV',
       presentacion: item.presentacion || '',
-      dosis_modo: 'total',
+      dosis_modo: item.dosis_modo || (usesAmpoules ? 'ampolla' : 'total'),
       dosis_por_kg: '',
-      dosis_cantidad: item.dosis_cantidad || '',
-      dosis_unidad: item.dosis_unidad || 'mg',
-      unidades_por_dosis: '',
+      dosis_cantidad: usesAmpoules ? '' : (item.dosis_cantidad || ''),
+      dosis_unidad: usesAmpoules ? (item.presentacion_unidad || 'g') : (item.dosis_unidad || 'mg'),
+      unidades_por_dosis: usesAmpoules ? (item.dosis_cantidad || '') : (item.unidades_por_dosis || ''),
       intervalo_horas: item.intervalo_horas || '',
       dosis: item.dosis || '',
       inicio: item.inicio || '',
@@ -161,7 +165,18 @@ export async function saveProaPreAdmission(preAdmission) {
     };
   });
   const antibioticSummary = antibioticItems
-    .map((item) => [item.nombre, item.dosis, item.via].filter(Boolean).join(' '))
+    .map((item) => {
+      const dose = item.dosis || (item.dosis_modo === 'ampolla'
+        ? `${item.unidades_por_dosis} ${Number(item.unidades_por_dosis) === 1 ? 'ampolla' : 'ampollas'}`
+        : `${item.dosis_cantidad} ${item.dosis_unidad}`.trim());
+      return [
+        item.nombre,
+        item.presentacion && `(${item.presentacion})`,
+        dose,
+        item.intervalo_horas && `c/${item.intervalo_horas} h`,
+        item.via,
+      ].filter(Boolean).join(' ');
+    })
     .join('\n');
   const form = {
     proa_entry_type: 'preingreso',
@@ -169,13 +184,17 @@ export async function saveProaPreAdmission(preAdmission) {
     hora: new Date().toTimeString().slice(0, 5),
     servicio: preAdmission.servicio || '',
     cama: preAdmission.cama || '',
+    paciente: preAdmission.paciente || '',
+    rut: preAdmission.rut || '',
     edad: preAdmission.edad || '',
     fecha_ingreso: preAdmission.fecha_ingreso || '',
     diagnostico_actual: preAdmission.diagnostico || '',
     antibioterapia_preingreso: antibioticSummary,
     antibioticos: antibioticItems,
     parametros_inflamatorios: [],
-    estudios_micro: [],
+    estudios_micro: Array.isArray(preAdmission.cultivos)
+      ? preAdmission.cultivos.filter((item) => item?.tipo_muestra || item?.patogeno)
+      : [],
     diagnostico_microbiologico: '',
     estudios_imagen: '',
     recomendaciones: [],
@@ -185,6 +204,41 @@ export async function saveProaPreAdmission(preAdmission) {
   };
 
   return saveProaRecord(form, { replaceExisting: true });
+}
+
+export function isHistoricalProaRecord(record) {
+  return Boolean(record?.evolutions?.[0]?.form?.proa_patient_status === 'historico');
+}
+
+export async function archiveProaRecord(record) {
+  if (!record?.bedCode) return null;
+  const now = new Date().toISOString();
+  const originalBed = record.evolutions?.[0]?.form?.cama || record.bedCode;
+  const historicalBedCode = `HIST-${record.id}`;
+  const evolutions = (record.evolutions || []).map((evolution) => ({
+    ...evolution,
+    form: sanitizeProaRecord({
+      ...(evolution.form || {}),
+      cama: originalBed,
+      proa_patient_status: 'historico',
+      proa_archived_at: now,
+    }),
+  }));
+  const { error } = await supabase
+    .from('proa_records')
+    .update({
+      bed_code: historicalBedCode,
+      evolutions,
+      updated_at: now,
+    })
+    .eq('bed_code', record.bedCode);
+  if (error) throw error;
+  const archived = { ...record, bedCode: historicalBedCode, updatedAt: now, evolutions };
+  writeProaRegistry([
+    archived,
+    ...readProaRegistry().filter((item) => item.id !== record.id),
+  ]);
+  return archived;
 }
 
 export async function moveProaRecordToBed(sourceBedCode, targetBedCode, targetService = '') {
