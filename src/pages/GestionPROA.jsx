@@ -23,6 +23,18 @@ import { PROA_BED_MAP } from '@/lib/hospitalSuggestions';
 import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, moveProaRecordToBed, readProaRegistry, saveProaPreAdmission, setPendingProaForm } from '@/lib/proaRegistry';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, DIAGNOSTICOS_INFECTO, PATOGENOS, PRESENTACIONES_ATB, TIPOS_MUESTRA } from '@/pages/VisitaPROA';
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
   ArrowRight,
   Bed,
   ChevronLeft,
@@ -40,6 +52,7 @@ import {
 } from 'lucide-react';
 
 const moduleCardClass = 'group block h-full rounded-2xl border bg-white p-5 transition-all hover:-translate-y-0.5 hover:shadow-md';
+const CHART_COLORS = ['#0f766e', '#0284c7', '#7c3aed', '#d97706', '#dc2626', '#059669', '#4f46e5', '#be185d'];
 
 function formatUpdatedAt(value) {
   if (!value) return 'Sin fecha';
@@ -217,6 +230,12 @@ function recordOccupiesDateRange(record, dateFrom, dateTo) {
   return true;
 }
 
+function isPositiveCulture(culture) {
+  const pathogen = String(culture?.patogeno || '').trim();
+  if (!pathogen) return false;
+  return !/^(pendiente|sin desarrollo|negativo|sin crecimiento|no desarrollo)$/i.test(pathogen);
+}
+
 const TABLE_HEADERS = ['Código PROA', 'Nombre', 'RUT', 'Cama', 'Estado', 'Edad', 'Fecha de ingreso', 'Días de estadía', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'];
 
 function buildProaTableRows(records) {
@@ -289,6 +308,7 @@ function GestionPROA() {
   const [tableBedFilter, setTableBedFilter] = useState('');
   const [tableDateFrom, setTableDateFrom] = useState('');
   const [tableDateTo, setTableDateTo] = useState('');
+  const [showCharts, setShowCharts] = useState(false);
   const [preAdmission, setPreAdmission] = useState({
     cama: '',
     paciente: '',
@@ -363,6 +383,48 @@ function GestionPROA() {
     tableScope,
   ]);
   const tableRows = useMemo(() => buildProaTableRows(visibleTableRecords), [visibleTableRecords]);
+  const currentProaAnalytics = useMemo(() => {
+    const antibioticCounts = new Map();
+    const pathogenCounts = new Map();
+    let patientsWithAntibiotics = 0;
+    let patientsWithPositiveCulture = 0;
+
+    currentRecords.forEach((record) => {
+      const form = getLatestProaForm(record) || {};
+      const antibiotics = (form.antibioticos || []).filter((item) => item?.nombre);
+      const positiveCultures = (form.estudios_micro || []).filter(isPositiveCulture);
+      if (antibiotics.length > 0) patientsWithAntibiotics += 1;
+      if (antibiotics.length > 0 && positiveCultures.length > 0) patientsWithPositiveCulture += 1;
+      antibiotics.forEach((item) => {
+        const name = item.nombre.trim();
+        antibioticCounts.set(name, (antibioticCounts.get(name) || 0) + 1);
+      });
+      positiveCultures.forEach((culture) => {
+        const pathogen = culture.patogeno.trim();
+        pathogenCounts.set(pathogen, (pathogenCounts.get(pathogen) || 0) + 1);
+      });
+    });
+
+    const totalTreatments = [...antibioticCounts.values()].reduce((sum, count) => sum + count, 0);
+    const antibiotics = [...antibioticCounts.entries()]
+      .map(([name, count]) => ({
+        name,
+        count,
+        percentage: totalTreatments ? Math.round((count / totalTreatments) * 1000) / 10 : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+    const pathogens = [...pathogenCounts.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      antibiotics,
+      pathogens,
+      patientsWithAntibiotics,
+      patientsWithPositiveCulture,
+      totalTreatments,
+    };
+  }, [currentRecords]);
 
   // Cargar desde Supabase al montar (fuente de verdad, multi-dispositivo).
   useEffect(() => { fetchProaRecords().then(setRecords); }, []);
@@ -981,6 +1043,14 @@ function GestionPROA() {
               <p className="text-sm text-slate-500">Resumen del último preingreso o evolución formal disponible por cama.</p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button
+                variant={showCharts ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setShowCharts((current) => !current)}
+                className={showCharts ? 'bg-teal-700 hover:bg-teal-800' : ''}
+              >
+                {showCharts ? 'Ocultar gráficos' : 'Ver gráficos'}
+              </Button>
               <Button variant="outline" size="sm" onClick={printProaTable} disabled={visibleTableRecords.length === 0} className="gap-2">
                 <Printer className="h-4 w-4" /> Imprimir tabla
               </Button>
@@ -1056,6 +1126,102 @@ function GestionPROA() {
               {visibleTableRecords.length} paciente{visibleTableRecords.length === 1 ? '' : 's'} en el listado. El rango muestra pacientes cuya estadía coincidió total o parcialmente con esas fechas.
             </p>
           </div>
+
+          {showCharts && (
+            <div className="grid gap-4 border-b border-slate-200 bg-slate-50/60 p-4 lg:grid-cols-12">
+              <div className="grid gap-3 sm:grid-cols-3 lg:col-span-12">
+                <div className="rounded-xl border border-teal-200 bg-white p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Pacientes actuales con antibióticos</p>
+                  <p className="mt-2 text-3xl font-black text-teal-800">{currentProaAnalytics.patientsWithAntibiotics}</p>
+                </div>
+                <div className="rounded-xl border border-emerald-200 bg-white p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Con antibioterapia y cultivo positivo</p>
+                  <p className="mt-2 text-3xl font-black text-emerald-700">{currentProaAnalytics.patientsWithPositiveCulture}</p>
+                  <p className="text-xs text-slate-500">
+                    {currentProaAnalytics.patientsWithAntibiotics
+                      ? `${Math.round((currentProaAnalytics.patientsWithPositiveCulture / currentProaAnalytics.patientsWithAntibiotics) * 100)}% de quienes usan antibióticos`
+                      : 'Sin pacientes con antibióticos'}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-sky-200 bg-white p-4">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Tratamientos antimicrobianos activos</p>
+                  <p className="mt-2 text-3xl font-black text-sky-700">{currentProaAnalytics.totalTreatments}</p>
+                  <p className="text-xs text-slate-500">Un paciente puede utilizar más de uno.</p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-7">
+                <h3 className="font-bold text-slate-900">Antibióticos en uso actualmente</h3>
+                <p className="mb-3 text-xs text-slate-500">% calculado sobre el total de tratamientos antimicrobianos activos.</p>
+                {currentProaAnalytics.antibiotics.length > 0 ? (
+                  <div className="grid items-center gap-2 md:grid-cols-[minmax(260px,1fr)_minmax(220px,0.8fr)]">
+                    <div className="h-72">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={currentProaAnalytics.antibiotics} layout="vertical" margin={{ left: 12, right: 36 }}>
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                          <XAxis type="number" domain={[0, 100]} unit="%" />
+                          <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 11 }} />
+                          <Tooltip formatter={(value) => [`${value}%`, 'Uso']} />
+                          <Bar dataKey="percentage" radius={[0, 5, 5, 0]}>
+                            {currentProaAnalytics.antibiotics.map((item, index) => (
+                              <Cell key={item.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="space-y-2">
+                      {currentProaAnalytics.antibiotics.map((item, index) => (
+                        <div key={item.name} className="flex items-center justify-between gap-3 rounded-md bg-slate-50 px-3 py-2 text-sm">
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
+                            <span className="truncate">{item.name}</span>
+                          </span>
+                          <strong>{item.percentage}% ({item.count})</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="py-16 text-center text-sm text-slate-500">No hay antibioterapia activa registrada.</p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4 lg:col-span-5">
+                <h3 className="font-bold text-slate-900">Cultivos positivos: microorganismos</h3>
+                <p className="mb-3 text-xs text-slate-500">Cantidad de aislamientos registrados en pacientes actuales.</p>
+                {currentProaAnalytics.pathogens.length > 0 ? (
+                  <>
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={currentProaAnalytics.pathogens} dataKey="count" nameKey="name" innerRadius={48} outerRadius={82} paddingAngle={2}>
+                            {currentProaAnalytics.pathogens.map((item, index) => (
+                              <Cell key={item.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => [value, 'Aislamientos']} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="space-y-1.5">
+                      {currentProaAnalytics.pathogens.map((item, index) => (
+                        <div key={item.name} className="flex items-center justify-between gap-2 text-sm">
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }} />
+                            <span className="truncate">{item.name}</span>
+                          </span>
+                          <strong>{item.count}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="py-16 text-center text-sm text-slate-500">No hay cultivos positivos registrados en pacientes actuales.</p>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="overflow-x-auto">
             <table className="min-w-[1580px] w-full border-collapse text-xs">
