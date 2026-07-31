@@ -1570,7 +1570,10 @@ function GestionPROA() {
       </Dialog>
 
       <Dialog open={showPreAdmission} onOpenChange={setShowPreAdmission}>
-        <DialogContent className="max-h-[92vh] w-[calc(100vw-2rem)] max-w-5xl overflow-y-auto p-4 sm:p-6">
+        <DialogContent
+          className="max-h-[92vh] w-[calc(100vw-2rem)] max-w-5xl overflow-y-auto p-4 sm:p-6"
+          onInteractOutside={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-teal-700" />
@@ -1699,6 +1702,9 @@ function GestionPROA() {
                           list="proa-pre-antibiotics"
                           value={item.nombre}
                           onChange={(event) => updatePreAntibiotic(index, 'nombre', event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') event.preventDefault();
+                          }}
                           placeholder="Antimicrobiano"
                         />
                         </div>
@@ -1708,6 +1714,9 @@ function GestionPROA() {
                             list={presentationListId}
                             value={item.presentacion}
                             onChange={(event) => updatePreAntibiotic(index, 'presentacion', event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') event.preventDefault();
+                            }}
                             placeholder="Ej.: Frasco ampolla 4,5 g"
                         />
                           <datalist id={presentationListId}>
@@ -1779,8 +1788,8 @@ function GestionPROA() {
           </div>
           {preAdmissionError && <p className="text-sm font-medium text-red-600">{preAdmissionError}</p>}
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowPreAdmission(false)}>Cancelar</Button>
-            <Button onClick={savePreAdmission} disabled={savingPreAdmission} className="bg-teal-600 hover:bg-teal-700">
+            <Button type="button" variant="outline" onClick={() => setShowPreAdmission(false)}>Cancelar</Button>
+            <Button type="button" onClick={savePreAdmission} disabled={savingPreAdmission} className="bg-teal-600 hover:bg-teal-700">
               {savingPreAdmission ? 'Guardando…' : 'Guardar preingreso'}
             </Button>
           </div>
