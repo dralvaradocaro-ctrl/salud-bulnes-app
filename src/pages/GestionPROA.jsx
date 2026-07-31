@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PROA_BED_MAP as BASE_PROA_BED_MAP } from '@/lib/hospitalSuggestions';
 import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, moveProaRecordToBed, readProaRegistry, saveProaPreAdmission, setPendingProaForm } from '@/lib/proaRegistry';
-import { buildRenalFunctionText } from '@/lib/renalFunction';
+import { buildRenalFunctionText, normalizeCreatinine } from '@/lib/renalFunction';
 import { supabase } from '@/lib/supabase';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, DIAGNOSTICOS_INFECTO, PATOGENOS, PRESENTACIONES_ATB, TIPOS_MUESTRA } from '@/pages/VisitaPROA';
 import {
@@ -193,6 +193,7 @@ const EMPTY_PRE_ANTIBIOTIC = {
   intervalo_horas: '',
   via: 'EV',
   inicio: '',
+  termino: '',
 };
 const EMPTY_PRE_CULTURE = { tipo_muestra: '', fecha: '', patogeno: '', sensibilidad: 'Pendiente', resistente: [], sensible: [], intermedio: [], antibiograma_nota: '', antibiograma: '' };
 
@@ -207,6 +208,14 @@ function formatPreAntibiotic(item) {
     item.intervalo_horas && `c/${item.intervalo_horas} h`,
     item.via,
   ].filter(Boolean).join(' ');
+}
+
+function preAntibioticTreatmentDays(item) {
+  const start = parseProaDate(item?.inicio);
+  if (!start) return null;
+  const end = item?.termino ? parseProaDate(item.termino) : parseProaDate(localTodayIso());
+  if (!end || end < start) return null;
+  return Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
 }
 
 function getLastInflammatoryRows(form) {
@@ -251,7 +260,7 @@ function formatAntimicrobial(item, form) {
     name: item.nombre || '—',
     dose: dose || 'Dosis no registrada',
     duration: item.termino
-      ? `${item.inicio || '—'} a ${item.termino}`
+      ? `${preAntibioticTreatmentDays(item) ?? '—'} días · ${item.inicio || '—'} a ${item.termino}`
       : duration
         ? `Día ${duration}`
         : form?.plan_duracion || 'Sin duración',
@@ -724,6 +733,13 @@ function GestionPROA() {
     ));
     if (incompleteAntibiotic) {
       setPreAdmissionError('Completa presentación, dosis, frecuencia, vía y fecha de inicio de cada antimicrobiano.');
+      return;
+    }
+    const invalidAntibioticDates = preAdmission.antibioticos.some((item) => (
+      item.inicio && item.termino && item.termino < item.inicio
+    ));
+    if (invalidAntibioticDates) {
+      setPreAdmissionError('La fecha de término del antimicrobiano no puede ser anterior a su fecha de inicio.');
       return;
     }
     const occupiedRecord = recordsByBed[preAdmission.cama];
@@ -1781,12 +1797,11 @@ function GestionPROA() {
               <Label htmlFor="proa-pre-creatinine">Creatinina sérica (mg/dL)</Label>
               <Input
                 id="proa-pre-creatinine"
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={preAdmission.creatinina}
-                onChange={(event) => setPreAdmission((current) => ({ ...current, creatinina: event.target.value }))}
-                placeholder="Ej.: 1,20"
+                onChange={(event) => setPreAdmission((current) => ({ ...current, creatinina: normalizeCreatinine(event.target.value) }))}
+                placeholder="Ej.: 1,20 o 1.20"
               />
             </div>
             <div className="flex items-end md:col-span-6">
@@ -1879,7 +1894,7 @@ function GestionPROA() {
                           )}
                           <p className="text-[10px] text-slate-500">Escribe para buscar; selecciona una coincidencia para precargar la pauta.</p>
                         </div>
-                        <div className="space-y-1 lg:col-span-5">
+                        <div className="space-y-1 lg:col-span-8">
                           <Label className="text-[11px]">Presentación disponible</Label>
                           <Input
                             value={item.presentacion}
@@ -1921,10 +1936,6 @@ function GestionPROA() {
                             <p className="text-[10px] text-amber-700">Sin formato precargado: ingrésalo manualmente.</p>
                           )}
                         </div>
-                        <div className="space-y-1 lg:col-span-3">
-                          <Label className="text-[11px]">Fecha de inicio</Label>
-                          <Input type="date" value={item.inicio} onChange={(event) => updatePreAntibiotic(index, 'inicio', event.target.value)} />
-                        </div>
                         <div className="space-y-1 lg:col-span-4">
                           <Label className="text-[11px]">Dosis por administración</Label>
                           <div className="flex">
@@ -1944,7 +1955,29 @@ function GestionPROA() {
                             {['EV', 'VO', 'IM', 'SC', 'Inhalado'].map((via) => <option key={via} value={via}>{via}</option>)}
                           </select>
                         </div>
-                        <div className="flex items-end lg:col-span-3">
+                        <div className="space-y-1 lg:col-span-3">
+                          <Label className="text-[11px]">Fecha de inicio</Label>
+                          <Input type="date" value={item.inicio} onChange={(event) => updatePreAntibiotic(index, 'inicio', event.target.value)} />
+                        </div>
+                        <div className="space-y-1 lg:col-span-3">
+                          <Label className="text-[11px]">Fecha de término (opcional)</Label>
+                          <Input
+                            type="date"
+                            min={item.inicio || undefined}
+                            value={item.termino || ''}
+                            onChange={(event) => updatePreAntibiotic(index, 'termino', event.target.value)}
+                          />
+                        </div>
+                        <div className="flex items-end lg:col-span-2">
+                          <div className="w-full rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-center text-xs font-bold text-teal-900">
+                            {preAntibioticTreatmentDays(item) != null
+                              ? item.termino
+                                ? `${preAntibioticTreatmentDays(item)} días totales`
+                                : `Día ${preAntibioticTreatmentDays(item)} de tratamiento`
+                              : 'Días —'}
+                          </div>
+                        </div>
+                        <div className="flex items-end lg:col-span-4">
                           <p className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">{formatPreAntibiotic(item) || 'Completa el esquema antibiótico.'}</p>
                         </div>
                       </div>

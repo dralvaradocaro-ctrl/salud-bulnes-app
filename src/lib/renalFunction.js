@@ -1,5 +1,14 @@
-export function calculateEgfrCkdEpi2021({ creatinine, age, edad, sex, sexo }) {
-  const scr = Number(String(creatinine ?? '').replace(',', '.'));
+export function normalizeCreatinine(value) {
+  return String(value ?? '')
+    .trim()
+    .replace(',', '.')
+    .replace(/^(\d+)-(\d+)$/, '$1.$2')
+    .replace(/[^\d.]/g, '')
+    .replace(/(\..*)\./g, '$1');
+}
+
+export function calculateEgfrCkdEpi2021({ creatinine, creatinina, age, edad, sex, sexo }) {
+  const scr = Number(normalizeCreatinine(creatinine ?? creatinina));
   const years = Number(age ?? edad);
   const normalizedSex = String(sex || sexo || '').toLowerCase();
   if (!Number.isFinite(scr) || scr <= 0 || !Number.isFinite(years) || years < 18) return null;
@@ -17,8 +26,8 @@ export function calculateEgfrCkdEpi2021({ creatinine, age, edad, sex, sexo }) {
   return Math.round(egfr);
 }
 
-export function buildRenalFunctionText({ creatinine, age, edad, sex, sexo }) {
-  const normalizedCreatinine = String(creatinine ?? '').trim().replace(',', '.');
+export function buildRenalFunctionText({ creatinine, creatinina, age, edad, sex, sexo }) {
+  const normalizedCreatinine = normalizeCreatinine(creatinine ?? creatinina);
   if (!normalizedCreatinine) return '';
   const patientAge = age ?? edad;
   const egfr = calculateEgfrCkdEpi2021({ creatinine: normalizedCreatinine, age: patientAge, sex: sex || sexo });

@@ -194,8 +194,8 @@ export async function saveProaPreAdmission(preAdmission) {
       intervalo_horas: item.intervalo_horas || '',
       dosis: item.dosis || '',
       inicio: item.inicio || '',
-      termino: '',
-      termino_manual: false,
+      termino: item.termino || '',
+      termino_manual: Boolean(item.termino),
     };
   });
   const antibioticSummary = antibioticItems
