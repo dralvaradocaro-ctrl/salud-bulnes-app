@@ -459,8 +459,28 @@ function presentationDoseText(presentacion) {
   return presentacion.label.replace(/^(Ampolla|Frasco ampolla|Frasco|Bolsa|Comprimido|Cápsula)\s+/i, '');
 }
 
+function convertDoseUnit(value, fromUnit, toUnit) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return null;
+  if (fromUnit === toUnit) return numeric;
+  const massToMg = { mcg: 0.001, mg: 1, g: 1000 };
+  if (massToMg[fromUnit] && massToMg[toUnit]) {
+    return (numeric * massToMg[fromUnit]) / massToMg[toUnit];
+  }
+  return null;
+}
+
 function calcUnidadesPorDosis(a) {
   const presentacion = getPresentation(a.nombre, a.presentacion, a);
+  const finalDose = Number(a.dosis_final_cantidad);
+  const finalUnit = a.dosis_final_unidad || a.dosis_unidad;
+  if (presentacion && finalDose > 0) {
+    const doseInPresentationUnit = convertDoseUnit(finalDose, finalUnit, presentacion.unidad);
+    if (doseInPresentationUnit != null && presentacion.cantidad > 0) {
+      const units = doseInPresentationUnit / presentacion.cantidad;
+      return Number.isFinite(units) ? Number(units.toFixed(2)) : '';
+    }
+  }
   if (a.dosis_modo === 'ampolla') {
     const unidades = Number(a.unidades_por_dosis || 1);
     return Number.isFinite(unidades) && unidades > 0 ? unidades : '';
