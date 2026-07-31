@@ -358,6 +358,8 @@ function GestionPROA() {
   const [activeService, setActiveService] = useState(PROA_BED_MAP[0]?.servicio || '');
   const [sourceBedToMove, setSourceBedToMove] = useState('');
   const [showPreAdmission, setShowPreAdmission] = useState(false);
+  const [preAdmissionArchiveOnly, setPreAdmissionArchiveOnly] = useState(false);
+  const [recordToView, setRecordToView] = useState(null);
   const [savingPreAdmission, setSavingPreAdmission] = useState(false);
   const [preAdmissionError, setPreAdmissionError] = useState('');
   const [recordToDelete, setRecordToDelete] = useState(null);
@@ -399,6 +401,7 @@ function GestionPROA() {
 
   const selectedRecord = selectedBed ? recordsByBed[selectedBed] : null;
   const selectedLatest = getLatestProaForm(selectedRecord);
+  const viewedLatest = getLatestProaForm(recordToView);
   const currentService = PROA_BED_MAP.find((service) => service.servicio === activeService) || PROA_BED_MAP[0];
   const savedClinicalCatalog = useMemo(() => {
     const diagnoses = new Set();
@@ -538,24 +541,6 @@ function GestionPROA() {
     navigate(createPageUrl('VisitaPROA'));
   };
 
-  // Nueva evolución formal del mismo paciente. Conserva los datos base capturados
-  // en el preingreso, pero no arrastra la narrativa ni el plan de la evolución previa.
-  const newBlankEvolution = () => {
-    if (!selectedBed) return;
-    setPendingProaForm({
-      cama: selectedBed,
-      servicio: findServiceForBed(selectedBed),
-      paciente: selectedLatest?.paciente || '',
-      rut: selectedLatest?.rut || '',
-      edad: selectedLatest?.edad || '',
-      fecha_ingreso: selectedLatest?.fecha_ingreso || '',
-      diagnostico_actual: selectedLatest?.diagnostico_actual || '',
-      antibioticos: selectedLatest?.antibioticos || [],
-      antibioterapia_preingreso: selectedLatest?.antibioterapia_preingreso || '',
-    });
-    navigate(createPageUrl('VisitaPROA'));
-  };
-
   const createFromBed = () => {
     if (!selectedBed) return;
     setPendingProaForm({
@@ -577,7 +562,7 @@ function GestionPROA() {
     bedMapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const openPreAdmission = (bed = '') => {
+  const openPreAdmission = (bed = '', { archiveOnly = false } = {}) => {
     setPreAdmission({
       cama: bed,
       paciente: '',
@@ -590,6 +575,7 @@ function GestionPROA() {
       cultivos: [{ ...EMPTY_PRE_CULTURE }],
       diagnostico: '',
     });
+    setPreAdmissionArchiveOnly(archiveOnly);
     setPreAdmissionError('');
     setShowPreAdmission(true);
   };
@@ -1112,16 +1098,13 @@ function GestionPROA() {
 
                   <div className="space-y-2 rounded-lg border border-teal-200 bg-teal-50 p-3">
                     <p className="text-xs font-bold uppercase tracking-wide text-teal-900">¿Qué quieres hacer con esta cama?</p>
+                    <Button type="button" onClick={() => setRecordToView(selectedRecord)} variant="outline" className="w-full border-sky-300 bg-white text-sky-800 hover:bg-sky-50">
+                      Ver última evolución
+                    </Button>
                     <Button onClick={editFromLatest} className="w-full bg-teal-600 hover:bg-teal-700">
-                      Evolucionar paciente PROA ({selectedRecord.code})
+                      Actualizar evolución
                     </Button>
                     <p className="text-[11px] leading-tight text-teal-800">Carga la evolución previa y actualiza días de hospitalización, días de antibiótico y la curva inflamatoria.</p>
-                    <Button onClick={newBlankEvolution} variant="outline" className="w-full border-teal-300 bg-white text-teal-800">
-                      Nueva evolución formal (precargar datos base)
-                    </Button>
-                    <Button onClick={createFromBed} variant="outline" className="w-full border-slate-300 bg-white">
-                      Nuevo paciente en esta cama
-                    </Button>
                     <Button
                       type="button"
                       variant="outline"
@@ -1139,6 +1122,15 @@ function GestionPROA() {
                       <Trash2 className="mr-2 h-4 w-4" />
                       Borrar paciente
                     </Button>
+                    <Button
+                      type="button"
+                      onClick={() => openPreAdmission(selectedBed, { archiveOnly: true })}
+                      variant="outline"
+                      className="w-full border-slate-400 bg-white font-semibold text-slate-800 hover:bg-slate-100"
+                    >
+                      Ingresar nuevo paciente
+                    </Button>
+                    <p className="text-[11px] leading-tight text-slate-600">Al confirmar el nuevo ingreso, el paciente anterior será egresado y conservado en el histórico.</p>
                   </div>
 
                   <MovePatientControl
@@ -1471,6 +1463,49 @@ function GestionPROA() {
         </section>
       </main>
 
+      <Dialog open={!!recordToView} onOpenChange={(open) => { if (!open) setRecordToView(null); }}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Última evolución PROA</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-bold uppercase text-slate-500">Paciente</p>
+              <p className="mt-1 font-bold text-slate-900">{viewedLatest?.paciente || recordToView?.code}</p>
+              <p className="text-sm text-slate-600">Cama {displayBedCode(viewedLatest?.cama || recordToView?.bedCode)}</p>
+              <p className="text-sm text-slate-600">Actualizada: {formatUpdatedAt(recordToView?.updatedAt)}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-bold uppercase text-slate-500">Resumen clínico</p>
+              <p className="mt-1 text-sm text-slate-700">{summarizeLatest(viewedLatest) || 'Sin resumen disponible.'}</p>
+              {viewedLatest?.funcion_renal && <p className="mt-1 text-sm text-slate-700">{viewedLatest.funcion_renal}</p>}
+            </div>
+            <div className="rounded-lg border border-slate-200 p-3 sm:col-span-2">
+              <p className="mb-2 text-xs font-bold uppercase text-slate-500">Evolución</p>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{viewedLatest?.evolucion || 'No hay narrativa de evolución registrada; el último registro corresponde al preingreso.'}</p>
+            </div>
+            <div className="rounded-lg border border-slate-200 p-3">
+              <p className="mb-2 text-xs font-bold uppercase text-slate-500">Antibioterapia</p>
+              <p className="whitespace-pre-wrap text-sm text-slate-700">
+                {(viewedLatest?.antibioticos || []).filter((item) => item?.nombre).map((item) => `${item.nombre}: ${formatAntimicrobial(item, viewedLatest).dose}`).join('\n') || '—'}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 p-3">
+              <p className="mb-2 text-xs font-bold uppercase text-slate-500">Microbiología y plan</p>
+              <p className="whitespace-pre-wrap text-sm text-slate-700">{formatMicroStudies(viewedLatest)}</p>
+              {viewedLatest?.plan_duracion && <p className="mt-2 text-sm font-medium text-slate-800">{viewedLatest.plan_duracion}</p>}
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setRecordToView(null)}>Cerrar</Button>
+            <Button onClick={() => {
+              setRecordToView(null);
+              editFromLatest();
+            }} className="bg-teal-700 hover:bg-teal-800">Actualizar evolución</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showPrintPreview} onOpenChange={setShowPrintPreview}>
         <DialogContent className="flex max-h-[94vh] w-[calc(100vw-2rem)] max-w-[96vw] flex-col gap-3 p-4 sm:p-5">
           <DialogHeader>
@@ -1799,7 +1834,9 @@ function GestionPROA() {
             <AlertDialogTitle>La cama {displayBedCode(preAdmission.cama)} ya está ocupada en PROA</AlertDialogTitle>
             <AlertDialogDescription>
               Actualmente está asociada a <strong>{getLatestProaForm(occupiedRecordForPreAdmission)?.paciente || occupiedRecordForPreAdmission?.code}</strong>.
-              Antes de ingresar al paciente nuevo debes decidir qué hacer con el registro anterior.
+              {preAdmissionArchiveOnly
+                ? ' Para ingresar al paciente nuevo se egresará al anterior y se conservará todo su historial.'
+                : ' Antes de ingresar al paciente nuevo debes decidir qué hacer con el registro anterior.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
@@ -1816,15 +1853,17 @@ function GestionPROA() {
           <AlertDialogFooter className="sm:justify-between">
             <AlertDialogCancel disabled={resolvingOccupiedBed}>Cancelar</AlertDialogCancel>
             <div className="flex flex-col-reverse gap-2 sm:flex-row">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => resolveOccupiedBedAndSave('delete')}
-                disabled={resolvingOccupiedBed}
-                className="border-red-300 text-red-700 hover:bg-red-50"
-              >
-                Eliminar registro anterior
-              </Button>
+              {!preAdmissionArchiveOnly && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => resolveOccupiedBedAndSave('delete')}
+                  disabled={resolvingOccupiedBed}
+                  className="border-red-300 text-red-700 hover:bg-red-50"
+                >
+                  Eliminar registro anterior
+                </Button>
+              )}
               <Button
                 type="button"
                 onClick={() => resolveOccupiedBedAndSave('discharge')}
