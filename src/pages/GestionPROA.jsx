@@ -854,17 +854,6 @@ function GestionPROA() {
       </div>
 
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6 rounded-2xl border border-teal-200 bg-teal-50/80 p-5"
-        >
-          <p className="text-lg font-bold text-slate-900">PROA</p>
-          <p className="mt-1 text-sm leading-relaxed text-slate-600">
-            En este módulo PROA se pueden guardar nombre, RUT y edad para el seguimiento intrahospitalario. La ficha clínica no se almacena y esta excepción no se extiende a otras categorías.
-          </p>
-        </motion.div>
-
         <div className="grid gap-4 md:grid-cols-3">
           {modules.map(renderCard)}
         </div>
