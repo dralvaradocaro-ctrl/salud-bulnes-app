@@ -54,6 +54,10 @@ import {
 
 const moduleCardClass = 'group block h-full rounded-2xl border bg-white p-5 transition-all hover:-translate-y-0.5 hover:shadow-md';
 const CHART_COLORS = ['#0f766e', '#0284c7', '#7c3aed', '#d97706', '#dc2626', '#059669', '#4f46e5', '#be185d'];
+const localTodayIso = () => {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
 const PROA_BED_MAP = [
   ...BASE_PROA_BED_MAP,
   {
@@ -1647,7 +1651,18 @@ function GestionPROA() {
               </div>
             </div>
             <div className="space-y-1.5 md:col-span-3">
-              <Label htmlFor="proa-pre-date">Fecha de ingreso *</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="proa-pre-date">Fecha de ingreso *</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPreAdmission((current) => ({ ...current, fecha_ingreso: localTodayIso() }))}
+                  className="h-6 px-2 text-xs text-teal-700 hover:bg-teal-50"
+                >
+                  Hoy
+                </Button>
+              </div>
               <Input id="proa-pre-date" type="date" value={preAdmission.fecha_ingreso} onChange={(event) => setPreAdmission((current) => ({ ...current, fecha_ingreso: event.target.value }))} />
             </div>
             <div className="space-y-1.5 md:col-span-9">

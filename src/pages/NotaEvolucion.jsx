@@ -258,10 +258,21 @@ export default function NotaEvolucion() {
               RUT del paciente
               <Input value={form.pacienteRut} onChange={e => update('pacienteRut', formatRut(e.target.value))} />
             </label>
-            <label className="space-y-1.5 text-sm font-medium text-slate-700">
-              Fecha y hora
+            <div className="space-y-1.5 text-sm font-medium text-slate-700">
+              <div className="flex items-center justify-between gap-2">
+                <span>Fecha y hora</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => update('fechaHora', nowForInput())}
+                  className="h-6 px-2 text-xs text-teal-700 hover:bg-teal-50"
+                >
+                  Hoy
+                </Button>
+              </div>
               <Input type="datetime-local" value={form.fechaHora} onChange={e => update('fechaHora', e.target.value)} />
-            </label>
+            </div>
           </div>
         </section>
 
