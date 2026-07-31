@@ -705,7 +705,7 @@ function GestionPROA() {
         return {
           ...item,
           nombre: value,
-          presentacion,
+          presentacion: presentation,
           presentacion_unidad: presentationInfo?.unidad || preset?.dosis_unidad || item.presentacion_unidad,
           dosis_cantidad: preset?.dosis_cantidad || preset?.unidades_por_dosis || item.dosis_cantidad,
           dosis_unidad: preset?.dosis_modo === 'ampolla' ? 'ampolla' : (preset?.dosis_unidad || item.dosis_unidad),
