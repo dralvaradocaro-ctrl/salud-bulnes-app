@@ -247,6 +247,7 @@ function recordOccupiesDateRange(record, dateFrom, dateTo) {
   if (!dateFrom && !dateTo) return true;
   const form = getLatestProaForm(record) || {};
   const admission = form.fecha_ingreso || '';
+  if (!admission) return false;
   const discharge = isHistoricalProaRecord(record)
     ? (form.fecha_egreso || String(form.proa_archived_at || record.updatedAt || '').slice(0, 10))
     : '';
@@ -392,6 +393,7 @@ function GestionPROA() {
   const [tableDateFrom, setTableDateFrom] = useState('');
   const [tableDateTo, setTableDateTo] = useState('');
   const [showCharts, setShowCharts] = useState(false);
+  const [chartsUseTableFilters, setChartsUseTableFilters] = useState(false);
   const [preAdmission, setPreAdmission] = useState({
     cama: '',
     paciente: '',
@@ -441,6 +443,17 @@ function GestionPROA() {
   });
   const currentRecords = useMemo(() => records.filter((record) => !isHistoricalProaRecord(record)), [records]);
   const historicalRecords = useMemo(() => records.filter(isHistoricalProaRecord), [records]);
+  const clinicalRecords = useMemo(() => records.filter((record) => !isTestProaRecord(record)), [records]);
+  const currentClinicalRecords = useMemo(
+    () => currentRecords.filter((record) => !isTestProaRecord(record)),
+    [currentRecords],
+  );
+  const historicalClinicalRecords = useMemo(
+    () => historicalRecords.filter((record) => !isTestProaRecord(record)),
+    [historicalRecords],
+  );
+  const currentTestRecords = currentRecords.length - currentClinicalRecords.length;
+  const historicalTestRecords = historicalRecords.length - historicalClinicalRecords.length;
   const visibleTableRecords = useMemo(() => {
     const scoped = tableScope === 'historicos'
       ? historicalRecords
@@ -496,7 +509,10 @@ function GestionPROA() {
     let patientsWithAntibiotics = 0;
     let patientsWithPositiveCulture = 0;
 
-    currentRecords.filter((record) => !isTestProaRecord(record)).forEach((record) => {
+    const analyticsRecords = chartsUseTableFilters
+      ? visibleTableRecords.filter((record) => !isHistoricalProaRecord(record) && !isTestProaRecord(record))
+      : currentClinicalRecords;
+    analyticsRecords.forEach((record) => {
       const form = getLatestProaForm(record) || {};
       const antibiotics = (form.antibioticos || []).filter((item) => item?.nombre);
       const positiveCultures = (form.estudios_micro || []).filter(isPositiveCulture);
@@ -531,7 +547,7 @@ function GestionPROA() {
       patientsWithPositiveCulture,
       totalTreatments,
     };
-  }, [currentRecords]);
+  }, [chartsUseTableFilters, currentClinicalRecords, visibleTableRecords]);
 
   // Cargar desde Supabase al montar (fuente de verdad, multi-dispositivo).
   useEffect(() => { fetchProaRecords().then(setRecords); }, []);
@@ -842,7 +858,7 @@ function GestionPROA() {
       description: 'Mapa navegable con identificación, cama y última Evolución PROA sincronizada.',
       icon: Users,
       color: 'teal',
-      status: `${records.length} registros`,
+      status: `${clinicalRecords.length} registros`,
       onClick: scrollToBedMap,
     },
     {
@@ -850,7 +866,7 @@ function GestionPROA() {
       description: 'Listado clínico consolidado de pacientes PROA, diagnósticos, PI, microbiología, antimicrobianos y plan.',
       icon: FileSpreadsheet,
       color: 'slate',
-      status: `${records.length} pacientes`,
+      status: `${clinicalRecords.length} pacientes`,
       onClick: () => tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
     },
   ];
@@ -1204,9 +1220,15 @@ function GestionPROA() {
             <div className="space-y-1 lg:col-span-2">
               <Label className="text-xs">Estado del paciente</Label>
               <select value={tableScope} onChange={(event) => setTableScope(event.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm">
-                <option value="actuales">Pacientes actuales ({currentRecords.length})</option>
-                <option value="historicos">Pacientes históricos ({historicalRecords.length})</option>
-                <option value="todos">Todos ({records.length})</option>
+                <option value="actuales">
+                  Pacientes actuales ({currentClinicalRecords.length}{currentTestRecords ? ` + ${currentTestRecords} prueba` : ''})
+                </option>
+                <option value="historicos">
+                  Pacientes egresados / histórico ({historicalClinicalRecords.length}{historicalTestRecords ? ` + ${historicalTestRecords} prueba` : ''})
+                </option>
+                <option value="todos">
+                  Todos ({clinicalRecords.length}{records.length - clinicalRecords.length ? ` + ${records.length - clinicalRecords.length} prueba` : ''})
+                </option>
               </select>
             </div>
             <div className="space-y-1 lg:col-span-2">
@@ -1266,6 +1288,24 @@ function GestionPROA() {
 
           {showCharts && (
             <div className="grid gap-4 border-b border-slate-200 bg-slate-50/60 p-4 lg:grid-cols-12">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 lg:col-span-12">
+                <div>
+                  <p className="text-sm font-bold text-slate-900">Alcance de los gráficos</p>
+                  <p className="text-xs text-slate-500">
+                    {chartsUseTableFilters
+                      ? 'Solo pacientes actuales que coinciden con los filtros de la tabla.'
+                      : 'Resumen global de todos los pacientes actuales.'}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setChartsUseTableFilters((current) => !current)}
+                >
+                  {chartsUseTableFilters ? 'Mostrar todos los actuales' : 'Aplicar filtros de tabla'}
+                </Button>
+              </div>
               <div className="grid gap-3 sm:grid-cols-3 lg:col-span-12">
                 <div className="rounded-xl border border-teal-200 bg-white p-4">
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Pacientes actuales con antibióticos</p>
@@ -1361,11 +1401,18 @@ function GestionPROA() {
           )}
 
           <div className="overflow-x-auto">
-            <table className="min-w-[1680px] w-full border-collapse text-xs">
+            <table className="min-w-[1540px] w-full border-collapse text-xs">
               <thead className="bg-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
-                  {['Paciente', 'Cama', 'Edad / ingreso', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'].map((heading) => (
-                    <th key={heading} className="border-b border-r border-slate-200 px-3 py-2 font-bold last:border-r-0">{heading}</th>
+                  {['Paciente', 'Cama', 'Edad / ingreso', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'].map((heading, index) => (
+                    <th
+                      key={heading}
+                      className={`border-b border-r border-slate-200 px-3 py-2 font-bold last:border-r-0 ${
+                        index === 0 ? 'sticky left-0 z-20 min-w-[190px] bg-slate-100' : ''
+                      } ${index === 1 ? 'sticky left-[190px] z-20 min-w-[105px] bg-slate-100 shadow-[3px_0_5px_-4px_rgba(15,23,42,0.45)]' : ''}`}
+                    >
+                      {heading}
+                    </th>
                   ))}
                   <th className="sticky right-0 border-b border-l border-slate-200 bg-slate-100 px-3 py-2 font-bold">Acciones</th>
                 </tr>
@@ -1395,7 +1442,7 @@ function GestionPROA() {
                       ].filter(Boolean).join(' · ');
                       return (
                     <tr key={record.id} className="align-top odd:bg-white even:bg-slate-50/60 hover:bg-teal-50/50">
-                      <td className="border-b border-r border-slate-200 px-3 py-3">
+                      <td className="sticky left-0 z-10 min-w-[190px] border-b border-r border-slate-200 bg-inherit px-3 py-3">
                         <div className="text-left">
                           <span className="block font-bold text-teal-800">{record.code}</span>
                           {form.paciente && <span className="block font-semibold text-slate-900">{form.paciente}</span>}
@@ -1406,7 +1453,7 @@ function GestionPROA() {
                           </Badge>
                         </div>
                       </td>
-                      <td className="border-b border-r border-slate-200 px-3 py-3">
+                      <td className="sticky left-[190px] z-10 min-w-[105px] border-b border-r border-slate-200 bg-inherit px-3 py-3 shadow-[3px_0_5px_-4px_rgba(15,23,42,0.45)]">
                         <button
                           type="button"
                           onClick={() => {

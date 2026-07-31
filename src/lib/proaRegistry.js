@@ -56,6 +56,22 @@ const recordToRow = (record) => ({
 });
 
 const newId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+const normalizeIdentity = (value) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-zA-Z0-9kK]/g, '')
+  .toUpperCase();
+
+function hasPatientIdentityConflict(existing, incomingForm) {
+  const existingForm = existing?.evolutions?.[0]?.form || {};
+  const existingRut = normalizeIdentity(existingForm.rut);
+  const incomingRut = normalizeIdentity(incomingForm.rut);
+  if (existingRut && incomingRut && existingRut !== incomingRut) return true;
+
+  const existingName = normalizeIdentity(existingForm.paciente);
+  const incomingName = normalizeIdentity(incomingForm.paciente);
+  return Boolean(existingName && incomingName && existingName !== incomingName);
+}
 
 // ─────────────── Caché local (lectura instantánea / offline) ───────────────
 export function readProaRegistry() {
@@ -103,14 +119,23 @@ export async function saveProaRecord(form, options = {}) {
   // Registro existente en esa cama (para encadenar evoluciones del mismo paciente).
   let existing = null;
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('proa_records')
       .select('*')
       .eq('bed_code', bedCode)
       .maybeSingle();
+    if (error) throw error;
     existing = data ? rowToRecord(data) : null;
-  } catch {
-    existing = readProaRegistry().find((r) => r.bedCode === bedCode) || null;
+  } catch (error) {
+    const cached = readProaRegistry().find((r) => r.bedCode === bedCode) || null;
+    if (!cached) throw error;
+    existing = cached;
+  }
+
+  if (existing && !replaceExisting && hasPatientIdentityConflict(existing, safeForm)) {
+    throw new Error(
+      'La cama está ocupada por otro paciente. Usa “Nuevo paciente en esta cama” para egresar o eliminar primero el registro anterior.',
+    );
   }
 
   const record = {

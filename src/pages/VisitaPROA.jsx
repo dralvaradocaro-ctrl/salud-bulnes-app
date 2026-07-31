@@ -736,13 +736,14 @@ function VisitaPROA() {
       });
       if (dischargePatient) {
         await archiveProaRecord(record, dischargeDate);
+        initialSnapshotRef.current = JSON.stringify(formToSave);
+        navigate(createPageUrl('GestionPROA'), { replace: true });
+        return true;
       }
       const savedForm = { ...formToSave, __proaRegistryMode: '', __proaEditLatest: false };
       initialSnapshotRef.current = JSON.stringify(savedForm);
       setF(savedForm);
-      setRegistryMessage(dischargePatient
-        ? `✅ Paciente ${record.code} egresado el ${dischargeDate}. La cama quedó libre y el registro pasó al histórico PROA.`
-        : editingExistingEvolution
+      setRegistryMessage(editingExistingEvolution
           ? `✅ Evolución existente de ${record.code} editada y sincronizada. No se creó una evolución nueva.`
           : `✅ Registro ${record.code} guardado en cama ${record.bedCode} y sincronizado. En PROA se conservaron nombre, RUT y edad; la ficha clínica no fue almacenada.`);
       return true;
