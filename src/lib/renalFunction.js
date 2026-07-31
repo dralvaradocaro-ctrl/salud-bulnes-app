@@ -1,7 +1,7 @@
-export function calculateEgfrCkdEpi2021({ creatinine, age, sex }) {
+export function calculateEgfrCkdEpi2021({ creatinine, age, edad, sex, sexo }) {
   const scr = Number(String(creatinine ?? '').replace(',', '.'));
-  const years = Number(age);
-  const normalizedSex = String(sex || '').toLowerCase();
+  const years = Number(age ?? edad);
+  const normalizedSex = String(sex || sexo || '').toLowerCase();
   if (!Number.isFinite(scr) || scr <= 0 || !Number.isFinite(years) || years < 18) return null;
   if (!['femenino', 'masculino'].includes(normalizedSex)) return null;
 
@@ -17,12 +17,13 @@ export function calculateEgfrCkdEpi2021({ creatinine, age, sex }) {
   return Math.round(egfr);
 }
 
-export function buildRenalFunctionText({ creatinine, age, sex }) {
+export function buildRenalFunctionText({ creatinine, age, edad, sex, sexo }) {
   const normalizedCreatinine = String(creatinine ?? '').trim().replace(',', '.');
   if (!normalizedCreatinine) return '';
-  const egfr = calculateEgfrCkdEpi2021({ creatinine: normalizedCreatinine, age, sex });
+  const patientAge = age ?? edad;
+  const egfr = calculateEgfrCkdEpi2021({ creatinine: normalizedCreatinine, age: patientAge, sex: sex || sexo });
   if (egfr == null) {
-    return Number(age) < 18
+    return Number(patientAge) < 18
       ? `Creatinina ${normalizedCreatinine} mg/dL · VFG no calculada (requiere fórmula pediátrica)`
       : `Creatinina ${normalizedCreatinine} mg/dL · VFG pendiente (completar edad y sexo)`;
   }
