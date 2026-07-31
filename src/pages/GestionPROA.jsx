@@ -1750,7 +1750,6 @@ function GestionPROA() {
               <div className="space-y-2">
                 {preAdmission.antibioticos.map((item, index) => {
                   const presentationOptions = (PRESENTACIONES_ATB[item.nombre] || []).map((presentation) => presentation.label);
-                  const presentationListId = `proa-pre-presentation-${index}`;
                   return (
                     <div key={index} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                       <div className="mb-2 flex items-center justify-between">
@@ -1769,9 +1768,6 @@ function GestionPROA() {
                               updatePreAntibiotic(index, 'nombre', event.target.value);
                               setActiveAntibioticSuggestions(index);
                             }}
-                            onBlur={() => setTimeout(() => {
-                              setActiveAntibioticSuggestions((current) => current === index ? null : current);
-                            }, 120)}
                             onKeyDown={(event) => {
                               if (event.key === 'Enter') event.preventDefault();
                               if (event.key === 'Escape') setActiveAntibioticSuggestions(null);
@@ -1782,7 +1778,7 @@ function GestionPROA() {
                           {activeAntibioticSuggestions === index && item.nombre.trim() && (() => {
                             const normalizedQuery = item.nombre.trim().toLocaleLowerCase('es');
                             const matches = savedClinicalCatalog.antibiotics
-                              .filter((antibiotic) => antibiotic.toLocaleLowerCase('es').includes(normalizedQuery))
+                              .filter((antibiotic) => String(antibiotic).toLocaleLowerCase('es').includes(normalizedQuery))
                               .slice(0, 8);
                             if (matches.length === 0 || (matches.length === 1 && matches[0] === item.nombre)) return null;
                             return (
@@ -1792,8 +1788,8 @@ function GestionPROA() {
                                   <button
                                     key={antibiotic}
                                     type="button"
-                                    onMouseDown={(event) => event.preventDefault()}
-                                    onClick={() => {
+                                    onMouseDown={(event) => {
+                                      event.preventDefault();
                                       updatePreAntibiotic(index, 'nombre', antibiotic);
                                       setActiveAntibioticSuggestions(null);
                                     }}
@@ -1809,18 +1805,36 @@ function GestionPROA() {
                         </div>
                         <div className="space-y-1 lg:col-span-5">
                           <Label className="text-[11px]">Presentación disponible</Label>
-                        <Input
-                            list={presentationListId}
+                          <Input
                             value={item.presentacion}
                             onChange={(event) => updatePreAntibiotic(index, 'presentacion', event.target.value)}
                             onKeyDown={(event) => {
                               if (event.key === 'Enter') event.preventDefault();
                             }}
                             placeholder="Ej.: Frasco ampolla 4,5 g"
-                        />
-                          <datalist id={presentationListId}>
-                            {presentationOptions.map((presentation) => <option key={presentation} value={presentation} />)}
-                          </datalist>
+                            autoComplete="off"
+                          />
+                          {presentationOptions.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {presentationOptions.map((presentation) => (
+                                <button
+                                  key={presentation}
+                                  type="button"
+                                  onClick={() => updatePreAntibiotic(index, 'presentacion', presentation)}
+                                  className={`rounded-md border px-2 py-1 text-left text-[10px] transition-colors ${
+                                    item.presentacion === presentation
+                                      ? 'border-teal-400 bg-teal-50 font-bold text-teal-900'
+                                      : 'border-slate-200 bg-white text-slate-600 hover:border-teal-300 hover:bg-teal-50'
+                                  }`}
+                                >
+                                  {presentation}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {item.nombre && presentationOptions.length === 0 && (
+                            <p className="text-[10px] text-amber-700">Sin formato precargado: ingrésalo manualmente.</p>
+                          )}
                         </div>
                         <div className="space-y-1 lg:col-span-3">
                           <Label className="text-[11px]">Fecha de inicio</Label>
