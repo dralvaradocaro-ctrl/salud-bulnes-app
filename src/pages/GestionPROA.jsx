@@ -1279,10 +1279,10 @@ function GestionPROA() {
           )}
 
           <div className="overflow-x-auto">
-            <table className="min-w-[1580px] w-full border-collapse text-xs">
+            <table className="min-w-[1680px] w-full border-collapse text-xs">
               <thead className="bg-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
-                  {['Paciente / cama', 'Edad / ingreso', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'].map((heading) => (
+                  {['Paciente', 'Cama', 'Edad / ingreso', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'].map((heading) => (
                     <th key={heading} className="border-b border-r border-slate-200 px-3 py-2 font-bold last:border-r-0">{heading}</th>
                   ))}
                   <th className="sticky right-0 border-b border-l border-slate-200 bg-slate-100 px-3 py-2 font-bold">Acciones</th>
@@ -1292,7 +1292,7 @@ function GestionPROA() {
                 {groupedTableRecords.map(({ service, records: serviceRecords }) => (
                   <Fragment key={service}>
                     <tr className="bg-teal-800 text-white">
-                      <td colSpan={13} className="border-b border-teal-900 px-4 py-2.5">
+                      <td colSpan={14} className="border-b border-teal-900 px-4 py-2.5">
                         <span className="font-black uppercase tracking-wide">{service}</span>
                         <span className="ml-2 rounded-full bg-white/15 px-2 py-0.5 font-semibold">
                           {serviceRecords.length} paciente{serviceRecords.length === 1 ? '' : 's'}
@@ -1314,18 +1314,26 @@ function GestionPROA() {
                       return (
                     <tr key={record.id} className="align-top odd:bg-white even:bg-slate-50/60 hover:bg-teal-50/50">
                       <td className="border-b border-r border-slate-200 px-3 py-3">
-                        <button type="button" onClick={() => {
-                          setSelectedBed(isHistoricalProaRecord(record) ? '' : record.bedCode);
-                          setActiveService(findServiceForBed(effectiveBed));
-                          scrollToBedMap();
-                        }} className="text-left">
+                        <div className="text-left">
                           <span className="block font-bold text-teal-800">{record.code}</span>
                           {form.paciente && <span className="block font-semibold text-slate-900">{form.paciente}</span>}
                           {form.rut && <span className="block text-slate-500">RUT {form.rut}</span>}
-                          <span className="text-slate-600">Cama {effectiveBed}</span>
                           <Badge className={`mt-1 ${isHistoricalProaRecord(record) ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800'}`}>
                             {isHistoricalProaRecord(record) ? `Egresado${form.fecha_egreso ? ` · ${form.fecha_egreso}` : ''}` : 'Actual'}
                           </Badge>
+                        </div>
+                      </td>
+                      <td className="border-b border-r border-slate-200 px-3 py-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedBed(isHistoricalProaRecord(record) ? '' : record.bedCode);
+                            setActiveService(findServiceForBed(effectiveBed));
+                            scrollToBedMap();
+                          }}
+                          className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-left text-base font-black text-teal-900 hover:bg-teal-100"
+                        >
+                          {effectiveBed}
                         </button>
                       </td>
                       <td className="border-b border-r border-slate-200 px-3 py-3">
@@ -1387,7 +1395,7 @@ function GestionPROA() {
                 ))}
                 {visibleTableRecords.length === 0 && (
                   <tr>
-                    <td colSpan={13} className="px-4 py-10 text-center text-sm text-slate-500">No hay pacientes PROA registrados.</td>
+                    <td colSpan={14} className="px-4 py-10 text-center text-sm text-slate-500">No hay pacientes PROA registrados.</td>
                   </tr>
                 )}
               </tbody>
