@@ -10,7 +10,7 @@ import { invokeLLM } from '@/lib/gemini';
 import InflammatoryCurve from '@/components/visita-proa/InflammatoryCurve';
 import DateInputDdmm from '@/components/sdm/DateInputDdmm';
 import { SERVICIOS, CAMAS } from '@/lib/hospitalSuggestions';
-import { saveProaRecord, takePendingProaForm } from '@/lib/proaRegistry';
+import { archiveProaRecord, saveProaRecord, takePendingProaForm } from '@/lib/proaRegistry';
 
 // ── Catálogos ──────────────────────────────────────────────
 export const ANTIBIOTICOS = [
@@ -533,6 +533,8 @@ const EMPTY = {
   recomendaciones_otra: '',
   sugerencias_ia: '',
   plan_duracion: '',
+  proa_discharge_requested: false,
+  fecha_egreso: '',
   proxima_revision: '',
   medico_firma: '',
 };
@@ -675,12 +677,25 @@ function VisitaPROA() {
       setRegistryMessage('Selecciona una cama antes de guardar el registro PROA.');
       return;
     }
+    if (f.proa_discharge_requested && !f.fecha_egreso) {
+      setRegistryMessage('Indica la fecha de egreso para egresar al paciente.');
+      return;
+    }
+    if (f.proa_discharge_requested && f.fecha_ingreso && f.fecha_egreso < f.fecha_ingreso) {
+      setRegistryMessage('La fecha de egreso no puede ser anterior a la fecha de ingreso.');
+      return;
+    }
     setSaving(true);
     setRegistryMessage('Guardando…');
     try {
       const record = await saveProaRecord(f, { replaceExisting: f.__proaRegistryMode === 'new_patient' });
+      if (f.proa_discharge_requested) {
+        await archiveProaRecord(record, f.fecha_egreso);
+      }
       setF(prev => ({ ...prev, __proaRegistryMode: '' }));
-      setRegistryMessage(`✅ Registro ${record.code} guardado en cama ${record.bedCode} y sincronizado. En PROA se conservaron nombre, RUT y edad; la ficha clínica no fue almacenada.`);
+      setRegistryMessage(f.proa_discharge_requested
+        ? `✅ Paciente ${record.code} egresado el ${f.fecha_egreso}. La cama quedó libre y el registro pasó al histórico PROA.`
+        : `✅ Registro ${record.code} guardado en cama ${record.bedCode} y sincronizado. En PROA se conservaron nombre, RUT y edad; la ficha clínica no fue almacenada.`);
     } catch (e) {
       setRegistryMessage(`❌ No se pudo guardar en el servidor (${e?.message || e}). Revisa tu conexión e inténtalo de nuevo.`);
     } finally {
@@ -1262,6 +1277,36 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                   <DateInputDdmm value={f.proxima_revision} onChange={v => u('proxima_revision', v)} className="h-9" />
                 </Field>
               </Grid>
+              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(f.proa_discharge_requested)}
+                    onChange={e => setF(prev => ({
+                      ...prev,
+                      proa_discharge_requested: e.target.checked,
+                      fecha_egreso: e.target.checked ? (prev.fecha_egreso || todayIso()) : '',
+                    }))}
+                    className="mt-1 accent-amber-600"
+                  />
+                  <span>
+                    <span className="block text-sm font-bold text-amber-900">Egresar paciente al guardar esta evolución</span>
+                    <span className="block text-xs text-amber-800">Libera la cama automáticamente y conserva el registro completo en el histórico PROA.</span>
+                  </span>
+                </label>
+                {f.proa_discharge_requested && (
+                  <div className="mt-3 max-w-xs space-y-1">
+                    <label className="block text-[11px] font-medium text-amber-900">Fecha de egreso *</label>
+                    <Input
+                      type="date"
+                      min={f.fecha_ingreso || undefined}
+                      value={f.fecha_egreso}
+                      onChange={e => u('fecha_egreso', e.target.value)}
+                      className="h-9 bg-white"
+                    />
+                  </div>
+                )}
+              </div>
               <div className="mt-3">
                 <label className="block text-[11px] font-medium text-slate-600 mb-1">Sugerencia</label>
                 <Textarea

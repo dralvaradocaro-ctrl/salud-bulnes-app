@@ -210,7 +210,7 @@ export function isHistoricalProaRecord(record) {
   return Boolean(record?.evolutions?.[0]?.form?.proa_patient_status === 'historico');
 }
 
-export async function archiveProaRecord(record) {
+export async function archiveProaRecord(record, dischargeDate = new Date().toISOString().slice(0, 10)) {
   if (!record?.bedCode) return null;
   const now = new Date().toISOString();
   const originalBed = record.evolutions?.[0]?.form?.cama || record.bedCode;
@@ -221,6 +221,7 @@ export async function archiveProaRecord(record) {
       ...(evolution.form || {}),
       cama: originalBed,
       proa_patient_status: 'historico',
+      fecha_egreso: dischargeDate,
       proa_archived_at: now,
     }),
   }));

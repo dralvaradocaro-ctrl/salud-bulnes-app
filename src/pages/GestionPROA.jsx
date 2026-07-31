@@ -109,7 +109,9 @@ function daysSince(s, { inclusive = false } = {}) {
 function hospitalStayDays(form) {
   const start = parseProaDate(form?.fecha_ingreso);
   if (!start) return null;
-  const end = form?.proa_archived_at ? new Date(form.proa_archived_at) : new Date();
+  const end = form?.fecha_egreso
+    ? parseProaDate(form.fecha_egreso)
+    : form?.proa_archived_at ? new Date(form.proa_archived_at) : new Date();
   const diff = Math.floor((end.getTime() - start.getTime()) / 86400000);
   return diff >= 0 ? diff : null;
 }
@@ -223,7 +225,7 @@ function recordOccupiesDateRange(record, dateFrom, dateTo) {
   const form = getLatestProaForm(record) || {};
   const admission = form.fecha_ingreso || '';
   const discharge = isHistoricalProaRecord(record)
-    ? String(form.proa_archived_at || record.updatedAt || '').slice(0, 10)
+    ? (form.fecha_egreso || String(form.proa_archived_at || record.updatedAt || '').slice(0, 10))
     : '';
   if (dateTo && admission && admission > dateTo) return false;
   if (dateFrom && discharge && discharge < dateFrom) return false;
@@ -236,7 +238,7 @@ function isPositiveCulture(culture) {
   return !/^(pendiente|sin desarrollo|negativo|sin crecimiento|no desarrollo)$/i.test(pathogen);
 }
 
-const TABLE_HEADERS = ['Código PROA', 'Nombre', 'RUT', 'Cama', 'Servicio', 'Estado', 'Edad', 'Fecha de ingreso', 'Días de estadía', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'];
+const TABLE_HEADERS = ['Código PROA', 'Nombre', 'RUT', 'Cama', 'Servicio', 'Estado', 'Fecha de egreso', 'Edad', 'Fecha de ingreso', 'Días de estadía', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'];
 
 function buildProaTableRows(records) {
   return records.map((record) => {
@@ -255,7 +257,8 @@ function buildProaTableRows(records) {
       form.rut || '—',
       form.cama || record.bedCode,
       findServiceForBed(form.cama || record.bedCode) || 'Sin servicio',
-      isHistoricalProaRecord(record) ? 'Histórico' : 'Actual',
+      isHistoricalProaRecord(record) ? 'Egresado' : 'Actual',
+      form.fecha_egreso || '—',
       form.edad ? `${form.edad} años` : '—',
       form.fecha_ingreso || 'Sin fecha',
       hospitalStayDays(form) ?? '—',
@@ -297,12 +300,15 @@ function GestionPROA() {
   const [showPreAdmission, setShowPreAdmission] = useState(false);
   const [savingPreAdmission, setSavingPreAdmission] = useState(false);
   const [preAdmissionError, setPreAdmissionError] = useState('');
-  const [preAdmissionReplaceConfirmed, setPreAdmissionReplaceConfirmed] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [deletingRecord, setDeletingRecord] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [recordToArchive, setRecordToArchive] = useState(null);
   const [archivingRecord, setArchivingRecord] = useState(false);
+  const [dischargeDate, setDischargeDate] = useState(new Date().toISOString().slice(0, 10));
+  const [occupiedRecordForPreAdmission, setOccupiedRecordForPreAdmission] = useState(null);
+  const [replacementDischargeDate, setReplacementDischargeDate] = useState(new Date().toISOString().slice(0, 10));
+  const [resolvingOccupiedBed, setResolvingOccupiedBed] = useState(false);
   const [tableCopied, setTableCopied] = useState(false);
   const [tableScope, setTableScope] = useState('actuales');
   const [tableAntibioticFilter, setTableAntibioticFilter] = useState('');
@@ -519,8 +525,28 @@ function GestionPROA() {
       diagnostico: '',
     });
     setPreAdmissionError('');
-    setPreAdmissionReplaceConfirmed(false);
     setShowPreAdmission(true);
+  };
+
+  const persistPreAdmission = async () => {
+    setSavingPreAdmission(true);
+    setPreAdmissionError('');
+    try {
+      const servicio = findServiceForBed(preAdmission.cama);
+      await saveProaPreAdmission({
+        ...preAdmission,
+        servicio,
+      });
+      setShowPreAdmission(false);
+      setSelectedBed(preAdmission.cama);
+      setActiveService(servicio || activeService);
+      await refreshRecords();
+    } catch (error) {
+      console.error('Error guardando preingreso PROA:', error);
+      setPreAdmissionError('No fue posible guardar el paciente PROA. Intenta nuevamente.');
+    } finally {
+      setSavingPreAdmission(false);
+    }
   };
 
   const savePreAdmission = async () => {
@@ -536,28 +562,31 @@ function GestionPROA() {
       return;
     }
     const occupiedRecord = recordsByBed[preAdmission.cama];
-    if (occupiedRecord && !preAdmissionReplaceConfirmed) {
-      setPreAdmissionReplaceConfirmed(true);
-      setPreAdmissionError(`La cama ${preAdmission.cama} ya contiene al paciente ${occupiedRecord.code}. Presiona nuevamente “Guardar preingreso” para confirmar su reemplazo.`);
+    if (occupiedRecord) {
+      setOccupiedRecordForPreAdmission(occupiedRecord);
+      setReplacementDischargeDate(new Date().toISOString().slice(0, 10));
       return;
     }
-    setSavingPreAdmission(true);
-    setPreAdmissionError('');
+    await persistPreAdmission();
+  };
+
+  const resolveOccupiedBedAndSave = async (action) => {
+    if (!occupiedRecordForPreAdmission) return;
+    if (action === 'discharge' && !replacementDischargeDate) {
+      setPreAdmissionError('Indica la fecha de egreso del paciente anterior.');
+      return;
+    }
+    setResolvingOccupiedBed(true);
     try {
-      const servicio = findServiceForBed(preAdmission.cama);
-      await saveProaPreAdmission({
-        ...preAdmission,
-        servicio,
-      });
-      setShowPreAdmission(false);
-      setSelectedBed(preAdmission.cama);
-      setActiveService(servicio || activeService);
-      refreshRecords();
+      if (action === 'delete') await deleteProaRecord(occupiedRecordForPreAdmission.bedCode);
+      else await archiveProaRecord(occupiedRecordForPreAdmission, replacementDischargeDate);
+      setOccupiedRecordForPreAdmission(null);
+      await persistPreAdmission();
     } catch (error) {
-      console.error('Error guardando preingreso PROA:', error);
-      setPreAdmissionError('No fue posible guardar el paciente PROA. Intenta nuevamente.');
+      console.error('Error resolviendo cama PROA ocupada:', error);
+      setPreAdmissionError('No fue posible resolver el registro anterior. No se guardó el paciente nuevo.');
     } finally {
-      setSavingPreAdmission(false);
+      setResolvingOccupiedBed(false);
     }
   };
 
@@ -691,11 +720,16 @@ function GestionPROA() {
     }
   };
 
+  const openDischargeDialog = (record) => {
+    setDischargeDate(new Date().toISOString().slice(0, 10));
+    setRecordToArchive(record);
+  };
+
   const confirmArchiveRecord = async () => {
-    if (!recordToArchive) return;
+    if (!recordToArchive || !dischargeDate) return;
     setArchivingRecord(true);
     try {
-      await archiveProaRecord(recordToArchive);
+      await archiveProaRecord(recordToArchive, dischargeDate);
       if (selectedBed === recordToArchive.bedCode) setSelectedBed('');
       setRecordToArchive(null);
       await refreshRecords();
@@ -1024,10 +1058,10 @@ function GestionPROA() {
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => setRecordToArchive(selectedRecord)}
+                      onClick={() => openDischargeDialog(selectedRecord)}
                       className="w-full border-amber-300 bg-white text-amber-800 hover:bg-amber-50"
                     >
-                      Pasar paciente a históricos
+                      Egresar paciente
                     </Button>
                     <Button
                       type="button"
@@ -1290,13 +1324,14 @@ function GestionPROA() {
                           {form.rut && <span className="block text-slate-500">RUT {form.rut}</span>}
                           <span className="text-slate-600">Cama {effectiveBed}</span>
                           <Badge className={`mt-1 ${isHistoricalProaRecord(record) ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800'}`}>
-                            {isHistoricalProaRecord(record) ? 'Histórico' : 'Actual'}
+                            {isHistoricalProaRecord(record) ? `Egresado${form.fecha_egreso ? ` · ${form.fecha_egreso}` : ''}` : 'Actual'}
                           </Badge>
                         </button>
                       </td>
                       <td className="border-b border-r border-slate-200 px-3 py-3">
                         <span className="block">{form.edad ? `${form.edad} años` : '—'}</span>
                         <span className="text-slate-500">{form.fecha_ingreso || 'Sin fecha'}</span>
+                        {form.fecha_egreso && <span className="block font-semibold text-amber-700">Egreso: {form.fecha_egreso}</span>}
                         <span className="mt-1 block font-medium text-slate-700">
                           {hospitalStayDays(form) != null ? `${hospitalStayDays(form)} días de estadía` : 'Estadía sin calcular'}
                         </span>
@@ -1324,9 +1359,12 @@ function GestionPROA() {
                       <td className="sticky right-0 border-b border-l border-slate-200 bg-white px-2 py-3">
                         <div className="space-y-1">
                           {!isHistoricalProaRecord(record) && (
-                            <Button type="button" variant="outline" size="sm" onClick={() => setRecordToArchive(record)} className="h-8 w-full px-2 text-slate-700">
-                              Histórico
+                            <Button type="button" variant="outline" size="sm" onClick={() => openDischargeDialog(record)} className="h-8 w-full px-2 text-slate-700">
+                              Egresar
                             </Button>
+                          )}
+                          {isHistoricalProaRecord(record) && (
+                            <Badge className="w-full justify-center bg-slate-200 py-1.5 text-slate-700">Egresado</Badge>
                           )}
                           <Button
                             type="button"
@@ -1374,7 +1412,6 @@ function GestionPROA() {
                 value={preAdmission.cama}
                 onChange={(event) => {
                   setPreAdmission((current) => ({ ...current, cama: event.target.value }));
-                  setPreAdmissionReplaceConfirmed(false);
                   setPreAdmissionError('');
                 }}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -1571,12 +1608,16 @@ function GestionPROA() {
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Pasar paciente a históricos?</AlertDialogTitle>
+            <AlertDialogTitle>¿Egresar paciente PROA?</AlertDialogTitle>
             <AlertDialogDescription>
               El paciente PROA <strong>{getLatestProaForm(recordToArchive)?.paciente || recordToArchive?.code}</strong> dejará de ocupar la cama{' '}
-              <strong>{recordToArchive?.bedCode}</strong>. Su preingreso y evoluciones se conservarán y podrán revisarse desde el filtro “Pacientes históricos”.
+              <strong>{recordToArchive?.bedCode}</strong>. Su preingreso y evoluciones se conservarán en el archivo de pacientes egresados.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="proa-discharge-date">Fecha de egreso *</Label>
+            <Input id="proa-discharge-date" type="date" value={dischargeDate} onChange={(event) => setDischargeDate(event.target.value)} />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={archivingRecord}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
@@ -1584,11 +1625,58 @@ function GestionPROA() {
                 event.preventDefault();
                 confirmArchiveRecord();
               }}
-              disabled={archivingRecord}
+              disabled={archivingRecord || !dischargeDate}
               className="bg-amber-600 text-white hover:bg-amber-700"
             >
-              {archivingRecord ? 'Guardando…' : 'Sí, pasar a históricos'}
+              {archivingRecord ? 'Egresando…' : 'Confirmar egreso'}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!occupiedRecordForPreAdmission} onOpenChange={(open) => {
+        if (!open && !resolvingOccupiedBed) setOccupiedRecordForPreAdmission(null);
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>La cama {preAdmission.cama} ya está ocupada en PROA</AlertDialogTitle>
+            <AlertDialogDescription>
+              Actualmente está asociada a <strong>{getLatestProaForm(occupiedRecordForPreAdmission)?.paciente || occupiedRecordForPreAdmission?.code}</strong>.
+              Antes de ingresar al paciente nuevo debes decidir qué hacer con el registro anterior.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <Label htmlFor="proa-replacement-discharge-date">Fecha de egreso del paciente anterior</Label>
+            <Input
+              id="proa-replacement-discharge-date"
+              type="date"
+              value={replacementDischargeDate}
+              onChange={(event) => setReplacementDischargeDate(event.target.value)}
+              className="bg-white"
+            />
+            <p className="text-xs text-amber-800">“Egresar y conservar” libera la cama y mantiene todo el historial en el archivo.</p>
+          </div>
+          <AlertDialogFooter className="sm:justify-between">
+            <AlertDialogCancel disabled={resolvingOccupiedBed}>Cancelar</AlertDialogCancel>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => resolveOccupiedBedAndSave('delete')}
+                disabled={resolvingOccupiedBed}
+                className="border-red-300 text-red-700 hover:bg-red-50"
+              >
+                Eliminar registro anterior
+              </Button>
+              <Button
+                type="button"
+                onClick={() => resolveOccupiedBedAndSave('discharge')}
+                disabled={resolvingOccupiedBed || !replacementDischargeDate}
+                className="bg-amber-600 text-white hover:bg-amber-700"
+              >
+                {resolvingOccupiedBed ? 'Procesando…' : 'Egresar y conservar'}
+              </Button>
+            </div>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
