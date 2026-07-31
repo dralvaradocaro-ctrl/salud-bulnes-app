@@ -261,12 +261,15 @@ function formatAntimicrobial(item, form) {
   const duration = item.inicio
     ? daysSince(item.inicio, { inclusive: true })
     : null;
+  const isSuspended = item.__isCurrent === false || Boolean(item.termino && item.termino <= localTodayIso());
   return {
     name: item.nombre || '—',
     nameWithCourse: item.inicio
       ? `${item.nombre || '—'} (FI: ${formatClinicalDate(item.inicio)} · ${preAntibioticTreatmentDays(item) ?? '—'} día${preAntibioticTreatmentDays(item) === 1 ? '' : 's'}${item.termino ? ' totales' : ''})`
       : `${item.nombre || '—'} (FI: no registrada)`,
     dose: dose || 'Dosis no registrada',
+    isSuspended,
+    statusLabel: isSuspended ? 'Suspendido' : 'Vigente',
     duration: item.termino
       ? `FI: ${formatClinicalDate(item.inicio)} · FT: ${formatClinicalDate(item.termino)} (${preAntibioticTreatmentDays(item) ?? '—'} días totales)`
       : duration
@@ -287,7 +290,17 @@ function getChronologicalAntimicrobials(record) {
         courses.set(key, { ...previous, ...item, __sourceForm: form });
       });
   });
-  return [...courses.values()].sort((a, b) => {
+  const latestForm = record?.evolutions?.[0]?.form || {};
+  const currentCourseKeys = new Set((Array.isArray(latestForm.antibioticos) ? latestForm.antibioticos : [])
+    .filter((item) => item?.nombre)
+    .map((item) => `${String(item.nombre).trim().toLocaleLowerCase('es')}|${item.inicio || 'sin-fecha'}`));
+  return [...courses.entries()].map(([key, item]) => ({
+    ...item,
+    __isCurrent: currentCourseKeys.has(key),
+  })).sort((a, b) => {
+    const aIsSuspended = a.__isCurrent === false || Boolean(a.termino && a.termino <= localTodayIso());
+    const bIsSuspended = b.__isCurrent === false || Boolean(b.termino && b.termino <= localTodayIso());
+    if (aIsSuspended !== bIsSuspended) return aIsSuspended ? 1 : -1;
     if (a.inicio && b.inicio && a.inicio !== b.inicio) return a.inicio.localeCompare(b.inicio);
     if (a.inicio && !b.inicio) return -1;
     if (!a.inicio && b.inicio) return 1;
@@ -1673,10 +1686,18 @@ function GestionPROA() {
                         {formattedAntimicrobials.length ? (
                           <div className="space-y-2">
                             {formattedAntimicrobials.map((item, index) => (
-                              <div key={`${item.nameWithCourse}-${index}`} className="rounded-lg border border-teal-100 bg-white px-3 py-2 shadow-sm">
-                                <p className="font-bold text-teal-900">{item.name}</p>
-                                <p className="mt-0.5 text-slate-700">{item.dose}</p>
-                                <p className="mt-1 border-t border-slate-100 pt-1 text-[11px] font-semibold text-slate-500">{item.duration}</p>
+                              <div
+                                key={`${item.nameWithCourse}-${index}`}
+                                className={`rounded-lg border px-3 py-2 shadow-sm ${item.isSuspended ? 'border-red-200 bg-red-50' : 'border-emerald-200 bg-emerald-50'}`}
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className={`font-bold ${item.isSuspended ? 'text-red-900' : 'text-emerald-900'}`}>{item.name}</p>
+                                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${item.isSuspended ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                    {item.statusLabel}
+                                  </span>
+                                </div>
+                                <p className={`mt-0.5 ${item.isSuspended ? 'text-red-800' : 'text-emerald-800'}`}>{item.dose}</p>
+                                <p className={`mt-1 border-t pt-1 text-[11px] font-semibold ${item.isSuspended ? 'border-red-200 text-red-700' : 'border-emerald-200 text-emerald-700'}`}>{item.duration}</p>
                               </div>
                             ))}
                           </div>
