@@ -701,14 +701,20 @@ function VisitaPROA() {
     setSaving(true);
     setRegistryMessage('Guardando…');
     try {
-      const record = await saveProaRecord(f, { replaceExisting: f.__proaRegistryMode === 'new_patient' });
+      const editingExistingEvolution = Boolean(f.__proaEditLatest);
+      const record = await saveProaRecord(f, {
+        replaceExisting: f.__proaRegistryMode === 'new_patient',
+        editLatestEvolution: editingExistingEvolution,
+      });
       if (f.proa_discharge_requested) {
         await archiveProaRecord(record, f.fecha_egreso);
       }
-      setF(prev => ({ ...prev, __proaRegistryMode: '' }));
+      setF(prev => ({ ...prev, __proaRegistryMode: '', __proaEditLatest: false }));
       setRegistryMessage(f.proa_discharge_requested
         ? `✅ Paciente ${record.code} egresado el ${f.fecha_egreso}. La cama quedó libre y el registro pasó al histórico PROA.`
-        : `✅ Registro ${record.code} guardado en cama ${record.bedCode} y sincronizado. En PROA se conservaron nombre, RUT y edad; la ficha clínica no fue almacenada.`);
+        : editingExistingEvolution
+          ? `✅ Evolución existente de ${record.code} editada y sincronizada. No se creó una evolución nueva.`
+          : `✅ Registro ${record.code} guardado en cama ${record.bedCode} y sincronizado. En PROA se conservaron nombre, RUT y edad; la ficha clínica no fue almacenada.`);
     } catch (e) {
       setRegistryMessage(`❌ No se pudo guardar en el servidor (${e?.message || e}). Revisa tu conexión e inténtalo de nuevo.`);
     } finally {

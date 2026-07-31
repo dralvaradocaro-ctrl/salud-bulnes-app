@@ -541,6 +541,16 @@ function GestionPROA() {
     navigate(createPageUrl('VisitaPROA'));
   };
 
+  const editExistingLatestEvolution = () => {
+    if (!viewedLatest) return;
+    setPendingProaForm({
+      ...viewedLatest,
+      __proaEditLatest: true,
+    });
+    setRecordToView(null);
+    navigate(createPageUrl('VisitaPROA'));
+  };
+
   const createFromBed = () => {
     if (!selectedBed) return;
     setPendingProaForm({
@@ -1498,10 +1508,9 @@ function GestionPROA() {
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setRecordToView(null)}>Cerrar</Button>
-            <Button onClick={() => {
-              setRecordToView(null);
-              editFromLatest();
-            }} className="bg-teal-700 hover:bg-teal-800">Actualizar evolución</Button>
+            <Button onClick={editExistingLatestEvolution} className="bg-teal-700 hover:bg-teal-800">
+              Editar esta evolución
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

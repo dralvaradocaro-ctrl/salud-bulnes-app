@@ -15,6 +15,7 @@ export function sanitizeProaRecord(form) {
   sanitized.rut = String(sanitized.rut || '').trim();
   sanitized.n_ficha = '';
   delete sanitized.__proaRegistryMode;
+  delete sanitized.__proaEditLatest;
   return sanitized;
 }
 
@@ -94,6 +95,7 @@ export async function fetchProaRecords() {
 
 export async function saveProaRecord(form, options = {}) {
   const now = new Date().toISOString();
+  const editLatestEvolution = Boolean(options.editLatestEvolution || form?.__proaEditLatest);
   const safeForm = sanitizeProaRecord(form);
   const bedCode = safeForm.cama || 'SIN-CAMA';
   const replaceExisting = options.replaceExisting || form?.__proaRegistryMode === 'new_patient';
@@ -119,7 +121,11 @@ export async function saveProaRecord(form, options = {}) {
     updatedAt: now,
     evolutions: [
       { savedAt: now, form: safeForm },
-      ...(replaceExisting ? [] : (existing?.evolutions || [])),
+      ...(replaceExisting
+        ? []
+        : editLatestEvolution
+          ? (existing?.evolutions || []).slice(1)
+          : (existing?.evolutions || [])),
     ].slice(0, 12),
   };
 
@@ -304,6 +310,7 @@ export function getLatestProaForm(record) {
 export function setPendingProaForm(form) {
   const pending = sanitizeProaRecord(form);
   if (form?.__proaRegistryMode) pending.__proaRegistryMode = form.__proaRegistryMode;
+  if (form?.__proaEditLatest) pending.__proaEditLatest = true;
   sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
 }
 
