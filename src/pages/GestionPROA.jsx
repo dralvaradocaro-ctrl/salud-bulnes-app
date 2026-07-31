@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PROA_BED_MAP } from '@/lib/hospitalSuggestions';
+import { PROA_BED_MAP as BASE_PROA_BED_MAP } from '@/lib/hospitalSuggestions';
 import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, moveProaRecordToBed, readProaRegistry, saveProaPreAdmission, setPendingProaForm } from '@/lib/proaRegistry';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, DIAGNOSTICOS_INFECTO, PATOGENOS, PRESENTACIONES_ATB, TIPOS_MUESTRA } from '@/pages/VisitaPROA';
 import {
@@ -53,6 +53,16 @@ import {
 
 const moduleCardClass = 'group block h-full rounded-2xl border bg-white p-5 transition-all hover:-translate-y-0.5 hover:shadow-md';
 const CHART_COLORS = ['#0f766e', '#0284c7', '#7c3aed', '#d97706', '#dc2626', '#059669', '#4f46e5', '#be185d'];
+const PROA_BED_MAP = [
+  ...BASE_PROA_BED_MAP,
+  {
+    servicio: 'Hospitalización domiciliaria',
+    groups: [{
+      label: 'Cupos indiferenciados',
+      beds: Array.from({ length: 15 }, (_, index) => `HD-${index + 1}`),
+    }],
+  },
+];
 
 function formatUpdatedAt(value) {
   if (!value) return 'Sin fecha';
