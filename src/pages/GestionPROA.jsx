@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PROA_BED_MAP as BASE_PROA_BED_MAP } from '@/lib/hospitalSuggestions';
 import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, moveProaRecordToBed, readProaRegistry, saveProaPreAdmission, setPendingProaForm } from '@/lib/proaRegistry';
+import { buildRenalFunctionText } from '@/lib/renalFunction';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, DIAGNOSTICOS_INFECTO, PATOGENOS, PRESENTACIONES_ATB, TIPOS_MUESTRA } from '@/pages/VisitaPROA';
 import {
   Bar,
@@ -381,6 +382,8 @@ function GestionPROA() {
     paciente: '',
     rut: '',
     edad: '',
+    sexo: '',
+    creatinina: '',
     fecha_ingreso: '',
     antibioticos: [{ ...EMPTY_PRE_ANTIBIOTIC }],
     cultivos: [{ ...EMPTY_PRE_CULTURE }],
@@ -580,6 +583,8 @@ function GestionPROA() {
       paciente: '',
       rut: '',
       edad: '',
+      sexo: '',
+      creatinina: '',
       fecha_ingreso: '',
       antibioticos: [{ ...EMPTY_PRE_ANTIBIOTIC }],
       cultivos: [{ ...EMPTY_PRE_CULTURE }],
@@ -1565,6 +1570,38 @@ function GestionPROA() {
             <p className="text-[11px] text-slate-500 md:col-span-12">
               Nombre, RUT y edad se guardan exclusivamente en Gestión/Evolución PROA.
             </p>
+            <div className="space-y-1.5 md:col-span-3">
+              <Label htmlFor="proa-pre-sex">Sexo para cálculo de VFG</Label>
+              <select
+                id="proa-pre-sex"
+                value={preAdmission.sexo}
+                onChange={(event) => setPreAdmission((current) => ({ ...current, sexo: event.target.value }))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="">Seleccionar...</option>
+                <option value="femenino">Femenino</option>
+                <option value="masculino">Masculino</option>
+              </select>
+            </div>
+            <div className="space-y-1.5 md:col-span-3">
+              <Label htmlFor="proa-pre-creatinine">Creatinina sérica (mg/dL)</Label>
+              <Input
+                id="proa-pre-creatinine"
+                type="number"
+                min="0"
+                step="0.01"
+                value={preAdmission.creatinina}
+                onChange={(event) => setPreAdmission((current) => ({ ...current, creatinina: event.target.value }))}
+                placeholder="Ej.: 1,20"
+              />
+            </div>
+            <div className="flex items-end md:col-span-6">
+              <div className="w-full rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+                {preAdmission.creatinina
+                  ? buildRenalFunctionText(preAdmission)
+                  : 'Al ingresar creatinina, edad y sexo se calculará automáticamente la VFG.'}
+              </div>
+            </div>
             <div className="space-y-1.5 md:col-span-3">
               <Label htmlFor="proa-pre-date">Fecha de ingreso *</Label>
               <Input id="proa-pre-date" type="date" value={preAdmission.fecha_ingreso} onChange={(event) => setPreAdmission((current) => ({ ...current, fecha_ingreso: event.target.value }))} />

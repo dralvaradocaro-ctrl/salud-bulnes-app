@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { buildRenalFunctionText, calculateEgfrCkdEpi2021 } from './renalFunction';
 
 const STORAGE_KEY = 'proa_pseudonymous_registry_v1'; // caché local (respaldo offline)
 const PENDING_KEY = 'proa_pending_form_v1';
@@ -134,6 +135,8 @@ export async function saveProaRecord(form, options = {}) {
 }
 
 export async function saveProaPreAdmission(preAdmission) {
+  const renalFunction = buildRenalFunctionText(preAdmission);
+  const estimatedGfr = calculateEgfrCkdEpi2021(preAdmission);
   const structuredAntibiotics = Array.isArray(preAdmission.antibioticos)
     ? preAdmission.antibioticos.filter((item) => item?.nombre)
     : [];
@@ -187,8 +190,12 @@ export async function saveProaPreAdmission(preAdmission) {
     paciente: preAdmission.paciente || '',
     rut: preAdmission.rut || '',
     edad: preAdmission.edad || '',
+    sexo: preAdmission.sexo || '',
+    creatinina: preAdmission.creatinina || '',
+    vfg_estimada: estimatedGfr ?? '',
     fecha_ingreso: preAdmission.fecha_ingreso || '',
     diagnostico_actual: preAdmission.diagnostico || '',
+    funcion_renal: renalFunction,
     antibioterapia_preingreso: antibioticSummary,
     antibioticos: antibioticItems,
     parametros_inflamatorios: [],

@@ -11,6 +11,7 @@ import InflammatoryCurve from '@/components/visita-proa/InflammatoryCurve';
 import DateInputDdmm from '@/components/sdm/DateInputDdmm';
 import { SERVICIOS, CAMAS } from '@/lib/hospitalSuggestions';
 import { archiveProaRecord, saveProaRecord, takePendingProaForm } from '@/lib/proaRegistry';
+import { buildRenalFunctionText, calculateEgfrCkdEpi2021 } from '@/lib/renalFunction';
 
 // ── Catálogos ──────────────────────────────────────────────
 export const ANTIBIOTICOS = [
@@ -512,6 +513,9 @@ const EMPTY = {
   paciente: '',
   rut: '',
   edad: '',
+  sexo: '',
+  creatinina: '',
+  vfg_estimada: '',
   peso_kg: '',
   n_ficha: '',
   fecha_ingreso: '',
@@ -661,7 +665,14 @@ function VisitaPROA() {
   const [antibiogramSearch, setAntibiogramSearch] = useState('');
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [registryMessage, setRegistryMessage] = useState('');
-  const u = (k, v) => setF(prev => ({ ...prev, [k]: v }));
+  const u = (k, v) => setF(prev => {
+    const next = { ...prev, [k]: v };
+    if (['edad', 'sexo', 'creatinina'].includes(k)) {
+      next.vfg_estimada = calculateEgfrCkdEpi2021(next) ?? '';
+      next.funcion_renal = buildRenalFunctionText(next);
+    }
+    return next;
+  });
   const diasHosp = diasHospitalizacion(f.fecha_ingreso, f.fecha);
   const addInvasivo = () => setF(prev => ({ ...prev, invasivos: [...(prev.invasivos || []), { cual: '', desde: '' }] }));
   const updateInvasivo = (i, key, val) => setF(prev => ({ ...prev, invasivos: (prev.invasivos || []).map((d, idx) => idx === i ? { ...d, [key]: val } : d) }));
@@ -945,8 +956,23 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                 <Field label="Comorbilidades" span="md:col-span-2">
                   <Input value={f.comorbilidades} onChange={e => u('comorbilidades', e.target.value)} className="h-9" />
                 </Field>
-                <Field label="Función renal" span="md:col-span-2">
-                  <Input value={f.funcion_renal} onChange={e => u('funcion_renal', e.target.value)} placeholder="ClCr / Crea" className="h-9" />
+                <Field label="Sexo para VFG">
+                  <select value={f.sexo} onChange={e => u('sexo', e.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm">
+                    <option value="">Seleccionar...</option>
+                    <option value="femenino">Femenino</option>
+                    <option value="masculino">Masculino</option>
+                  </select>
+                </Field>
+                <Field label="Creatinina sérica">
+                  <div className="flex">
+                    <Input type="number" min="0" step="0.01" value={f.creatinina} onChange={e => u('creatinina', e.target.value)} placeholder="Ej.: 1,20" className="h-9 rounded-r-none" />
+                    <span className="flex h-9 items-center rounded-r-md border border-l-0 border-slate-200 bg-slate-50 px-2 text-xs text-slate-600">mg/dL</span>
+                  </div>
+                </Field>
+                <Field label="Función renal calculada" span="md:col-span-2">
+                  <div className="flex min-h-9 items-center rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+                    {f.funcion_renal || 'Completa creatinina, edad y sexo para calcular VFG.'}
+                  </div>
                 </Field>
                 <Field label="Fecha de ingreso">
                   <DateInputDdmm value={f.fecha_ingreso} onChange={v => u('fecha_ingreso', v)} className="h-9" />
