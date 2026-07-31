@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { AlertTriangle, ChevronLeft, Printer, RotateCcw, Plus, Trash2, ShieldPlus, Sparkles, Save } from 'lucide-react';
@@ -23,6 +23,7 @@ import { SERVICIOS, CAMAS } from '@/lib/hospitalSuggestions';
 import { archiveProaRecord, saveProaRecord, takePendingProaForm } from '@/lib/proaRegistry';
 import { buildRenalFunctionText, calculateEgfrCkdEpi2021 } from '@/lib/renalFunction';
 import { getRenalAntimicrobialAlert, getRenalAntimicrobialAlerts } from '@/lib/renalAntimicrobialAlerts';
+import { supabase } from '@/lib/supabase';
 
 // ── Catálogos ──────────────────────────────────────────────
 export const ANTIBIOTICOS = [
@@ -106,6 +107,25 @@ const ANTIBIOGRAMA_POOL = [
 ];
 
 const VIAS = ['EV', 'IM', 'VO', 'SC', 'Inhalado'];
+const normalizeMedicationName = (value) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .toLocaleLowerCase('es');
+
+function arsenalPresentationOption(medication) {
+  const strength = medication?.dose_value != null && medication?.dose_unit
+    ? `${medication.dose_value} ${medication.dose_unit}`
+    : '';
+  return {
+    label: [medication?.presentation, strength].filter(Boolean).join(' · '),
+    cantidad: medication?.dose_value ?? '',
+    unidad: medication?.dose_unit || '',
+    envase: medication?.presentation || 'unidad',
+    source: 'arsenal',
+  };
+}
 
 export const TIPOS_MUESTRA = [
   'Hemocultivo',
@@ -395,8 +415,18 @@ function getPresentaciones(nombre) {
   return PRESENTACIONES_ATB[nombre] || [];
 }
 
-function getPresentation(nombre, label) {
-  return getPresentaciones(nombre).find(p => p.label === label) || null;
+function getPresentation(nombre, label, antibiotic = null) {
+  const local = getPresentaciones(nombre).find(p => p.label === label);
+  if (local) return local;
+  if (antibiotic?.presentacion === label && antibiotic?.presentacion_cantidad && antibiotic?.presentacion_unidad) {
+    return {
+      label,
+      cantidad: Number(antibiotic.presentacion_cantidad),
+      unidad: antibiotic.presentacion_unidad,
+      envase: antibiotic.presentacion_envase || 'unidad',
+    };
+  }
+  return null;
 }
 
 function formatNumber(n) {
@@ -418,7 +448,7 @@ function presentationDoseText(presentacion) {
 }
 
 function calcUnidadesPorDosis(a) {
-  const presentacion = getPresentation(a.nombre, a.presentacion);
+  const presentacion = getPresentation(a.nombre, a.presentacion, a);
   if (a.dosis_modo === 'ampolla') {
     const unidades = Number(a.unidades_por_dosis || 1);
     return Number.isFinite(unidades) && unidades > 0 ? unidades : '';
@@ -431,7 +461,7 @@ function calcUnidadesPorDosis(a) {
 
 function getDosisTotal(a) {
   if (a.dosis_modo === 'ampolla') {
-    const presentacion = getPresentation(a.nombre, a.presentacion);
+    const presentacion = getPresentation(a.nombre, a.presentacion, a);
     const unidades = Number(a.unidades_por_dosis || 1);
     if (!presentacion || !unidades) return '';
     return Number((presentacion.cantidad * unidades).toFixed(2));
@@ -465,7 +495,7 @@ function getDosisPorKgCalculada(a) {
 
 function buildDosisConcreta(a) {
   if (a.dosis) return a.dosis;
-  const presentacion = getPresentation(a.nombre, a.presentacion);
+  const presentacion = getPresentation(a.nombre, a.presentacion, a);
   const unidades = a.unidades_por_dosis || calcUnidadesPorDosis(a);
   if (a.dosis_modo === 'ampolla' && presentacion && unidades) {
     const intervalo = a.intervalo_horas ? ` c/${a.intervalo_horas}h` : '';
@@ -501,7 +531,7 @@ function buildAntibiograma(c) {
   return partes.join('. ');
 }
 
-const EMPTY_ATB    = { nombre: '', via: 'EV', presentacion: '', dosis_modo: 'total', dosis_por_kg: '', dosis_cantidad: '', dosis_unidad: 'mg', unidades_por_dosis: '', intervalo_horas: '', dosis: '', inicio: '', termino: '', termino_manual: false };
+const EMPTY_ATB    = { nombre: '', via: 'EV', presentacion: '', presentacion_cantidad: '', presentacion_unidad: '', presentacion_envase: '', dosis_modo: 'total', dosis_por_kg: '', dosis_cantidad: '', dosis_unidad: 'mg', unidades_por_dosis: '', intervalo_horas: '', dosis: '', inicio: '', termino: '', termino_manual: false };
 const EMPTY_CULT   = { tipo_muestra: '', fecha: '', patogeno: '', sensibilidad: 'Pendiente', resistente: [], sensible: [], intermedio: [], antibiograma_nota: '', antibiograma: '' };
 
 const INVASIVE_DEVICES = [
@@ -678,6 +708,8 @@ function VisitaPROA() {
   const [antibiogramSearch, setAntibiogramSearch] = useState('');
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [registryMessage, setRegistryMessage] = useState('');
+  const [activeArsenal, setActiveArsenal] = useState([]);
+  const [arsenalStatus, setArsenalStatus] = useState('loading');
   const hasUnsavedChanges = JSON.stringify(f) !== initialSnapshotRef.current;
   const goBack = () => {
     if (hasUnsavedChanges) setShowExitPrompt(true);
@@ -692,6 +724,50 @@ function VisitaPROA() {
     window.addEventListener('beforeunload', warnBeforeUnload);
     return () => window.removeEventListener('beforeunload', warnBeforeUnload);
   }, [hasUnsavedChanges]);
+  useEffect(() => {
+    let active = true;
+    supabase
+      .from('medications')
+      .select('id,name,active_ingredient,presentation,dose_value,dose_unit,category,is_active')
+      .eq('is_active', true)
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          console.error('No fue posible cargar el arsenal vigente en Evolución PROA:', error);
+          setArsenalStatus('fallback');
+          return;
+        }
+        setActiveArsenal((data || []).filter((medication) => {
+          const category = normalizeMedicationName(medication.category);
+          const names = `${normalizeMedicationName(medication.name)} ${normalizeMedicationName(medication.active_ingredient)}`;
+          return /antibi|antimicrob|antifung|antiviral/.test(category)
+            || ANTIBIOTICOS.some((item) => names.includes(normalizeMedicationName(item)));
+        }));
+        setArsenalStatus('loaded');
+      });
+    return () => { active = false; };
+  }, []);
+  const arsenalPresentations = useMemo(() => {
+    const grouped = new Map();
+    activeArsenal.forEach((medication) => {
+      [medication.name, medication.active_ingredient]
+        .map(normalizeMedicationName)
+        .filter(Boolean)
+        .forEach((name) => {
+          if (!grouped.has(name)) grouped.set(name, []);
+          const option = arsenalPresentationOption(medication);
+          if (option.label && !grouped.get(name).some((item) => item.label === option.label)) {
+            grouped.get(name).push(option);
+          }
+        });
+    });
+    return grouped;
+  }, [activeArsenal]);
+  const getEvolutionPresentations = (name) => {
+    const current = arsenalPresentations.get(normalizeMedicationName(name)) || [];
+    if (current.length) return current;
+    return getPresentaciones(name).map((item) => ({ ...item, source: 'respaldo' }));
+  };
   const u = (k, v) => setF(prev => {
     const next = { ...prev, [k]: v };
     if (['edad', 'sexo', 'creatinina'].includes(k)) {
@@ -801,13 +877,18 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
         const next = { ...a, [key]: value };
         if (key === 'nombre') {
           const defaults = DEFAULT_DOSIS_ATB[value];
-          const presentaciones = getPresentaciones(value);
+          const presentaciones = getEvolutionPresentations(value);
           if (defaults) {
-            next.presentacion = defaults.presentacion || presentaciones[0]?.label || '';
+            const defaultAvailable = presentaciones.find((item) => item.label === defaults.presentacion);
+            const selectedPresentation = defaultAvailable || presentaciones[0] || null;
+            next.presentacion = selectedPresentation?.label || defaults.presentacion || '';
+            next.presentacion_cantidad = selectedPresentation?.cantidad || '';
+            next.presentacion_unidad = selectedPresentation?.unidad || '';
+            next.presentacion_envase = selectedPresentation?.envase || '';
             next.dosis_por_kg = defaults.dosis_por_kg || '';
             next.dosis_cantidad = defaults.dosis_cantidad || '';
             next.dosis_modo = defaults.dosis_modo || (defaults.dosis_por_kg ? 'kg' : 'total');
-            next.dosis_unidad = defaults.dosis_unidad || presentaciones[0]?.unidad || 'mg';
+            next.dosis_unidad = defaults.dosis_unidad || selectedPresentation?.unidad || 'mg';
             next.intervalo_horas = defaults.intervalo_horas || '';
             next.via = defaults.via || a.via || 'EV';
             next.unidades_por_dosis = defaults.unidades_por_dosis || '';
@@ -815,12 +896,20 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
           } else if (presentaciones.length && !a.presentacion) {
             next.presentacion = presentaciones[0].label;
             next.dosis_unidad = presentaciones[0].unidad;
+            next.presentacion_cantidad = presentaciones[0].cantidad || '';
+            next.presentacion_unidad = presentaciones[0].unidad || '';
+            next.presentacion_envase = presentaciones[0].envase || '';
           }
           if (a.dosis && !a.dosis_cantidad) next.dosis = '';
         }
         if (key === 'presentacion') {
-          const presentacion = getPresentation(a.nombre, value);
-          if (presentacion) next.dosis_unidad = presentacion.unidad;
+          const presentacion = getEvolutionPresentations(a.nombre).find((item) => item.label === value);
+          if (presentacion) {
+            next.dosis_unidad = presentacion.unidad;
+            next.presentacion_cantidad = presentacion.cantidad || '';
+            next.presentacion_unidad = presentacion.unidad || '';
+            next.presentacion_envase = presentacion.envase || '';
+          }
         }
         if (['presentacion', 'dosis_cantidad', 'dosis_unidad', 'peso_kg', 'dosis_por_kg'].includes(key)) {
           next.unidades_por_dosis = '';
@@ -1241,6 +1330,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                   const dia = calcDiaTtoAtb(a, f.fecha);
                   const vigente = !hasTermino(a);
                   const renalAlert = vigente ? getRenalAntimicrobialAlert(a.nombre, f.vfg_estimada) : null;
+                  const presentationOptions = getEvolutionPresentations(a.nombre);
                   return (
                     <div
                       key={i}
@@ -1250,7 +1340,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                           : 'bg-rose-50/40 border-rose-200'
                       }`}
                     >
-                      <div className="col-span-12 md:col-span-3">
+                      <div className="col-span-12 md:col-span-4">
                         <label className="block text-[11px] text-slate-600 mb-0.5">Antibiótico</label>
                         <input
                           value={a.nombre}
@@ -1261,32 +1351,63 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                         />
                       </div>
                       <div className="col-span-12 md:col-span-4">
-                        <label className="block text-[11px] text-slate-600 mb-0.5">Dosis</label>
+                        <label className="block text-[11px] text-slate-600 mb-0.5">Presentación disponible</label>
+                        <select
+                          value={a.presentacion || ''}
+                          onChange={e => updateAtb(i, 'presentacion', e.target.value)}
+                          className="w-full h-9 rounded-md border border-slate-200 px-2 text-sm bg-white"
+                        >
+                          <option value="">— Seleccionar presentación —</option>
+                          {a.presentacion && !presentationOptions.some((item) => item.label === a.presentacion) && (
+                            <option value={a.presentacion}>{a.presentacion} (registro previo)</option>
+                          )}
+                          {presentationOptions.map((item) => (
+                            <option key={item.label} value={item.label}>{item.label}</option>
+                          ))}
+                        </select>
+                        {a.nombre && (
+                          <p className={`mt-1 text-[10px] ${presentationOptions[0]?.source === 'arsenal' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                            {presentationOptions[0]?.source === 'arsenal'
+                              ? 'Arsenal vigente'
+                              : arsenalStatus === 'loading'
+                                ? 'Cargando arsenal…'
+                                : 'Presentación local de respaldo'}
+                          </p>
+                        )}
+                      </div>
+                      <div className="col-span-12 md:col-span-4">
+                        <label className="block text-[11px] text-slate-600 mb-0.5">Dosis por administración</label>
                         <div className="flex gap-1.5">
                           <div className="h-9 min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm flex items-center truncate text-slate-700">
                             {buildDosisConcreta({ ...a, peso_kg: f.peso_kg }) || <span className="text-slate-400">Definir dosis</span>}
                           </div>
-                          <Button type="button" size="sm" variant="outline" onClick={() => setDoseEditorIdx(i)} className="h-9 shrink-0">
-                            Dosis
+                          <Button type="button" size="sm" variant="outline" onClick={() => setDoseEditorIdx(i)} className="h-9 shrink-0 whitespace-nowrap">
+                            Dosis fija / por peso
                           </Button>
                         </div>
                       </div>
-                      <div className="col-span-6 md:col-span-1">
+                      <div className="col-span-6 md:col-span-3">
                         <label className="block text-[11px] text-slate-600 mb-0.5">Frecuencia</label>
                         <select value={a.intervalo_horas || ''} onChange={e => updateAtb(i, 'intervalo_horas', e.target.value)} className="w-full h-9 rounded-md border border-slate-200 px-2 text-sm bg-white">
                           <option value="">—</option>
                           {INTERVALOS.map(h => <option key={h} value={h}>c/{h}h</option>)}
                         </select>
                       </div>
-                      <div className="col-span-6 md:col-span-1">
+                      <div className="col-span-6 md:col-span-2">
+                        <label className="block text-[11px] text-slate-600 mb-0.5">Vía</label>
+                        <select value={a.via || 'EV'} onChange={e => updateAtb(i, 'via', e.target.value)} className="w-full h-9 rounded-md border border-slate-200 px-2 text-sm bg-white">
+                          {VIAS.map(via => <option key={via} value={via}>{via}</option>)}
+                        </select>
+                      </div>
+                      <div className="col-span-6 md:col-span-2">
                         <label className="block text-[11px] text-slate-600 mb-0.5">Inicio</label>
                         <DateInputDdmm value={a.inicio} onChange={v => updateAtb(i, 'inicio', v)} className="h-9" />
                       </div>
-                      <div className="col-span-6 md:col-span-1">
+                      <div className="col-span-6 md:col-span-2">
                         <label className="block text-[11px] text-slate-600 mb-0.5">Término</label>
                         <DateInputDdmm value={hasTermino(a) ? a.termino : ''} onChange={v => updateAtb(i, 'termino', v)} className="h-9" />
                       </div>
-                      <div className="col-span-4 md:col-span-1">
+                      <div className="col-span-4 md:col-span-2">
                         <label className="block text-[11px] text-slate-600 mb-0.5">{hasTermino(a) ? 'Duración' : 'Día de tto'}</label>
                         <div className={`h-9 rounded-md border px-2 text-sm flex items-center justify-center font-semibold ${
                           dia == null ? 'border-slate-200 bg-slate-50 text-slate-400' : 'border-teal-300 bg-teal-50 text-teal-800'
@@ -1404,7 +1525,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
           </div>
 
           {doseEditorIdx != null && f.antibioticos[doseEditorIdx] && (
-            <EditorOverlay title="Definir dosis concreta" onClose={() => setDoseEditorIdx(null)}>
+            <EditorOverlay title="Definir dosis fija, por peso o por presentación" onClose={() => setDoseEditorIdx(null)}>
               {(() => {
                 const a = { ...f.antibioticos[doseEditorIdx], peso_kg: f.peso_kg };
                 const unidades = a.unidades_por_dosis || calcUnidadesPorDosis(a);
@@ -1454,7 +1575,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
 	                              />
 	                              <select value={a.presentacion || ''} onChange={e => updateAtb(doseEditorIdx, 'presentacion', e.target.value)} className="w-full h-9 rounded-md border border-slate-200 px-2 text-sm bg-white">
 	                                <option value="">— Presentación —</option>
-	                                {getPresentaciones(a.nombre).map(p => <option key={p.label} value={p.label}>{p.label}</option>)}
+	                                {getEvolutionPresentations(a.nombre).map(p => <option key={p.label} value={p.label}>{p.label}</option>)}
 	                              </select>
 	                            </>
 	                          ) : (
@@ -1488,14 +1609,14 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
 	                        <Input value={f.peso_kg ? `${formatNumber(f.peso_kg)} kg` : ''} readOnly className="h-9 bg-slate-100 text-slate-500" placeholder="Registrar en Identificación" />
 	                      </Field>
 	                      <Field label="Dosis total calculada">
-	                        <Input value={a.dosis_modo === 'ampolla' ? (getPresentation(a.nombre, a.presentacion) ? `${formatNumber(a.unidades_por_dosis || 1)} ${pluralizeEnvase(getPresentation(a.nombre, a.presentacion)?.envase, a.unidades_por_dosis || 1)} de ${presentationDoseText(getPresentation(a.nombre, a.presentacion))}` : '') : (dosisTotal ? `${formatNumber(dosisTotal)} ${a.dosis_unidad || ''}` : '')} readOnly className="h-9 bg-slate-100 text-slate-500" placeholder="Se calcula automáticamente" />
+	                        <Input value={a.dosis_modo === 'ampolla' ? (getPresentation(a.nombre, a.presentacion, a) ? `${formatNumber(a.unidades_por_dosis || 1)} ${pluralizeEnvase(getPresentation(a.nombre, a.presentacion, a)?.envase, a.unidades_por_dosis || 1)} de ${presentationDoseText(getPresentation(a.nombre, a.presentacion, a))}` : '') : (dosisTotal ? `${formatNumber(dosisTotal)} ${a.dosis_unidad || ''}` : '')} readOnly className="h-9 bg-slate-100 text-slate-500" placeholder="Se calcula automáticamente" />
 	                      </Field>
 	                      <Field label="Dosis por kilo calculada">
 	                        <Input value={dosisKg ? `${formatNumber(dosisKg)} ${a.dosis_unidad || 'mg'}/kg` : ''} readOnly className="h-9 bg-slate-100 text-slate-500" placeholder="Requiere peso" />
 	                      </Field>
                       <Field label="Equivalencia por dosis">
                         <Input
-                          value={unidades ? `${formatNumber(unidades)} ${pluralizeEnvase(getPresentation(a.nombre, a.presentacion)?.envase, unidades)}` : ''}
+                          value={unidades ? `${formatNumber(unidades)} ${pluralizeEnvase(getPresentation(a.nombre, a.presentacion, a)?.envase, unidades)}` : ''}
                           readOnly
                           className="h-9 bg-slate-100 text-slate-500"
 	                          placeholder="Se calcula según presentación"
