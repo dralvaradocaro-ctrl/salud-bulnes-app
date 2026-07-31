@@ -67,6 +67,10 @@ const PROA_BED_MAP = [
       beds: Array.from({ length: 15 }, (_, index) => `HD-${index + 1}`),
     }],
   },
+  {
+    servicio: 'Sala de prueba PROA',
+    groups: [{ label: 'No contabiliza en estadísticas', beds: ['TEST-PROA-1'] }],
+  },
 ];
 
 function formatUpdatedAt(value) {
@@ -255,6 +259,11 @@ function isPositiveCulture(culture) {
   const pathogen = String(culture?.patogeno || '').trim();
   if (!pathogen) return false;
   return !/^(pendiente|sin desarrollo|negativo|sin crecimiento|no desarrollo)$/i.test(pathogen);
+}
+
+function isTestProaRecord(record) {
+  const form = getLatestProaForm(record) || {};
+  return Boolean(form.proa_is_test || form.cama === 'TEST-PROA-1' || record?.bedCode === 'TEST-PROA-1');
 }
 
 const TABLE_HEADERS = ['Código PROA', 'Nombre', 'RUT', 'Cama', 'Servicio', 'Estado', 'Fecha de egreso', 'Edad', 'Fecha de ingreso', 'Días de estadía', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'];
@@ -487,7 +496,7 @@ function GestionPROA() {
     let patientsWithAntibiotics = 0;
     let patientsWithPositiveCulture = 0;
 
-    currentRecords.forEach((record) => {
+    currentRecords.filter((record) => !isTestProaRecord(record)).forEach((record) => {
       const form = getLatestProaForm(record) || {};
       const antibiotics = (form.antibioticos || []).filter((item) => item?.nombre);
       const positiveCultures = (form.estudios_micro || []).filter(isPositiveCulture);
@@ -1391,6 +1400,7 @@ function GestionPROA() {
                           <span className="block font-bold text-teal-800">{record.code}</span>
                           {form.paciente && <span className="block font-semibold text-slate-900">{form.paciente}</span>}
                           {form.rut && <span className="block text-slate-500">RUT {form.rut}</span>}
+                          {form.proa_is_test && <Badge className="mt-1 block w-fit bg-violet-100 text-violet-800">Paciente de prueba · no contabiliza</Badge>}
                           <Badge className={`mt-1 ${isHistoricalProaRecord(record) ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800'}`}>
                             {isHistoricalProaRecord(record) ? `Egresado${form.fecha_egreso ? ` · ${form.fecha_egreso}` : ''}` : 'Actual'}
                           </Badge>
