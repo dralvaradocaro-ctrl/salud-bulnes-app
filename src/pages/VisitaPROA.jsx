@@ -460,6 +460,8 @@ function calcUnidadesPorDosis(a) {
 }
 
 function getDosisTotal(a) {
+  const finalDose = Number(a.dosis_final_cantidad);
+  if (finalDose > 0) return finalDose;
   if (a.dosis_modo === 'ampolla') {
     const presentacion = getPresentation(a.nombre, a.presentacion, a);
     const unidades = Number(a.unidades_por_dosis || 1);
@@ -487,10 +489,36 @@ function getDosisTotal(a) {
 function getDosisPorKgCalculada(a) {
   const dosisKg = Number(a.dosis_por_kg);
   if (dosisKg > 0) return dosisKg;
-  const dosisTotal = Number(a.dosis_cantidad);
+  const dosisTotal = Number(a.dosis_final_cantidad || a.dosis_cantidad);
   const peso = Number(a.peso_kg);
   if (dosisTotal > 0 && peso > 0) return Number((dosisTotal / peso).toFixed(2));
   return '';
+}
+
+function getWeightDoseApproximation(a) {
+  const dosePerKg = Number(a.dosis_por_kg);
+  const weight = Number(a.peso_kg);
+  if (!(dosePerKg > 0) || !(weight > 0)) return null;
+  const theoretical = dosePerKg * weight;
+  const presentation = getPresentation(a.nombre, a.presentacion, a);
+  if (presentation?.cantidad > 0 && presentation.unidad === a.dosis_unidad) {
+    const units = Math.max(1, Math.round(theoretical / presentation.cantidad));
+    return {
+      theoretical: Number(theoretical.toFixed(2)),
+      rounded: Number((units * presentation.cantidad).toFixed(2)),
+      units,
+      unit: a.dosis_unidad,
+      method: `aproximado a ${formatNumber(units)} ${pluralizeEnvase(presentation.envase, units)}`,
+    };
+  }
+  const increment = a.dosis_unidad === 'g' ? 0.1 : theoretical < 500 ? 10 : theoretical < 2000 ? 50 : 100;
+  return {
+    theoretical: Number(theoretical.toFixed(2)),
+    rounded: Number((Math.round(theoretical / increment) * increment).toFixed(2)),
+    units: null,
+    unit: a.dosis_unidad,
+    method: `aproximado al múltiplo de ${formatNumber(increment)} ${a.dosis_unidad}`,
+  };
 }
 
 function buildDosisConcreta(a) {
@@ -507,8 +535,9 @@ function buildDosisConcreta(a) {
   }
   const dosisTotal = getDosisTotal(a);
   const dosisKg = getDosisPorKgCalculada(a);
+  const doseUnit = a.dosis_final_unidad || a.dosis_unidad || '';
   const dosis = dosisTotal
-    ? `${formatNumber(dosisTotal)} ${a.dosis_unidad || ''}`.trim()
+    ? `${formatNumber(dosisTotal)} ${doseUnit}`.trim()
     : (dosisKg ? `${formatNumber(dosisKg)} ${a.dosis_unidad || 'mg'}/kg` : '');
   const detalleDosisKg = dosisTotal && dosisKg ? `${formatNumber(dosisKg)} ${a.dosis_unidad || 'mg'}/kg` : '';
   const detalleEnvase = presentacion && unidades
@@ -531,7 +560,7 @@ function buildAntibiograma(c) {
   return partes.join('. ');
 }
 
-const EMPTY_ATB    = { nombre: '', via: 'EV', presentacion: '', presentacion_cantidad: '', presentacion_unidad: '', presentacion_envase: '', dosis_modo: 'total', dosis_por_kg: '', dosis_cantidad: '', dosis_unidad: 'mg', unidades_por_dosis: '', intervalo_horas: '', dosis: '', inicio: '', termino: '', termino_manual: false };
+const EMPTY_ATB    = { nombre: '', via: 'EV', presentacion: '', presentacion_cantidad: '', presentacion_unidad: '', presentacion_envase: '', dosis_modo: 'total', dosis_por_kg: '', dosis_cantidad: '', dosis_final_cantidad: '', dosis_final_unidad: '', dosis_unidad: 'mg', unidades_por_dosis: '', intervalo_horas: '', dosis: '', inicio: '', termino: '', termino_manual: false };
 const EMPTY_CULT   = { tipo_muestra: '', fecha: '', patogeno: '', sensibilidad: 'Pendiente', resistente: [], sensible: [], intermedio: [], antibiograma_nota: '', antibiograma: '' };
 
 const INVASIVE_DEVICES = [
@@ -887,6 +916,8 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
             next.presentacion_envase = selectedPresentation?.envase || '';
             next.dosis_por_kg = defaults.dosis_por_kg || '';
             next.dosis_cantidad = defaults.dosis_cantidad || '';
+            next.dosis_final_cantidad = defaults.dosis_por_kg ? '' : (defaults.dosis_cantidad || '');
+            next.dosis_final_unidad = defaults.dosis_unidad || selectedPresentation?.unidad || 'mg';
             next.dosis_modo = defaults.dosis_modo || (defaults.dosis_por_kg ? 'kg' : 'total');
             next.dosis_unidad = defaults.dosis_unidad || selectedPresentation?.unidad || 'mg';
             next.intervalo_horas = defaults.intervalo_horas || '';
@@ -1341,7 +1372,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                           : 'bg-rose-50/40 border-rose-200'
                       }`}
                     >
-                      <div className="col-span-12 md:col-span-4">
+                      <div className="col-span-12 md:col-span-3">
                         <label className="block text-[11px] text-slate-600 mb-0.5">Antibiótico</label>
                         <input
                           value={a.nombre}
@@ -1376,26 +1407,25 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                           </p>
                         )}
                       </div>
-                      <div className="col-span-12 md:col-span-4">
+                      <div className="col-span-12 md:col-span-3">
                         <label className="block text-[11px] text-slate-600 mb-0.5">Dosis por administración</label>
-                        <div className="flex gap-1.5">
-                          <div className="h-9 min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm flex items-center truncate text-slate-700">
-                            {buildDosisConcreta({ ...a, peso_kg: f.peso_kg }) || <span className="text-slate-400">Definir dosis</span>}
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              if (requiresWeightDose && a.dosis_modo !== 'kg') updateAtb(i, 'dosis_modo', 'kg');
-                              setDoseEditorIdx(i);
-                            }}
-                            className={`h-9 shrink-0 whitespace-nowrap ${
-                              requiresWeightDose ? 'border-amber-400 bg-amber-50 text-amber-900 hover:bg-amber-100' : ''
-                            }`}
+                        <div className="flex">
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            value={a.dosis_final_cantidad !== undefined ? a.dosis_final_cantidad : (a.dosis_cantidad || '')}
+                            onChange={e => updateAtb(i, 'dosis_final_cantidad', e.target.value)}
+                            className="h-9 rounded-r-none"
+                            placeholder="Ej.: 2"
+                          />
+                          <select
+                            value={a.dosis_final_unidad || a.dosis_unidad || 'mg'}
+                            onChange={e => updateAtb(i, 'dosis_final_unidad', e.target.value)}
+                            className="h-9 w-24 rounded-r-md border border-l-0 border-slate-200 bg-white px-2 text-sm"
                           >
-                            {requiresWeightDose ? 'Ajustar dosis por peso' : 'Dosis fija / por peso'}
-                          </Button>
+                            {DOSIS_UNIDADES.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                          </select>
                         </div>
                         {requiresWeightDose && (
                           <p className={`mt-1 flex items-center gap-1 text-[10px] font-bold ${
@@ -1407,6 +1437,23 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                               : 'Medicamento dosificado por peso · falta registrar el peso del paciente'}
                           </p>
                         )}
+                      </div>
+                      <div className="col-span-12 md:col-span-2">
+                        <label className="block text-[11px] text-slate-600 mb-0.5">Cálculo avanzado</label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            if (requiresWeightDose && a.dosis_modo !== 'kg') updateAtb(i, 'dosis_modo', 'kg');
+                            setDoseEditorIdx(i);
+                          }}
+                          className={`h-9 w-full whitespace-nowrap px-2 ${
+                            requiresWeightDose ? 'border-amber-400 bg-amber-50 text-amber-900 hover:bg-amber-100' : ''
+                          }`}
+                        >
+                          {requiresWeightDose ? 'Ajustar por peso' : 'Más opciones'}
+                        </Button>
                       </div>
                       <div className="col-span-6 md:col-span-3">
                         <label className="block text-[11px] text-slate-600 mb-0.5">Frecuencia</label>
@@ -1554,6 +1601,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                 const dosisTotal = getDosisTotal(a);
                 const dosisKg = getDosisPorKgCalculada(a);
                 const requiresWeightDose = Boolean(DEFAULT_DOSIS_ATB[a.nombre]?.dosis_por_kg);
+                const weightApproximation = getWeightDoseApproximation(a);
                 return (
                   <div className="space-y-3">
                     {requiresWeightDose && (
@@ -1637,8 +1685,17 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
 	                      <Field label="Peso del paciente">
 	                        <Input value={f.peso_kg ? `${formatNumber(f.peso_kg)} kg` : ''} readOnly className="h-9 bg-slate-100 text-slate-500" placeholder="Registrar en Identificación" />
 	                      </Field>
-	                      <Field label="Dosis total calculada">
-	                        <Input value={a.dosis_modo === 'ampolla' ? (getPresentation(a.nombre, a.presentacion, a) ? `${formatNumber(a.unidades_por_dosis || 1)} ${pluralizeEnvase(getPresentation(a.nombre, a.presentacion, a)?.envase, a.unidades_por_dosis || 1)} de ${presentationDoseText(getPresentation(a.nombre, a.presentacion, a))}` : '') : (dosisTotal ? `${formatNumber(dosisTotal)} ${a.dosis_unidad || ''}` : '')} readOnly className="h-9 bg-slate-100 text-slate-500" placeholder="Se calcula automáticamente" />
+	                      <Field label={a.dosis_modo === 'kg' ? 'Dosis teórica según peso' : 'Dosis total calculada'}>
+	                        <Input
+                            value={a.dosis_modo === 'kg'
+                              ? (weightApproximation ? `${formatNumber(weightApproximation.theoretical)} ${weightApproximation.unit}` : '')
+                              : a.dosis_modo === 'ampolla'
+                                ? (getPresentation(a.nombre, a.presentacion, a) ? `${formatNumber(a.unidades_por_dosis || 1)} ${pluralizeEnvase(getPresentation(a.nombre, a.presentacion, a)?.envase, a.unidades_por_dosis || 1)} de ${presentationDoseText(getPresentation(a.nombre, a.presentacion, a))}` : '')
+                                : (dosisTotal ? `${formatNumber(dosisTotal)} ${a.dosis_unidad || ''}` : '')}
+                            readOnly
+                            className="h-9 bg-slate-100 text-slate-500"
+                            placeholder="Se calcula automáticamente"
+                          />
 	                      </Field>
 	                      <Field label="Dosis por kilo calculada">
 	                        <Input value={dosisKg ? `${formatNumber(dosisKg)} ${a.dosis_unidad || 'mg'}/kg` : ''} readOnly className="h-9 bg-slate-100 text-slate-500" placeholder="Requiere peso" />
@@ -1659,7 +1716,32 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                           {VIAS.map(v => <option key={v} value={v}>{v}</option>)}
                         </select>
                       </Field>
-                    </div>
+	                    </div>
+                    {a.dosis_modo === 'kg' && weightApproximation && (
+                      <div className="rounded-lg border border-amber-300 bg-amber-50 p-3">
+                        <p className="text-sm font-bold text-amber-950">
+                          Dosis teórica: {formatNumber(weightApproximation.theoretical)} {weightApproximation.unit}
+                        </p>
+                        <p className="mt-1 text-sm text-amber-900">
+                          Dosis administrable sugerida: <strong>{formatNumber(weightApproximation.rounded)} {weightApproximation.unit}</strong>
+                          {' '}({weightApproximation.method}).
+                        </p>
+                        <p className="mt-1 text-[11px] text-amber-800">
+                          La aproximación facilita una dosis compatible con la presentación; confirma máximos, función renal, niveles plasmáticos y protocolo correspondiente.
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => {
+                            updateAtb(doseEditorIdx, 'dosis_final_cantidad', weightApproximation.rounded);
+                            updateAtb(doseEditorIdx, 'dosis_final_unidad', weightApproximation.unit);
+                          }}
+                          className="mt-2 bg-amber-700 text-white hover:bg-amber-800"
+                        >
+                          Aplicar dosis aproximada
+                        </Button>
+                      </div>
+                    )}
                     <div className="rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-900">
                       {buildDosisConcreta({ ...a, unidades_por_dosis: unidades }) || 'Complete dosis e intervalo'}
                     </div>
