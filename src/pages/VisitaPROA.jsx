@@ -1,8 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { AlertTriangle, ChevronLeft, Printer, RotateCcw, Plus, Trash2, ShieldPlus, Sparkles, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -633,7 +643,7 @@ function HospitalLogo({ height = 46 }) {
 
 function VisitaPROA() {
   const navigate = useNavigate();
-  const goBack = () => {
+  const exitPage = () => {
     if (window.history.length > 1) navigate(-1);
     else navigate(createPageUrl('GestionPROA'));
   };
@@ -660,12 +670,28 @@ function VisitaPROA() {
         : [{ ...EMPTY_ATB }],
     };
   });
+  const initialSnapshotRef = useRef(JSON.stringify(f));
+  const [showExitPrompt, setShowExitPrompt] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [doseEditorIdx, setDoseEditorIdx] = useState(null);
   const [antibiogramEditorIdx, setAntibiogramEditorIdx] = useState(null);
   const [antibiogramSearch, setAntibiogramSearch] = useState('');
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [registryMessage, setRegistryMessage] = useState('');
+  const hasUnsavedChanges = JSON.stringify(f) !== initialSnapshotRef.current;
+  const goBack = () => {
+    if (hasUnsavedChanges) setShowExitPrompt(true);
+    else exitPage();
+  };
+  useEffect(() => {
+    const warnBeforeUnload = (event) => {
+      if (!hasUnsavedChanges) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, [hasUnsavedChanges]);
   const u = (k, v) => setF(prev => {
     const next = { ...prev, [k]: v };
     if (['edad', 'sexo', 'creatinina'].includes(k)) {
@@ -688,12 +714,12 @@ function VisitaPROA() {
   const handleSaveRegistry = async (dischargePatient = false) => {
     if (!f.cama?.trim()) {
       setRegistryMessage('Selecciona una cama antes de guardar el registro PROA.');
-      return;
+      return false;
     }
     const dischargeDate = dischargePatient ? todayIso() : '';
     if (dischargePatient && f.fecha_ingreso && dischargeDate < f.fecha_ingreso) {
       setRegistryMessage('La fecha de egreso no puede ser anterior a la fecha de ingreso.');
-      return;
+      return false;
     }
     const formToSave = {
       ...f,
@@ -711,14 +737,18 @@ function VisitaPROA() {
       if (dischargePatient) {
         await archiveProaRecord(record, dischargeDate);
       }
-      setF(prev => ({ ...prev, __proaRegistryMode: '', __proaEditLatest: false }));
+      const savedForm = { ...formToSave, __proaRegistryMode: '', __proaEditLatest: false };
+      initialSnapshotRef.current = JSON.stringify(savedForm);
+      setF(savedForm);
       setRegistryMessage(dischargePatient
         ? `✅ Paciente ${record.code} egresado el ${dischargeDate}. La cama quedó libre y el registro pasó al histórico PROA.`
         : editingExistingEvolution
           ? `✅ Evolución existente de ${record.code} editada y sincronizada. No se creó una evolución nueva.`
           : `✅ Registro ${record.code} guardado en cama ${record.bedCode} y sincronizado. En PROA se conservaron nombre, RUT y edad; la ficha clínica no fue almacenada.`);
+      return true;
     } catch (e) {
       setRegistryMessage(`❌ No se pudo guardar en el servidor (${e?.message || e}). Revisa tu conexión e inténtalo de nuevo.`);
+      return false;
     } finally {
       setSaving(false);
     }
@@ -1782,6 +1812,46 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
           </div>
         </div>
       )}
+
+      <AlertDialog open={showExitPrompt} onOpenChange={setShowExitPrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Guardar cambios antes de salir?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Hay cambios pendientes en esta Evolución PROA. Puedes guardarlos antes de volver o desestimarlos y salir.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancelar</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving}
+              onClick={() => {
+                setShowExitPrompt(false);
+                exitPage();
+              }}
+              className="border-red-300 text-red-700 hover:bg-red-50"
+            >
+              Desestimar y salir
+            </Button>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={async (event) => {
+                event.preventDefault();
+                const saved = await handleSaveRegistry(false);
+                if (saved) {
+                  setShowExitPrompt(false);
+                  exitPage();
+                }
+              }}
+              className="bg-teal-700 text-white hover:bg-teal-800"
+            >
+              {saving ? 'Guardando…' : 'Guardar y salir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
