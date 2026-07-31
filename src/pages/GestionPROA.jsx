@@ -286,6 +286,19 @@ function isPositiveCulture(culture) {
   return !/^(pendiente|sin desarrollo|negativo|sin crecimiento|no desarrollo)$/i.test(pathogen);
 }
 
+function formatMicrobiologicalDiagnosis(form) {
+  const explicitDiagnosis = String(form?.diagnostico_microbiologico || '').trim();
+  if (explicitDiagnosis) return explicitDiagnosis;
+  const cultures = Array.isArray(form?.estudios_micro) ? form.estudios_micro : [];
+  const pathogens = [...new Set(cultures
+    .filter(isPositiveCulture)
+    .map((culture) => String(culture.patogeno || '').trim())
+    .filter(Boolean))];
+  if (pathogens.length > 0) return pathogens.join(' · ');
+  const hasTakenCulture = cultures.some((culture) => culture?.tipo_muestra || culture?.fecha || culture?.patogeno);
+  return hasTakenCulture ? 'Pendiente de resultado' : '—';
+}
+
 function isTestProaRecord(record) {
   const form = getLatestProaForm(record) || {};
   return Boolean(form.proa_is_test || form.cama === 'TEST-PROA-1' || record?.bedCode === 'TEST-PROA-1');
@@ -319,7 +332,7 @@ function buildProaTableRows(records) {
       form.diagnostico_actual || '—',
       form.funcion_renal || '—',
       form.antibioterapia_preingreso || antimicrobials.map((item) => item.nombre).join(', ') || '—',
-      form.diagnostico_microbiologico || '—',
+      formatMicrobiologicalDiagnosis(form),
       formatMicroStudies(form),
       getLastInflammatoryRows(form).map(formatInflammatoryRow).join('\n') || '—',
       formatted.map((item) => item.name).join('\n') || '—',
@@ -350,7 +363,7 @@ function buildProaPrintRows(records) {
       ? formatted.map((item) => `${item.name}: ${item.dose} · ${item.duration}`).join('\n')
       : '—';
     const microbiology = [
-      form.diagnostico_microbiologico,
+      formatMicrobiologicalDiagnosis(form) !== '—' && formatMicrobiologicalDiagnosis(form),
       formatMicroStudies(form) !== '—' && formatMicroStudies(form),
     ].filter(Boolean).join('\n') || '—';
     const plan = [
@@ -541,7 +554,11 @@ function GestionPROA() {
     tableScope,
   ]);
   const tableRows = useMemo(() => buildProaTableRows(visibleTableRecords), [visibleTableRecords]);
-  const printRows = useMemo(() => buildProaPrintRows(visibleTableRecords), [visibleTableRecords]);
+  const printableTableRecords = useMemo(
+    () => visibleTableRecords.filter((record) => !isTestProaRecord(record)),
+    [visibleTableRecords],
+  );
+  const printRows = useMemo(() => buildProaPrintRows(printableTableRecords), [printableTableRecords]);
   const groupedTableRecords = useMemo(() => {
     const groups = new Map(PROA_BED_MAP.map((service) => [service.servicio, []]));
     groups.set('Sin servicio', []);
@@ -1306,7 +1323,7 @@ function GestionPROA() {
               >
                 {showCharts ? 'Ocultar gráficos' : 'Ver gráficos'}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowPrintPreview(true)} disabled={visibleTableRecords.length === 0} className="gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowPrintPreview(true)} disabled={printableTableRecords.length === 0} className="gap-2">
                 <Printer className="h-4 w-4" /> Imprimir tabla
               </Button>
               <Button variant="outline" size="sm" onClick={copyProaTable} disabled={visibleTableRecords.length === 0} className="gap-2 border-emerald-300 text-emerald-800">
@@ -1581,7 +1598,7 @@ function GestionPROA() {
                       <td className="max-w-[180px] border-b border-r border-slate-200 px-3 py-3">
                         {form.antibioterapia_preingreso || antimicrobials.map((item) => item.nombre).join(', ') || '—'}
                       </td>
-                      <td className="max-w-[180px] border-b border-r border-slate-200 px-3 py-3">{form.diagnostico_microbiologico || '—'}</td>
+                      <td className="max-w-[180px] border-b border-r border-slate-200 px-3 py-3">{formatMicrobiologicalDiagnosis(form)}</td>
                       <td className="max-w-[220px] border-b border-r border-slate-200 px-3 py-3">{formatMicroStudies(form)}</td>
                       <td className="max-w-[240px] border-b border-r border-slate-200 px-3 py-3">
                         {piRows.length ? piRows.map((row, index) => <span key={`${row.fecha}-${index}`} className="mb-1 block">{formatInflammatoryRow(row)}</span>) : '—'}
@@ -1687,7 +1704,7 @@ function GestionPROA() {
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-600">
-            <span>{visibleTableRecords.length} paciente{visibleTableRecords.length === 1 ? '' : 's'} · A4 horizontal</span>
+            <span>{printableTableRecords.length} paciente{printableTableRecords.length === 1 ? '' : 's'} · A4 horizontal · pacientes de prueba excluidos</span>
             <span>La impresión combina campos relacionados para aprovechar mejor cada página.</span>
           </div>
           <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-300 bg-white">
