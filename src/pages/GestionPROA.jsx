@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { PROA_BED_MAP as BASE_PROA_BED_MAP } from '@/lib/hospitalSuggestions';
 import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, moveProaRecordToBed, readProaRegistry, saveProaPreAdmission, setPendingProaForm } from '@/lib/proaRegistry';
 import { buildRenalFunctionText } from '@/lib/renalFunction';
+import { supabase } from '@/lib/supabase';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, DIAGNOSTICOS_INFECTO, PATOGENOS, PRESENTACIONES_ATB, TIPOS_MUESTRA } from '@/pages/VisitaPROA';
 import {
   Bar,
@@ -91,6 +92,20 @@ function formatProaRut(value) {
   const body = clean.slice(0, -1);
   const dv = clean.slice(-1);
   return `${body.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}-${dv}`;
+}
+
+const normalizeMedicationName = (value) => String(value || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .toLocaleLowerCase('es');
+
+function formatArsenalPresentation(medication) {
+  const strength = medication?.dose_value != null && medication?.dose_unit
+    ? `${medication.dose_value} ${medication.dose_unit}`
+    : '';
+  return [medication?.presentation, strength].filter(Boolean).join(' · ');
 }
 
 function summarizeLatest(form) {
@@ -394,6 +409,8 @@ function GestionPROA() {
   const [tableDateTo, setTableDateTo] = useState('');
   const [showCharts, setShowCharts] = useState(false);
   const [chartsUseTableFilters, setChartsUseTableFilters] = useState(false);
+  const [activeArsenal, setActiveArsenal] = useState([]);
+  const [arsenalStatus, setArsenalStatus] = useState('loading');
   const [preAdmission, setPreAdmission] = useState({
     cama: '',
     paciente: '',
@@ -435,9 +452,40 @@ function GestionPROA() {
     });
     return {
       diagnoses: [...new Set([...DIAGNOSTICOS_INFECTO, ...diagnoses])].sort((a, b) => a.localeCompare(b, 'es')),
-      antibiotics: [...new Set([...ANTIBIOTICOS, ...antibiotics])].sort((a, b) => a.localeCompare(b, 'es')),
+      antibiotics: [...new Set([
+        ...ANTIBIOTICOS,
+        ...antibiotics,
+        ...activeArsenal.flatMap((medication) => [medication.name, medication.active_ingredient]).filter(Boolean),
+      ])].sort((a, b) => a.localeCompare(b, 'es')),
     };
-  }, [records]);
+  }, [activeArsenal, records]);
+
+  const arsenalPresentationsByMedication = useMemo(() => {
+    const grouped = new Map();
+    activeArsenal.forEach((medication) => {
+      const names = [medication.name, medication.active_ingredient]
+        .map(normalizeMedicationName)
+        .filter(Boolean);
+      names.forEach((name) => {
+        if (!grouped.has(name)) grouped.set(name, []);
+        const label = formatArsenalPresentation(medication);
+        if (!label || grouped.get(name).some((item) => item.label === label)) return;
+        grouped.get(name).push({
+          label,
+          unidad: medication.dose_unit || '',
+          sourceId: medication.id,
+        });
+      });
+    });
+    return grouped;
+  }, [activeArsenal]);
+
+  const getAvailablePresentations = (medicationName) => {
+    const arsenalOptions = arsenalPresentationsByMedication.get(normalizeMedicationName(medicationName)) || [];
+    if (arsenalOptions.length > 0) return { options: arsenalOptions, source: 'arsenal' };
+    const localOptions = Array.isArray(PRESENTACIONES_ATB[medicationName]) ? PRESENTACIONES_ATB[medicationName] : [];
+    return { options: localOptions, source: 'respaldo' };
+  };
 
   const refreshRecords = () => fetchProaRecords().then((nextRecords) => {
     setRecords(nextRecords);
@@ -553,6 +601,30 @@ function GestionPROA() {
 
   // Cargar desde Supabase al montar (fuente de verdad, multi-dispositivo).
   useEffect(() => { fetchProaRecords().then(setRecords); }, []);
+  useEffect(() => {
+    let active = true;
+    supabase
+      .from('medications')
+      .select('id,name,active_ingredient,presentation,dose_value,dose_unit,category,restrictions,is_active')
+      .eq('is_active', true)
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          console.error('No fue posible cargar el arsenal vigente para PROA:', error);
+          setArsenalStatus('fallback');
+          return;
+        }
+        const antimicrobialRows = (data || []).filter((medication) => {
+          const category = normalizeMedicationName(medication.category);
+          const names = `${normalizeMedicationName(medication.name)} ${normalizeMedicationName(medication.active_ingredient)}`;
+          return /antibi|antimicrob|antifung|antiviral/.test(category)
+            || ANTIBIOTICOS.some((item) => names.includes(normalizeMedicationName(item)));
+        });
+        setActiveArsenal(antimicrobialRows);
+        setArsenalStatus('loaded');
+      });
+    return () => { active = false; };
+  }, []);
 
   const serviceRecordCount = (service) => service.groups.reduce((total, group) => (
     total + group.beds.filter((bed) => recordsByBed[bed]).length
@@ -689,18 +761,25 @@ function GestionPROA() {
       antibioticos: current.antibioticos.map((item, itemIndex) => {
         if (itemIndex !== index) return item;
         if (key === 'presentacion') {
-          const presentationInfo = (PRESENTACIONES_ATB[item.nombre] || []).find((option) => option.label === value);
-          return { ...item, presentacion: value, presentacion_unidad: presentationInfo?.unidad || item.presentacion_unidad };
+          const { options } = getAvailablePresentations(item.nombre);
+          const presentationInfo = options.find((option) => option.label === value);
+          return {
+            ...item,
+            presentacion: value,
+            presentacion_unidad: presentationInfo?.unidad || item.presentacion_unidad,
+            dosis_unidad: presentationInfo?.unidad || item.dosis_unidad,
+          };
         }
         if (key !== 'nombre') return { ...item, [key]: value };
         const preset = DEFAULT_DOSIS_ATB[value];
-        const availablePresentations = Array.isArray(PRESENTACIONES_ATB[value])
-          ? PRESENTACIONES_ATB[value]
-          : [];
+        const { options: availablePresentations } = getAvailablePresentations(value);
         if (!preset && availablePresentations.length === 0) {
           return { ...item, nombre: value };
         }
-        const presentation = preset?.presentacion || availablePresentations[0]?.label || '';
+        const presetExistsInArsenal = availablePresentations.some((option) => option.label === preset?.presentacion);
+        const presentation = presetExistsInArsenal
+          ? preset.presentacion
+          : availablePresentations[0]?.label || preset?.presentacion || '';
         const presentationInfo = availablePresentations.find((option) => option.label === presentation);
         return {
           ...item,
@@ -1750,8 +1829,8 @@ function GestionPROA() {
               </div>
               <div className="space-y-2">
                 {preAdmission.antibioticos.map((item, index) => {
-                  const presentationCatalog = PRESENTACIONES_ATB[item.nombre];
-                  const presentationOptions = (Array.isArray(presentationCatalog) ? presentationCatalog : [])
+                  const { options: presentationCatalog, source: presentationSource } = getAvailablePresentations(item.nombre);
+                  const presentationOptions = presentationCatalog
                     .map((presentation) => presentation?.label)
                     .filter((label) => typeof label === 'string' && label);
                   const normalizedQuery = String(item.nombre || '').trim().toLocaleLowerCase('es');
@@ -1813,21 +1892,30 @@ function GestionPROA() {
                             autoComplete="off"
                           />
                           {presentationOptions.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 pt-1">
-                              {presentationOptions.map((presentation) => (
-                                <button
-                                  key={presentation}
-                                  type="button"
-                                  onClick={() => updatePreAntibiotic(index, 'presentacion', presentation)}
-                                  className={`rounded-md border px-2 py-1 text-left text-[10px] transition-colors ${
-                                    item.presentacion === presentation
-                                      ? 'border-teal-400 bg-teal-50 font-bold text-teal-900'
-                                      : 'border-slate-200 bg-white text-slate-600 hover:border-teal-300 hover:bg-teal-50'
-                                  }`}
-                                >
-                                  {presentation}
-                                </button>
-                              ))}
+                            <div className="space-y-1 pt-1">
+                              <div className="flex flex-wrap gap-1.5">
+                                {presentationOptions.map((presentation) => (
+                                  <button
+                                    key={presentation}
+                                    type="button"
+                                    onClick={() => updatePreAntibiotic(index, 'presentacion', presentation)}
+                                    className={`rounded-md border px-2 py-1 text-left text-[10px] transition-colors ${
+                                      item.presentacion === presentation
+                                        ? 'border-teal-400 bg-teal-50 font-bold text-teal-900'
+                                        : 'border-slate-200 bg-white text-slate-600 hover:border-teal-300 hover:bg-teal-50'
+                                    }`}
+                                  >
+                                    {presentation}
+                                  </button>
+                                ))}
+                              </div>
+                              <p className={`text-[10px] ${presentationSource === 'arsenal' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                                {presentationSource === 'arsenal'
+                                  ? 'Presentación obtenida del arsenal vigente.'
+                                  : arsenalStatus === 'loading'
+                                    ? 'Cargando arsenal vigente…'
+                                    : 'Catálogo local de respaldo; no se encontró presentación activa en arsenal.'}
+                              </p>
                             </div>
                           )}
                           {item.nombre && presentationOptions.length === 0 && (
