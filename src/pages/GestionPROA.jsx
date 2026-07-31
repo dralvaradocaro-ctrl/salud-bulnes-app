@@ -692,8 +692,14 @@ function GestionPROA() {
         }
         if (key !== 'nombre') return { ...item, [key]: value };
         const preset = DEFAULT_DOSIS_ATB[value];
-        const presentation = preset?.presentacion || PRESENTACIONES_ATB[value]?.[0]?.label || '';
-        const presentationInfo = (PRESENTACIONES_ATB[value] || []).find((option) => option.label === presentation);
+        const availablePresentations = Array.isArray(PRESENTACIONES_ATB[value])
+          ? PRESENTACIONES_ATB[value]
+          : [];
+        if (!preset && availablePresentations.length === 0) {
+          return { ...item, nombre: value };
+        }
+        const presentation = preset?.presentacion || availablePresentations[0]?.label || '';
+        const presentationInfo = availablePresentations.find((option) => option.label === presentation);
         return {
           ...item,
           nombre: value,
@@ -1755,15 +1761,28 @@ function GestionPROA() {
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-12">
                         <div className="space-y-1 lg:col-span-4">
                           <Label className="text-[11px]">Antibiótico</Label>
-                        <Input
-                          list="proa-pre-antibiotics"
-                          value={item.nombre}
-                          onChange={(event) => updatePreAntibiotic(index, 'nombre', event.target.value)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter') event.preventDefault();
-                          }}
-                          placeholder="Antimicrobiano"
-                        />
+                          <Input
+                            value={item.nombre}
+                            onChange={(event) => updatePreAntibiotic(index, 'nombre', event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') event.preventDefault();
+                            }}
+                            placeholder="Escribir antimicrobiano"
+                            autoComplete="off"
+                          />
+                          <select
+                            value={savedClinicalCatalog.antibiotics.includes(item.nombre) ? item.nombre : ''}
+                            onChange={(event) => {
+                              if (event.target.value) updatePreAntibiotic(index, 'nombre', event.target.value);
+                            }}
+                            className="h-8 w-full rounded-md border border-input bg-white px-2 text-xs text-slate-600"
+                            aria-label={`Seleccionar antimicrobiano ${index + 1} del catálogo`}
+                          >
+                            <option value="">Seleccionar del catálogo…</option>
+                            {savedClinicalCatalog.antibiotics.map((antibiotic) => (
+                              <option key={antibiotic} value={antibiotic}>{antibiotic}</option>
+                            ))}
+                          </select>
                         </div>
                         <div className="space-y-1 lg:col-span-5">
                           <Label className="text-[11px]">Presentación disponible</Label>
@@ -1811,9 +1830,6 @@ function GestionPROA() {
                   );
                 })}
               </div>
-              <datalist id="proa-pre-antibiotics">
-                {savedClinicalCatalog.antibiotics.map((antibiotic) => <option key={antibiotic} value={antibiotic} />)}
-              </datalist>
               <datalist id="proa-pre-frequencies">
                 {['4', '6', '8', '12', '24', '48'].map((hours) => <option key={hours} value={hours}>{`Cada ${hours} horas`}</option>)}
               </datalist>
