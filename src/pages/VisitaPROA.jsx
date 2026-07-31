@@ -118,11 +118,23 @@ function arsenalPresentationOption(medication) {
   const strength = medication?.dose_value != null && medication?.dose_unit
     ? `${medication.dose_value} ${medication.dose_unit}`
     : '';
+  const presentationText = String(medication?.presentation || '');
+  const envase = /polvo.*inyect|frasco/i.test(presentationText)
+    ? 'frasco ampolla'
+    : /soluci[oó]n.*inyect|ampolla/i.test(presentationText)
+      ? 'ampolla'
+      : /comprimido|tableta/i.test(presentationText)
+        ? 'comprimido'
+        : /c[aá]psula/i.test(presentationText)
+          ? 'cápsula'
+          : /bolsa/i.test(presentationText)
+            ? 'bolsa'
+            : 'unidad';
   return {
     label: [medication?.presentation, strength].filter(Boolean).join(' · '),
     cantidad: medication?.dose_value ?? '',
     unidad: medication?.dose_unit || '',
-    envase: medication?.presentation || 'unidad',
+    envase,
     source: 'arsenal',
   };
 }
@@ -548,6 +560,22 @@ function buildDosisConcreta(a) {
   const intervalo = a.intervalo_horas ? ` c/${a.intervalo_horas}h` : '';
   const via = a.via ? ` ${a.via}` : '';
   return `${dosis}${detalle}${intervalo}${via}`.trim();
+}
+
+function buildFinalAntibioticInstruction(a) {
+  if (!a?.nombre) return '';
+  const presentation = getPresentation(a.nombre, a.presentacion, a);
+  const dose = getDosisTotal(a);
+  const doseUnit = a.dosis_final_unidad || a.dosis_unidad || '';
+  const units = calcUnidadesPorDosis({ ...a, dosis_unidad: doseUnit });
+  const presentationText = a.presentacion ? ` (${a.presentacion})` : '';
+  const doseText = dose ? `${formatNumber(dose)} ${doseUnit}`.trim() : 'dosis pendiente';
+  const unitText = presentation && units
+    ? ` (${formatNumber(units)} ${pluralizeEnvase(presentation.envase, units)})`
+    : '';
+  const frequency = a.intervalo_horas ? ` cada ${a.intervalo_horas} horas` : ' frecuencia pendiente';
+  const route = a.via ? ` ${a.via}` : '';
+  return `${a.nombre}${presentationText} · ${doseText}${unitText}${frequency}${route}`.trim();
 }
 
 function buildAntibiograma(c) {
@@ -1488,6 +1516,12 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                         <Button variant="ghost" size="icon" onClick={() => removeAtb(i)} className="h-8 w-8 text-rose-600 hover:bg-rose-50" title="Quitar">
                           <Trash2 className="h-4 w-4" />
                         </Button>
+                      </div>
+                      <div className="col-span-12 rounded-md border border-teal-200 bg-white px-3 py-2">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-teal-700">Indicación final</p>
+                        <p className="mt-0.5 text-sm font-semibold text-slate-800">
+                          {buildFinalAntibioticInstruction({ ...a, peso_kg: f.peso_kg }) || 'Completa antibiótico, dosis, frecuencia y vía.'}
+                        </p>
                       </div>
                       {renalAlert && (
                         <div className="col-span-12 flex gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
