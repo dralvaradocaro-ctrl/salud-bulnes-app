@@ -1182,10 +1182,9 @@ function GestionPROA() {
                 <div className="mt-3 space-y-3">
                   <Badge className="border-slate-200 bg-white text-slate-700">Cama {displayBedCode(selectedBed)}</Badge>
                   <p className="text-sm text-slate-500">No hay registro PROA asociado a esta cama.</p>
-                  <Button onClick={() => openPreAdmission(selectedBed)} className="w-full bg-teal-600 hover:bg-teal-700">
-                    Agregar paciente PROA
+                  <Button onClick={createFromBed} className="w-full bg-teal-600 hover:bg-teal-700">
+                    Agregar y evolucionar paciente
                   </Button>
-                  <Button onClick={createFromBed} variant="outline" className="w-full">Ir directo a Evolución PROA</Button>
                   <MovePatientControl
                     records={records}
                     selectedBed={selectedBed}
