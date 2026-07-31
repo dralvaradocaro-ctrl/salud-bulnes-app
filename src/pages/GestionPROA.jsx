@@ -394,6 +394,7 @@ function GestionPROA() {
   const [tableDateTo, setTableDateTo] = useState('');
   const [showCharts, setShowCharts] = useState(false);
   const [chartsUseTableFilters, setChartsUseTableFilters] = useState(false);
+  const [activeAntibioticSuggestions, setActiveAntibioticSuggestions] = useState(null);
   const [preAdmission, setPreAdmission] = useState({
     cama: '',
     paciente: '',
@@ -1759,30 +1760,52 @@ function GestionPROA() {
                         </Button>
                       </div>
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-12">
-                        <div className="space-y-1 lg:col-span-4">
+                        <div className="relative space-y-1 lg:col-span-4">
                           <Label className="text-[11px]">Antibiótico</Label>
                           <Input
                             value={item.nombre}
-                            onChange={(event) => updatePreAntibiotic(index, 'nombre', event.target.value)}
+                            onFocus={() => setActiveAntibioticSuggestions(index)}
+                            onChange={(event) => {
+                              updatePreAntibiotic(index, 'nombre', event.target.value);
+                              setActiveAntibioticSuggestions(index);
+                            }}
+                            onBlur={() => setTimeout(() => {
+                              setActiveAntibioticSuggestions((current) => current === index ? null : current);
+                            }, 120)}
                             onKeyDown={(event) => {
                               if (event.key === 'Enter') event.preventDefault();
+                              if (event.key === 'Escape') setActiveAntibioticSuggestions(null);
                             }}
                             placeholder="Escribir antimicrobiano"
                             autoComplete="off"
                           />
-                          <select
-                            value={savedClinicalCatalog.antibiotics.includes(item.nombre) ? item.nombre : ''}
-                            onChange={(event) => {
-                              if (event.target.value) updatePreAntibiotic(index, 'nombre', event.target.value);
-                            }}
-                            className="h-8 w-full rounded-md border border-input bg-white px-2 text-xs text-slate-600"
-                            aria-label={`Seleccionar antimicrobiano ${index + 1} del catálogo`}
-                          >
-                            <option value="">Seleccionar del catálogo…</option>
-                            {savedClinicalCatalog.antibiotics.map((antibiotic) => (
-                              <option key={antibiotic} value={antibiotic}>{antibiotic}</option>
-                            ))}
-                          </select>
+                          {activeAntibioticSuggestions === index && item.nombre.trim() && (() => {
+                            const normalizedQuery = item.nombre.trim().toLocaleLowerCase('es');
+                            const matches = savedClinicalCatalog.antibiotics
+                              .filter((antibiotic) => antibiotic.toLocaleLowerCase('es').includes(normalizedQuery))
+                              .slice(0, 8);
+                            if (matches.length === 0 || (matches.length === 1 && matches[0] === item.nombre)) return null;
+                            return (
+                              <div className="absolute left-0 right-0 top-full z-[80] mt-1 max-h-52 overflow-y-auto rounded-lg border border-teal-200 bg-white p-1 shadow-xl">
+                                <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">Coincidencias del catálogo</p>
+                                {matches.map((antibiotic) => (
+                                  <button
+                                    key={antibiotic}
+                                    type="button"
+                                    onMouseDown={(event) => event.preventDefault()}
+                                    onClick={() => {
+                                      updatePreAntibiotic(index, 'nombre', antibiotic);
+                                      setActiveAntibioticSuggestions(null);
+                                    }}
+                                    className="block w-full rounded-md px-2 py-2 text-left text-sm text-slate-700 hover:bg-teal-50 hover:text-teal-900"
+                                  >
+                                    {antibiotic}
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                          <p className="text-[10px] text-slate-500">Escribe para buscar; selecciona una coincidencia para precargar la pauta.</p>
                         </div>
                         <div className="space-y-1 lg:col-span-5">
                           <Label className="text-[11px]">Presentación disponible</Label>
