@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { ChevronLeft, Printer, RotateCcw, Plus, Trash2, ShieldPlus, Sparkles, Save } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, Printer, RotateCcw, Plus, Trash2, ShieldPlus, Sparkles, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import DateInputDdmm from '@/components/sdm/DateInputDdmm';
 import { SERVICIOS, CAMAS } from '@/lib/hospitalSuggestions';
 import { archiveProaRecord, saveProaRecord, takePendingProaForm } from '@/lib/proaRegistry';
 import { buildRenalFunctionText, calculateEgfrCkdEpi2021 } from '@/lib/renalFunction';
+import { getRenalAntimicrobialAlert, getRenalAntimicrobialAlerts } from '@/lib/renalAntimicrobialAlerts';
 
 // ── Catálogos ──────────────────────────────────────────────
 export const ANTIBIOTICOS = [
@@ -674,6 +675,7 @@ function VisitaPROA() {
     return next;
   });
   const diasHosp = diasHospitalizacion(f.fecha_ingreso, f.fecha);
+  const renalAntimicrobialAlerts = getRenalAntimicrobialAlerts(f.antibioticos, f.vfg_estimada);
   const addInvasivo = () => setF(prev => ({ ...prev, invasivos: [...(prev.invasivos || []), { cual: '', desde: '' }] }));
   const updateInvasivo = (i, key, val) => setF(prev => ({ ...prev, invasivos: (prev.invasivos || []).map((d, idx) => idx === i ? { ...d, [key]: val } : d) }));
   const removeInvasivo = (i) => setF(prev => ({ ...prev, invasivos: (prev.invasivos || []).length <= 1 ? prev.invasivos : prev.invasivos.filter((_, idx) => idx !== i) }));
@@ -1199,6 +1201,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                 {f.antibioticos.map((a, i) => {
                   const dia = calcDiaTtoAtb(a, f.fecha);
                   const vigente = !hasTermino(a);
+                  const renalAlert = vigente ? getRenalAntimicrobialAlert(a.nombre, f.vfg_estimada) : null;
                   return (
                     <div
                       key={i}
@@ -1257,6 +1260,16 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
+                      {renalAlert && (
+                        <div className="col-span-12 flex gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+                          <div>
+                            <p className="font-bold">Ajuste renal a revisar · VFG estimada {renalAlert.vfg} mL/min/1,73 m²</p>
+                            <p>{renalAlert.advice}</p>
+                            <p className="mt-1 text-[10px] text-red-700">Orientación para adulto sin diálisis. Las tablas usan habitualmente CrCl; confirmar con Cockcroft–Gault, indicación, protocolo local y Farmacia/PROA.</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1725,6 +1738,19 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                   )}
                 </tbody>
               </table>
+              {renalAntimicrobialAlerts.length > 0 && (
+                <div style={{ marginTop: '5pt', border: '1px solid #dc2626', background: '#fef2f2', padding: '5pt', color: '#7f1d1d', fontSize: '8pt' }}>
+                  <p style={{ margin: '0 0 3pt', fontWeight: 'bold' }}>⚠ ALERTA DE AJUSTE POR FUNCIÓN RENAL — VFG estimada {f.vfg_estimada} mL/min/1,73 m²</p>
+                  {renalAntimicrobialAlerts.map((alert) => (
+                    <p key={alert.antimicrobial} style={{ margin: '2pt 0' }}>
+                      <strong>{alert.antimicrobial}:</strong> {alert.advice}
+                    </p>
+                  ))}
+                  <p style={{ margin: '3pt 0 0', fontSize: '7pt' }}>
+                    Orientación para adulto sin diálisis. Confirmar CrCl por Cockcroft–Gault, indicación, protocolo local y Farmacia/PROA antes de modificar.
+                  </p>
+                </div>
+              )}
             </PrintBlock>
 
             {f.evolucion && (
