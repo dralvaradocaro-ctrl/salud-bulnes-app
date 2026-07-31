@@ -263,6 +263,9 @@ function formatAntimicrobial(item, form) {
     : null;
   return {
     name: item.nombre || '—',
+    nameWithCourse: item.inicio
+      ? `${item.nombre || '—'} (FI: ${formatClinicalDate(item.inicio)} · ${preAntibioticTreatmentDays(item) ?? '—'} día${preAntibioticTreatmentDays(item) === 1 ? '' : 's'}${item.termino ? ' totales' : ''})`
+      : `${item.nombre || '—'} (FI: no registrada)`,
     dose: dose || 'Dosis no registrada',
     duration: item.termino
       ? `FI: ${formatClinicalDate(item.inicio)} · FT: ${formatClinicalDate(item.termino)} (${preAntibioticTreatmentDays(item) ?? '—'} días totales)`
@@ -270,6 +273,26 @@ function formatAntimicrobial(item, form) {
         ? `FI: ${formatClinicalDate(item.inicio)} (${duration} día${duration === 1 ? '' : 's'})`
         : form?.plan_duracion || 'Sin duración',
   };
+}
+
+function getChronologicalAntimicrobials(record) {
+  const courses = new Map();
+  [...(record?.evolutions || [])].reverse().forEach((evolution) => {
+    const form = evolution?.form || {};
+    (Array.isArray(form.antibioticos) ? form.antibioticos : [])
+      .filter((item) => item?.nombre)
+      .forEach((item) => {
+        const key = `${String(item.nombre).trim().toLocaleLowerCase('es')}|${item.inicio || 'sin-fecha'}`;
+        const previous = courses.get(key) || {};
+        courses.set(key, { ...previous, ...item, __sourceForm: form });
+      });
+  });
+  return [...courses.values()].sort((a, b) => {
+    if (a.inicio && b.inicio && a.inicio !== b.inicio) return a.inicio.localeCompare(b.inicio);
+    if (a.inicio && !b.inicio) return -1;
+    if (!a.inicio && b.inicio) return 1;
+    return String(a.nombre).localeCompare(String(b.nombre), 'es');
+  });
 }
 
 function recordOccupiesDateRange(record, dateFrom, dateTo) {
@@ -359,8 +382,8 @@ const PRINT_HEADERS = ['Servicio', 'Cama', 'Paciente', 'Edad / estadía', 'Diagn
 function buildProaTableRows(records) {
   return records.map((record) => {
     const form = getLatestProaForm(record) || {};
-    const antimicrobials = (form.antibioticos || []).filter((item) => item?.nombre);
-    const formatted = antimicrobials.map((item) => formatAntimicrobial(item, form));
+    const antimicrobials = getChronologicalAntimicrobials(record);
+    const formatted = antimicrobials.map((item) => formatAntimicrobial(item, item.__sourceForm || form));
     const plan = [
       ...(form.recomendaciones || []),
       form.recomendaciones_otra,
@@ -380,11 +403,11 @@ function buildProaTableRows(records) {
       hospitalStayDays(form) ?? '—',
       form.diagnostico_actual || '—',
       form.funcion_renal || '—',
-      form.antibioterapia_preingreso || antimicrobials.map((item) => item.nombre).join(', ') || '—',
+      formatted.map((item) => item.nameWithCourse).join('\n') || '—',
       formatMicrobiologicalDiagnosis(form),
       formatMicroStudies(form),
       getLastInflammatoryRows(form).map(formatInflammatoryRow).join('\n') || '—',
-      formatted.map((item) => item.name).join('\n') || '—',
+      formatted.map((item) => item.nameWithCourse).join('\n') || '—',
       formatted.map((item) => item.dose).join('\n') || '—',
       formatted.map((item) => item.duration).join('\n') || '—',
       plan || '—',
@@ -395,8 +418,8 @@ function buildProaTableRows(records) {
 function buildProaPrintRows(records) {
   return records.map((record) => {
     const form = getLatestProaForm(record) || {};
-    const antimicrobials = (form.antibioticos || []).filter((item) => item?.nombre);
-    const formatted = antimicrobials.map((item) => formatAntimicrobial(item, form));
+    const antimicrobials = getChronologicalAntimicrobials(record);
+    const formatted = antimicrobials.map((item) => formatAntimicrobial(item, item.__sourceForm || form));
     const identity = [
       form.paciente || record.code,
       form.rut && `RUT ${form.rut}`,
@@ -409,7 +432,7 @@ function buildProaPrintRows(records) {
       hospitalStayDays(form) != null && `${hospitalStayDays(form)} días`,
     ].filter(Boolean).join('\n');
     const antibioticText = formatted.length
-      ? formatted.map((item) => `${item.name}: ${item.dose} · ${item.duration}`).join('\n')
+      ? formatted.map((item) => `${item.nameWithCourse}: ${item.dose}`).join('\n')
       : '—';
     const microbiology = [
       formatMicrobiologicalDiagnosis(form) !== '—' && formatMicrobiologicalDiagnosis(form),
@@ -1599,8 +1622,8 @@ function GestionPROA() {
                     {serviceRecords.map((record) => {
                       const form = getLatestProaForm(record) || {};
                       const effectiveBed = form.cama || record.bedCode;
-                      const antimicrobials = (form.antibioticos || []).filter((item) => item?.nombre);
-                      const formattedAntimicrobials = antimicrobials.map((item) => formatAntimicrobial(item, form));
+                      const antimicrobials = getChronologicalAntimicrobials(record);
+                      const formattedAntimicrobials = antimicrobials.map((item) => formatAntimicrobial(item, item.__sourceForm || form));
                       const piRows = getLastInflammatoryRows(form);
                       const plan = [
                         ...(form.recomendaciones || []),
@@ -1645,7 +1668,11 @@ function GestionPROA() {
                       <td className="max-w-[190px] border-b border-r border-slate-200 px-3 py-3">{form.diagnostico_actual || '—'}</td>
                       <td className="max-w-[160px] border-b border-r border-slate-200 px-3 py-3">{form.funcion_renal || '—'}</td>
                       <td className="max-w-[180px] border-b border-r border-slate-200 px-3 py-3">
-                        {form.antibioterapia_preingreso || antimicrobials.map((item) => item.nombre).join(', ') || '—'}
+                        {formattedAntimicrobials.length
+                          ? formattedAntimicrobials.map((item, index) => (
+                            <span key={`${item.nameWithCourse}-${index}`} className="mb-1 block">{item.nameWithCourse}</span>
+                          ))
+                          : form.antibioterapia_preingreso || '—'}
                       </td>
                       <td className="max-w-[180px] border-b border-r border-slate-200 px-3 py-3">{formatMicrobiologicalDiagnosis(form)}</td>
                       <td className="max-w-[220px] border-b border-r border-slate-200 px-3 py-3">{formatMicroStudies(form)}</td>
@@ -1653,7 +1680,7 @@ function GestionPROA() {
                         {piRows.length ? piRows.map((row, index) => <span key={`${row.fecha}-${index}`} className="mb-1 block">{formatInflammatoryRow(row)}</span>) : '—'}
                       </td>
                       <td className="border-b border-r border-slate-200 px-3 py-3">
-                        {formattedAntimicrobials.length ? formattedAntimicrobials.map((item, index) => <span key={index} className="mb-1 block font-medium">{item.name}</span>) : '—'}
+                        {formattedAntimicrobials.length ? formattedAntimicrobials.map((item, index) => <span key={index} className="mb-1 block font-medium">{item.nameWithCourse}</span>) : '—'}
                       </td>
                       <td className="border-b border-r border-slate-200 px-3 py-3">
                         {formattedAntimicrobials.length ? formattedAntimicrobials.map((item, index) => <span key={index} className="mb-1 block">{item.dose}</span>) : '—'}
