@@ -152,6 +152,10 @@ function findServiceForBed(bedCode) {
   ))?.servicio || '';
 }
 
+function displayBedCode(bedCode) {
+  return String(bedCode || '').replace(/^MQ2-/, '');
+}
+
 const ALL_PROA_BEDS = PROA_BED_MAP.flatMap((service) => (
   service.groups.flatMap((group) => group.beds.map((bed) => ({ bed, servicio: service.servicio })))
 ));
@@ -265,7 +269,7 @@ function buildProaTableRows(records) {
       record.code,
       form.paciente || '—',
       form.rut || '—',
-      form.cama || record.bedCode,
+      displayBedCode(form.cama || record.bedCode),
       findServiceForBed(form.cama || record.bedCode) || 'Sin servicio',
       isHistoricalProaRecord(record) ? 'Egresado' : 'Actual',
       form.fecha_egreso || '—',
@@ -940,7 +944,7 @@ function GestionPROA() {
                                       }`}
                                     >
                                       <div className="flex items-center justify-between gap-1">
-                                        <span className="block text-base font-bold text-slate-900">{bed}</span>
+                                        <span className="block text-base font-bold text-slate-900">{displayBedCode(bed)}</span>
                                         {record && (
                                           <span className="rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">Ocupada</span>
                                         )}
@@ -1000,7 +1004,7 @@ function GestionPROA() {
 
               {selectedBed && !selectedRecord && (
                 <div className="mt-3 space-y-3">
-                  <Badge className="border-slate-200 bg-white text-slate-700">Cama {selectedBed}</Badge>
+                  <Badge className="border-slate-200 bg-white text-slate-700">Cama {displayBedCode(selectedBed)}</Badge>
                   <p className="text-sm text-slate-500">No hay registro PROA asociado a esta cama.</p>
                   <Button onClick={() => openPreAdmission(selectedBed)} className="w-full bg-teal-600 hover:bg-teal-700">
                     Agregar paciente PROA
@@ -1025,7 +1029,7 @@ function GestionPROA() {
                     {selectedLatest?.paciente && <p className="mt-2 font-bold text-slate-900">{selectedLatest.paciente}</p>}
                     {selectedLatest?.rut && <p className="text-sm text-slate-600">RUT {selectedLatest.rut}</p>}
                     {selectedLatest?.edad && <p className="text-sm text-slate-600">{selectedLatest.edad} años</p>}
-                    <p className="mt-1 text-sm text-slate-500">Cama {selectedRecord.bedCode}</p>
+                    <p className="mt-1 text-sm text-slate-500">Cama {displayBedCode(selectedRecord.bedCode)}</p>
                   </div>
 
                   <div className="space-y-2 text-sm">
@@ -1135,7 +1139,7 @@ function GestionPROA() {
               >
                 <option value="">Todas las camas</option>
                 {ALL_PROA_BEDS.map(({ bed, servicio }) => (
-                  <option key={bed} value={bed}>{servicio} · {bed}</option>
+                  <option key={bed} value={bed}>{servicio} · {displayBedCode(bed)}</option>
                 ))}
               </select>
             </div>
@@ -1332,7 +1336,7 @@ function GestionPROA() {
                           }}
                           className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-2 text-left text-base font-black text-teal-900 hover:bg-teal-100"
                         >
-                          {effectiveBed}
+                          {displayBedCode(effectiveBed)}
                         </button>
                       </td>
                       <td className="border-b border-r border-slate-200 px-3 py-3">
@@ -1424,7 +1428,7 @@ function GestionPROA() {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="">Seleccionar cama...</option>
-                {ALL_PROA_BEDS.map(({ bed, servicio }) => <option key={bed} value={bed}>{servicio} · {bed}</option>)}
+                {ALL_PROA_BEDS.map(({ bed, servicio }) => <option key={bed} value={bed}>{servicio} · {displayBedCode(bed)}</option>)}
               </select>
             </div>
             <div className="space-y-1.5 md:col-span-2">
@@ -1589,7 +1593,7 @@ function GestionPROA() {
             <AlertDialogTitle>¿Borrar paciente PROA?</AlertDialogTitle>
             <AlertDialogDescription>
               Se eliminará el paciente PROA <strong>{getLatestProaForm(recordToDelete)?.paciente || recordToDelete?.code}</strong> de la cama{' '}
-              <strong>{recordToDelete?.bedCode}</strong>, incluyendo su preingreso y todas sus evoluciones PROA.
+              <strong>{displayBedCode(recordToDelete?.bedCode)}</strong>, incluyendo su preingreso y todas sus evoluciones PROA.
               Esta acción se replicará inmediatamente en la tabla y en el mapa de camas.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1618,7 +1622,7 @@ function GestionPROA() {
             <AlertDialogTitle>¿Egresar paciente PROA?</AlertDialogTitle>
             <AlertDialogDescription>
               El paciente PROA <strong>{getLatestProaForm(recordToArchive)?.paciente || recordToArchive?.code}</strong> dejará de ocupar la cama{' '}
-              <strong>{recordToArchive?.bedCode}</strong>. Su preingreso y evoluciones se conservarán en el archivo de pacientes egresados.
+              <strong>{displayBedCode(recordToArchive?.bedCode)}</strong>. Su preingreso y evoluciones se conservarán en el archivo de pacientes egresados.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-1.5">
@@ -1646,7 +1650,7 @@ function GestionPROA() {
       }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>La cama {preAdmission.cama} ya está ocupada en PROA</AlertDialogTitle>
+            <AlertDialogTitle>La cama {displayBedCode(preAdmission.cama)} ya está ocupada en PROA</AlertDialogTitle>
             <AlertDialogDescription>
               Actualmente está asociada a <strong>{getLatestProaForm(occupiedRecordForPreAdmission)?.paciente || occupiedRecordForPreAdmission?.code}</strong>.
               Antes de ingresar al paciente nuevo debes decidir qué hacer con el registro anterior.
@@ -1707,7 +1711,7 @@ function MovePatientControl({ records, selectedBed, sourceBedToMove, setSourceBe
         <option value="">Seleccionar cama origen...</option>
         {movableRecords.map((record) => (
           <option key={record.id} value={record.bedCode}>
-            {record.bedCode} · {record.code}
+            {displayBedCode(record.bedCode)} · {record.code}
           </option>
         ))}
       </select>
@@ -1718,7 +1722,7 @@ function MovePatientControl({ records, selectedBed, sourceBedToMove, setSourceBe
         disabled={!sourceBedToMove}
         className="w-full"
       >
-        Mover a cama {selectedBed}
+        Mover a cama {displayBedCode(selectedBed)}
       </Button>
       <Button
         type="button"
