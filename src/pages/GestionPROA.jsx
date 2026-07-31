@@ -253,6 +253,7 @@ function isPositiveCulture(culture) {
 }
 
 const TABLE_HEADERS = ['Código PROA', 'Nombre', 'RUT', 'Cama', 'Servicio', 'Estado', 'Fecha de egreso', 'Edad', 'Fecha de ingreso', 'Días de estadía', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'];
+const PRINT_HEADERS = ['Servicio', 'Cama', 'Paciente', 'Edad / estadía', 'Diagnóstico', 'Función renal', 'Antibioterapia', 'Microbiología / estudios', 'Últimos 3 PI', 'Plan'];
 
 function buildProaTableRows(records) {
   return records.map((record) => {
@@ -286,6 +287,50 @@ function buildProaTableRows(records) {
       formatted.map((item) => item.dose).join('\n') || '—',
       formatted.map((item) => item.duration).join('\n') || '—',
       plan || '—',
+    ];
+  });
+}
+
+function buildProaPrintRows(records) {
+  return records.map((record) => {
+    const form = getLatestProaForm(record) || {};
+    const antimicrobials = (form.antibioticos || []).filter((item) => item?.nombre);
+    const formatted = antimicrobials.map((item) => formatAntimicrobial(item, form));
+    const identity = [
+      form.paciente || record.code,
+      form.rut && `RUT ${form.rut}`,
+      isHistoricalProaRecord(record) ? `Egresado ${form.fecha_egreso || ''}`.trim() : 'Actual',
+    ].filter(Boolean).join('\n');
+    const stay = [
+      form.edad && `${form.edad} años`,
+      form.fecha_ingreso && `Ingreso ${form.fecha_ingreso}`,
+      form.fecha_egreso && `Egreso ${form.fecha_egreso}`,
+      hospitalStayDays(form) != null && `${hospitalStayDays(form)} días`,
+    ].filter(Boolean).join('\n');
+    const antibioticText = formatted.length
+      ? formatted.map((item) => `${item.name}: ${item.dose} · ${item.duration}`).join('\n')
+      : '—';
+    const microbiology = [
+      form.diagnostico_microbiologico,
+      formatMicroStudies(form) !== '—' && formatMicroStudies(form),
+    ].filter(Boolean).join('\n') || '—';
+    const plan = [
+      ...(form.recomendaciones || []),
+      form.recomendaciones_otra,
+      form.plan_duracion,
+      form.proxima_revision && `Revisión: ${form.proxima_revision}`,
+    ].filter(Boolean).join(' · ') || '—';
+    return [
+      findServiceForBed(form.cama || record.bedCode) || 'Sin servicio',
+      displayBedCode(form.cama || record.bedCode),
+      identity,
+      stay || '—',
+      form.diagnostico_actual || '—',
+      form.funcion_renal || '—',
+      antibioticText,
+      microbiology,
+      getLastInflammatoryRows(form).map(formatInflammatoryRow).join('\n') || '—',
+      plan,
     ];
   });
 }
@@ -324,6 +369,7 @@ function GestionPROA() {
   const [replacementDischargeDate, setReplacementDischargeDate] = useState(new Date().toISOString().slice(0, 10));
   const [resolvingOccupiedBed, setResolvingOccupiedBed] = useState(false);
   const [tableCopied, setTableCopied] = useState(false);
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [tableScope, setTableScope] = useState('actuales');
   const [tableAntibioticFilter, setTableAntibioticFilter] = useState('');
   const [tableBedFilter, setTableBedFilter] = useState('');
@@ -404,6 +450,7 @@ function GestionPROA() {
     tableScope,
   ]);
   const tableRows = useMemo(() => buildProaTableRows(visibleTableRecords), [visibleTableRecords]);
+  const printRows = useMemo(() => buildProaPrintRows(visibleTableRecords), [visibleTableRecords]);
   const groupedTableRecords = useMemo(() => {
     const groups = new Map(PROA_BED_MAP.map((service) => [service.servicio, []]));
     groups.set('Sin servicio', []);
@@ -663,8 +710,8 @@ function GestionPROA() {
   const printProaTable = () => {
     const printWindow = window.open('', '_blank', 'width=1400,height=900');
     if (!printWindow) return;
-    const headerHtml = TABLE_HEADERS.map((header) => `<th>${escapeHtml(header)}</th>`).join('');
-    const rowsHtml = tableRows.map((row) => (
+    const headerHtml = PRINT_HEADERS.map((header) => `<th>${escapeHtml(header)}</th>`).join('');
+    const rowsHtml = printRows.map((row) => (
       `<tr>${row.map((cell) => `<td>${escapeHtml(cell).replace(/\n/g, '<br>')}</td>`).join('')}</tr>`
     )).join('');
     printWindow.document.write(`<!doctype html>
@@ -673,15 +720,26 @@ function GestionPROA() {
           <meta charset="utf-8">
           <title>Tabla de pacientes PROA</title>
           <style>
-            @page { size: A4 landscape; margin: 7mm; }
+            @page { size: A4 landscape; margin: 6mm; }
             * { box-sizing: border-box; }
             body { margin: 0; color: #0f172a; font-family: Arial, sans-serif; }
-            h1 { margin: 0 0 3px; font-size: 16px; }
-            .meta { margin: 0 0 8px; color: #475569; font-size: 9px; }
+            h1 { margin: 0 0 2px; font-size: 14px; }
+            .meta { margin: 0 0 5px; color: #475569; font-size: 8px; }
             table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-            th, td { border: 1px solid #94a3b8; padding: 3px; vertical-align: top; overflow-wrap: anywhere; }
-            th { background: #e2e8f0; font-size: 6.5px; text-transform: uppercase; }
-            td { font-size: 6.5px; line-height: 1.2; }
+            thead { display: table-header-group; }
+            th, td { border: 0.5px solid #94a3b8; padding: 2.5px; vertical-align: top; overflow-wrap: anywhere; }
+            th { background: #dbeafe; font-size: 6.7px; line-height: 1.1; text-transform: uppercase; }
+            td { font-size: 7px; line-height: 1.15; }
+            th:nth-child(1), td:nth-child(1) { width: 8%; }
+            th:nth-child(2), td:nth-child(2) { width: 5%; font-weight: 700; }
+            th:nth-child(3), td:nth-child(3) { width: 10%; }
+            th:nth-child(4), td:nth-child(4) { width: 8%; }
+            th:nth-child(5), td:nth-child(5) { width: 12%; }
+            th:nth-child(6), td:nth-child(6) { width: 8%; }
+            th:nth-child(7), td:nth-child(7) { width: 15%; }
+            th:nth-child(8), td:nth-child(8) { width: 12%; }
+            th:nth-child(9), td:nth-child(9) { width: 11%; }
+            th:nth-child(10), td:nth-child(10) { width: 11%; }
             tr { break-inside: avoid; page-break-inside: avoid; }
           </style>
         </head>
@@ -693,6 +751,7 @@ function GestionPROA() {
         </body>
       </html>`);
     printWindow.document.close();
+    setShowPrintPreview(false);
   };
 
   const copyProaTable = async () => {
@@ -1109,7 +1168,7 @@ function GestionPROA() {
               >
                 {showCharts ? 'Ocultar gráficos' : 'Ver gráficos'}
               </Button>
-              <Button variant="outline" size="sm" onClick={printProaTable} disabled={visibleTableRecords.length === 0} className="gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowPrintPreview(true)} disabled={visibleTableRecords.length === 0} className="gap-2">
                 <Printer className="h-4 w-4" /> Imprimir tabla
               </Button>
               <Button variant="outline" size="sm" onClick={copyProaTable} disabled={visibleTableRecords.length === 0} className="gap-2 border-emerald-300 text-emerald-800">
@@ -1406,6 +1465,56 @@ function GestionPROA() {
           </div>
         </section>
       </main>
+
+      <Dialog open={showPrintPreview} onOpenChange={setShowPrintPreview}>
+        <DialogContent className="flex max-h-[94vh] w-[calc(100vw-2rem)] max-w-[96vw] flex-col gap-3 p-4 sm:p-5">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Printer className="h-5 w-5 text-teal-700" />
+              Vista previa de impresión — Tabla PROA
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-100 px-3 py-2 text-xs text-slate-600">
+            <span>{visibleTableRecords.length} paciente{visibleTableRecords.length === 1 ? '' : 's'} · A4 horizontal</span>
+            <span>La impresión combina campos relacionados para aprovechar mejor cada página.</span>
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-300 bg-white">
+            <table className="min-w-[1200px] w-full table-fixed border-collapse text-[10px] leading-tight">
+              <thead className="sticky top-0 z-10 bg-blue-100 text-left uppercase text-slate-700">
+                <tr>
+                  {PRINT_HEADERS.map((header, index) => (
+                    <th
+                      key={header}
+                      className="border-b border-r border-slate-300 px-2 py-2 last:border-r-0"
+                      style={{ width: `${[8, 5, 10, 8, 12, 8, 15, 12, 11, 11][index]}%` }}
+                    >
+                      {header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {printRows.map((row, rowIndex) => (
+                  <tr key={`${row[0]}-${row[1]}-${rowIndex}`} className="align-top even:bg-slate-50">
+                    {row.map((cell, cellIndex) => (
+                      <td key={cellIndex} className={`whitespace-pre-line border-b border-r border-slate-200 px-2 py-2 last:border-r-0 ${cellIndex === 1 ? 'font-black text-teal-900' : ''}`}>
+                        {cell}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex shrink-0 justify-end gap-2 border-t border-slate-200 pt-3">
+            <Button type="button" variant="outline" onClick={() => setShowPrintPreview(false)}>Cerrar</Button>
+            <Button type="button" onClick={printProaTable} className="gap-2 bg-teal-700 hover:bg-teal-800">
+              <Printer className="h-4 w-4" />
+              Imprimir esta vista
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showPreAdmission} onOpenChange={setShowPreAdmission}>
         <DialogContent className="max-h-[92vh] w-[calc(100vw-2rem)] max-w-5xl overflow-y-auto p-4 sm:p-6">
