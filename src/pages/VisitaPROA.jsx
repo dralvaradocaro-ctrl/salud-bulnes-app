@@ -685,33 +685,35 @@ function VisitaPROA() {
   };
 
   const [saving, setSaving] = useState(false);
-  const handleSaveRegistry = async () => {
+  const handleSaveRegistry = async (dischargePatient = false) => {
     if (!f.cama?.trim()) {
       setRegistryMessage('Selecciona una cama antes de guardar el registro PROA.');
       return;
     }
-    if (f.proa_discharge_requested && !f.fecha_egreso) {
-      setRegistryMessage('Indica la fecha de egreso para egresar al paciente.');
-      return;
-    }
-    if (f.proa_discharge_requested && f.fecha_ingreso && f.fecha_egreso < f.fecha_ingreso) {
+    const dischargeDate = dischargePatient ? todayIso() : '';
+    if (dischargePatient && f.fecha_ingreso && dischargeDate < f.fecha_ingreso) {
       setRegistryMessage('La fecha de egreso no puede ser anterior a la fecha de ingreso.');
       return;
     }
+    const formToSave = {
+      ...f,
+      proa_discharge_requested: dischargePatient,
+      fecha_egreso: dischargeDate,
+    };
     setSaving(true);
     setRegistryMessage('Guardando…');
     try {
-      const editingExistingEvolution = Boolean(f.__proaEditLatest);
-      const record = await saveProaRecord(f, {
-        replaceExisting: f.__proaRegistryMode === 'new_patient',
+      const editingExistingEvolution = Boolean(formToSave.__proaEditLatest);
+      const record = await saveProaRecord(formToSave, {
+        replaceExisting: formToSave.__proaRegistryMode === 'new_patient',
         editLatestEvolution: editingExistingEvolution,
       });
-      if (f.proa_discharge_requested) {
-        await archiveProaRecord(record, f.fecha_egreso);
+      if (dischargePatient) {
+        await archiveProaRecord(record, dischargeDate);
       }
       setF(prev => ({ ...prev, __proaRegistryMode: '', __proaEditLatest: false }));
-      setRegistryMessage(f.proa_discharge_requested
-        ? `✅ Paciente ${record.code} egresado el ${f.fecha_egreso}. La cama quedó libre y el registro pasó al histórico PROA.`
+      setRegistryMessage(dischargePatient
+        ? `✅ Paciente ${record.code} egresado el ${dischargeDate}. La cama quedó libre y el registro pasó al histórico PROA.`
         : editingExistingEvolution
           ? `✅ Evolución existente de ${record.code} editada y sincronizada. No se creó una evolución nueva.`
           : `✅ Registro ${record.code} guardado en cama ${record.bedCode} y sincronizado. En PROA se conservaron nombre, RUT y edad; la ficha clínica no fue almacenada.`);
@@ -1322,36 +1324,6 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                   <DateInputDdmm value={f.proxima_revision} onChange={v => u('proxima_revision', v)} className="h-9" />
                 </Field>
               </Grid>
-              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                <label className="flex cursor-pointer items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(f.proa_discharge_requested)}
-                    onChange={e => setF(prev => ({
-                      ...prev,
-                      proa_discharge_requested: e.target.checked,
-                      fecha_egreso: e.target.checked ? (prev.fecha_egreso || todayIso()) : '',
-                    }))}
-                    className="mt-1 accent-amber-600"
-                  />
-                  <span>
-                    <span className="block text-sm font-bold text-amber-900">Egresar paciente al guardar esta evolución</span>
-                    <span className="block text-xs text-amber-800">Libera la cama automáticamente y conserva el registro completo en el histórico PROA.</span>
-                  </span>
-                </label>
-                {f.proa_discharge_requested && (
-                  <div className="mt-3 max-w-xs space-y-1">
-                    <label className="block text-[11px] font-medium text-amber-900">Fecha de egreso *</label>
-                    <Input
-                      type="date"
-                      min={f.fecha_ingreso || undefined}
-                      value={f.fecha_egreso}
-                      onChange={e => u('fecha_egreso', e.target.value)}
-                      className="h-9 bg-white"
-                    />
-                  </div>
-                )}
-              </div>
               <div className="mt-3">
                 <label className="block text-[11px] font-medium text-slate-600 mb-1">Sugerencia</label>
                 <Textarea
@@ -1375,18 +1347,27 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="min-h-5 text-xs font-medium text-teal-700">{registryMessage}</p>
               <div className="flex items-center justify-end gap-2">
-                <Button variant="outline" onClick={handleSaveRegistry} disabled={saving} className="gap-2">
+                <Button variant="outline" onClick={() => handleSaveRegistry(false)} disabled={saving} className="gap-2">
                   <Save className="h-4 w-4" />
                   {saving ? 'Guardando…' : 'Guardar registro PROA'}
                 </Button>
-              <Button variant="outline" onClick={clear}>Limpiar</Button>
-              <Button
-                onClick={() => { if (f.cama?.trim()) handleSaveRegistry(); setShowPreview(true); }}
-                disabled={saving}
-                className="bg-teal-600 hover:bg-teal-700 gap-2"
-              >
-                {saving ? 'Guardando…' : 'Generar y guardar →'}
-              </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleSaveRegistry(true)}
+                  disabled={saving}
+                  className="gap-2 border-amber-400 text-amber-800 hover:bg-amber-50"
+                >
+                  <Save className="h-4 w-4" />
+                  {saving ? 'Guardando…' : 'Guardar y egresar'}
+                </Button>
+                <Button variant="outline" onClick={clear}>Limpiar</Button>
+                <Button
+                  onClick={() => { if (f.cama?.trim()) handleSaveRegistry(false); setShowPreview(true); }}
+                  disabled={saving}
+                  className="bg-teal-600 hover:bg-teal-700 gap-2"
+                >
+                  {saving ? 'Guardando…' : 'Generar y guardar →'}
+                </Button>
               </div>
             </div>
           </div>
