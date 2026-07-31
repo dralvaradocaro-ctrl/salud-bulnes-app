@@ -140,6 +140,11 @@ function daysSince(s, { inclusive = false } = {}) {
   return inclusive ? diff + 1 : diff;
 }
 
+function formatClinicalDate(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : (value || '—');
+}
+
 function hospitalStayDays(form) {
   const start = parseProaDate(form?.fecha_ingreso);
   if (!start) return null;
@@ -260,9 +265,9 @@ function formatAntimicrobial(item, form) {
     name: item.nombre || '—',
     dose: dose || 'Dosis no registrada',
     duration: item.termino
-      ? `${preAntibioticTreatmentDays(item) ?? '—'} días · ${item.inicio || '—'} a ${item.termino}`
+      ? `FI: ${formatClinicalDate(item.inicio)} · FT: ${formatClinicalDate(item.termino)} (${preAntibioticTreatmentDays(item) ?? '—'} días totales)`
       : duration
-        ? `Día ${duration}`
+        ? `FI: ${formatClinicalDate(item.inicio)} (${duration} día${duration === 1 ? '' : 's'})`
         : form?.plan_duracion || 'Sin duración',
   };
 }
