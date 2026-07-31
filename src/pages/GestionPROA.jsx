@@ -59,6 +59,15 @@ const localTodayIso = () => {
   const now = new Date();
   return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 };
+
+function PrintPreviewField({ label, value, bordered = false, className = '' }) {
+  return (
+    <div className={`px-3 py-2 ${bordered ? 'border-t border-slate-200' : ''} ${className}`}>
+      <p className="mb-1 text-[9px] font-black uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="whitespace-pre-line text-slate-800">{value || '—'}</p>
+    </div>
+  );
+}
 const PROA_BED_MAP = [
   ...BASE_PROA_BED_MAP,
   {
@@ -390,7 +399,6 @@ function isTestProaRecord(record) {
 }
 
 const TABLE_HEADERS = ['Código PROA', 'Nombre', 'RUT', 'Cama', 'Servicio', 'Estado', 'Fecha de egreso', 'Edad', 'Fecha de ingreso', 'Días de estadía', 'DG', 'Función renal', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Tratamientos antimicrobianos', 'Plan'];
-const PRINT_HEADERS = ['Servicio', 'Cama', 'Paciente', 'Edad / estadía', 'Diagnóstico', 'Función renal', 'Tratamientos antimicrobianos', 'Microbiología / estudios', 'Últimos 3 PI', 'Plan'];
 
 function buildProaTableRows(records) {
   return records.map((record) => {
@@ -641,6 +649,15 @@ function GestionPROA() {
     [visibleTableRecords],
   );
   const printRows = useMemo(() => buildProaPrintRows(printableTableRecords), [printableTableRecords]);
+  const groupedPrintRows = useMemo(() => {
+    const groups = new Map();
+    printRows.forEach((row) => {
+      const service = row[0] || 'Sin servicio';
+      if (!groups.has(service)) groups.set(service, []);
+      groups.get(service).push(row);
+    });
+    return [...groups.entries()];
+  }, [printRows]);
   const groupedTableRecords = useMemo(() => {
     const groups = new Map(PROA_BED_MAP.map((service) => [service.servicio, []]));
     groups.set('Sin servicio', []);
@@ -942,10 +959,25 @@ function GestionPROA() {
   const printProaTable = () => {
     const printWindow = window.open('', '_blank', 'width=1400,height=900');
     if (!printWindow) return;
-    const headerHtml = PRINT_HEADERS.map((header) => `<th>${escapeHtml(header)}</th>`).join('');
-    const rowsHtml = printRows.map((row) => (
-      `<tr>${row.map((cell) => `<td>${escapeHtml(cell).replace(/\n/g, '<br>')}</td>`).join('')}</tr>`
-    )).join('');
+    const printValue = (value) => escapeHtml(value || '—').replace(/\n/g, '<br>');
+    const rowsHtml = groupedPrintRows.map(([service, rows]) => `
+      <section class="service-section">
+        <h2>${escapeHtml(service)} <span>${rows.length} paciente${rows.length === 1 ? '' : 's'}</span></h2>
+        <div class="cards">
+          ${rows.map((row) => `
+            <article class="patient-card">
+              <header><strong>Cama ${printValue(row[1])}</strong><div>${printValue(row[2])}</div></header>
+              <div class="summary"><div><b>Edad / estadía</b>${printValue(row[3])}</div><div><b>Función renal</b>${printValue(row[5])}</div></div>
+              <div class="field"><b>Diagnóstico</b>${printValue(row[4])}</div>
+              <div class="field treatment"><b>Tratamientos antimicrobianos</b>${printValue(row[6])}</div>
+              <div class="details">
+                <div><b>Microbiología / estudios</b>${printValue(row[7])}</div>
+                <div><b>Últimos 3 PI</b>${printValue(row[8])}</div>
+              </div>
+              <div class="field plan"><b>Plan</b>${printValue(row[9])}</div>
+            </article>`).join('')}
+        </div>
+      </section>`).join('');
     printWindow.document.write(`<!doctype html>
       <html lang="es">
         <head>
@@ -955,30 +987,28 @@ function GestionPROA() {
             @page { size: A4 landscape; margin: 6mm; }
             * { box-sizing: border-box; }
             body { margin: 0; color: #0f172a; font-family: Arial, sans-serif; }
-            h1 { margin: 0 0 2px; font-size: 14px; }
-            .meta { margin: 0 0 5px; color: #475569; font-size: 8px; }
-            table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-            thead { display: table-header-group; }
-            th, td { border: 0.5px solid #94a3b8; padding: 2.5px; vertical-align: top; overflow-wrap: anywhere; }
-            th { background: #dbeafe; font-size: 6.7px; line-height: 1.1; text-transform: uppercase; }
-            td { font-size: 7px; line-height: 1.15; }
-            th:nth-child(1), td:nth-child(1) { width: 8%; }
-            th:nth-child(2), td:nth-child(2) { width: 5%; font-weight: 700; }
-            th:nth-child(3), td:nth-child(3) { width: 10%; }
-            th:nth-child(4), td:nth-child(4) { width: 8%; }
-            th:nth-child(5), td:nth-child(5) { width: 12%; }
-            th:nth-child(6), td:nth-child(6) { width: 8%; }
-            th:nth-child(7), td:nth-child(7) { width: 15%; }
-            th:nth-child(8), td:nth-child(8) { width: 12%; }
-            th:nth-child(9), td:nth-child(9) { width: 11%; }
-            th:nth-child(10), td:nth-child(10) { width: 11%; }
-            tr { break-inside: avoid; page-break-inside: avoid; }
+            h1 { margin: 0 0 2px; font-size: 16px; }
+            .meta { margin: 0 0 4mm; color: #475569; font-size: 9px; }
+            .service-section { margin-bottom: 4mm; }
+            h2 { margin: 0 0 2mm; padding: 1.5mm 2.5mm; border-radius: 2mm; background: #115e59; color: white; font-size: 10px; text-transform: uppercase; }
+            h2 span { margin-left: 2mm; font-weight: normal; opacity: .85; text-transform: none; }
+            .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3mm; align-items: start; }
+            .patient-card { break-inside: avoid; page-break-inside: avoid; overflow: hidden; border: .4mm solid #94a3b8; border-radius: 2mm; font-size: 8.5px; line-height: 1.25; }
+            .patient-card header { display: grid; grid-template-columns: 27mm 1fr; gap: 2mm; padding: 2mm 2.5mm; background: #e0f2f1; border-bottom: .3mm solid #99f6e4; }
+            .patient-card header strong { color: #115e59; font-size: 10px; }
+            .summary, .details { display: grid; grid-template-columns: 1fr 1fr; }
+            .summary > div, .details > div, .field { padding: 1.5mm 2.5mm; overflow-wrap: anywhere; }
+            .summary > div + div, .details > div + div { border-left: .25mm solid #cbd5e1; }
+            .field, .details { border-top: .25mm solid #cbd5e1; }
+            b { display: block; margin-bottom: .6mm; color: #475569; font-size: 7px; text-transform: uppercase; }
+            .treatment { background: #f0fdf4; white-space: normal; }
+            .plan { background: #f8fafc; }
           </style>
         </head>
         <body>
           <h1>Tabla de pacientes PROA</h1>
           <p class="meta">Hospital Comunitario de Salud Familiar de Bulnes · ${new Date().toLocaleString('es-CL')}</p>
-          <table><thead><tr>${headerHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>
+          ${rowsHtml}
           <script>window.addEventListener('load', () => { window.print(); });<\/script>
         </body>
       </html>`);
@@ -1798,33 +1828,38 @@ function GestionPROA() {
             <span>{printableTableRecords.length} paciente{printableTableRecords.length === 1 ? '' : 's'} · A4 horizontal · pacientes de prueba excluidos</span>
             <span>La impresión combina campos relacionados para aprovechar mejor cada página.</span>
           </div>
-          <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-300 bg-white">
-            <table className="min-w-[1200px] w-full table-fixed border-collapse text-[10px] leading-tight">
-              <thead className="sticky top-0 z-10 bg-blue-100 text-left uppercase text-slate-700">
-                <tr>
-                  {PRINT_HEADERS.map((header, index) => (
-                    <th
-                      key={header}
-                      className="border-b border-r border-slate-300 px-2 py-2 last:border-r-0"
-                      style={{ width: `${[8, 5, 10, 8, 12, 8, 15, 12, 11, 11][index]}%` }}
-                    >
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {printRows.map((row, rowIndex) => (
-                  <tr key={`${row[0]}-${row[1]}-${rowIndex}`} className="align-top even:bg-slate-50">
-                    {row.map((cell, cellIndex) => (
-                      <td key={cellIndex} className={`whitespace-pre-line border-b border-r border-slate-200 px-2 py-2 last:border-r-0 ${cellIndex === 1 ? 'font-black text-teal-900' : ''}`}>
-                        {cell}
-                      </td>
+          <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-slate-300 bg-slate-100 p-3">
+            <div className="mx-auto max-w-[1400px] space-y-4">
+              {groupedPrintRows.map(([service, rows]) => (
+                <section key={service}>
+                  <div className="mb-2 flex items-center gap-2 rounded-md bg-teal-800 px-3 py-2 text-xs font-black uppercase tracking-wide text-white">
+                    {service}
+                    <span className="font-medium normal-case opacity-80">{rows.length} paciente{rows.length === 1 ? '' : 's'}</span>
+                  </div>
+                  <div className="grid items-start gap-3 xl:grid-cols-2">
+                    {rows.map((row, rowIndex) => (
+                      <article key={`${row[0]}-${row[1]}-${rowIndex}`} className="overflow-hidden rounded-lg border border-slate-300 bg-white text-[11px] leading-snug shadow-sm">
+                        <header className="grid grid-cols-[110px_1fr] gap-2 border-b border-teal-200 bg-teal-50 px-3 py-2">
+                          <strong className="text-sm text-teal-900">Cama {row[1]}</strong>
+                          <span className="whitespace-pre-line font-semibold text-slate-800">{row[2]}</span>
+                        </header>
+                        <div className="grid grid-cols-2 divide-x divide-slate-200">
+                          <PrintPreviewField label="Edad / estadía" value={row[3]} />
+                          <PrintPreviewField label="Función renal" value={row[5]} />
+                        </div>
+                        <PrintPreviewField label="Diagnóstico" value={row[4]} bordered />
+                        <PrintPreviewField label="Tratamientos antimicrobianos" value={row[6]} bordered className="bg-emerald-50/60" />
+                        <div className="grid grid-cols-2 divide-x divide-slate-200 border-t border-slate-200">
+                          <PrintPreviewField label="Microbiología / estudios" value={row[7]} />
+                          <PrintPreviewField label="Últimos 3 PI" value={row[8]} />
+                        </div>
+                        <PrintPreviewField label="Plan" value={row[9]} bordered className="bg-slate-50" />
+                      </article>
                     ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  </div>
+                </section>
+              ))}
+            </div>
           </div>
           <div className="flex shrink-0 justify-end gap-2 border-t border-slate-200 pt-3">
             <Button type="button" variant="outline" onClick={() => setShowPrintPreview(false)}>Cerrar</Button>
