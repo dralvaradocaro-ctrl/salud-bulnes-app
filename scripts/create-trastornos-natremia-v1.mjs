@@ -1,11 +1,11 @@
 /**
  * Crea/actualiza el topic "Trastornos de la natremia" (Hiponatremia e
  * Hipernatremia) en la misma categoría/subcategoría que "Trastornos del potasio".
- * Estructura espejo del potasio: 2 pestañas, subpestañas, calculadoras embebidas,
+ * Estructura espejo del potasio: pestañas clínicas, subpestañas, calculadoras embebidas,
  * algoritmos, arsenal local HCSFB, recetas e indicaciones con tiempos y máximos.
  *
- * Fuentes: AAFP. Sodium Disorders: Hyponatremia and Hypernatremia (2023);
- * Spasovski G. et al. Hyponatraemia guideline (2014); Adrogué & Madias (NEJM 2000).
+ * Fuentes: AAFP (2023); Spasovski et al. (2014); Hoorn et al. NDT (2024);
+ * Yun et al. Korean J Intern Med (2023); Society for Endocrinology (2022).
  *
  * Uso: node scripts/create-trastornos-natremia-v1.mjs [--apply]
  */
@@ -24,8 +24,10 @@ const TOPIC_NAME = 'Trastornos de la natremia';
 const references = [
   'AAFP. Sodium Disorders: Hyponatremia and Hypernatremia. American Family Physician. 2023.',
   'Spasovski G, et al. Clinical practice guideline on diagnosis and treatment of hyponatraemia. Nephrol Dial Transplant. 2014.',
+  'Hoorn EJ, et al. Hyponatraemia—treatment standard 2024. Nephrol Dial Transplant. 2024.',
+  'Yun G, et al. Evaluation and management of hypernatremia in adults: clinical perspectives. Korean J Intern Med. 2023.',
+  'Society for Endocrinology. Emergency management of severe and moderately severely symptomatic hyponatraemia. 2022.',
   'Adrogué HJ, Madias NE. Hyponatremia / Hypernatremia. N Engl J Med. 2000.',
-  'UpToDate / StatPearls. Hyponatremia; Hypernatremia; Osmotic Demyelination Syndrome.',
 ];
 
 const blocks = [
@@ -38,6 +40,31 @@ const blocks = [
     content:
       'Tema y calculadoras de apoyo. La indicación final depende del estado de volumen, osmolalidad, síntomas, velocidad de instalación, causa y controles seriados de Na. Lo más peligroso no suele ser la cifra, sino corregir DEMASIADO RÁPIDO: en hiponatremia, riesgo de síndrome de desmielinización osmótica (mielinolisis); en hipernatremia, riesgo de edema cerebral. Respetar los máximos de corrección en 24 h.',
     layout_position: 'main',
+  },
+  {
+    id: 'na-orientacion-etiologica',
+    tab: 'Orientación etiológica',
+    subtab: 'Asistente clínico',
+    type: 'natremia_etiology_assistant',
+    color: 'cyan',
+    order: 5,
+  },
+  {
+    id: 'na-orientacion-claves',
+    tab: 'Orientación etiológica',
+    subtab: 'Cómo interpretar',
+    type: 'criteria',
+    color: 'cyan',
+    order: 6,
+    title: 'Secuencia diagnóstica recomendada',
+    items: [
+      'Primero definir urgencia por síntomas y gravedad; el estudio etiológico no debe retrasar la estabilización.',
+      'Hiponatremia: confirmar tonicidad con osmolalidad plasmática medida y corregir Na por glicemia.',
+      'Si es hipotónica: osm urinaria ≤100 orienta a exceso de agua o baja carga de solutos; >100 indica actividad de vasopresina.',
+      'Con osm urinaria >100: Na urinario ≤30 orienta a bajo volumen arterial efectivo; >30 exige integrar volemia, diuréticos, función renal, suprarrenal y tiroidea antes de atribuir SIADH.',
+      'Hipernatremia: integrar volemia, diuresis y osm urinaria. Osm <300 con poliuria orienta a diabetes insípida; >800 sugiere respuesta renal conservada y pérdidas extrarrenales o bajo aporte.',
+      'Tomar plasma y orina idealmente en forma simultánea y antes de iniciar fluidos o diuréticos, cuando la urgencia lo permita.',
+    ],
   },
 
   // ─────────────────────────── HIPONATREMIA ───────────────────────────
@@ -215,7 +242,7 @@ const payload = {
   status: 'published',
   title: TOPIC_NAME,
   description:
-    'Manejo de hiponatremia e hipernatremia en hospitalizados: clasificación, evaluación por volemia/osmolalidad, calculadoras, algoritmos con recetas, arsenal local y máximos de corrección para evitar mielinolisis/edema cerebral.',
+    'Diagnóstico y manejo de hiponatremia e hipernatremia en hospitalizados: asistente etiológico con clínica y laboratorio, evaluación por osmolalidad, calculadoras, algoritmos y máximos de corrección segura.',
   tags: ['sodio', 'natremia', 'hiponatremia', 'hipernatremia', 'electrolitos', 'nefrología', 'hospitalizados', 'calculadora'],
   order: 60,
   authors: ['Equipo clínico HCSFB'],
@@ -234,7 +261,7 @@ const payload = {
   clinical_summary:
     'Trastornos de la natremia: hiponatremia (clasificar por gravedad, volemia y cronicidad; rescate con NaCl 3% si síntomas graves; máximo +8 mEq/L/24 h) e hipernatremia (déficit de agua libre; reponer con agua/SG 5%; máximo descenso 10 mEq/L/24 h).',
   diagnostic_orientation:
-    'Hiponatremia: confirmar hipotónica (osmolalidad), corregir por glicemia, clasificar por volemia (Na/osm urinaria), gravedad y cronicidad. Hipernatremia: estimar déficit de agua libre, evaluar volemia, causa (DI, pérdidas, aporte) y cronicidad.',
+    'Asistente interactivo: hiponatremia mediante tonicidad, osm urinaria y Na urinario, integrando volemia, diuréticos y ejes tiroideo/suprarrenal; hipernatremia mediante volemia, diuresis y osm urinaria para orientar pérdidas, diuresis osmótica o diabetes insípida.',
   complementary_studies:
     'Na seriado, osmolalidad plasmática y urinaria, Na urinario, glicemia, función renal, función tiroidea/suprarrenal según sospecha; diuresis y balance.',
   initial_treatment:
