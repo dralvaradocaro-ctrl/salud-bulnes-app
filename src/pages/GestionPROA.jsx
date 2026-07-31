@@ -376,8 +376,8 @@ function isTestProaRecord(record) {
   return Boolean(form.proa_is_test || form.cama === 'TEST-PROA-1' || record?.bedCode === 'TEST-PROA-1');
 }
 
-const TABLE_HEADERS = ['Código PROA', 'Nombre', 'RUT', 'Cama', 'Servicio', 'Estado', 'Fecha de egreso', 'Edad', 'Fecha de ingreso', 'Días de estadía', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'];
-const PRINT_HEADERS = ['Servicio', 'Cama', 'Paciente', 'Edad / estadía', 'Diagnóstico', 'Función renal', 'Antibioterapia', 'Microbiología / estudios', 'Últimos 3 PI', 'Plan'];
+const TABLE_HEADERS = ['Código PROA', 'Nombre', 'RUT', 'Cama', 'Servicio', 'Estado', 'Fecha de egreso', 'Edad', 'Fecha de ingreso', 'Días de estadía', 'DG', 'Función renal', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Tratamientos antimicrobianos', 'Plan'];
+const PRINT_HEADERS = ['Servicio', 'Cama', 'Paciente', 'Edad / estadía', 'Diagnóstico', 'Función renal', 'Tratamientos antimicrobianos', 'Microbiología / estudios', 'Últimos 3 PI', 'Plan'];
 
 function buildProaTableRows(records) {
   return records.map((record) => {
@@ -403,13 +403,10 @@ function buildProaTableRows(records) {
       hospitalStayDays(form) ?? '—',
       form.diagnostico_actual || '—',
       form.funcion_renal || '—',
-      formatted.map((item) => item.nameWithCourse).join('\n') || '—',
       formatMicrobiologicalDiagnosis(form),
       formatMicroStudies(form),
       getLastInflammatoryRows(form).map(formatInflammatoryRow).join('\n') || '—',
-      formatted.map((item) => item.nameWithCourse).join('\n') || '—',
-      formatted.map((item) => item.dose).join('\n') || '—',
-      formatted.map((item) => item.duration).join('\n') || '—',
+      formatted.map((item) => `${item.name}\nPauta: ${item.dose}\n${item.duration}`).join('\n\n') || form.antibioterapia_preingreso || '—',
       plan || '—',
     ];
   });
@@ -432,7 +429,7 @@ function buildProaPrintRows(records) {
       hospitalStayDays(form) != null && `${hospitalStayDays(form)} días`,
     ].filter(Boolean).join('\n');
     const antibioticText = formatted.length
-      ? formatted.map((item) => `${item.nameWithCourse}: ${item.dose}`).join('\n')
+      ? formatted.map((item) => `${item.name}\n${item.dose}\n${item.duration}`).join('\n\n')
       : '—';
     const microbiology = [
       formatMicrobiologicalDiagnosis(form) !== '—' && formatMicrobiologicalDiagnosis(form),
@@ -1592,10 +1589,10 @@ function GestionPROA() {
           )}
 
           <div className="overflow-x-auto">
-            <table className="min-w-[1540px] w-full border-collapse text-xs">
+            <table className="min-w-[1380px] w-full border-collapse text-xs">
               <thead className="bg-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
-                  {['Paciente', 'Cama', 'Edad / ingreso', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'].map((heading, index) => (
+                  {['Paciente', 'Cama', 'Edad / ingreso', 'DG', 'Función renal', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Tratamientos antimicrobianos', 'Plan'].map((heading, index) => (
                     <th
                       key={heading}
                       className={`border-b border-r border-slate-200 px-3 py-2 font-bold last:border-r-0 ${
@@ -1612,7 +1609,7 @@ function GestionPROA() {
                 {groupedTableRecords.map(({ service, records: serviceRecords }) => (
                   <Fragment key={service}>
                     <tr className="bg-teal-800 text-white">
-                      <td colSpan={14} className="border-b border-teal-900 px-4 py-2.5">
+                      <td colSpan={11} className="border-b border-teal-900 px-4 py-2.5">
                         <span className="font-black uppercase tracking-wide">{service}</span>
                         <span className="ml-2 rounded-full bg-white/15 px-2 py-0.5 font-semibold">
                           {serviceRecords.length} paciente{serviceRecords.length === 1 ? '' : 's'}
@@ -1667,26 +1664,23 @@ function GestionPROA() {
                       </td>
                       <td className="max-w-[190px] border-b border-r border-slate-200 px-3 py-3">{form.diagnostico_actual || '—'}</td>
                       <td className="max-w-[160px] border-b border-r border-slate-200 px-3 py-3">{form.funcion_renal || '—'}</td>
-                      <td className="max-w-[180px] border-b border-r border-slate-200 px-3 py-3">
-                        {formattedAntimicrobials.length
-                          ? formattedAntimicrobials.map((item, index) => (
-                            <span key={`${item.nameWithCourse}-${index}`} className="mb-1 block">{item.nameWithCourse}</span>
-                          ))
-                          : form.antibioterapia_preingreso || '—'}
-                      </td>
                       <td className="max-w-[180px] border-b border-r border-slate-200 px-3 py-3">{formatMicrobiologicalDiagnosis(form)}</td>
                       <td className="max-w-[220px] border-b border-r border-slate-200 px-3 py-3">{formatMicroStudies(form)}</td>
                       <td className="max-w-[240px] border-b border-r border-slate-200 px-3 py-3">
                         {piRows.length ? piRows.map((row, index) => <span key={`${row.fecha}-${index}`} className="mb-1 block">{formatInflammatoryRow(row)}</span>) : '—'}
                       </td>
-                      <td className="border-b border-r border-slate-200 px-3 py-3">
-                        {formattedAntimicrobials.length ? formattedAntimicrobials.map((item, index) => <span key={index} className="mb-1 block font-medium">{item.nameWithCourse}</span>) : '—'}
-                      </td>
-                      <td className="border-b border-r border-slate-200 px-3 py-3">
-                        {formattedAntimicrobials.length ? formattedAntimicrobials.map((item, index) => <span key={index} className="mb-1 block">{item.dose}</span>) : '—'}
-                      </td>
-                      <td className="border-b border-r border-slate-200 px-3 py-3">
-                        {formattedAntimicrobials.length ? formattedAntimicrobials.map((item, index) => <span key={index} className="mb-1 block">{item.duration}</span>) : '—'}
+                      <td className="min-w-[260px] max-w-[320px] border-b border-r border-slate-200 px-3 py-3">
+                        {formattedAntimicrobials.length ? (
+                          <div className="space-y-2">
+                            {formattedAntimicrobials.map((item, index) => (
+                              <div key={`${item.nameWithCourse}-${index}`} className="rounded-lg border border-teal-100 bg-white px-3 py-2 shadow-sm">
+                                <p className="font-bold text-teal-900">{item.name}</p>
+                                <p className="mt-0.5 text-slate-700">{item.dose}</p>
+                                <p className="mt-1 border-t border-slate-100 pt-1 text-[11px] font-semibold text-slate-500">{item.duration}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : form.antibioterapia_preingreso || '—'}
                       </td>
                       <td className="max-w-[240px] border-b border-slate-200 px-3 py-3">{plan || '—'}</td>
                       <td className="sticky right-0 border-b border-l border-slate-200 bg-white px-2 py-3">
@@ -1720,7 +1714,7 @@ function GestionPROA() {
                 ))}
                 {visibleTableRecords.length === 0 && (
                   <tr>
-                    <td colSpan={14} className="px-4 py-10 text-center text-sm text-slate-500">No hay pacientes PROA registrados.</td>
+                    <td colSpan={11} className="px-4 py-10 text-center text-sm text-slate-500">No hay pacientes PROA registrados.</td>
                   </tr>
                 )}
               </tbody>
