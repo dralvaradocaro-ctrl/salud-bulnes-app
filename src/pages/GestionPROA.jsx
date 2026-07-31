@@ -245,7 +245,7 @@ function formatInflammatoryRow(row) {
 function formatMicroStudies(form) {
   return (form?.estudios_micro || [])
     .filter((study) => study?.tipo_muestra || study?.patogeno)
-    .map((study) => [study.tipo_muestra, study.fecha, study.patogeno].filter(Boolean).join(' · '))
+    .map((study) => [study.tipo_muestra, study.fecha && formatClinicalDate(study.fecha)].filter(Boolean).join(' · '))
     .join('; ') || form?.estudios_imagen || '—';
 }
 
@@ -291,15 +291,59 @@ function isPositiveCulture(culture) {
   return !/^(pendiente|sin desarrollo|negativo|sin crecimiento|no desarrollo)$/i.test(pathogen);
 }
 
+function formatCultureDiagnosis(culture) {
+  const pathogen = String(culture?.patogeno || '').trim();
+  if (!pathogen) return '';
+  const sensitivity = String(culture?.sensibilidad || '').trim();
+  const resistant = Array.isArray(culture?.resistente) ? culture.resistente.filter(Boolean) : [];
+  const susceptible = Array.isArray(culture?.sensible) ? culture.sensible.filter(Boolean) : [];
+  const intermediate = Array.isArray(culture?.intermedio) ? culture.intermedio.filter(Boolean) : [];
+  const notes = [culture?.antibiograma_nota, culture?.antibiograma].filter(Boolean).join(' · ');
+  const additionalNote = String(culture?.antibiograma_nota || (
+    resistant.length === 0 && susceptible.length === 0 && intermediate.length === 0
+      ? culture?.antibiograma || ''
+      : ''
+  )).trim();
+  const phenotypeText = [pathogen, sensitivity, notes].join(' ');
+  const phenotypePatterns = [
+    ['BLEE', /\b(?:BLEE|ESBL)\b/i],
+    ['KPC', /\bKPC\b/i],
+    ['NDM', /\bNDM\b/i],
+    ['OXA-48', /\bOXA[- ]?48\b/i],
+    ['VIM', /\bVIM\b/i],
+    ['IMP', /\bIMP\b/i],
+    ['MRSA', /\bMRSA\b/i],
+    ['VRE', /\bVRE\b/i],
+    ['XDR', /\bXDR\b/i],
+    ['MDR', /\bMDR\b|multidrogo[- ]?resistente/i],
+    ['Carbapenemasa', /carbapenemasa/i],
+  ];
+  const phenotypes = phenotypePatterns
+    .filter(([, pattern]) => pattern.test(phenotypeText))
+    .map(([label]) => label);
+  const details = [];
+  if (/multisensible/i.test(`${sensitivity} ${notes}`)) {
+    details.push('Multisensible');
+  } else if (sensitivity && !/^pendiente$/i.test(sensitivity) && !/no aplica/i.test(sensitivity)) {
+    details.push(sensitivity);
+  }
+  details.push(...phenotypes);
+  if (resistant.length) details.push(`Resistente a: ${resistant.join(', ')}`);
+  if (intermediate.length) details.push(`Intermedio a: ${intermediate.join(', ')}`);
+  if (susceptible.length && !details.includes('Multisensible')) details.push(`Sensible a: ${susceptible.join(', ')}`);
+  if (additionalNote) details.push(`Nota: ${additionalNote}`);
+  return [pathogen, ...new Set(details)].filter(Boolean).join(' · ');
+}
+
 function formatMicrobiologicalDiagnosis(form) {
   const explicitDiagnosis = String(form?.diagnostico_microbiologico || '').trim();
-  if (explicitDiagnosis) return explicitDiagnosis;
   const cultures = Array.isArray(form?.estudios_micro) ? form.estudios_micro : [];
-  const pathogens = [...new Set(cultures
+  const cultureDiagnoses = [...new Set(cultures
     .filter(isPositiveCulture)
-    .map((culture) => String(culture.patogeno || '').trim())
+    .map(formatCultureDiagnosis)
     .filter(Boolean))];
-  if (pathogens.length > 0) return pathogens.join(' · ');
+  if (cultureDiagnoses.length > 0) return cultureDiagnoses.join('; ');
+  if (explicitDiagnosis) return explicitDiagnosis;
   const hasTakenCulture = cultures.some((culture) => culture?.tipo_muestra || culture?.fecha || culture?.patogeno);
   return hasTakenCulture ? 'Pendiente de resultado' : '—';
 }

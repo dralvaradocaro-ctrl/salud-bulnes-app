@@ -196,7 +196,7 @@ export const PATOGENOS = [
   'SARS-CoV-2',
 ];
 
-const SENSIBILIDAD_OPCIONES = ['Pendiente', 'Sensible al esquema actual', 'Resistente al esquema actual', 'Multidrogo-resistente', 'No aplica'];
+const SENSIBILIDAD_OPCIONES = ['Pendiente', 'Multisensible', 'Sensible al esquema actual', 'Resistente al esquema actual', 'Multidrogo-resistente', 'No aplica'];
 
 // Diagnósticos infectológicos típicos del adulto hospitalizado. Lista cerrada
 // para autocomplete; el campo igual permite escribir libre si no está aquí.
