@@ -1331,6 +1331,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                   const vigente = !hasTermino(a);
                   const renalAlert = vigente ? getRenalAntimicrobialAlert(a.nombre, f.vfg_estimada) : null;
                   const presentationOptions = getEvolutionPresentations(a.nombre);
+                  const requiresWeightDose = Boolean(DEFAULT_DOSIS_ATB[a.nombre]?.dosis_por_kg);
                   return (
                     <div
                       key={i}
@@ -1381,10 +1382,31 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                           <div className="h-9 min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2 text-sm flex items-center truncate text-slate-700">
                             {buildDosisConcreta({ ...a, peso_kg: f.peso_kg }) || <span className="text-slate-400">Definir dosis</span>}
                           </div>
-                          <Button type="button" size="sm" variant="outline" onClick={() => setDoseEditorIdx(i)} className="h-9 shrink-0 whitespace-nowrap">
-                            Dosis fija / por peso
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              if (requiresWeightDose && a.dosis_modo !== 'kg') updateAtb(i, 'dosis_modo', 'kg');
+                              setDoseEditorIdx(i);
+                            }}
+                            className={`h-9 shrink-0 whitespace-nowrap ${
+                              requiresWeightDose ? 'border-amber-400 bg-amber-50 text-amber-900 hover:bg-amber-100' : ''
+                            }`}
+                          >
+                            {requiresWeightDose ? 'Ajustar dosis por peso' : 'Dosis fija / por peso'}
                           </Button>
                         </div>
+                        {requiresWeightDose && (
+                          <p className={`mt-1 flex items-center gap-1 text-[10px] font-bold ${
+                            f.peso_kg ? 'text-amber-800' : 'text-red-700'
+                          }`}>
+                            <AlertTriangle className="h-3 w-3 shrink-0" />
+                            {f.peso_kg
+                              ? `Medicamento dosificado por peso · paciente ${formatNumber(f.peso_kg)} kg`
+                              : 'Medicamento dosificado por peso · falta registrar el peso del paciente'}
+                          </p>
+                        )}
                       </div>
                       <div className="col-span-6 md:col-span-3">
                         <label className="block text-[11px] text-slate-600 mb-0.5">Frecuencia</label>
@@ -1531,8 +1553,15 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                 const unidades = a.unidades_por_dosis || calcUnidadesPorDosis(a);
                 const dosisTotal = getDosisTotal(a);
                 const dosisKg = getDosisPorKgCalculada(a);
+                const requiresWeightDose = Boolean(DEFAULT_DOSIS_ATB[a.nombre]?.dosis_por_kg);
                 return (
                   <div className="space-y-3">
+                    {requiresWeightDose && (
+                      <div className="flex gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        Este antimicrobiano requiere dosificación por peso. Confirma el peso actual y revisa función renal cuando corresponda.
+                      </div>
+                    )}
 	                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 	                      <Field label="Antibiótico">
 	                        <Input value={a.nombre} onChange={e => updateAtb(doseEditorIdx, 'nombre', e.target.value)} list="proa-atb-suggestions" className="h-9" />
@@ -1556,9 +1585,9 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
 	                          }}
 	                          className="w-full h-9 rounded-md border border-slate-200 px-2 text-sm bg-white"
 	                        >
-	                          <option value="total">Dosis fija</option>
 	                          <option value="kg">Dosis por kg</option>
-	                          <option value="ampolla">Por ampolla / presentación</option>
+	                          {!requiresWeightDose && <option value="total">Dosis fija</option>}
+	                          {!requiresWeightDose && <option value="ampolla">Por ampolla / presentación</option>}
 	                        </select>
 	                      </Field>
 	                      <Field label={a.dosis_modo === 'ampolla' ? 'Dosis' : 'Dosis base'}>
