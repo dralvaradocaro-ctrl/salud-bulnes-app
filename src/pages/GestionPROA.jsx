@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { createPageUrl } from '@/utils';
@@ -236,7 +236,7 @@ function isPositiveCulture(culture) {
   return !/^(pendiente|sin desarrollo|negativo|sin crecimiento|no desarrollo)$/i.test(pathogen);
 }
 
-const TABLE_HEADERS = ['Código PROA', 'Nombre', 'RUT', 'Cama', 'Estado', 'Edad', 'Fecha de ingreso', 'Días de estadía', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'];
+const TABLE_HEADERS = ['Código PROA', 'Nombre', 'RUT', 'Cama', 'Servicio', 'Estado', 'Edad', 'Fecha de ingreso', 'Días de estadía', 'DG', 'Función renal', 'Antibioterapia', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Antimicrobiano', 'Dosis', 'Duración', 'Plan'];
 
 function buildProaTableRows(records) {
   return records.map((record) => {
@@ -254,6 +254,7 @@ function buildProaTableRows(records) {
       form.paciente || '—',
       form.rut || '—',
       form.cama || record.bedCode,
+      findServiceForBed(form.cama || record.bedCode) || 'Sin servicio',
       isHistoricalProaRecord(record) ? 'Histórico' : 'Actual',
       form.edad ? `${form.edad} años` : '—',
       form.fecha_ingreso || 'Sin fecha',
@@ -383,6 +384,26 @@ function GestionPROA() {
     tableScope,
   ]);
   const tableRows = useMemo(() => buildProaTableRows(visibleTableRecords), [visibleTableRecords]);
+  const groupedTableRecords = useMemo(() => {
+    const groups = new Map(PROA_BED_MAP.map((service) => [service.servicio, []]));
+    groups.set('Sin servicio', []);
+    visibleTableRecords.forEach((record) => {
+      const form = getLatestProaForm(record) || {};
+      const service = findServiceForBed(form.cama || record.bedCode) || 'Sin servicio';
+      if (!groups.has(service)) groups.set(service, []);
+      groups.get(service).push(record);
+    });
+    return [...groups.entries()]
+      .filter(([, serviceRecords]) => serviceRecords.length > 0)
+      .map(([service, serviceRecords]) => ({
+        service,
+        records: serviceRecords.sort((a, b) => {
+          const bedA = getLatestProaForm(a)?.cama || a.bedCode;
+          const bedB = getLatestProaForm(b)?.cama || b.bedCode;
+          return bedA.localeCompare(bedB, 'es', { numeric: true });
+        }),
+      }));
+  }, [visibleTableRecords]);
   const currentProaAnalytics = useMemo(() => {
     const antibioticCounts = new Map();
     const pathogenCounts = new Map();
@@ -1234,29 +1255,40 @@ function GestionPROA() {
                 </tr>
               </thead>
               <tbody>
-                {visibleTableRecords.map((record) => {
-                  const form = getLatestProaForm(record) || {};
-                  const antimicrobials = (form.antibioticos || []).filter((item) => item?.nombre);
-                  const formattedAntimicrobials = antimicrobials.map((item) => formatAntimicrobial(item, form));
-                  const piRows = getLastInflammatoryRows(form);
-                  const plan = [
-                    ...(form.recomendaciones || []),
-                    form.recomendaciones_otra,
-                    form.plan_duracion,
-                    form.proxima_revision && `Próxima revisión: ${form.proxima_revision}`,
-                  ].filter(Boolean).join(' · ');
-                  return (
+                {groupedTableRecords.map(({ service, records: serviceRecords }) => (
+                  <Fragment key={service}>
+                    <tr className="bg-teal-800 text-white">
+                      <td colSpan={13} className="border-b border-teal-900 px-4 py-2.5">
+                        <span className="font-black uppercase tracking-wide">{service}</span>
+                        <span className="ml-2 rounded-full bg-white/15 px-2 py-0.5 font-semibold">
+                          {serviceRecords.length} paciente{serviceRecords.length === 1 ? '' : 's'}
+                        </span>
+                      </td>
+                    </tr>
+                    {serviceRecords.map((record) => {
+                      const form = getLatestProaForm(record) || {};
+                      const effectiveBed = form.cama || record.bedCode;
+                      const antimicrobials = (form.antibioticos || []).filter((item) => item?.nombre);
+                      const formattedAntimicrobials = antimicrobials.map((item) => formatAntimicrobial(item, form));
+                      const piRows = getLastInflammatoryRows(form);
+                      const plan = [
+                        ...(form.recomendaciones || []),
+                        form.recomendaciones_otra,
+                        form.plan_duracion,
+                        form.proxima_revision && `Próxima revisión: ${form.proxima_revision}`,
+                      ].filter(Boolean).join(' · ');
+                      return (
                     <tr key={record.id} className="align-top odd:bg-white even:bg-slate-50/60 hover:bg-teal-50/50">
                       <td className="border-b border-r border-slate-200 px-3 py-3">
                         <button type="button" onClick={() => {
-                          setSelectedBed(record.bedCode);
-                          setActiveService(record.servicio || findServiceForBed(record.bedCode));
+                          setSelectedBed(isHistoricalProaRecord(record) ? '' : record.bedCode);
+                          setActiveService(findServiceForBed(effectiveBed));
                           scrollToBedMap();
                         }} className="text-left">
                           <span className="block font-bold text-teal-800">{record.code}</span>
                           {form.paciente && <span className="block font-semibold text-slate-900">{form.paciente}</span>}
                           {form.rut && <span className="block text-slate-500">RUT {form.rut}</span>}
-                          <span className="text-slate-600">Cama {form.cama || record.bedCode}</span>
+                          <span className="text-slate-600">Cama {effectiveBed}</span>
                           <Badge className={`mt-1 ${isHistoricalProaRecord(record) ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800'}`}>
                             {isHistoricalProaRecord(record) ? 'Histórico' : 'Actual'}
                           </Badge>
@@ -1311,8 +1343,10 @@ function GestionPROA() {
                         </div>
                       </td>
                     </tr>
-                  );
-                })}
+                      );
+                    })}
+                  </Fragment>
+                ))}
                 {visibleTableRecords.length === 0 && (
                   <tr>
                     <td colSpan={13} className="px-4 py-10 text-center text-sm text-slate-500">No hay pacientes PROA registrados.</td>
