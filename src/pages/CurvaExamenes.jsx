@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { fetchProaRecords, getLatestProaForm, isHistoricalProaRecord } from '@/lib/proaRegistry';
+import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord } from '@/lib/proaRegistry';
+import { supabase } from '@/lib/supabase';
 
 const STORAGE_KEY = 'hospital_lab_tracker_v1';
 const nowLocal = () => {
@@ -266,6 +267,7 @@ function CurvaExamenes() {
   const initial = useMemo(loadState, []);
   const [episodes, setEpisodes] = useState(initial.episodes);
   const [proaRecords, setProaRecords] = useState([]);
+  const [verifiedProaIds, setVerifiedProaIds] = useState(null);
   const [proaLoading, setProaLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(initial.episodes.find((item) => item.status === 'hospitalizado')?.id || '');
   const [serviceFilter, setServiceFilter] = useState('all');
@@ -274,6 +276,9 @@ function CurvaExamenes() {
   const [selectedExam, setSelectedExam] = useState('crea');
   const [pendingBed, setPendingBed] = useState(null);
   const [admission, setAdmission] = useState({ ...nowLocal(), ageRange: '', clinicalSex: '' });
+  const [episodeActionOpen, setEpisodeActionOpen] = useState(false);
+  const [episodeActionBusy, setEpisodeActionBusy] = useState(false);
+  const [episodeActionError, setEpisodeActionError] = useState('');
   const selected = episodes.find((item) => item.id === selectedId);
   const activeByBed = useMemo(() => new Map(episodes.filter((item) => item.status === 'hospitalizado').map((item) => [item.bedCode, item])), [episodes]);
   const activeProaByBed = useMemo(() => {
@@ -289,14 +294,60 @@ function CurvaExamenes() {
 
   useEffect(() => {
     let active = true;
-    fetchProaRecords().then((records) => { if (active) setProaRecords(records); }).finally(() => { if (active) setProaLoading(false); });
-    return () => { active = false; };
+    const refreshProaState = async () => {
+      const [records, verification] = await Promise.all([
+        fetchProaRecords(),
+        supabase.from('proa_records').select('id'),
+      ]);
+      if (!active) return;
+      setProaRecords(records);
+      if (!verification.error) setVerifiedProaIds(new Set((verification.data || []).map((row) => row.id)));
+      setProaLoading(false);
+    };
+    refreshProaState();
+    const intervalId = window.setInterval(refreshProaState, 30000);
+    window.addEventListener('focus', refreshProaState);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshProaState);
+    };
   }, []);
 
   const persist = (next) => {
     setEpisodes(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ episodes: next }));
   };
+  useEffect(() => {
+    if (!(verifiedProaIds instanceof Set)) return;
+    setEpisodes((current) => {
+      let changed = false;
+      const next = current.flatMap((episode) => {
+        if (!episode.proaRecordId || episode.status !== 'hospitalizado') return [episode];
+        const proaRecord = proaRecords.find((record) => record.id === episode.proaRecordId);
+        if (!verifiedProaIds.has(episode.proaRecordId)) {
+          changed = true;
+          return [];
+        }
+        if (proaRecord && isHistoricalProaRecord(proaRecord)) {
+          changed = true;
+          const form = getLatestProaForm(proaRecord) || {};
+          const dischargedAt = form.fecha_egreso ? `${form.fecha_egreso}T12:00:00` : (form.proa_archived_at || new Date().toISOString());
+          return [{ ...episode, status: 'egresado', dischargedAt, movements: [...(episode.movements || []), { type: 'egreso', bedCode: episode.bedCode, at: dischargedAt, source: 'proa' }] }];
+        }
+        return [episode];
+      });
+      if (!changed) return current;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ episodes: next }));
+      return next;
+    });
+  }, [proaRecords, verifiedProaIds]);
+  useEffect(() => {
+    if (selectedId && !episodes.some((episode) => episode.id === selectedId && episode.status === 'hospitalizado')) {
+      setSelectedId('');
+      setEpisodeActionOpen(false);
+    }
+  }, [episodes, selectedId]);
   const openBed = (bed) => {
     const currentEpisode = activeByBed.get(bed.code);
     if (currentEpisode) {
@@ -315,11 +366,36 @@ function CurvaExamenes() {
     setSelectedId(episode.id);
     setPendingBed(null);
   };
-  const discharge = () => {
-    if (!selected || !window.confirm(`¿Egresar ${selected.code} y liberar la cama ${selected.bedCode}?`)) return;
-    const stamp = new Date().toISOString();
-    persist(episodes.map((item) => item.id === selected.id ? { ...item, status: 'egresado', dischargedAt: stamp, movements: [...item.movements, { type: 'egreso', bedCode: item.bedCode, at: stamp }] } : item));
-    setSelectedId('');
+  const applyEpisodeAction = async (action) => {
+    if (!selected || !['discharge', 'delete'].includes(action)) return;
+    setEpisodeActionBusy(true);
+    setEpisodeActionError('');
+    try {
+      const linkedProa = selected.proaRecordId ? proaRecords.find((record) => record.id === selected.proaRecordId) : null;
+      if (linkedProa) {
+        if (action === 'delete') await deleteProaRecord(linkedProa.bedCode);
+        else if (!isHistoricalProaRecord(linkedProa)) await archiveProaRecord(linkedProa, nowLocal().date);
+      }
+      if (action === 'delete') {
+        persist(episodes.filter((item) => item.id !== selected.id));
+      } else {
+        const stamp = new Date().toISOString();
+        persist(episodes.map((item) => item.id === selected.id ? { ...item, status: 'egresado', dischargedAt: stamp, movements: [...(item.movements || []), { type: 'egreso', bedCode: item.bedCode, at: stamp, source: 'curva_examenes' }] } : item));
+      }
+      setSelectedId('');
+      setEpisodeActionOpen(false);
+      const [records, verification] = await Promise.all([
+        fetchProaRecords(),
+        supabase.from('proa_records').select('id'),
+      ]);
+      setProaRecords(records);
+      if (!verification.error) setVerifiedProaIds(new Set((verification.data || []).map((row) => row.id)));
+    } catch (error) {
+      console.error('No fue posible sincronizar el egreso/eliminación:', error);
+      setEpisodeActionError('No fue posible completar la acción en ambos módulos. No se modificó el episodio local.');
+    } finally {
+      setEpisodeActionBusy(false);
+    }
   };
   const processBlocks = () => setReview(blocks.flatMap((block) => parseText(block.text, block)));
   const saveResults = () => {
@@ -360,7 +436,7 @@ function CurvaExamenes() {
         <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div><h1 className="text-2xl font-black text-slate-950">Curva de exámenes</h1><p className="text-sm text-slate-600">Seguimiento longitudinal anónimo de pacientes hospitalizados.</p></div>
-            {selected && <Button variant="outline" onClick={discharge} className="gap-2 text-rose-700"><LogOut className="h-4 w-4" />Egresar y liberar cama</Button>}
+            {selected && <Button variant="outline" onClick={() => { setEpisodeActionError(''); setEpisodeActionOpen(true); }} className="gap-2 text-rose-700"><LogOut className="h-4 w-4" />Egresar o eliminar</Button>}
           </div>
           <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">Este módulo no solicita ni almacena nombre, RUT, ficha, teléfono ni otros identificadores directos.</p>
         </header>
@@ -417,6 +493,30 @@ function CurvaExamenes() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPendingBed(null)}>Cancelar</Button>
             <Button onClick={admit} disabled={!admission.date || !admission.time} className="bg-teal-700 hover:bg-teal-800">Crear episodio y ocupar cama</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={episodeActionOpen} onOpenChange={(open) => { if (!episodeActionBusy) setEpisodeActionOpen(open); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>¿Qué quieres hacer con este paciente?</DialogTitle>
+          </DialogHeader>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <p className="font-bold text-slate-900">{selected?.code} · Cama {selected?.bedCode}</p>
+            <p className="mt-1 text-xs text-slate-600">{selected?.proaRecordId ? 'Este episodio está vinculado a PROA: la acción se aplicará en ambos módulos.' : 'Este episodio solo existe en Curva de exámenes.'}</p>
+          </div>
+          <button type="button" disabled={episodeActionBusy} onClick={() => applyEpisodeAction('discharge')} className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 text-left transition hover:bg-amber-100 disabled:opacity-50">
+            <span className="block font-black text-amber-950">Egresar y conservar historial</span>
+            <span className="mt-1 block text-sm text-amber-800">Libera la cama y mantiene exámenes, curvas y movimientos en el archivo histórico.</span>
+          </button>
+          <button type="button" disabled={episodeActionBusy} onClick={() => applyEpisodeAction('delete')} className="rounded-xl border-2 border-rose-300 bg-rose-50 p-4 text-left transition hover:bg-rose-100 disabled:opacity-50">
+            <span className="block font-black text-rose-900">Eliminar definitivamente</span>
+            <span className="mt-1 block text-sm text-rose-700">Borra el episodio y sus exámenes. Si está vinculado, también elimina el registro PROA. Esta acción no se puede deshacer.</span>
+          </button>
+          {episodeActionError && <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">{episodeActionError}</p>}
+          <DialogFooter>
+            <Button variant="outline" disabled={episodeActionBusy} onClick={() => setEpisodeActionOpen(false)}>Cancelar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
