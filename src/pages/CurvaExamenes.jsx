@@ -46,20 +46,31 @@ const loadState = () => {
 };
 
 const EXAMS = [
-  { key: 'hb', name: 'Hemoglobina', category: 'Hemograma', unit: 'g/dL', aliases: ['HB', 'HGB'] },
-  { key: 'hto', name: 'Hematocrito', category: 'Hemograma', unit: '%', aliases: ['HTO', 'HCT'] },
-  { key: 'leu', name: 'Leucocitos', category: 'Hemograma', unit: '/µL', aliases: ['LEU', 'GB', 'WBC'] },
-  { key: 'plaq', name: 'Plaquetas', category: 'Hemograma', unit: '/µL', aliases: ['PLAQ', 'PLQ', 'PLT'] },
-  { key: 'pcr', name: 'Proteína C reactiva', category: 'Inflamatorios', unit: 'mg/L', aliases: ['PCR', 'CRP'] },
-  { key: 'crea', name: 'Creatinina', category: 'Función renal', unit: 'mg/dL', aliases: ['CREA', 'CREAT', 'CR'] },
-  { key: 'bun', name: 'BUN', category: 'Función renal', unit: 'mg/dL', aliases: ['BUN', 'NU'] },
-  { key: 'na', name: 'Sodio', category: 'Electrolitos', unit: 'mEq/L', aliases: ['NA'] },
-  { key: 'k', name: 'Potasio', category: 'Electrolitos', unit: 'mEq/L', aliases: ['K'] },
-  { key: 'cl', name: 'Cloro', category: 'Electrolitos', unit: 'mEq/L', aliases: ['CL'] },
+  { key: 'hb', name: 'Hemoglobina', category: 'Hemograma', unit: 'g/dL', aliases: ['HEMOGLOBINA', 'HB', 'HGB'] },
+  { key: 'hto', name: 'Hematocrito', category: 'Hemograma', unit: '%', aliases: ['HEMATOCRITO', 'HTO', 'HCT'] },
+  { key: 'rbc', name: 'Recuento de eritrocitos', category: 'Hemograma', unit: 'x10^6/µL', aliases: ['RCTO. DE ERITROCITOS', 'RCTO DE ERITROCITOS', 'ERITROCITOS', 'RBC'] },
+  { key: 'vcm', name: 'VCM', category: 'Hemograma', unit: 'fL', aliases: ['VCM', 'MCV'] },
+  { key: 'hcm', name: 'HCM', category: 'Hemograma', unit: 'pg', aliases: ['HCM', 'MCH'] },
+  { key: 'chcm', name: 'CHCM', category: 'Hemograma', unit: 'g/dL', aliases: ['CHCM', 'MCHC'] },
+  { key: 'leu', name: 'Leucocitos', category: 'Hemograma', unit: '/µL', aliases: ['RCTO. DE LEUCOCITOS', 'RCTO DE LEUCOCITOS', 'LEUCOCITOS', 'LEU', 'GB', 'WBC'] },
+  { key: 'plaq', name: 'Plaquetas', category: 'Hemograma', unit: '/µL', aliases: ['RCTO. DE PLAQUETAS', 'RCTO DE PLAQUETAS', 'PLAQUETAS', 'PLAQ', 'PLQ', 'PLT'] },
+  { key: 'vhs', name: 'VHS', category: 'Inflamatorios', unit: 'mm/h', aliases: ['VHS', 'VELOCIDAD DE ERITROSEDIMENTACION'] },
+  { key: 'pcr', name: 'Proteína C reactiva', category: 'Inflamatorios', unit: 'mg/L', aliases: ['PROTEINA C REACTIVA', 'PCR', 'CRP'] },
+  { key: 'crea', name: 'Creatinina', category: 'Función renal', unit: 'mg/dL', aliases: ['CREATININA EN SANGRE', 'CREATININA', 'CREA', 'CREAT', 'CR'] },
+  { key: 'urea', name: 'Uremia', category: 'Función renal', unit: 'mg/dL', aliases: ['UREMIA', 'UREA'] },
+  { key: 'bun', name: 'Nitrógeno ureico (BUN)', category: 'Función renal', unit: 'mg/dL', aliases: ['NITROGENO UREICO', 'BUN', 'NU'] },
+  { key: 'na', name: 'Sodio', category: 'Electrolitos', unit: 'mEq/L', aliases: ['SODIO', 'NA'] },
+  { key: 'k', name: 'Potasio', category: 'Electrolitos', unit: 'mEq/L', aliases: ['POTASIO', 'K'] },
+  { key: 'cl', name: 'Cloro', category: 'Electrolitos', unit: 'mEq/L', aliases: ['CLORO', 'CL'] },
+  { key: 'calcio', name: 'Calcio', category: 'Electrolitos', unit: 'mg/dL', aliases: ['CALCIO EN SANGRE', 'CALCIO', 'CA'] },
+  { key: 'fosforo', name: 'Fósforo', category: 'Electrolitos', unit: 'mg/dL', aliases: ['FOSFORO EN SANGRE', 'FOSFORO', 'P'] },
   { key: 'hco3', name: 'Bicarbonato', category: 'Gases y ácido-base', unit: 'mEq/L', aliases: ['HCO3', 'BIC'] },
   { key: 'ph', name: 'pH', category: 'Gases y ácido-base', unit: '', aliases: ['PH'] },
-  { key: 'pco2', name: 'pCO₂', category: 'Gases y ácido-base', unit: 'mmHg', aliases: ['PCO2'] },
-  { key: 'po2', name: 'pO₂', category: 'Gases y ácido-base', unit: 'mmHg', aliases: ['PO2'] },
+  { key: 'pco2', name: 'pCO₂', category: 'Gases y ácido-base', unit: 'mmHg', aliases: ['P CO2', 'PCO2'] },
+  { key: 'po2', name: 'pO₂', category: 'Gases y ácido-base', unit: 'mmHg', aliases: ['P O2', 'PO2'] },
+  { key: 'be', name: 'Exceso de base', category: 'Gases y ácido-base', unit: 'mEq/L', aliases: ['BE'] },
+  { key: 'tco2', name: 'CO₂ total', category: 'Gases y ácido-base', unit: 'mEq/L', aliases: ['T CO2', 'TCO2'] },
+  { key: 'sato2', name: 'Saturación O₂', category: 'Gases y ácido-base', unit: '%', aliases: ['SATURACION DE O2', 'SATO2'] },
   { key: 'lactato', name: 'Lactato', category: 'Gases y ácido-base', unit: 'mmol/L', aliases: ['LACTATO', 'LAC'] },
   { key: 'alb', name: 'Albúmina', category: 'Perfil hepático', unit: 'g/dL', aliases: ['ALB', 'ALBUMINA'] },
   { key: 'bt', name: 'Bilirrubina total', category: 'Perfil hepático', unit: 'mg/dL', aliases: ['BT'] },
@@ -69,20 +80,42 @@ const EXAMS = [
   { key: 'inr', name: 'INR', category: 'Coagulación', unit: '', aliases: ['INR'] },
 ];
 
+const normalizeReportText = (text) => String(text || '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toUpperCase()
+  .replace(/,/g, '.');
+
+const stripDirectIdentifiers = (text) => String(text || '')
+  .replace(/PACIENTE\s*:.*?(?=AREA\s*:|ÁREA\s*:)/gis, '')
+  .replace(/ESTE EXAMEN NO CONSTITUYE DIAGNOSTICO.*?(?=PACIENTE\s*:|$)/gis, '')
+  .trim();
+
+const detectCollectedAt = (text, fallback) => {
+  const match = String(text || '').match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}T${match[4]}:${match[5]}` : `${fallback.date}T${fallback.time || '00:00'}`;
+};
+
 const parseText = (text, block) => {
-  const normalized = String(text || '').toUpperCase().replace(/,/g, '.');
+  const safeSource = stripDirectIdentifiers(text);
+  const normalized = normalizeReportText(safeSource);
+  const collectedAt = detectCollectedAt(text, block);
+  const sourceHadIdentifiers = /PACIENTE\s*:|IDENTIFICACION\s*:|RUT\s*:/i.test(text);
   const found = [];
   EXAMS.forEach((exam) => {
-    const alias = exam.aliases.map((item) => item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
-    const match = normalized.match(new RegExp(`(?:^|[\\s;:/|])(${alias})\\s*[:=]?\\s*(-?\\d+(?:\\.\\d+)?)\\s*([A-Zµ/%³0-9\\^.-]+)?`, 'i'));
+    const alias = exam.aliases
+      .map((item) => normalizeReportText(item).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .sort((a, b) => b.length - a.length)
+      .join('|');
+    const match = normalized.match(new RegExp(`(?:^|[\\s;:/|])(${alias})\\s*[:=]?\\s*\\*{0,2}\\s*(-?\\d+(?:\\.\\d+)?)\\s*([A-Zµ%³][A-Z/%0-9µ³^.-]*(?:/[A-Z0-9µ³]+)?)?`, 'i'));
     if (!match) return;
     const rawValue = Number(match[2]);
-    const thousandsLikely = ['leu', 'plaq'].includes(exam.key) && rawValue > 100 && rawValue < 1000 && /\.\d{3}\b/.test(match[2]);
     found.push({
       id: makeId(), examKey: exam.key, name: exam.name, category: exam.category,
-      value: thousandsLikely ? rawValue * 1000 : rawValue,
-      unit: match[3] || exam.unit, originalUnit: match[3] || '', collectedAt: `${block.date}T${block.time || '00:00'}`,
-      originalText: text, status: match[3] ? 'confirmed' : 'review', confidence: match[3] ? 'alta' : 'media',
+      value: rawValue,
+      unit: match[3] || exam.unit, originalUnit: match[3] || '', collectedAt,
+      originalText: safeSource, sourceHadIdentifiers,
+      status: match[3] ? 'confirmed' : 'review', confidence: match[3] ? 'alta' : 'media',
     });
   });
   return found;
@@ -190,7 +223,7 @@ function CurvaExamenes() {
                 <Button onClick={processBlocks} className="mt-3 gap-2 bg-teal-700 hover:bg-teal-800"><FlaskConical className="h-4 w-4" />Procesar y revisar</Button>
               </section>
 
-              {review.length > 0 && <section className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm"><h2 className="font-black text-slate-900">Revisión antes de guardar</h2><div className="mt-3 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-100 text-left"><th className="p-2">Examen</th><th>Valor</th><th>Unidad</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{review.map((item) => <tr key={item.id} className="border-b"><td className="p-2 font-semibold">{item.name}</td><td><Input type="number" value={item.value} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, value: Number(e.target.value) } : row))} className="w-28" /></td><td><Input value={item.unit} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, unit: e.target.value } : row))} className="w-28" /></td><td className="whitespace-nowrap text-xs">{new Date(item.collectedAt).toLocaleString('es-CL')}</td><td><select value={item.status} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, status: e.target.value } : row))} className="rounded-md border p-2"><option value="confirmed">Confirmar</option><option value="review">Requiere revisión</option><option value="discarded">Descartar</option></select></td></tr>)}</tbody></table></div><Button onClick={saveResults} className="mt-3 gap-2"><Save className="h-4 w-4" />Guardar resultados</Button></section>}
+              {review.length > 0 && <section className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm"><h2 className="font-black text-slate-900">Revisión antes de guardar</h2>{review.some((item) => item.sourceHadIdentifiers) && <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">Se detectó un encabezado con identificadores directos. Fue eliminado del texto fuente y no se guardará con los resultados.</p>}<div className="mt-3 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-100 text-left"><th className="p-2">Examen</th><th>Valor</th><th>Unidad</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{review.map((item) => <tr key={item.id} className="border-b"><td className="p-2 font-semibold">{item.name}</td><td><Input type="number" value={item.value} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, value: Number(e.target.value) } : row))} className="w-28" /></td><td><Input value={item.unit} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, unit: e.target.value } : row))} className="w-28" /></td><td className="whitespace-nowrap text-xs">{new Date(item.collectedAt).toLocaleString('es-CL')}</td><td><select value={item.status} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, status: e.target.value } : row))} className="rounded-md border p-2"><option value="confirmed">Confirmar</option><option value="review">Requiere revisión</option><option value="discarded">Descartar</option></select></td></tr>)}</tbody></table></div><Button onClick={saveResults} className="mt-3 gap-2"><Save className="h-4 w-4" />Guardar resultados</Button></section>}
 
               <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><h2 className="font-black text-slate-900">Tabla longitudinal</h2>{rows.length ? <div className="mt-3 overflow-x-auto"><table className="min-w-max border-collapse text-xs"><thead><tr><th className="sticky left-0 z-10 min-w-44 border bg-slate-100 p-2 text-left">Examen</th>{columns.map((date) => <th key={date} className="min-w-28 border bg-slate-100 p-2">{new Date(date).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row.key}><td className="sticky left-0 border bg-white p-2"><strong>{row.name}</strong><span className="block text-[10px] text-slate-400">{row.category}</span></td>{row.values.map((value, index) => <td key={columns[index]} className={`border p-2 text-center ${value?.status === 'review' ? 'bg-amber-50 text-amber-900' : ''}`}>{value ? <>{value.value}<span className="ml-1 text-[10px] text-slate-500">{value.unit}</span></> : '—'}</td>)}</tr>)}</tbody></table></div> : <p className="mt-3 text-sm text-slate-500">Aún no hay resultados guardados.</p>}</section>
 
