@@ -87,6 +87,11 @@ const normalizeReportText = (text) => String(text || '')
   .replace(/,/g, '.');
 
 const stripDirectIdentifiers = (text) => String(text || '')
+  .replace(/NOMBRE\s*:.*?(?=LIQUIDO ASCITICO)/gis, (header) => {
+    const collected = header.match(/TOMA\s*MUESTRA\s*(\d{2}[-/]\d{2}[-/]\d{4}\s+\d{2}:\d{2}(?::\d{2})?)/i)?.[1]
+      || header.match(/\d{2}[-/]\d{2}[-/]\d{4}\s+\d{2}:\d{2}(?::\d{2})?/)?.[0];
+    return `${collected ? ` TOMA ${collected} ` : ' '} LIQUIDO ASCITICO `;
+  })
   .replace(/PACIENTE\s*:.*?(?=AREA\s*:|ÁREA\s*:)/gis, (header) => {
     const collected = header.match(/\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}/)?.[0];
     return collected ? ` TOMA ${collected} ` : ' ';
@@ -95,17 +100,56 @@ const stripDirectIdentifiers = (text) => String(text || '')
   .trim();
 
 const detectCollectedAt = (text, fallback) => {
-  const match = String(text || '').match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/);
+  const match = String(text || '').match(/(\d{2})[-/](\d{2})[-/](\d{4})\s+(\d{2}):(\d{2})/);
   return match ? `${match[3]}-${match[2]}-${match[1]}T${match[4]}:${match[5]}` : `${fallback.date}T${fallback.time || '00:00'}`;
 };
 
 const detectCollectedAtNear = (text, index, fallback) => {
-  const dates = [...String(text || '').matchAll(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})/g)];
+  const dates = [...String(text || '').matchAll(/(\d{2})[-/](\d{2})[-/](\d{4})\s+(\d{2}):(\d{2})/g)];
   if (!dates.length) return `${fallback.date}T${fallback.time || '00:00'}`;
   const previous = dates.filter((match) => match.index <= index).at(-1);
   const next = dates.find((match) => match.index > index);
   const selected = previous || next;
   return `${selected[3]}-${selected[2]}-${selected[1]}T${selected[4]}:${selected[5]}`;
+};
+
+const parseBiologicalFluids = (normalized, safeSource, block, sourceHadIdentifiers) => {
+  const start = normalized.indexOf('LIQUIDO ASCITICO');
+  if (start < 0) return [];
+  const section = normalized.slice(start);
+  const collectedAt = detectCollectedAtNear(normalized, start, block);
+  const results = [];
+  const addText = (examKey, name, value) => results.push({ id: makeId(), examKey, name, category: 'Líquido ascítico', value: null, valueText: value, unit: '', originalUnit: '', collectedAt, originalText: safeSource, sourceHadIdentifiers, status: 'confirmed', confidence: 'alta' });
+  const addNumber = (examKey, name, value, unit, extra = {}) => results.push({ id: makeId(), examKey, name, category: 'Líquido ascítico', value: Number(value), unit, originalUnit: unit, collectedAt, originalText: safeSource, sourceHadIdentifiers, status: 'confirmed', confidence: 'alta', ...extra });
+  [
+    ['ascitico_color_pre', 'Color antes de centrifugar', /COLOR ANTES DE CENTRIFUGAR\s+(.+?)(?=COLOR DESPUES|ASPECTO|PROTEINAS)/],
+    ['ascitico_color_post', 'Color después de centrifugar', /COLOR DESPUES DE CENTRIFUGAR\s+(.+?)(?=ASPECTO|PROTEINAS)/],
+    ['ascitico_aspecto_pre', 'Aspecto antes de centrifugar', /ASPECTO ANTES DE CENTRIFUGAR\s+(.+?)(?=ASPECTO DESPUES|PROTEINAS)/],
+    ['ascitico_aspecto_post', 'Aspecto después de centrifugar', /ASPECTO DESPUES DE(?:\s+CENTRIFUGAR)?\s+(.+?)(?=PROTEINAS|ALBUMINA)/],
+    ['ascitico_gram', 'Gram', /GRAM\s+(.+?)(?=PRESENCIA DE COAGULO|MUESTRA PRIMARIA|$)/],
+    ['ascitico_coagulo', 'Presencia de coágulo', /PRESENCIA DE COAGULO\s+(.+?)(?=MUESTRA PRIMARIA|$)/],
+  ].forEach(([key, name, regex]) => {
+    const match = section.match(regex);
+    if (match) addText(key, name, match[1].trim());
+  });
+  [
+    ['ascitico_proteinas', 'Proteínas', /PROTEINAS\s+(?:MENOR QUE\s+)?(\d+(?:\.\d+)?)\s+G\/DL/, 'g/dL'],
+    ['ascitico_albumina', 'Albúmina', /ALBUMINA\s+(\d+(?:\.\d+)?)\s+G\/DL/, 'g/dL'],
+    ['ascitico_glucosa', 'Glucosa', /GLUCOSA\s+(\d+(?:\.\d+)?)\s+MG\/DL/, 'mg/dL'],
+    ['ascitico_leucocitos', 'Leucocitos', /LEUCOCITOS\s+(\d+(?:\.\d+)?)\s+X\s*MM3/, 'células/mm³'],
+    ['ascitico_eritrocitos', 'Eritrocitos', /ERITROCITOS\s+(\d+(?:\.\d+)?)\s+X\s*MM3/, 'células/mm³'],
+    ['ascitico_mononucleares', 'Mononucleares', /MONONUCLEARES\s+(\d+(?:\.\d+)?)\s*%/, '%'],
+    ['ascitico_pmn_pct', 'Polimorfonucleares', /POLIMORFONUCLEARES\s+(\d+(?:\.\d+)?)\s*%/, '%'],
+  ].forEach(([key, name, regex, unit]) => {
+    const match = section.match(regex);
+    if (match) addNumber(key, name, match[1], unit, key === 'ascitico_proteinas' && /MENOR QUE/.test(match[0]) ? { comparator: '<' } : {});
+  });
+  const leukocytes = results.find((item) => item.examKey === 'ascitico_leucocitos')?.value;
+  const pmnPct = results.find((item) => item.examKey === 'ascitico_pmn_pct')?.value;
+  if (Number.isFinite(leukocytes) && Number.isFinite(pmnPct)) {
+    addNumber('ascitico_pmn_absoluto', 'PMN absolutos calculados', Number((leukocytes * pmnPct / 100).toFixed(1)), 'células/mm³', { formula: 'Leucocitos × % PMN / 100', derived: true });
+  }
+  return results;
 };
 
 const parseUrineAndMicrobiology = (normalized, safeSource, block, sourceHadIdentifiers) => {
@@ -164,7 +208,7 @@ const parseUrineAndMicrobiology = (normalized, safeSource, block, sourceHadIdent
 const parseText = (text, block) => {
   const safeSource = stripDirectIdentifiers(text);
   const normalized = normalizeReportText(safeSource);
-  const sourceHadIdentifiers = /PACIENTE\s*:|IDENTIFICACION\s*:|RUT\s*:/i.test(text);
+  const sourceHadIdentifiers = /PACIENTE\s*:|IDENTIFICACION\s*:|RUT\s*:|NOMBRE\s*:/i.test(text);
   const found = [];
   EXAMS.forEach((exam) => {
     const alias = exam.aliases
@@ -174,6 +218,8 @@ const parseText = (text, block) => {
     const match = normalized.match(new RegExp(`(?:^|[\\s;:/|])(${alias})\\s*[:=]?\\s*\\*{0,2}\\s*(-?\\d+(?:\\.\\d+)?)\\s*([A-Zµ%³][A-Z/%0-9µ³^.-]*(?:/[A-Z0-9µ³]+)?)?`, 'i'));
     if (!match) return;
     const rawValue = Number(match[2]);
+    const asciticStart = normalized.indexOf('LIQUIDO ASCITICO');
+    if (asciticStart >= 0 && match.index >= asciticStart && ['alb', 'leu', 'rbc'].includes(exam.key)) return;
     if (['leu', 'plaq'].includes(exam.key) && rawValue < 1000 && /CPO|CAMPO/i.test(match[3] || '')) return;
     found.push({
       id: makeId(), examKey: exam.key, name: exam.name, category: exam.category,
@@ -183,7 +229,7 @@ const parseText = (text, block) => {
       status: match[3] ? 'confirmed' : 'review', confidence: match[3] ? 'alta' : 'media',
     });
   });
-  return [...found, ...parseUrineAndMicrobiology(normalized, safeSource, block, sourceHadIdentifiers)];
+  return [...found, ...parseUrineAndMicrobiology(normalized, safeSource, block, sourceHadIdentifiers), ...parseBiologicalFluids(normalized, safeSource, block, sourceHadIdentifiers)];
 };
 
 const daysInHospital = (episode) => Math.max(0, Math.floor((Date.now() - new Date(episode.admittedAt).getTime()) / 86400000));
@@ -294,9 +340,9 @@ function CurvaExamenes() {
                 <Button onClick={processBlocks} className="mt-3 gap-2 bg-teal-700 hover:bg-teal-800"><FlaskConical className="h-4 w-4" />Procesar y revisar</Button>
               </section>
 
-              {review.length > 0 && <section className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm"><h2 className="font-black text-slate-900">Revisión antes de guardar</h2>{review.some((item) => item.sourceHadIdentifiers) && <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">Se detectó un encabezado con identificadores directos. Fue eliminado del texto fuente y no se guardará con los resultados.</p>}<div className="mt-3 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-100 text-left"><th className="p-2">Examen</th><th>Valor</th><th>Unidad</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{review.map((item) => <tr key={item.id} className="border-b"><td className="p-2 font-semibold">{item.name}</td><td>{item.valueText !== undefined ? <Input value={item.valueText} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, valueText: e.target.value } : row))} className="min-w-44" /> : <Input type="number" value={item.value} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, value: Number(e.target.value) } : row))} className="w-28" />}</td><td><Input value={item.unit} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, unit: e.target.value } : row))} className="w-28" /></td><td className="whitespace-nowrap text-xs">{new Date(item.collectedAt).toLocaleString('es-CL')}</td><td><select value={item.status} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, status: e.target.value } : row))} className="rounded-md border p-2"><option value="confirmed">Confirmar</option><option value="review">Requiere revisión</option><option value="discarded">Descartar</option></select></td></tr>)}</tbody></table></div><Button onClick={saveResults} className="mt-3 gap-2"><Save className="h-4 w-4" />Guardar resultados</Button></section>}
+              {review.length > 0 && <section className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm"><h2 className="font-black text-slate-900">Revisión antes de guardar</h2>{review.some((item) => item.sourceHadIdentifiers) && <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">Se detectó un encabezado con identificadores directos. Fue eliminado del texto fuente y no se guardará con los resultados.</p>}<div className="mt-3 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-100 text-left"><th className="p-2">Examen</th><th>Valor</th><th>Unidad</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{review.map((item) => <tr key={item.id} className="border-b"><td className="p-2 font-semibold">{item.name}{item.derived && <span className="block text-[10px] font-normal text-blue-600">Calculado: {item.formula}</span>}</td><td>{item.valueText !== undefined ? <Input value={item.valueText} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, valueText: e.target.value } : row))} className="min-w-44" /> : <div className="flex items-center gap-1">{item.comparator && <strong>{item.comparator}</strong>}<Input type="number" value={item.value} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, value: Number(e.target.value) } : row))} className="w-28" /></div>}</td><td><Input value={item.unit} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, unit: e.target.value } : row))} className="w-28" /></td><td className="whitespace-nowrap text-xs">{new Date(item.collectedAt).toLocaleString('es-CL')}</td><td><select value={item.status} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, status: e.target.value } : row))} className="rounded-md border p-2"><option value="confirmed">Confirmar</option><option value="review">Requiere revisión</option><option value="discarded">Descartar</option></select></td></tr>)}</tbody></table></div><Button onClick={saveResults} className="mt-3 gap-2"><Save className="h-4 w-4" />Guardar resultados</Button></section>}
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><h2 className="font-black text-slate-900">Tabla longitudinal</h2>{rows.length ? <div className="mt-3 overflow-x-auto"><table className="min-w-max border-collapse text-xs"><thead><tr><th className="sticky left-0 z-10 min-w-44 border bg-slate-100 p-2 text-left">Examen</th>{columns.map((date) => <th key={date} className="min-w-28 border bg-slate-100 p-2">{new Date(date).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row.key}><td className="sticky left-0 border bg-white p-2"><strong>{row.name}</strong><span className="block text-[10px] text-slate-400">{row.category}</span></td>{row.values.map((value, index) => <td key={columns[index]} className={`border p-2 text-center ${value?.status === 'review' ? 'bg-amber-50 text-amber-900' : ''}`}>{value ? <>{value.valueText ?? value.value}<span className="ml-1 text-[10px] text-slate-500">{value.unit}</span></> : '—'}</td>)}</tr>)}</tbody></table></div> : <p className="mt-3 text-sm text-slate-500">Aún no hay resultados guardados.</p>}</section>
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><h2 className="font-black text-slate-900">Tabla longitudinal</h2>{rows.length ? <div className="mt-3 overflow-x-auto"><table className="min-w-max border-collapse text-xs"><thead><tr><th className="sticky left-0 z-10 min-w-44 border bg-slate-100 p-2 text-left">Examen</th>{columns.map((date) => <th key={date} className="min-w-28 border bg-slate-100 p-2">{new Date(date).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row.key}><td className="sticky left-0 border bg-white p-2"><strong>{row.name}</strong><span className="block text-[10px] text-slate-400">{row.category}</span></td>{row.values.map((value, index) => <td key={columns[index]} className={`border p-2 text-center ${value?.status === 'review' ? 'bg-amber-50 text-amber-900' : ''}`}>{value ? <>{value.comparator || ''}{value.valueText ?? value.value}<span className="ml-1 text-[10px] text-slate-500">{value.unit}</span></> : '—'}</td>)}</tr>)}</tbody></table></div> : <p className="mt-3 text-sm text-slate-500">Aún no hay resultados guardados.</p>}</section>
 
               <div className="grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><h2 className="flex items-center gap-2 font-black"><LineChartIcon className="h-4 w-4" />Curva</h2><select value={selectedExam} onChange={(e) => setSelectedExam(e.target.value)} className="rounded-md border p-2 text-xs">{EXAMS.map((exam) => <option key={exam.key} value={exam.key}>{exam.name}</option>)}</select></div><div className="mt-3 h-64">{chartData.length ? <ResponsiveContainer width="100%" height="100%"><LineChart data={chartData}><XAxis dataKey="date" tick={{ fontSize: 10 }} /><YAxis /><Tooltip /><Line type="monotone" dataKey="value" stroke="#0f766e" strokeWidth={3} dot /></LineChart></ResponsiveContainer> : <p className="py-20 text-center text-sm text-slate-400">Sin valores confirmados para graficar.</p>}</div></section><section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><h2 className="font-black">Cálculos verificables</h2><div className="mt-3 space-y-2">{calculations.length ? calculations.map((calc) => <div key={calc.name} className="rounded-xl border border-blue-100 bg-blue-50 p-3"><div className="flex justify-between gap-3"><strong>{calc.name}</strong><span className="text-lg font-black text-blue-900">{calc.value}</span></div><p className="text-xs text-slate-500">{calc.formula}</p></div>) : <p className="text-sm text-slate-500">Faltan resultados confirmados y compatibles.</p>}</div></section></div>
             </>}
