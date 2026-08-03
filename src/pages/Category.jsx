@@ -845,6 +845,20 @@ export default function Category() {
               </Link>
             )}
 
+            {hasHospitalizados && (
+              <Link to={createPageUrl('CurvaExamenes')} className="block">
+                <div className={`${FORM_CARD_CLASS} border-teal-200 bg-teal-50/80 hover:border-teal-300`}>
+                  <div className={`${FORM_ICON_CLASS} bg-teal-700`}>
+                    <Activity className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900">Curva de exámenes</p>
+                    <p className="text-sm text-slate-500 truncate">Seguimiento longitudinal anónimo por cama, carga por fechas, curvas y cálculos.</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+
             {/* Solicitud de Exámenes – solo en Hospitalizados */}
             {hasHospitalizados && (
               <Link to={createPageUrl('SolicitudExamenes')} className="block">

@@ -1,0 +1,177 @@
+import React, { useMemo, useState } from 'react';
+import { Bed, CalendarPlus, FlaskConical, LineChart as LineChartIcon, LogOut, Save, Trash2 } from 'lucide-react';
+import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+
+import { ALL_BEDS } from '@/components/agenda-diaria/bedCatalog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+
+const STORAGE_KEY = 'hospital_lab_tracker_v1';
+const nowLocal = () => {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
+  return { date: local.slice(0, 10), time: local.slice(11, 16) };
+};
+const makeId = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+const makeCode = () => {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = new Uint8Array(5);
+  globalThis.crypto?.getRandomValues?.(bytes);
+  return `HOS-${[...bytes].map((byte, index) => alphabet[byte % alphabet.length] || alphabet[(Date.now() + index) % alphabet.length]).join('')}`;
+};
+const loadState = () => {
+  try {
+    const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    return { episodes: Array.isArray(value.episodes) ? value.episodes : [] };
+  } catch {
+    return { episodes: [] };
+  }
+};
+
+const EXAMS = [
+  { key: 'hb', name: 'Hemoglobina', category: 'Hemograma', unit: 'g/dL', aliases: ['HB', 'HGB'] },
+  { key: 'hto', name: 'Hematocrito', category: 'Hemograma', unit: '%', aliases: ['HTO', 'HCT'] },
+  { key: 'leu', name: 'Leucocitos', category: 'Hemograma', unit: '/µL', aliases: ['LEU', 'GB', 'WBC'] },
+  { key: 'plaq', name: 'Plaquetas', category: 'Hemograma', unit: '/µL', aliases: ['PLAQ', 'PLQ', 'PLT'] },
+  { key: 'pcr', name: 'Proteína C reactiva', category: 'Inflamatorios', unit: 'mg/L', aliases: ['PCR', 'CRP'] },
+  { key: 'crea', name: 'Creatinina', category: 'Función renal', unit: 'mg/dL', aliases: ['CREA', 'CREAT', 'CR'] },
+  { key: 'bun', name: 'BUN', category: 'Función renal', unit: 'mg/dL', aliases: ['BUN', 'NU'] },
+  { key: 'na', name: 'Sodio', category: 'Electrolitos', unit: 'mEq/L', aliases: ['NA'] },
+  { key: 'k', name: 'Potasio', category: 'Electrolitos', unit: 'mEq/L', aliases: ['K'] },
+  { key: 'cl', name: 'Cloro', category: 'Electrolitos', unit: 'mEq/L', aliases: ['CL'] },
+  { key: 'hco3', name: 'Bicarbonato', category: 'Gases y ácido-base', unit: 'mEq/L', aliases: ['HCO3', 'BIC'] },
+  { key: 'ph', name: 'pH', category: 'Gases y ácido-base', unit: '', aliases: ['PH'] },
+  { key: 'pco2', name: 'pCO₂', category: 'Gases y ácido-base', unit: 'mmHg', aliases: ['PCO2'] },
+  { key: 'po2', name: 'pO₂', category: 'Gases y ácido-base', unit: 'mmHg', aliases: ['PO2'] },
+  { key: 'lactato', name: 'Lactato', category: 'Gases y ácido-base', unit: 'mmol/L', aliases: ['LACTATO', 'LAC'] },
+  { key: 'alb', name: 'Albúmina', category: 'Perfil hepático', unit: 'g/dL', aliases: ['ALB', 'ALBUMINA'] },
+  { key: 'bt', name: 'Bilirrubina total', category: 'Perfil hepático', unit: 'mg/dL', aliases: ['BT'] },
+  { key: 'bd', name: 'Bilirrubina directa', category: 'Perfil hepático', unit: 'mg/dL', aliases: ['BD'] },
+  { key: 'ast', name: 'AST/GOT', category: 'Perfil hepático', unit: 'U/L', aliases: ['AST', 'GOT'] },
+  { key: 'alt', name: 'ALT/GPT', category: 'Perfil hepático', unit: 'U/L', aliases: ['ALT', 'GPT'] },
+  { key: 'inr', name: 'INR', category: 'Coagulación', unit: '', aliases: ['INR'] },
+];
+
+const parseText = (text, block) => {
+  const normalized = String(text || '').toUpperCase().replace(/,/g, '.');
+  const found = [];
+  EXAMS.forEach((exam) => {
+    const alias = exam.aliases.map((item) => item.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+    const match = normalized.match(new RegExp(`(?:^|[\\s;:/|])(${alias})\\s*[:=]?\\s*(-?\\d+(?:\\.\\d+)?)\\s*([A-Zµ/%³0-9\\^.-]+)?`, 'i'));
+    if (!match) return;
+    const rawValue = Number(match[2]);
+    const thousandsLikely = ['leu', 'plaq'].includes(exam.key) && rawValue > 100 && rawValue < 1000 && /\.\d{3}\b/.test(match[2]);
+    found.push({
+      id: makeId(), examKey: exam.key, name: exam.name, category: exam.category,
+      value: thousandsLikely ? rawValue * 1000 : rawValue,
+      unit: match[3] || exam.unit, originalUnit: match[3] || '', collectedAt: `${block.date}T${block.time || '00:00'}`,
+      originalText: text, status: match[3] ? 'confirmed' : 'review', confidence: match[3] ? 'alta' : 'media',
+    });
+  });
+  return found;
+};
+
+const daysInHospital = (episode) => Math.max(0, Math.floor((Date.now() - new Date(episode.admittedAt).getTime()) / 86400000));
+
+export default function CurvaExamenes() {
+  const initial = useMemo(loadState, []);
+  const [episodes, setEpisodes] = useState(initial.episodes);
+  const [selectedId, setSelectedId] = useState(initial.episodes.find((item) => item.status === 'hospitalizado')?.id || '');
+  const [serviceFilter, setServiceFilter] = useState('all');
+  const [blocks, setBlocks] = useState([{ id: makeId(), ...nowLocal(), sample: 'Sangre', text: '' }]);
+  const [review, setReview] = useState([]);
+  const [selectedExam, setSelectedExam] = useState('crea');
+  const selected = episodes.find((item) => item.id === selectedId);
+  const activeByBed = useMemo(() => new Map(episodes.filter((item) => item.status === 'hospitalizado').map((item) => [item.bedCode, item])), [episodes]);
+  const services = [...new Set(ALL_BEDS.map((item) => item.serviceShort))];
+
+  const persist = (next) => {
+    setEpisodes(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ episodes: next }));
+  };
+  const admit = (bed) => {
+    if (activeByBed.has(bed.code)) return setSelectedId(activeByBed.get(bed.code).id);
+    const stamp = new Date().toISOString();
+    const episode = { id: makeId(), code: makeCode(), bedCode: bed.code, service: bed.serviceShort, admittedAt: stamp, status: 'hospitalizado', results: [], movements: [{ type: 'ingreso', bedCode: bed.code, at: stamp }] };
+    persist([episode, ...episodes]);
+    setSelectedId(episode.id);
+  };
+  const discharge = () => {
+    if (!selected || !window.confirm(`¿Egresar ${selected.code} y liberar la cama ${selected.bedCode}?`)) return;
+    const stamp = new Date().toISOString();
+    persist(episodes.map((item) => item.id === selected.id ? { ...item, status: 'egresado', dischargedAt: stamp, movements: [...item.movements, { type: 'egreso', bedCode: item.bedCode, at: stamp }] } : item));
+    setSelectedId('');
+  };
+  const processBlocks = () => setReview(blocks.flatMap((block) => parseText(block.text, block)));
+  const saveResults = () => {
+    const accepted = review.filter((item) => item.status !== 'discarded');
+    if (!selected || !accepted.length) return;
+    persist(episodes.map((item) => item.id === selected.id ? { ...item, results: [...(item.results || []), ...accepted] } : item));
+    setReview([]);
+    setBlocks([{ id: makeId(), ...nowLocal(), sample: 'Sangre', text: '' }]);
+  };
+  const columns = useMemo(() => [...new Set((selected?.results || []).map((item) => item.collectedAt))].sort(), [selected]);
+  const rows = useMemo(() => EXAMS.map((exam) => ({ ...exam, values: columns.map((date) => (selected?.results || []).find((item) => item.examKey === exam.key && item.collectedAt === date)) })).filter((row) => row.values.some(Boolean)), [selected, columns]);
+  const chartData = useMemo(() => (selected?.results || []).filter((item) => item.examKey === selectedExam && item.status === 'confirmed').sort((a, b) => a.collectedAt.localeCompare(b.collectedAt)).map((item) => ({ date: new Date(item.collectedAt).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }), value: Number(item.value) })), [selected, selectedExam]);
+  const latest = (key) => [...(selected?.results || [])].filter((item) => item.examKey === key && item.status === 'confirmed').sort((a, b) => b.collectedAt.localeCompare(a.collectedAt))[0]?.value;
+  const calculations = useMemo(() => {
+    if (!selected) return [];
+    const na = latest('na'); const cl = latest('cl'); const hco3 = latest('hco3'); const k = latest('k'); const alb = latest('alb'); const bun = latest('bun'); const crea = latest('crea');
+    const result = [];
+    if ([na, cl, hco3].every(Number.isFinite)) {
+      const ag = na - cl - hco3;
+      result.push({ name: 'Anión gap', value: ag.toFixed(1), formula: 'Na − (Cl + HCO₃)' });
+      if (Number.isFinite(alb)) result.push({ name: 'AG corregido por albúmina', value: (ag + 2.5 * (4 - alb)).toFixed(1), formula: 'AG + 2,5 × (4 − albúmina)' });
+      if (Number.isFinite(k)) result.push({ name: 'Anión gap con K', value: (na + k - cl - hco3).toFixed(1), formula: '(Na + K) − (Cl + HCO₃)' });
+    }
+    if ([bun, crea].every(Number.isFinite) && crea !== 0) result.push({ name: 'Relación BUN/creatinina', value: (bun / crea).toFixed(1), formula: 'BUN ÷ creatinina' });
+    return result;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+      <div className="mx-auto max-w-[1600px] space-y-5">
+        <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h1 className="text-2xl font-black text-slate-950">Curva de exámenes</h1><p className="text-sm text-slate-600">Seguimiento longitudinal anónimo de pacientes hospitalizados.</p></div>
+            {selected && <Button variant="outline" onClick={discharge} className="gap-2 text-rose-700"><LogOut className="h-4 w-4" />Egresar y liberar cama</Button>}
+          </div>
+          <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">Este módulo no solicita ni almacena nombre, RUT, ficha, teléfono ni otros identificadores directos.</p>
+        </header>
+
+        <div className="grid gap-5 xl:grid-cols-[370px_minmax(0,1fr)]">
+          <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between"><h2 className="font-black text-slate-900">Camas</h2><select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="rounded-md border px-2 py-1 text-xs"><option value="all">Todos</option>{services.map((service) => <option key={service}>{service}</option>)}</select></div>
+            <div className="grid max-h-[72vh] grid-cols-2 gap-2 overflow-y-auto pr-1">
+              {ALL_BEDS.filter((bed) => serviceFilter === 'all' || bed.serviceShort === serviceFilter).map((bed) => {
+                const episode = activeByBed.get(bed.code);
+                return <button key={bed.code} onClick={() => admit(bed)} className={`rounded-xl border p-3 text-left transition ${selectedId === episode?.id ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200' : episode ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white hover:border-teal-300'}`}><span className="block text-xs font-bold text-slate-500">{bed.serviceShort}</span><span className="block text-lg font-black text-slate-900">{bed.cell}</span>{episode ? <><span className="mt-1 block text-xs font-bold text-emerald-800">{episode.code}</span><span className="text-[10px] text-slate-500">Día {daysInHospital(episode)}</span></> : <span className="mt-1 block text-xs text-slate-400">Libre · agregar</span>}</button>;
+              })}
+            </div>
+          </aside>
+
+          <main className="min-w-0 space-y-5">
+            {!selected ? <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center"><Bed className="mx-auto h-10 w-10 text-slate-300" /><p className="mt-3 font-bold text-slate-700">Selecciona una cama ocupada o una libre para crear un episodio anónimo.</p></div> : <>
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex flex-wrap items-center gap-3"><Badge className="bg-teal-700 text-white">{selected.code}</Badge><strong>Cama {selected.bedCode}</strong><span className="text-sm text-slate-500">Ingreso {new Date(selected.admittedAt).toLocaleString('es-CL')} · Día {daysInHospital(selected)}</span></div></section>
+
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-4 flex items-center justify-between"><div><h2 className="font-black text-slate-900">Pegar exámenes</h2><p className="text-xs text-slate-500">Cada bloque corresponde a una toma diferente.</p></div><Button variant="outline" onClick={() => setBlocks((current) => [...current, { id: makeId(), ...nowLocal(), sample: 'Sangre', text: '' }])} className="gap-2"><CalendarPlus className="h-4 w-4" />Agregar fecha</Button></div>
+                <div className="space-y-3">{blocks.map((block, index) => <div key={block.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="mb-2 grid gap-2 sm:grid-cols-[160px_120px_1fr_auto]"><Input type="date" value={block.date} onChange={(e) => setBlocks((current) => current.map((item) => item.id === block.id ? { ...item, date: e.target.value } : item))} /><Input type="time" value={block.time} onChange={(e) => setBlocks((current) => current.map((item) => item.id === block.id ? { ...item, time: e.target.value } : item))} /><Input value={block.sample} onChange={(e) => setBlocks((current) => current.map((item) => item.id === block.id ? { ...item, sample: e.target.value } : item))} placeholder="Muestra" /><Button size="icon" variant="ghost" disabled={blocks.length === 1} onClick={() => setBlocks((current) => current.filter((item) => item.id !== block.id))}><Trash2 className="h-4 w-4 text-rose-600" /></Button></div><Textarea value={block.text} onChange={(e) => setBlocks((current) => current.map((item) => item.id === block.id ? { ...item, text: e.target.value } : item))} placeholder="HB 9.4 HTO 28.1 LEU 15300 PCR 184 CREA 1.7 NA 132 K 3.2..." rows={3} /></div>)}</div>
+                <Button onClick={processBlocks} className="mt-3 gap-2 bg-teal-700 hover:bg-teal-800"><FlaskConical className="h-4 w-4" />Procesar y revisar</Button>
+              </section>
+
+              {review.length > 0 && <section className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm"><h2 className="font-black text-slate-900">Revisión antes de guardar</h2><div className="mt-3 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-100 text-left"><th className="p-2">Examen</th><th>Valor</th><th>Unidad</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{review.map((item) => <tr key={item.id} className="border-b"><td className="p-2 font-semibold">{item.name}</td><td><Input type="number" value={item.value} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, value: Number(e.target.value) } : row))} className="w-28" /></td><td><Input value={item.unit} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, unit: e.target.value } : row))} className="w-28" /></td><td className="whitespace-nowrap text-xs">{new Date(item.collectedAt).toLocaleString('es-CL')}</td><td><select value={item.status} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, status: e.target.value } : row))} className="rounded-md border p-2"><option value="confirmed">Confirmar</option><option value="review">Requiere revisión</option><option value="discarded">Descartar</option></select></td></tr>)}</tbody></table></div><Button onClick={saveResults} className="mt-3 gap-2"><Save className="h-4 w-4" />Guardar resultados</Button></section>}
+
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><h2 className="font-black text-slate-900">Tabla longitudinal</h2>{rows.length ? <div className="mt-3 overflow-x-auto"><table className="min-w-max border-collapse text-xs"><thead><tr><th className="sticky left-0 z-10 min-w-44 border bg-slate-100 p-2 text-left">Examen</th>{columns.map((date) => <th key={date} className="min-w-28 border bg-slate-100 p-2">{new Date(date).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row.key}><td className="sticky left-0 border bg-white p-2"><strong>{row.name}</strong><span className="block text-[10px] text-slate-400">{row.category}</span></td>{row.values.map((value, index) => <td key={columns[index]} className={`border p-2 text-center ${value?.status === 'review' ? 'bg-amber-50 text-amber-900' : ''}`}>{value ? <>{value.value}<span className="ml-1 text-[10px] text-slate-500">{value.unit}</span></> : '—'}</td>)}</tr>)}</tbody></table></div> : <p className="mt-3 text-sm text-slate-500">Aún no hay resultados guardados.</p>}</section>
+
+              <div className="grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><h2 className="flex items-center gap-2 font-black"><LineChartIcon className="h-4 w-4" />Curva</h2><select value={selectedExam} onChange={(e) => setSelectedExam(e.target.value)} className="rounded-md border p-2 text-xs">{EXAMS.map((exam) => <option key={exam.key} value={exam.key}>{exam.name}</option>)}</select></div><div className="mt-3 h-64">{chartData.length ? <ResponsiveContainer width="100%" height="100%"><LineChart data={chartData}><XAxis dataKey="date" tick={{ fontSize: 10 }} /><YAxis /><Tooltip /><Line type="monotone" dataKey="value" stroke="#0f766e" strokeWidth={3} dot /></LineChart></ResponsiveContainer> : <p className="py-20 text-center text-sm text-slate-400">Sin valores confirmados para graficar.</p>}</div></section><section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><h2 className="font-black">Cálculos verificables</h2><div className="mt-3 space-y-2">{calculations.length ? calculations.map((calc) => <div key={calc.name} className="rounded-xl border border-blue-100 bg-blue-50 p-3"><div className="flex justify-between gap-3"><strong>{calc.name}</strong><span className="text-lg font-black text-blue-900">{calc.value}</span></div><p className="text-xs text-slate-500">{calc.formula}</p></div>) : <p className="text-sm text-slate-500">Faltan resultados confirmados y compatibles.</p>}</div></section></div>
+            </>}
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
