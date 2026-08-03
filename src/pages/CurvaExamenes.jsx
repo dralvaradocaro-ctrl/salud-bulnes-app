@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bed, CalendarPlus, FlaskConical, LineChart as LineChartIcon, LogOut, Printer, Save, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, Bed, CalendarPlus, FlaskConical, LineChart as LineChartIcon, LogOut, Printer, Save, Search, Trash2 } from 'lucide-react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { ALL_BEDS } from '@/components/agenda-diaria/bedCatalog';
@@ -14,6 +14,79 @@ import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaFor
 import { supabase } from '@/lib/supabase';
 
 const STORAGE_KEY = 'hospital_lab_tracker_v1';
+const TEST_EPISODE_ID = 'curva-examenes-test-patient';
+const TEST_BED = { code: 'TEST-1', cell: 'TEST-1', serviceShort: 'PRUEBA' };
+const CURVE_BEDS = [...ALL_BEDS, TEST_BED];
+
+const buildTestEpisode = () => {
+  const at = (daysAgo, hour) => {
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    date.setHours(hour, 0, 0, 0);
+    return date.toISOString();
+  };
+  const result = (examKey, name, category, value, unit, daysAgo, hour = 8) => ({
+    id: `test-${examKey}-${daysAgo}`,
+    examKey,
+    name,
+    category,
+    value,
+    unit,
+    originalUnit: unit,
+    collectedAt: at(daysAgo, hour),
+    originalText: 'Resultado ficticio para probar Curva de exámenes',
+    sourceHadIdentifiers: false,
+    status: 'confirmed',
+    confidence: 'alta',
+  });
+  const microbiology = (examKey, name, valueText, daysAgo) => ({
+    ...result(examKey, name, 'Microbiología', null, '', daysAgo, 11),
+    valueText,
+  });
+  const series = (examKey, name, category, values, unit) => values.map((value, index) => (
+    result(examKey, name, category, value, unit, values.length - index - 1)
+  ));
+  const admittedAt = at(8, 10);
+  return {
+    id: TEST_EPISODE_ID,
+    code: 'HOS-TEST',
+    bedCode: TEST_BED.code,
+    service: TEST_BED.serviceShort,
+    admittedAt,
+    ageRange: '60–69 años',
+    clinicalSex: 'M',
+    admissionConfirmed: true,
+    proaRecordId: '',
+    source: 'test',
+    isTest: true,
+    status: 'hospitalizado',
+    results: [
+      ...series('hb', 'Hemoglobina', 'Hemograma', [10.4, 10.6, 10.8, 11, 11.2, 11.6, 12.1], 'g/dL'),
+      ...series('leu', 'Leucocitos', 'Hemograma', [18900, 17600, 15400, 13700, 12100, 10400, 9200], '/µL'),
+      ...series('plaq', 'Plaquetas', 'Hemograma', [142000, 151000, 168000, 181000, 196000, 214000, 238000], '/µL'),
+      ...series('pcr', 'Proteína C reactiva', 'Inflamatorios', [212, 184, 151, 126, 91, 62, 38], 'mg/L'),
+      ...series('crea', 'Creatinina', 'Función renal', [2.1, 2, 1.8, 1.6, 1.4, 1.2, 1.1], 'mg/dL'),
+      ...series('bun', 'Nitrógeno ureico (BUN)', 'Función renal', [52, 49, 45, 41, 37, 34, 31], 'mg/dL'),
+      ...series('na', 'Sodio', 'Electrolitos', [132, 133, 134, 135, 137, 138, 139], 'mEq/L'),
+      ...series('k', 'Potasio', 'Electrolitos', [5.1, 4.9, 4.7, 4.5, 4.3, 4.2, 4.1], 'mEq/L'),
+      ...series('cl', 'Cloro', 'Electrolitos', [99, 100, 101, 102, 102, 103, 104], 'mEq/L'),
+      ...series('hco3', 'Bicarbonato', 'Gases y ácido-base', [18, 19, 20, 21, 22, 23, 24], 'mEq/L'),
+      ...series('alb', 'Albúmina', 'Perfil hepático', [2.6, 2.6, 2.7, 2.8, 2.9, 3, 3.1], 'g/dL'),
+      ...series('calcio', 'Calcio', 'Electrolitos', [7.5, 7.6, 7.7, 7.8, 8, 8.1, 8.2], 'mg/dL'),
+      ...series('ast', 'AST/GOT', 'Perfil hepático', [84, 78, 70, 61, 53, 45, 38], 'U/L'),
+      ...series('alt', 'ALT/GPT', 'Perfil hepático', [66, 63, 59, 54, 49, 44, 40], 'U/L'),
+      microbiology('hemocultivo_1_test', 'Hemocultivo periférico', 'Escherichia coli · BLEE negativo · sensible a ceftriaxona', 6),
+      microbiology('hemocultivo_2_test', 'Hemocultivo de control', 'Sin desarrollo bacteriano a las 48 horas', 4),
+      microbiology('urocultivo_test', 'Urocultivo', 'Escherichia coli 100.000 UFC/mL · sensible a ceftriaxona y gentamicina', 6),
+      microbiology('cultivo_esputo_test', 'Cultivo de esputo', 'Flora respiratoria habitual · muestra de calidad intermedia', 5),
+      microbiology('panel_respiratorio_test', 'Panel respiratorio molecular', 'Influenza A/B, SARS-CoV-2 y VRS no detectados', 3),
+      microbiology('coprocultivo_test', 'Coprocultivo', 'Sin desarrollo de enteropatógenos', 2),
+      microbiology('toxina_cd_test', 'Toxina de Clostridioides difficile', 'No detectada', 1),
+    ],
+    movements: [{ type: 'ingreso', bedCode: TEST_BED.code, at: admittedAt, source: 'test' }],
+  };
+};
+
 const nowLocal = () => {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString();
@@ -33,14 +106,13 @@ const loadState = () => {
     // La primera versión creaba un episodio con solo tocar una cama. Se eliminan
     // exclusivamente esos registros vacíos no confirmados; si tienen exámenes,
     // movimientos posteriores o confirmación explícita se conservan.
-    const episodes = storedEpisodes.filter((episode) => (
+    const savedEpisodes = storedEpisodes.filter((episode) => (
       episode.admissionConfirmed === true
       || (episode.results || []).length > 0
       || (episode.movements || []).length > 1
     ));
-    if (episodes.length !== storedEpisodes.length) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...value, episodes }));
-    }
+    const episodes = [buildTestEpisode(), ...savedEpisodes.filter((episode) => episode.id !== TEST_EPISODE_ID)];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...value, episodes }));
     return { episodes };
   } catch {
     return { episodes: [] };
@@ -280,6 +352,8 @@ function CurvaExamenes() {
   const [episodeActionOpen, setEpisodeActionOpen] = useState(false);
   const [episodeActionBusy, setEpisodeActionBusy] = useState(false);
   const [episodeActionError, setEpisodeActionError] = useState('');
+  const [backConfirmationOpen, setBackConfirmationOpen] = useState(false);
+  const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
   const selected = episodes.find((item) => item.id === selectedId);
   const activeByBed = useMemo(() => new Map(episodes.filter((item) => item.status === 'hospitalizado').map((item) => [item.bedCode, item])), [episodes]);
   const activeProaByBed = useMemo(() => {
@@ -291,10 +365,10 @@ function CurvaExamenes() {
     });
     return map;
   }, [proaRecords]);
-  const services = [...new Set(ALL_BEDS.map((item) => item.serviceShort))];
+  const services = [...new Set(CURVE_BEDS.map((item) => item.serviceShort))];
   const visibleBeds = useMemo(() => {
     const query = codeSearch.trim().toUpperCase();
-    return ALL_BEDS.filter((bed) => {
+    return CURVE_BEDS.filter((bed) => {
       if (serviceFilter !== 'all' && bed.serviceShort !== serviceFilter) return false;
       if (!query) return true;
       const episode = activeByBed.get(bed.code);
@@ -345,7 +419,38 @@ function CurvaExamenes() {
           const dischargedAt = form.fecha_egreso ? `${form.fecha_egreso}T12:00:00` : (form.proa_archived_at || new Date().toISOString());
           return [{ ...episode, status: 'egresado', dischargedAt, movements: [...(episode.movements || []), { type: 'egreso', bedCode: episode.bedCode, at: dischargedAt, source: 'proa' }] }];
         }
+        if (proaRecord) {
+          const form = getLatestProaForm(proaRecord) || {};
+          const catalogBed = PROA_TO_CATALOG_BED.get(form.cama || proaRecord.bedCode);
+          if (catalogBed && catalogBed !== episode.bedCode) {
+            changed = true;
+            return [{ ...episode, bedCode: catalogBed, service: ALL_BEDS.find((bed) => bed.code === catalogBed)?.serviceShort || episode.service, movements: [...(episode.movements || []), { type: 'traslado', bedCode: catalogBed, at: new Date().toISOString(), source: 'proa' }] }];
+          }
+        }
         return [episode];
+      });
+
+      proaRecords.filter((record) => !isHistoricalProaRecord(record) && verifiedProaIds.has(record.id)).forEach((record) => {
+        if (next.some((episode) => episode.proaRecordId === record.id && episode.status === 'hospitalizado')) return;
+        const form = getLatestProaForm(record) || {};
+        const catalogBed = PROA_TO_CATALOG_BED.get(form.cama || record.bedCode);
+        const bed = ALL_BEDS.find((item) => item.code === catalogBed);
+        if (!bed) return;
+        const existingIndex = next.findIndex((episode) => episode.status === 'hospitalizado' && episode.bedCode === catalogBed && !episode.proaRecordId);
+        if (existingIndex >= 0) {
+          next[existingIndex] = { ...next[existingIndex], proaRecordId: record.id, source: 'proa' };
+          changed = true;
+          return;
+        }
+        const admissionDate = /^\d{4}-\d{2}-\d{2}$/.test(form.fecha_ingreso || '') ? form.fecha_ingreso : new Date().toISOString().slice(0, 10);
+        const admittedAt = `${admissionDate}T12:00:00`;
+        next.unshift({
+          id: makeId(), code: makeCode(), bedCode: catalogBed, service: bed.serviceShort,
+          admittedAt, ageRange: '', clinicalSex: '', admissionConfirmed: true,
+          proaRecordId: record.id, source: 'proa', status: 'hospitalizado', results: [],
+          movements: [{ type: 'ingreso', bedCode: catalogBed, at: admittedAt, source: 'proa' }],
+        });
+        changed = true;
       });
       if (!changed) return current;
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ episodes: next }));
@@ -408,6 +513,13 @@ function CurvaExamenes() {
     }
   };
   const processBlocks = () => setReview(blocks.flatMap((block) => parseText(block.text, block)));
+  const goBackWithoutSaving = () => {
+    setReview([]);
+    setBlocks([{ id: makeId(), ...nowLocal(), sample: 'Sangre', text: '' }]);
+    setPendingBed(null);
+    setSelectedId('');
+    setBackConfirmationOpen(false);
+  };
   const saveResults = () => {
     const accepted = review.filter((item) => item.status !== 'discarded');
     if (!selected || !accepted.length) return;
@@ -415,19 +527,22 @@ function CurvaExamenes() {
     setReview([]);
     setBlocks([{ id: makeId(), ...nowLocal(), sample: 'Sangre', text: '' }]);
   };
-  const columns = useMemo(() => [...new Set((selected?.results || []).map((item) => item.collectedAt))].sort(), [selected]);
+  const columns = useMemo(() => [...new Set((selected?.results || []).filter((item) => item.category !== 'Microbiología').map((item) => item.collectedAt))].sort(), [selected]);
   const rows = useMemo(() => {
     const definitions = new Map(EXAMS.map((exam) => [exam.key, exam]));
     (selected?.results || []).forEach((item) => {
       if (!definitions.has(item.examKey)) definitions.set(item.examKey, { key: item.examKey, name: item.name, category: item.category, unit: item.unit });
     });
-    return [...definitions.values()].map((exam) => ({ ...exam, values: columns.map((date) => (selected?.results || []).find((item) => item.examKey === exam.key && item.collectedAt === date)) })).filter((row) => row.values.some(Boolean));
+    return [...definitions.values()].map((exam) => ({ ...exam, values: columns.map((date) => (selected?.results || []).find((item) => item.examKey === exam.key && item.collectedAt === date)) })).filter((row) => row.category !== 'Microbiología' && row.values.some(Boolean));
   }, [selected, columns]);
+  const microbiologyResults = useMemo(() => (selected?.results || [])
+    .filter((item) => item.category === 'Microbiología' || /cultivo|microbiolog/i.test(`${item.examKey} ${item.name}`))
+    .sort((a, b) => a.collectedAt.localeCompare(b.collectedAt)), [selected]);
   const chartData = useMemo(() => (selected?.results || []).filter((item) => item.examKey === selectedExam && item.status === 'confirmed').sort((a, b) => a.collectedAt.localeCompare(b.collectedAt)).map((item) => ({ date: new Date(item.collectedAt).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }), value: Number(item.value) })), [selected, selectedExam]);
   const latest = (key) => [...(selected?.results || [])].filter((item) => item.examKey === key && item.status === 'confirmed').sort((a, b) => b.collectedAt.localeCompare(a.collectedAt))[0]?.value;
   const calculations = useMemo(() => {
     if (!selected) return [];
-    const na = latest('na'); const cl = latest('cl'); const hco3 = latest('hco3'); const k = latest('k'); const alb = latest('alb'); const bun = latest('bun'); const crea = latest('crea');
+    const na = latest('na'); const cl = latest('cl'); const hco3 = latest('hco3'); const k = latest('k'); const alb = latest('alb'); const bun = latest('bun'); const crea = latest('crea'); const calcium = latest('calcio'); const ast = latest('ast'); const alt = latest('alt'); const platelets = latest('plaq');
     const result = [];
     if ([na, cl, hco3].every(Number.isFinite)) {
       const ag = na - cl - hco3;
@@ -436,9 +551,26 @@ function CurvaExamenes() {
       if (Number.isFinite(k)) result.push({ name: 'Anión gap con K', value: (na + k - cl - hco3).toFixed(1), formula: '(Na + K) − (Cl + HCO₃)' });
     }
     if ([bun, crea].every(Number.isFinite) && crea !== 0) result.push({ name: 'Relación BUN/creatinina', value: (bun / crea).toFixed(1), formula: 'BUN ÷ creatinina' });
+    if ([calcium, alb].every(Number.isFinite)) result.push({ name: 'Calcio corregido', value: (calcium + 0.8 * (4 - alb)).toFixed(1), formula: 'Calcio + 0,8 × (4 − albúmina)' });
+    if ([ast, alt].every(Number.isFinite) && alt !== 0) result.push({ name: 'Relación AST/ALT (De Ritis)', value: (ast / alt).toFixed(2), formula: 'AST ÷ ALT' });
+    if ([ast, platelets].every(Number.isFinite) && platelets !== 0) result.push({ name: 'APRI estimado', value: (((ast / 40) / platelets) * 100000).toFixed(2), formula: '(AST ÷ LSN 40) ÷ plaquetas × 100.000' });
     return result;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
+
+  const renderCurveTable = () => rows.length ? (
+    <table className="w-full table-fixed border-collapse text-[10px]">
+      <thead><tr><th className="w-40 border bg-slate-100 p-1.5 text-left">Examen</th>{columns.map((date) => <th key={date} className="border bg-slate-100 p-1.5 text-center">{new Date(date).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</th>)}</tr></thead>
+      <tbody>{rows.map((row) => <tr key={row.key}><td className="border bg-white p-1.5"><strong>{row.name}</strong><span className="block text-[9px] text-slate-500">{row.category}</span></td>{row.values.map((value, index) => <td key={columns[index]} className={`border p-1.5 text-center align-middle ${value?.status === 'review' ? 'bg-amber-50 text-amber-900' : ''}`}>{value ? <>{value.comparator || ''}{value.valueText ?? value.value}{value.unit && <span className="ml-1 text-[9px] text-slate-500">{value.unit}</span>}</> : '—'}</td>)}</tr>)}</tbody>
+    </table>
+  ) : <p className="py-5 text-center text-sm text-slate-500">Aún no hay resultados guardados.</p>;
+
+  const renderMicrobiology = () => (
+    <div className="curve-microbiology mt-5 break-inside-avoid">
+      <h3 className="mb-2 border-b-2 border-slate-800 pb-1 text-sm font-black text-slate-900">Resultados microbiológicos</h3>
+      {microbiologyResults.length ? <table className="w-full table-fixed border-collapse text-[10px]"><thead><tr><th className="w-32 border bg-slate-100 p-1.5 text-left">Fecha</th><th className="w-40 border bg-slate-100 p-1.5 text-left">Estudio</th><th className="border bg-slate-100 p-1.5 text-left">Resultado</th></tr></thead><tbody>{microbiologyResults.map((item) => <tr key={item.id}><td className="border p-1.5">{new Date(item.collectedAt).toLocaleString('es-CL')}</td><td className="border p-1.5 font-semibold">{item.name}</td><td className="border p-1.5">{item.valueText ?? `${item.value ?? ''} ${item.unit || ''}`.trim()}</td></tr>)}</tbody></table> : <div className="min-h-20 rounded border border-dashed border-slate-400 p-3 text-xs text-slate-500">Sin resultados microbiológicos registrados. Espacio para observaciones:</div>}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6">
@@ -446,7 +578,7 @@ function CurvaExamenes() {
         <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div><h1 className="text-2xl font-black text-slate-950">Curva de exámenes</h1><p className="text-sm text-slate-600">Seguimiento longitudinal anónimo de pacientes hospitalizados.</p></div>
-            {selected && <div className="curve-no-print flex flex-wrap gap-2"><Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" />Imprimir curva</Button><Button variant="outline" onClick={() => { setEpisodeActionError(''); setEpisodeActionOpen(true); }} className="gap-2 text-rose-700"><LogOut className="h-4 w-4" />Egresar o eliminar</Button></div>}
+            <div className="curve-no-print flex flex-wrap gap-2">{selected && <><Button type="button" variant="outline" onClick={() => setBackConfirmationOpen(true)} className="gap-2"><ArrowLeft className="h-4 w-4" />Volver atrás</Button><Button variant="outline" onClick={() => setPrintPreviewOpen(true)} className="gap-2"><Printer className="h-4 w-4" />Imprimir curva</Button><Button variant="outline" onClick={() => { setEpisodeActionError(''); setEpisodeActionOpen(true); }} className="gap-2 text-rose-700"><LogOut className="h-4 w-4" />Egresar o eliminar</Button></>}</div>
           </div>
           <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">Este módulo no solicita ni almacena nombre, RUT, ficha, teléfono ni otros identificadores directos.</p>
         </header>
@@ -478,13 +610,48 @@ function CurvaExamenes() {
 
               {review.length > 0 && <section className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm"><h2 className="font-black text-slate-900">Revisión antes de guardar</h2>{review.some((item) => item.sourceHadIdentifiers) && <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">Se detectó un encabezado con identificadores directos. Fue eliminado del texto fuente y no se guardará con los resultados.</p>}<div className="mt-3 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-100 text-left"><th className="p-2">Examen</th><th>Valor</th><th>Unidad</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{review.map((item) => <tr key={item.id} className="border-b"><td className="p-2 font-semibold">{item.name}{item.derived && <span className="block text-[10px] font-normal text-blue-600">Calculado: {item.formula}</span>}</td><td>{item.valueText !== undefined ? <Input value={item.valueText} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, valueText: e.target.value } : row))} className="min-w-44" /> : <div className="flex items-center gap-1">{item.comparator && <strong>{item.comparator}</strong>}<Input type="number" value={item.value} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, value: Number(e.target.value) } : row))} className="w-28" /></div>}</td><td><Input value={item.unit} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, unit: e.target.value } : row))} className="w-28" /></td><td className="whitespace-nowrap text-xs">{new Date(item.collectedAt).toLocaleString('es-CL')}</td><td><select value={item.status} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, status: e.target.value } : row))} className="rounded-md border p-2"><option value="confirmed">Confirmar</option><option value="review">Requiere revisión</option><option value="discarded">Descartar</option></select></td></tr>)}</tbody></table></div><Button onClick={saveResults} className="mt-3 gap-2"><Save className="h-4 w-4" />Guardar resultados</Button></section>}
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="curve-print-header hidden"><h1>Curva de exámenes</h1><p><strong>Código del paciente: {selected.code}</strong></p><p>Cama {selected.bedCode} · Ingreso {new Date(selected.admittedAt).toLocaleString('es-CL')}</p></div><h2 className="curve-no-print font-black text-slate-900">Tabla longitudinal</h2>{rows.length ? <div className="mt-3 overflow-x-auto"><table className="min-w-max border-collapse text-xs"><thead><tr><th className="sticky left-0 z-10 min-w-44 border bg-slate-100 p-2 text-left">Examen</th>{columns.map((date) => <th key={date} className="min-w-28 border bg-slate-100 p-2">{new Date(date).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row.key}><td className="sticky left-0 border bg-white p-2"><strong>{row.name}</strong><span className="block text-[10px] text-slate-400">{row.category}</span></td>{row.values.map((value, index) => <td key={columns[index]} className={`border p-2 text-center ${value?.status === 'review' ? 'bg-amber-50 text-amber-900' : ''}`}>{value ? <>{value.comparator || ''}{value.valueText ?? value.value}<span className="ml-1 text-[10px] text-slate-500">{value.unit}</span></> : '—'}</td>)}</tr>)}</tbody></table></div> : <p className="mt-3 text-sm text-slate-500">Aún no hay resultados guardados.</p>}</section>
+              <section className="curve-print-document rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="curve-print-header hidden"><h1>Curva de exámenes</h1><p><strong>Código del paciente: {selected.code}</strong></p><p>Cama {selected.bedCode} · Ingreso {new Date(selected.admittedAt).toLocaleString('es-CL')}</p></div><h2 className="curve-no-print font-black text-slate-900">Tabla longitudinal</h2><div className="mt-3 overflow-x-auto">{renderCurveTable()}</div>{renderMicrobiology()}</section>
 
               <div className="grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><h2 className="flex items-center gap-2 font-black"><LineChartIcon className="h-4 w-4" />Curva</h2><select value={selectedExam} onChange={(e) => setSelectedExam(e.target.value)} className="rounded-md border p-2 text-xs">{EXAMS.map((exam) => <option key={exam.key} value={exam.key}>{exam.name}</option>)}</select></div><div className="mt-3 h-64">{chartData.length ? <ResponsiveContainer width="100%" height="100%"><LineChart data={chartData}><XAxis dataKey="date" tick={{ fontSize: 10 }} /><YAxis /><Tooltip /><Line type="monotone" dataKey="value" stroke="#0f766e" strokeWidth={3} dot /></LineChart></ResponsiveContainer> : <p className="py-20 text-center text-sm text-slate-400">Sin valores confirmados para graficar.</p>}</div></section><section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><h2 className="font-black">Cálculos verificables</h2><div className="mt-3 space-y-2">{calculations.length ? calculations.map((calc) => <div key={calc.name} className="rounded-xl border border-blue-100 bg-blue-50 p-3"><div className="flex justify-between gap-3"><strong>{calc.name}</strong><span className="text-lg font-black text-blue-900">{calc.value}</span></div><p className="text-xs text-slate-500">{calc.formula}</p></div>) : <p className="text-sm text-slate-500">Faltan resultados confirmados y compatibles.</p>}</div></section></div>
             </>}
           </main>
         </div>
       </div>
+
+      <Dialog open={printPreviewOpen} onOpenChange={setPrintPreviewOpen}>
+        <DialogContent className="curve-print-preview-dialog z-[100] !flex h-[94vh] max-h-[94vh] max-w-[96vw] flex-col gap-0 overflow-hidden p-0 xl:max-w-[1400px]">
+          <DialogHeader className="shrink-0 border-b px-5 py-4">
+            <DialogTitle>Vista previa de impresión</DialogTitle>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-auto bg-slate-200 p-4 md:p-7">
+            <div className="mx-auto aspect-[1.414/1] min-w-[900px] max-w-[1250px] overflow-hidden bg-white p-[3%] shadow-xl">
+              <div className="mb-3 border-b-2 border-slate-900 pb-2">
+                <h2 className="text-lg font-black">Curva de exámenes</h2>
+                <p className="text-[10px]"><strong>Código: {selected?.code}</strong> · Cama {selected?.bedCode} · Ingreso {selected?.admittedAt ? new Date(selected.admittedAt).toLocaleString('es-CL') : '—'}</p>
+              </div>
+              {renderCurveTable()}
+              {renderMicrobiology()}
+            </div>
+          </div>
+          <DialogFooter className="relative z-10 shrink-0 border-t bg-white px-5 py-3 shadow-[0_-4px_12px_rgba(15,23,42,0.08)]">
+            <Button variant="outline" onClick={() => setPrintPreviewOpen(false)}>Cerrar</Button>
+            <Button onClick={() => { setPrintPreviewOpen(false); window.setTimeout(() => window.print(), 400); }} className="gap-2 bg-teal-700 hover:bg-teal-800"><Printer className="h-4 w-4" />Imprimir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={backConfirmationOpen} onOpenChange={setBackConfirmationOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>¿Volver a la vista de camas?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600">Se descartarán los exámenes pegados o procesados que todavía no hayas guardado. Los resultados ya guardados no se modificarán.</p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setBackConfirmationOpen(false)}>Cancelar</Button>
+            <Button type="button" onClick={goBackWithoutSaving} className="bg-teal-700 hover:bg-teal-800">Sí, volver atrás</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={Boolean(pendingBed)} onOpenChange={(open) => { if (!open) setPendingBed(null); }}>
         <DialogContent className="max-w-lg">
@@ -534,18 +701,23 @@ function CurvaExamenes() {
       </Dialog>
       <style>{`
         @media print {
-          @page { size: landscape; margin: 10mm; }
+          @page { size: A4 landscape; margin: 8mm; }
           body { background: white !important; }
+          .curve-print-preview-dialog { display: none !important; }
           .curve-no-print, header, nav { display: none !important; }
           .curve-print-header { display: block !important; margin-bottom: 12px; }
           .curve-print-header h1 { margin: 0 0 6px; font-size: 18px; }
           .curve-print-header p { margin: 2px 0; font-size: 11px; }
           .curve-print-header + h2 { display: none !important; }
           main > section:not(:has(.curve-print-header)), main > div { display: none !important; }
-          main, main > section:has(.curve-print-header) { display: block !important; margin: 0 !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; }
-          table { width: 100% !important; min-width: 0 !important; font-size: 9px !important; }
-          th, td { padding: 4px !important; }
-          th:first-child, td:first-child { position: static !important; min-width: 120px !important; }
+          main, main > section:has(.curve-print-header) { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; overflow: visible !important; }
+          .curve-print-document > div { overflow: visible !important; }
+          table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; font-size: 8px !important; }
+          th, td { padding: 3px !important; overflow-wrap: anywhere; }
+          th:first-child, td:first-child { position: static !important; width: 105px !important; min-width: 0 !important; }
+          tr { break-inside: avoid; }
+          .curve-microbiology { margin-top: 10px !important; }
+          .curve-microbiology h3 { font-size: 10px !important; margin-bottom: 4px !important; }
         }
       `}</style>
     </div>
