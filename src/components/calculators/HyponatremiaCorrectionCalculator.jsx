@@ -14,9 +14,8 @@ const toNumber = (v) => {
 const round = (v, d = 1) => (Number.isFinite(v) ? Number(v.toFixed(d)) : '');
 
 const references = [
-  { label: 'AAFP. Sodium Disorders: Hyponatremia and Hypernatremia. 2023.', url: 'https://www.aafp.org/pubs/afp/issues/2023/1100/sodium-disorders.html' },
-  { label: 'Spasovski G, et al. Clinical practice guideline on diagnosis and treatment of hyponatraemia. 2014.', url: 'https://doi.org/10.1093/ndt/gfu040' },
-  { label: 'StatPearls. Hyponatremia; Osmotic Demyelination Syndrome.' },
+  { label: 'Society for Endocrinology. Emergency management of symptomatic hyponatraemia. 2022.', url: 'https://www.endocrinology.org/media/xhrhxhxm/emergency-management-of-severe-and-moderately-severely-symptomatic-hyponatraemia-in-adult-patients-2022.pdf' },
+  { label: 'European Society of Endocrinology. Clinical guideline on hyponatraemia.', url: 'https://academic.oup.com/ejendo/article/170/3/G1/6668028' },
 ];
 
 export default function HyponatremiaCorrectionCalculator() {
@@ -54,28 +53,67 @@ export default function HyponatremiaCorrectionCalculator() {
     const naDeficitToTarget = tbw !== null ? tbw * targetDelta : null;
     // Efecto estimado de 1 L de NaCl 3% (513 mEq/L): ΔNa ≈ (513 - Na)/(TBW+1).
     const deltaPerLiter3 = tbw !== null ? (513 - na) / (tbw + 1) : null;
+    const infusionRateForOne = deltaPerLiter3 && deltaPerLiter3 > 0 ? Math.round(1000 / deltaPerLiter3) : null;
+    const symptomatic = v.symptoms === 'graves' || v.symptoms === 'moderados';
+    const routeSuggestion = severe
+      ? 'EV: NaCl 3% en bolos, en ambiente monitorizado'
+      : v.symptoms === 'moderados'
+        ? 'EV: considerar un bolo de NaCl 3% y reevaluar'
+        : v.volume === 'hipovolemica'
+          ? 'EV: SF 0,9% para restaurar volumen; no NaCl 3% de rutina'
+          : 'No reponer sodio EV de rutina; tratar la causa y restringir agua según volemia';
 
     const medicationCards = [];
-    if (severe) {
+    if (symptomatic) {
       medicationCards.push({
-        title: 'NaCl 3% — bolo (hiponatremia sintomática grave)',
-        dose: '100-150 mL EV en 10-20 min',
-        badge: 'Emergencia · repetible',
+        title: 'Opción A · NaCl 3% en bolo',
+        dose: '150 mL EV en 20 min',
+        badge: severe ? 'Rescate · repetible' : 'Una vez y reevaluar',
         details: [
-          'Indicación: NaCl 3% 100-150 mL EV a pasar en 10-20 min. Repetible hasta 3 veces (cada 10-20 min) hasta que cedan los síntomas graves (convulsión, coma, vómitos).',
-          'Objetivo del rescate: subir el Na 4-6 mEq/L (no más). Controlar Na cada 1-2 h durante el rescate.',
+          severe
+            ? 'Indicar NaCl 3% 150 mL EV en 20 min. Medir Na al terminar; repetir hasta 2 veces más si persisten síntomas graves, hasta lograr aumento cercano a 5 mEq/L.'
+            : 'Indicar NaCl 3% 150 mL EV en 20 min una vez; medir Na y reevaluar clínica antes de repetir.',
+          'Detener los bolos al mejorar los síntomas, alcanzar un aumento de 5 mEq/L o aproximarse al límite diario.',
           'Arsenal local: NaCl 3% disponible — usar directamente. Respaldo si no hay stock (NaCl 3% ≈ 513 mEq/L): mezclar 385 mL de SF 0,9% + 115 mL de NaCl 10% (≈ 6 ampollas de 20 mL) para ~500 mL; confirmar con farmacia.',
         ],
       });
-    } else {
+    }
+
+    if (symptomatic) medicationCards.push({
+      title: 'Opción B · NaCl 3% en BIC',
+      dose: infusionRateForOne ? `${infusionRateForOne} mL/h EV inicialmente` : 'Calcular con peso antes de indicar',
+      badge: 'Solo monitorizada',
+      details: [
+        infusionRateForOne
+          ? `Preparar NaCl 3% en bomba a ${infusionRateForOne} mL/h; por Adrogué–Madias se estima un ascenso cercano a 1 mEq/L por hora. Controlar Na a la hora y recalcular la velocidad.`
+          : 'Ingresar peso para estimar una velocidad inicial. No usar una velocidad empírica sin monitorización y controles frecuentes.',
+        'Usar como alternativa/continuación en hiponatremia sintomática bajo supervisión experta; no simultáneamente con bolos sin contabilizar la corrección total.',
+        `Detener o reducir al mejorar los síntomas, alcanzar Na 130 mEq/L o una corrección acumulada de ${limit24} mEq/L en 24 h.`,
+      ],
+    });
+
+    if (!symptomatic && v.volume === 'hipovolemica') {
       medicationCards.push({
-        title: 'Corrección lenta (sin síntomas graves)',
-        dose: `≤ ${limit24} mEq/L en 24 h`,
-        badge: 'Según volemia',
+        title: 'Opción C · Hipovolémica: SF 0,9%',
+        dose: '250–500 mL EV en 30–60 min y reevaluar',
+        badge: 'Reposición de volumen',
         details: [
-          'Hipovolémica: SF 0,9% EV y tratar la causa (vigilar autocorrección rápida al reponer volumen).',
-          'Euvolémica (SIADH): restricción hídrica; considerar NaCl según respuesta. No usar SF si SIADH con Na urinario alto (puede empeorar).',
-          'Hipervolémica (IC, cirrosis, ERC): restricción hídrica + tratar causa ± diurético de asa.',
+          'Administrar un bolo pequeño de SF 0,9%, reevaluar perfusión/congestión y continuar según respuesta, comorbilidad y pérdidas.',
+          'Controlar Na cada 2–4 h al restaurar volumen: puede aparecer acuáresis y autocorrección rápida.',
+        ],
+      });
+    }
+
+    if (!symptomatic && (v.volume === 'euvolemica' || v.volume === 'hipervolemica')) {
+      medicationCards.push({
+        title: 'Opción C · Sin reposición de sodio EV',
+        dose: 'Restricción hídrica + tratamiento causal',
+        badge: v.volume === 'euvolemica' ? 'SIADH/euvolemia' : 'Hipervolemia',
+        details: [
+          v.volume === 'euvolemica'
+            ? 'Evitar SF 0,9% si SIADH con orina hipertónica: puede no corregir o empeorar el Na. Suspender desencadenantes y tratar la causa.'
+            : 'Restringir agua y sodio, tratar insuficiencia cardíaca/cirrosis/ERC y considerar diurético de asa si existe congestión.',
+          'Definir la restricción según diuresis, osmolaridad urinaria, balance y comorbilidades; controlar Na seriado.',
         ],
       });
     }
@@ -87,10 +125,12 @@ export default function HyponatremiaCorrectionCalculator() {
       no_definida: 'Definir volemia antes de indicar corrección no urgente: hipovolémica, euvolémica/SIADH o hipervolémica.',
     };
 
-    const clinicalOrder = severe
+    const clinicalOrder = symptomatic
       ? [
-        `Indicar NaCl 3% 100-150 mL EV en 10-20 min ahora.`,
-        'Repetir bolo cada 10-20 min hasta 3 veces si persisten síntomas graves, buscando aumento inicial 4-6 mEq/L.',
+        'Indicar NaCl 3% 150 mL EV en 20 min ahora.',
+        severe
+          ? 'Controlar Na al terminar y repetir hasta 2 veces si persisten síntomas graves, buscando aumento inicial cercano a 5 mEq/L.'
+          : 'Controlar Na y reevaluar clínica al terminar antes de decidir una nueva dosis.',
         `No sobrepasar corrección de ${limit24} mEq/L en 24 h (${v.highRisk ? 'alto riesgo de mielinolisis' : 'límite prudente'}). Control de Na cada 1-2 h durante rescate.`,
       ]
       : [
@@ -115,6 +155,7 @@ export default function HyponatremiaCorrectionCalculator() {
         ? `ACT ≈ ${round(tbw)} L. Déficit para subir ${round(targetDelta)} mEq/L ≈ ${round(naDeficitToTarget, 0)} mEq.`
         : 'Ingresar peso permite estimar ACT y déficit.',
       finalIndication,
+      routeSuggestion,
       clinicalOrder,
       medicationCards,
       safetyChecks,
@@ -204,6 +245,7 @@ export default function HyponatremiaCorrectionCalculator() {
           </div>
           <div className="mt-4 rounded-2xl border-2 border-blue-500 bg-white p-5 shadow-sm">
             <p className="text-xs font-black uppercase tracking-wide text-blue-700">Indicación final sugerida</p>
+            <p className="mt-2 inline-flex rounded-full bg-blue-100 px-3 py-1 text-sm font-black text-blue-900">{result.routeSuggestion}</p>
             <p className="mt-2 text-xl font-black leading-snug text-blue-950">{result.finalIndication}</p>
             {result.clinicalOrder.slice(1).map((item, i) => (
               <p key={i} className="mt-2 text-sm font-semibold leading-relaxed text-blue-900">{item}</p>
@@ -221,7 +263,7 @@ export default function HyponatremiaCorrectionCalculator() {
                     <p className="text-xl font-black text-blue-900">{card.dose}</p>
                   </div>
                   <div className="mt-3 space-y-1.5">
-                    {card.details.slice(0, 2).map((d, di) => (
+                    {card.details.map((d, di) => (
                       <div key={di} className="flex items-start gap-2 text-sm text-slate-700">
                         <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
                         <span>{d}</span>

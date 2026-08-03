@@ -30,8 +30,8 @@ const references = [
     url: 'https://www.merckmanuals.com/professional/endocrine-and-metabolic-disorders/electrolyte-disorders/hypokalemia',
   },
   {
-    label: 'StatPearls. Potassium Chloride.',
-    url: 'https://www.ncbi.nlm.nih.gov/books/NBK557785/',
+    label: 'NHS Specialist Pharmacy Service. Treating acute hypokalaemia in adults.',
+    url: 'https://sps.nhs.uk/articles/hypokalaemia/',
   },
 ];
 
@@ -99,9 +99,11 @@ export default function HypokalemiaCorrectionCalculator() {
     const oralTabletsHigh = Math.ceil(deficitHigh / KCL_TABLET_MEQ);
     const ampLow = deficitLow / KCL_AMP_MEQ;
     const ampHigh = deficitHigh / KCL_AMP_MEQ;
-    const recommendedRoute = values.route === 'auto'
-      ? urgent ? 'EV monitorizada' : k < 3 ? 'VO o EV periférica según tolerancia' : 'VO preferente'
-      : values.route;
+    const recommendedRoute = k >= target
+      ? 'No reponer'
+      : values.route === 'auto'
+        ? k >= 3.5 ? 'No reponer' : urgent ? 'EV monitorizada' : k < 3 ? 'VO o EV periférica según tolerancia' : 'VO preferente'
+        : values.route;
 
     // ── Orden EV lista (bolsa periférica estándar) ──
     const PERIPH_RATE = 10;   // mEq/h máx periférica
@@ -110,8 +112,8 @@ export default function HypokalemiaCorrectionCalculator() {
     const ampsPerBag = Math.round(BAG_MEQ / KCL_AMP_MEQ);          // ≈3 amp
     const volPerBag = Math.round(BAG_MEQ / PERIPH_CONC * 1000);    // 1000 mL
     const hoursPerBag = Math.round(BAG_MEQ / PERIPH_RATE);         // 4 h
-    const bagsLow = Math.max(1, Math.round(deficitLow / BAG_MEQ));
-    const bagsHigh = Math.max(1, Math.round(deficitHigh / BAG_MEQ));
+    const bagsLow = Math.ceil(deficitLow / BAG_MEQ);
+    const bagsHigh = Math.ceil(deficitHigh / BAG_MEQ);
 
     const medicationCards = [
       {
@@ -136,11 +138,40 @@ export default function HypokalemiaCorrectionCalculator() {
           'Usar EV si grave, síntomas, ECG, intolerancia VO u hospitalizado con pérdidas activas.',
         ],
       },
+      {
+        title: 'KCl EV por 2 vías periféricas',
+        dose: `2 bolsas simultáneas: ${ampsPerBag} amp en ${volPerBag} mL SF por cada vía · ${hoursPerBag} h`,
+        badge: '20 mEq/h total · monitorizar',
+        details: [
+          `Vía 1: KCl 10% ${ampsPerBag} ampollas (≈${BAG_MEQ} mEq) en ${volPerBag} mL de SF 0,9%, pasar en ${hoursPerBag} h (10 mEq/h).`,
+          `Vía 2: preparar otra bolsa idéntica en una segunda vía periférica independiente y pasar simultáneamente en ${hoursPerBag} h. Total aproximado: ${BAG_MEQ * 2} mEq en ${hoursPerBag} h.`,
+          'Cada vía respeta ≤40 mEq/L y 10 mEq/h. Usar bombas de infusión, telemetría/ECG, comprobar ambas vías y recontrolar K a las 2-4 h.',
+          'Reservar para reposición urgente cuando el volumen sea tolerable y no haya acceso central; confirmar protocolo local.',
+        ],
+      },
+      {
+        title: 'KCl EV por vía central monitorizada',
+        dose: 'Hasta 20 mEq/h bajo protocolo local',
+        badge: 'Vía central + ECG continuo',
+        details: [
+          'Usar una preparación estandarizada/premesclada del establecimiento y bomba de infusión; no improvisar concentraciones de KCl concentrado.',
+          'Velocidades mayores de 10 mEq/h requieren monitorización; no exceder 20 mEq/h fuera de paro/periparo y recontrolar K cada 2-4 h.',
+        ],
+      },
     ];
 
-    const clinicalOrder = urgent || recommendedRoute.includes('EV')
+    const clinicalOrder = recommendedRoute === 'No reponer'
       ? [
-        `Indicar KCl 10% ${ampsPerBag} ampollas (${BAG_MEQ} mEq) en ${volPerBag} mL de SF 0,9% EV periférico, pasar en ${hoursPerBag} h. Repetir según control hasta meta ${round(target, 1)} mEq/L.`,
+        `K ${round(k, 1)} mEq/L: no indicar reposición de potasio para alcanzar una meta de ${round(target, 1)} mEq/L.`,
+        'Revisar tendencia, función renal, magnesio y pérdidas; repetir K si existe discordancia clínica.',
+      ]
+      : urgent || recommendedRoute.includes('EV')
+      ? [
+        recommendedRoute.includes('2 vías')
+          ? `Usar 2 vías periféricas: en cada una indicar KCl 10% ${ampsPerBag} ampollas (≈${BAG_MEQ} mEq) en ${volPerBag} mL de SF 0,9%, pasar en ${hoursPerBag} h. Total ≈${BAG_MEQ * 2} mEq/${hoursPerBag} h con ECG.`
+          : recommendedRoute === 'EV monitorizada'
+            ? `Usar KCl EV por vía central con bomba y ECG continuo, a una velocidad inicial de 20 mEq/h como máximo, usando la preparación estandarizada del establecimiento. Recontrolar K a las 2-4 h.`
+          : `Indicar KCl 10% ${ampsPerBag} ampollas (${BAG_MEQ} mEq) en ${volPerBag} mL de SF 0,9% EV periférico, pasar en ${hoursPerBag} h. Repetir según control hasta meta ${round(target, 1)} mEq/L.`,
         `Déficit estimado ${round(deficitLow, 0)}-${round(deficitHigh, 0)} mEq: considerar ${bagsLow}-${bagsHigh} bolsas en total, ajustando a K de control.`,
       ]
       : [
@@ -162,7 +193,8 @@ export default function HypokalemiaCorrectionCalculator() {
       color: classification.color,
       finalIndication,
       clinicalOrder,
-      medicationCards: urgent || recommendedRoute.includes('EV') ? [medicationCards[1]] : [medicationCards[0]],
+      routeSuggestion: `Vía sugerida: ${recommendedRoute}`,
+      medicationCards: recommendedRoute === 'No reponer' ? [] : medicationCards,
       safetyChecks,
     };
     setResult(calcResult);
@@ -223,6 +255,7 @@ export default function HypokalemiaCorrectionCalculator() {
               <SelectItem value="auto">Automática según severidad</SelectItem>
               <SelectItem value="VO preferente">VO preferente</SelectItem>
               <SelectItem value="EV periférica">EV periférica</SelectItem>
+              <SelectItem value="EV periférica por 2 vías">EV periférica por 2 vías</SelectItem>
               <SelectItem value="EV monitorizada">EV monitorizada</SelectItem>
             </SelectContent>
           </Select>
@@ -252,6 +285,7 @@ export default function HypokalemiaCorrectionCalculator() {
           </div>
           <div className="mt-4 rounded-2xl border-2 border-blue-500 bg-white p-5 shadow-sm">
             <p className="text-xs font-black uppercase tracking-wide text-blue-700">Indicación final sugerida</p>
+            <p className="mt-2 inline-flex rounded-full bg-blue-100 px-3 py-1 text-sm font-black text-blue-900">{result.routeSuggestion}</p>
             <p className="mt-2 text-xl font-black leading-snug text-blue-950">{result.finalIndication}</p>
             {result.clinicalOrder.slice(1).map((item, index) => (
               <p key={index} className="mt-2 text-sm font-semibold leading-relaxed text-blue-900">{item}</p>
@@ -271,7 +305,7 @@ export default function HypokalemiaCorrectionCalculator() {
                   <p className="text-2xl font-black text-blue-900">{card.dose}</p>
                 </div>
                 <div className="mt-3 space-y-1.5">
-                  {card.details.slice(0, 2).map((detail, detailIndex) => (
+                  {card.details.map((detail, detailIndex) => (
                     <div key={detailIndex} className="flex items-start gap-2 text-sm text-slate-700">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
                       <span>{detail}</span>
