@@ -6,7 +6,9 @@ import { ALL_BEDS } from '@/components/agenda-diaria/bedCatalog';
 import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
 const STORAGE_KEY = 'hospital_lab_tracker_v1';
@@ -25,7 +27,19 @@ const makeCode = () => {
 const loadState = () => {
   try {
     const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    return { episodes: Array.isArray(value.episodes) ? value.episodes : [] };
+    const storedEpisodes = Array.isArray(value.episodes) ? value.episodes : [];
+    // La primera versión creaba un episodio con solo tocar una cama. Se eliminan
+    // exclusivamente esos registros vacíos no confirmados; si tienen exámenes,
+    // movimientos posteriores o confirmación explícita se conservan.
+    const episodes = storedEpisodes.filter((episode) => (
+      episode.admissionConfirmed === true
+      || (episode.results || []).length > 0
+      || (episode.movements || []).length > 1
+    ));
+    if (episodes.length !== storedEpisodes.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...value, episodes }));
+    }
+    return { episodes };
   } catch {
     return { episodes: [] };
   }
@@ -84,6 +98,8 @@ function CurvaExamenes() {
   const [blocks, setBlocks] = useState([{ id: makeId(), ...nowLocal(), sample: 'Sangre', text: '' }]);
   const [review, setReview] = useState([]);
   const [selectedExam, setSelectedExam] = useState('crea');
+  const [pendingBed, setPendingBed] = useState(null);
+  const [admission, setAdmission] = useState({ ...nowLocal(), ageRange: '', clinicalSex: '' });
   const selected = episodes.find((item) => item.id === selectedId);
   const activeByBed = useMemo(() => new Map(episodes.filter((item) => item.status === 'hospitalizado').map((item) => [item.bedCode, item])), [episodes]);
   const services = [...new Set(ALL_BEDS.map((item) => item.serviceShort))];
@@ -92,12 +108,22 @@ function CurvaExamenes() {
     setEpisodes(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ episodes: next }));
   };
-  const admit = (bed) => {
-    if (activeByBed.has(bed.code)) return setSelectedId(activeByBed.get(bed.code).id);
-    const stamp = new Date().toISOString();
-    const episode = { id: makeId(), code: makeCode(), bedCode: bed.code, service: bed.serviceShort, admittedAt: stamp, status: 'hospitalizado', results: [], movements: [{ type: 'ingreso', bedCode: bed.code, at: stamp }] };
+  const openBed = (bed) => {
+    const currentEpisode = activeByBed.get(bed.code);
+    if (currentEpisode) {
+      setSelectedId(currentEpisode.id);
+      return;
+    }
+    setAdmission({ ...nowLocal(), ageRange: '', clinicalSex: '' });
+    setPendingBed(bed);
+  };
+  const admit = () => {
+    if (!pendingBed || activeByBed.has(pendingBed.code) || !admission.date || !admission.time) return;
+    const stamp = new Date(`${admission.date}T${admission.time}:00`).toISOString();
+    const episode = { id: makeId(), code: makeCode(), bedCode: pendingBed.code, service: pendingBed.serviceShort, admittedAt: stamp, ageRange: admission.ageRange, clinicalSex: admission.clinicalSex, admissionConfirmed: true, status: 'hospitalizado', results: [], movements: [{ type: 'ingreso', bedCode: pendingBed.code, at: stamp }] };
     persist([episode, ...episodes]);
     setSelectedId(episode.id);
+    setPendingBed(null);
   };
   const discharge = () => {
     if (!selected || !window.confirm(`¿Egresar ${selected.code} y liberar la cama ${selected.bedCode}?`)) return;
@@ -149,7 +175,7 @@ function CurvaExamenes() {
             <div className="grid max-h-[72vh] grid-cols-2 gap-2 overflow-y-auto pr-1">
               {ALL_BEDS.filter((bed) => serviceFilter === 'all' || bed.serviceShort === serviceFilter).map((bed) => {
                 const episode = activeByBed.get(bed.code);
-                return <button key={bed.code} onClick={() => admit(bed)} className={`rounded-xl border p-3 text-left transition ${selectedId === episode?.id ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200' : episode ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-white hover:border-teal-300'}`}><span className="block text-xs font-bold text-slate-500">{bed.serviceShort}</span><span className="block text-lg font-black text-slate-900">{bed.cell}</span>{episode ? <><span className="mt-1 block text-xs font-bold text-emerald-800">{episode.code}</span><span className="text-[10px] text-slate-500">Día {daysInHospital(episode)}</span></> : <span className="mt-1 block text-xs text-slate-400">Libre · agregar</span>}</button>;
+                return <button key={bed.code} onClick={() => openBed(bed)} className={`relative rounded-xl border p-3 text-left transition ${selectedId === episode?.id ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200' : episode ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white hover:border-teal-300'}`}><span className="block text-xs font-bold text-slate-500">{bed.serviceShort}</span><span className="block text-lg font-black text-slate-900">{bed.cell}</span>{episode ? <><Badge className="mt-1 bg-emerald-600 text-[9px] text-white">OCUPADA</Badge><span className="mt-1 block text-xs font-bold text-emerald-800">{episode.code}</span><span className="text-[10px] text-slate-500">Día {daysInHospital(episode)} · abrir y agregar exámenes</span></> : <><Badge variant="outline" className="mt-1 border-slate-300 bg-white text-[9px] text-slate-500">LIBRE</Badge><span className="mt-1 block text-xs text-slate-400">Crear nuevo paciente</span></>}</button>;
               })}
             </div>
           </aside>
@@ -173,6 +199,29 @@ function CurvaExamenes() {
           </main>
         </div>
       </div>
+
+      <Dialog open={Boolean(pendingBed)} onOpenChange={(open) => { if (!open) setPendingBed(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Crear nuevo paciente anónimo</DialogTitle>
+          </DialogHeader>
+          <div className="rounded-xl border border-teal-200 bg-teal-50 p-3">
+            <p className="text-sm font-bold text-teal-950">{pendingBed?.serviceShort} · Cama {pendingBed?.cell}</p>
+            <p className="mt-1 text-xs text-teal-800">Se generará un código aleatorio nuevo. Esta acción no recupera ni reutiliza los exámenes del ocupante anterior.</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div><Label className="mb-1.5 block">Fecha de ingreso *</Label><Input type="date" value={admission.date} onChange={(e) => setAdmission((current) => ({ ...current, date: e.target.value }))} /></div>
+            <div><Label className="mb-1.5 block">Hora de ingreso *</Label><Input type="time" value={admission.time} onChange={(e) => setAdmission((current) => ({ ...current, time: e.target.value }))} /></div>
+            <div><Label className="mb-1.5 block">Rango etario (opcional)</Label><select value={admission.ageRange} onChange={(e) => setAdmission((current) => ({ ...current, ageRange: e.target.value }))} className="h-10 w-full rounded-md border bg-white px-3 text-sm"><option value="">No registrar</option><option>0–17 años</option><option>18–39 años</option><option>40–64 años</option><option>65–79 años</option><option>80 años o más</option></select></div>
+            <div><Label className="mb-1.5 block">Sexo clínico (opcional)</Label><select value={admission.clinicalSex} onChange={(e) => setAdmission((current) => ({ ...current, clinicalSex: e.target.value }))} className="h-10 w-full rounded-md border bg-white px-3 text-sm"><option value="">No registrar</option><option value="F">Femenino</option><option value="M">Masculino</option></select></div>
+          </div>
+          <p className="text-xs text-slate-500">No ingreses nombre, RUT, ficha clínica, fecha de nacimiento ni teléfono.</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingBed(null)}>Cancelar</Button>
+            <Button onClick={admit} disabled={!admission.date || !admission.time} className="bg-teal-700 hover:bg-teal-800">Crear episodio y ocupar cama</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
