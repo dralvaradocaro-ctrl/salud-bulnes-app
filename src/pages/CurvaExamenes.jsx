@@ -3,6 +3,7 @@ import { Bed, CalendarPlus, FlaskConical, LineChart as LineChartIcon, LogOut, Sa
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { ALL_BEDS } from '@/components/agenda-diaria/bedCatalog';
+import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,7 +76,7 @@ const parseText = (text, block) => {
 
 const daysInHospital = (episode) => Math.max(0, Math.floor((Date.now() - new Date(episode.admittedAt).getTime()) / 86400000));
 
-export default function CurvaExamenes() {
+function CurvaExamenes() {
   const initial = useMemo(loadState, []);
   const [episodes, setEpisodes] = useState(initial.episodes);
   const [selectedId, setSelectedId] = useState(initial.episodes.find((item) => item.status === 'hospitalizado')?.id || '');
@@ -175,3 +176,9 @@ export default function CurvaExamenes() {
     </div>
   );
 }
+
+export default conPuertaAcceso(CurvaExamenes, {
+  storageKey: 'acceso_curva_examenes',
+  titulo: 'Acceso a Curva de exámenes',
+  descripcion: 'Ingresa el permiso de BulnesMédico para acceder al seguimiento de pacientes hospitalizados.',
+});
