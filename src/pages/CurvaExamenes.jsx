@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Bed, CalendarPlus, FlaskConical, LineChart as LineChartIcon, LogOut, Save, Trash2 } from 'lucide-react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { fetchProaRecords, getLatestProaForm, isHistoricalProaRecord } from '@/lib/proaRegistry';
 
 const STORAGE_KEY = 'hospital_lab_tracker_v1';
 const nowLocal = () => {
@@ -234,9 +235,38 @@ const parseText = (text, block) => {
 
 const daysInHospital = (episode) => Math.max(0, Math.floor((Date.now() - new Date(episode.admittedAt).getTime()) / 86400000));
 
+const catalogToProaBed = (bed) => {
+  if (bed.serviceShort === 'MQ1') {
+    if (/^\d+-\d+$/.test(bed.cell)) return bed.cell;
+    const isolation = /^Aisl(\d+)-(\d+)$/.exec(bed.cell);
+    if (isolation) return Number(isolation[2]) === 1 && !['5', '8'].includes(isolation[1])
+      ? `Aisl ${isolation[1]}`
+      : `Aisl ${isolation[1]}-${isolation[2]}`;
+  }
+  if (bed.serviceShort === 'MQ2') {
+    const isolation = /^Aislamiento\s+(\d+)$/i.exec(bed.cell);
+    return isolation ? `MQ2-Aislamiento ${isolation[1]}` : `MQ2-${bed.cell}`;
+  }
+  if (bed.serviceShort === 'GINE') {
+    const gine = /^08MB-(\d+)$/.exec(bed.code);
+    const obs = /^SNC-(\d+)$/.exec(bed.code);
+    return gine ? `GINE-${gine[1]}` : obs ? `OBS-${obs[1]}` : null;
+  }
+  if (bed.serviceShort === 'PED') {
+    const pediatricBeds = ALL_BEDS.filter((item) => item.serviceShort === 'PED');
+    const index = pediatricBeds.findIndex((item) => item.code === bed.code);
+    return index >= 0 ? `PED-${index + 1}` : null;
+  }
+  return null;
+};
+
+const PROA_TO_CATALOG_BED = new Map(ALL_BEDS.map((bed) => [catalogToProaBed(bed), bed.code]).filter(([proaBed]) => proaBed));
+
 function CurvaExamenes() {
   const initial = useMemo(loadState, []);
   const [episodes, setEpisodes] = useState(initial.episodes);
+  const [proaRecords, setProaRecords] = useState([]);
+  const [proaLoading, setProaLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(initial.episodes.find((item) => item.status === 'hospitalizado')?.id || '');
   const [serviceFilter, setServiceFilter] = useState('all');
   const [blocks, setBlocks] = useState([{ id: makeId(), ...nowLocal(), sample: 'Sangre', text: '' }]);
@@ -246,7 +276,22 @@ function CurvaExamenes() {
   const [admission, setAdmission] = useState({ ...nowLocal(), ageRange: '', clinicalSex: '' });
   const selected = episodes.find((item) => item.id === selectedId);
   const activeByBed = useMemo(() => new Map(episodes.filter((item) => item.status === 'hospitalizado').map((item) => [item.bedCode, item])), [episodes]);
+  const activeProaByBed = useMemo(() => {
+    const map = new Map();
+    proaRecords.filter((record) => !isHistoricalProaRecord(record)).forEach((record) => {
+      const form = getLatestProaForm(record) || {};
+      const catalogBed = PROA_TO_CATALOG_BED.get(form.cama || record.bedCode);
+      if (catalogBed) map.set(catalogBed, record);
+    });
+    return map;
+  }, [proaRecords]);
   const services = [...new Set(ALL_BEDS.map((item) => item.serviceShort))];
+
+  useEffect(() => {
+    let active = true;
+    fetchProaRecords().then((records) => { if (active) setProaRecords(records); }).finally(() => { if (active) setProaLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const persist = (next) => {
     setEpisodes(next);
@@ -264,7 +309,8 @@ function CurvaExamenes() {
   const admit = () => {
     if (!pendingBed || activeByBed.has(pendingBed.code) || !admission.date || !admission.time) return;
     const stamp = new Date(`${admission.date}T${admission.time}:00`).toISOString();
-    const episode = { id: makeId(), code: makeCode(), bedCode: pendingBed.code, service: pendingBed.serviceShort, admittedAt: stamp, ageRange: admission.ageRange, clinicalSex: admission.clinicalSex, admissionConfirmed: true, status: 'hospitalizado', results: [], movements: [{ type: 'ingreso', bedCode: pendingBed.code, at: stamp }] };
+    const linkedProa = activeProaByBed.get(pendingBed.code);
+    const episode = { id: makeId(), code: makeCode(), bedCode: pendingBed.code, service: pendingBed.serviceShort, admittedAt: stamp, ageRange: admission.ageRange, clinicalSex: admission.clinicalSex, admissionConfirmed: true, proaRecordId: linkedProa?.id || '', source: linkedProa ? 'proa' : 'manual', status: 'hospitalizado', results: [], movements: [{ type: 'ingreso', bedCode: pendingBed.code, at: stamp }] };
     persist([episode, ...episodes]);
     setSelectedId(episode.id);
     setPendingBed(null);
@@ -321,11 +367,13 @@ function CurvaExamenes() {
 
         <div className="grid gap-5 xl:grid-cols-[370px_minmax(0,1fr)]">
           <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between"><h2 className="font-black text-slate-900">Camas</h2><select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="rounded-md border px-2 py-1 text-xs"><option value="all">Todos</option>{services.map((service) => <option key={service}>{service}</option>)}</select></div>
+            <div className="mb-3 flex items-center justify-between"><div><h2 className="font-black text-slate-900">Camas</h2><p className="text-[10px] text-slate-500">{proaLoading ? 'Sincronizando PROA…' : `${activeProaByBed.size} ocupadas desde PROA`}</p></div><select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="rounded-md border px-2 py-1 text-xs"><option value="all">Todos</option>{services.map((service) => <option key={service}>{service}</option>)}</select></div>
             <div className="grid max-h-[72vh] grid-cols-2 gap-2 overflow-y-auto pr-1">
               {ALL_BEDS.filter((bed) => serviceFilter === 'all' || bed.serviceShort === serviceFilter).map((bed) => {
                 const episode = activeByBed.get(bed.code);
-                return <button key={bed.code} onClick={() => openBed(bed)} className={`relative rounded-xl border p-3 text-left transition ${selectedId === episode?.id ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200' : episode ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white hover:border-teal-300'}`}><span className="block text-xs font-bold text-slate-500">{bed.serviceShort}</span><span className="block text-lg font-black text-slate-900">{bed.cell}</span>{episode ? <><Badge className="mt-1 bg-emerald-600 text-[9px] text-white">OCUPADA</Badge><span className="mt-1 block text-xs font-bold text-emerald-800">{episode.code}</span><span className="text-[10px] text-slate-500">Día {daysInHospital(episode)} · abrir y agregar exámenes</span></> : <><Badge variant="outline" className="mt-1 border-slate-300 bg-white text-[9px] text-slate-500">LIBRE</Badge><span className="mt-1 block text-xs text-slate-400">Crear nuevo paciente</span></>}</button>;
+                const proaRecord = activeProaByBed.get(bed.code);
+                const occupied = Boolean(episode || proaRecord);
+                return <button key={bed.code} onClick={() => openBed(bed)} className={`relative rounded-xl border p-3 text-left transition ${selectedId === episode?.id ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200' : occupied ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white hover:border-teal-300'}`}><span className="block text-xs font-bold text-slate-500">{bed.serviceShort}</span><span className="block text-lg font-black text-slate-900">{bed.cell}</span>{episode ? <><Badge className="mt-1 bg-emerald-600 text-[9px] text-white">OCUPADA</Badge><span className="mt-1 block text-xs font-bold text-emerald-800">{episode.code}</span><span className="text-[10px] text-slate-500">Día {daysInHospital(episode)} · abrir y agregar exámenes</span></> : proaRecord ? <><Badge className="mt-1 bg-cyan-700 text-[9px] text-white">OCUPADA EN PROA</Badge><span className="mt-1 block text-[10px] font-semibold text-cyan-800">Crear episodio anónimo vinculado</span></> : <><Badge variant="outline" className="mt-1 border-slate-300 bg-white text-[9px] text-slate-500">LIBRE</Badge><span className="mt-1 block text-xs text-slate-400">Crear nuevo paciente</span></>}</button>;
               })}
             </div>
           </aside>
@@ -357,7 +405,7 @@ function CurvaExamenes() {
           </DialogHeader>
           <div className="rounded-xl border border-teal-200 bg-teal-50 p-3">
             <p className="text-sm font-bold text-teal-950">{pendingBed?.serviceShort} · Cama {pendingBed?.cell}</p>
-            <p className="mt-1 text-xs text-teal-800">Se generará un código aleatorio nuevo. Esta acción no recupera ni reutiliza los exámenes del ocupante anterior.</p>
+            <p className="mt-1 text-xs text-teal-800">{pendingBed && activeProaByBed.has(pendingBed.code) ? 'PROA informa un paciente activo en esta cama. Se creará un episodio anónimo vinculado sin copiar nombre ni RUT.' : 'Se generará un código aleatorio nuevo. Esta acción no recupera ni reutiliza los exámenes del ocupante anterior.'}</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div><Label className="mb-1.5 block">Fecha de ingreso *</Label><Input type="date" value={admission.date} onChange={(e) => setAdmission((current) => ({ ...current, date: e.target.value }))} /></div>
