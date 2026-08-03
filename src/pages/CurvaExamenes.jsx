@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bed, CalendarPlus, FlaskConical, LineChart as LineChartIcon, LogOut, Save, Trash2 } from 'lucide-react';
+import { Bed, CalendarPlus, FlaskConical, LineChart as LineChartIcon, LogOut, Printer, Save, Search, Trash2 } from 'lucide-react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { ALL_BEDS } from '@/components/agenda-diaria/bedCatalog';
@@ -271,6 +271,7 @@ function CurvaExamenes() {
   const [proaLoading, setProaLoading] = useState(true);
   const [selectedId, setSelectedId] = useState(initial.episodes.find((item) => item.status === 'hospitalizado')?.id || '');
   const [serviceFilter, setServiceFilter] = useState('all');
+  const [codeSearch, setCodeSearch] = useState('');
   const [blocks, setBlocks] = useState([{ id: makeId(), ...nowLocal(), sample: 'Sangre', text: '' }]);
   const [review, setReview] = useState([]);
   const [selectedExam, setSelectedExam] = useState('crea');
@@ -291,6 +292,15 @@ function CurvaExamenes() {
     return map;
   }, [proaRecords]);
   const services = [...new Set(ALL_BEDS.map((item) => item.serviceShort))];
+  const visibleBeds = useMemo(() => {
+    const query = codeSearch.trim().toUpperCase();
+    return ALL_BEDS.filter((bed) => {
+      if (serviceFilter !== 'all' && bed.serviceShort !== serviceFilter) return false;
+      if (!query) return true;
+      const episode = activeByBed.get(bed.code);
+      return episode?.code?.toUpperCase().includes(query);
+    });
+  }, [activeByBed, codeSearch, serviceFilter]);
 
   useEffect(() => {
     let active = true;
@@ -436,21 +446,23 @@ function CurvaExamenes() {
         <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div><h1 className="text-2xl font-black text-slate-950">Curva de exámenes</h1><p className="text-sm text-slate-600">Seguimiento longitudinal anónimo de pacientes hospitalizados.</p></div>
-            {selected && <Button variant="outline" onClick={() => { setEpisodeActionError(''); setEpisodeActionOpen(true); }} className="gap-2 text-rose-700"><LogOut className="h-4 w-4" />Egresar o eliminar</Button>}
+            {selected && <div className="curve-no-print flex flex-wrap gap-2"><Button variant="outline" onClick={() => window.print()} className="gap-2"><Printer className="h-4 w-4" />Imprimir curva</Button><Button variant="outline" onClick={() => { setEpisodeActionError(''); setEpisodeActionOpen(true); }} className="gap-2 text-rose-700"><LogOut className="h-4 w-4" />Egresar o eliminar</Button></div>}
           </div>
           <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">Este módulo no solicita ni almacena nombre, RUT, ficha, teléfono ni otros identificadores directos.</p>
         </header>
 
         <div className="grid gap-5 xl:grid-cols-[370px_minmax(0,1fr)]">
-          <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <aside className="curve-no-print rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between"><div><h2 className="font-black text-slate-900">Camas</h2><p className="text-[10px] text-slate-500">{proaLoading ? 'Sincronizando PROA…' : `${activeProaByBed.size} ocupadas desde PROA`}</p></div><select value={serviceFilter} onChange={(e) => setServiceFilter(e.target.value)} className="rounded-md border px-2 py-1 text-xs"><option value="all">Todos</option>{services.map((service) => <option key={service}>{service}</option>)}</select></div>
+            <div className="relative mb-3"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input value={codeSearch} onChange={(e) => setCodeSearch(e.target.value.toUpperCase())} placeholder="Buscar código, ej. HOS-AB123" className="pl-9 uppercase" /></div>
             <div className="grid max-h-[72vh] grid-cols-2 gap-2 overflow-y-auto pr-1">
-              {ALL_BEDS.filter((bed) => serviceFilter === 'all' || bed.serviceShort === serviceFilter).map((bed) => {
+              {visibleBeds.map((bed) => {
                 const episode = activeByBed.get(bed.code);
                 const proaRecord = activeProaByBed.get(bed.code);
                 const occupied = Boolean(episode || proaRecord);
                 return <button key={bed.code} onClick={() => openBed(bed)} className={`relative rounded-xl border p-3 text-left transition ${selectedId === episode?.id ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200' : occupied ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white hover:border-teal-300'}`}><span className="block text-xs font-bold text-slate-500">{bed.serviceShort}</span><span className="block text-lg font-black text-slate-900">{bed.cell}</span>{episode ? <><Badge className="mt-1 bg-emerald-600 text-[9px] text-white">OCUPADA</Badge><span className="mt-1 block text-xs font-bold text-emerald-800">{episode.code}</span><span className="text-[10px] text-slate-500">Día {daysInHospital(episode)} · abrir y agregar exámenes</span></> : proaRecord ? <><Badge className="mt-1 bg-cyan-700 text-[9px] text-white">OCUPADA EN PROA</Badge><span className="mt-1 block text-[10px] font-semibold text-cyan-800">Crear episodio anónimo vinculado</span></> : <><Badge variant="outline" className="mt-1 border-slate-300 bg-white text-[9px] text-slate-500">LIBRE</Badge><span className="mt-1 block text-xs text-slate-400">Crear nuevo paciente</span></>}</button>;
               })}
+              {visibleBeds.length === 0 && <p className="col-span-2 rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-500">No hay un paciente activo con ese código.</p>}
             </div>
           </aside>
 
@@ -466,7 +478,7 @@ function CurvaExamenes() {
 
               {review.length > 0 && <section className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm"><h2 className="font-black text-slate-900">Revisión antes de guardar</h2>{review.some((item) => item.sourceHadIdentifiers) && <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">Se detectó un encabezado con identificadores directos. Fue eliminado del texto fuente y no se guardará con los resultados.</p>}<div className="mt-3 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-100 text-left"><th className="p-2">Examen</th><th>Valor</th><th>Unidad</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{review.map((item) => <tr key={item.id} className="border-b"><td className="p-2 font-semibold">{item.name}{item.derived && <span className="block text-[10px] font-normal text-blue-600">Calculado: {item.formula}</span>}</td><td>{item.valueText !== undefined ? <Input value={item.valueText} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, valueText: e.target.value } : row))} className="min-w-44" /> : <div className="flex items-center gap-1">{item.comparator && <strong>{item.comparator}</strong>}<Input type="number" value={item.value} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, value: Number(e.target.value) } : row))} className="w-28" /></div>}</td><td><Input value={item.unit} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, unit: e.target.value } : row))} className="w-28" /></td><td className="whitespace-nowrap text-xs">{new Date(item.collectedAt).toLocaleString('es-CL')}</td><td><select value={item.status} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, status: e.target.value } : row))} className="rounded-md border p-2"><option value="confirmed">Confirmar</option><option value="review">Requiere revisión</option><option value="discarded">Descartar</option></select></td></tr>)}</tbody></table></div><Button onClick={saveResults} className="mt-3 gap-2"><Save className="h-4 w-4" />Guardar resultados</Button></section>}
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><h2 className="font-black text-slate-900">Tabla longitudinal</h2>{rows.length ? <div className="mt-3 overflow-x-auto"><table className="min-w-max border-collapse text-xs"><thead><tr><th className="sticky left-0 z-10 min-w-44 border bg-slate-100 p-2 text-left">Examen</th>{columns.map((date) => <th key={date} className="min-w-28 border bg-slate-100 p-2">{new Date(date).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row.key}><td className="sticky left-0 border bg-white p-2"><strong>{row.name}</strong><span className="block text-[10px] text-slate-400">{row.category}</span></td>{row.values.map((value, index) => <td key={columns[index]} className={`border p-2 text-center ${value?.status === 'review' ? 'bg-amber-50 text-amber-900' : ''}`}>{value ? <>{value.comparator || ''}{value.valueText ?? value.value}<span className="ml-1 text-[10px] text-slate-500">{value.unit}</span></> : '—'}</td>)}</tr>)}</tbody></table></div> : <p className="mt-3 text-sm text-slate-500">Aún no hay resultados guardados.</p>}</section>
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="curve-print-header hidden"><h1>Curva de exámenes</h1><p><strong>Código del paciente: {selected.code}</strong></p><p>Cama {selected.bedCode} · Ingreso {new Date(selected.admittedAt).toLocaleString('es-CL')}</p></div><h2 className="curve-no-print font-black text-slate-900">Tabla longitudinal</h2>{rows.length ? <div className="mt-3 overflow-x-auto"><table className="min-w-max border-collapse text-xs"><thead><tr><th className="sticky left-0 z-10 min-w-44 border bg-slate-100 p-2 text-left">Examen</th>{columns.map((date) => <th key={date} className="min-w-28 border bg-slate-100 p-2">{new Date(date).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</th>)}</tr></thead><tbody>{rows.map((row) => <tr key={row.key}><td className="sticky left-0 border bg-white p-2"><strong>{row.name}</strong><span className="block text-[10px] text-slate-400">{row.category}</span></td>{row.values.map((value, index) => <td key={columns[index]} className={`border p-2 text-center ${value?.status === 'review' ? 'bg-amber-50 text-amber-900' : ''}`}>{value ? <>{value.comparator || ''}{value.valueText ?? value.value}<span className="ml-1 text-[10px] text-slate-500">{value.unit}</span></> : '—'}</td>)}</tr>)}</tbody></table></div> : <p className="mt-3 text-sm text-slate-500">Aún no hay resultados guardados.</p>}</section>
 
               <div className="grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><h2 className="flex items-center gap-2 font-black"><LineChartIcon className="h-4 w-4" />Curva</h2><select value={selectedExam} onChange={(e) => setSelectedExam(e.target.value)} className="rounded-md border p-2 text-xs">{EXAMS.map((exam) => <option key={exam.key} value={exam.key}>{exam.name}</option>)}</select></div><div className="mt-3 h-64">{chartData.length ? <ResponsiveContainer width="100%" height="100%"><LineChart data={chartData}><XAxis dataKey="date" tick={{ fontSize: 10 }} /><YAxis /><Tooltip /><Line type="monotone" dataKey="value" stroke="#0f766e" strokeWidth={3} dot /></LineChart></ResponsiveContainer> : <p className="py-20 text-center text-sm text-slate-400">Sin valores confirmados para graficar.</p>}</div></section><section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><h2 className="font-black">Cálculos verificables</h2><div className="mt-3 space-y-2">{calculations.length ? calculations.map((calc) => <div key={calc.name} className="rounded-xl border border-blue-100 bg-blue-50 p-3"><div className="flex justify-between gap-3"><strong>{calc.name}</strong><span className="text-lg font-black text-blue-900">{calc.value}</span></div><p className="text-xs text-slate-500">{calc.formula}</p></div>) : <p className="text-sm text-slate-500">Faltan resultados confirmados y compatibles.</p>}</div></section></div>
             </>}
@@ -520,6 +532,22 @@ function CurvaExamenes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <style>{`
+        @media print {
+          @page { size: landscape; margin: 10mm; }
+          body { background: white !important; }
+          .curve-no-print, header, nav { display: none !important; }
+          .curve-print-header { display: block !important; margin-bottom: 12px; }
+          .curve-print-header h1 { margin: 0 0 6px; font-size: 18px; }
+          .curve-print-header p { margin: 2px 0; font-size: 11px; }
+          .curve-print-header + h2 { display: none !important; }
+          main > section:not(:has(.curve-print-header)), main > div { display: none !important; }
+          main, main > section:has(.curve-print-header) { display: block !important; margin: 0 !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; }
+          table { width: 100% !important; min-width: 0 !important; font-size: 9px !important; }
+          th, td { padding: 4px !important; }
+          th:first-child, td:first-child { position: static !important; min-width: 120px !important; }
+        }
+      `}</style>
     </div>
   );
 }
