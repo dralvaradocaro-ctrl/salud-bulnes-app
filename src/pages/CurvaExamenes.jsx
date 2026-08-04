@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Bed, CalendarPlus, FlaskConical, LineChart as LineChartIcon, LogOut, Printer, Save, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, Bed, CalendarPlus, FlaskConical, LineChart as LineChartIcon, LogOut, Pencil, Printer, Save, Search, Trash2 } from 'lucide-react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { ALL_BEDS } from '@/components/agenda-diaria/bedCatalog';
@@ -354,6 +354,8 @@ function CurvaExamenes() {
   const [episodeActionError, setEpisodeActionError] = useState('');
   const [backConfirmationOpen, setBackConfirmationOpen] = useState(false);
   const [printPreviewOpen, setPrintPreviewOpen] = useState(false);
+  const [editingResult, setEditingResult] = useState(null);
+  const [resultToDelete, setResultToDelete] = useState(null);
   const selected = episodes.find((item) => item.id === selectedId);
   const activeByBed = useMemo(() => new Map(episodes.filter((item) => item.status === 'hospitalizado').map((item) => [item.bedCode, item])), [episodes]);
   const activeProaByBed = useMemo(() => {
@@ -517,6 +519,8 @@ function CurvaExamenes() {
     setReview([]);
     setBlocks([{ id: makeId(), ...nowLocal(), sample: 'Sangre', text: '' }]);
     setPendingBed(null);
+    setEditingResult(null);
+    setResultToDelete(null);
     setSelectedId('');
     setBackConfirmationOpen(false);
   };
@@ -526,6 +530,29 @@ function CurvaExamenes() {
     persist(episodes.map((item) => item.id === selected.id ? { ...item, results: [...(item.results || []), ...accepted] } : item));
     setReview([]);
     setBlocks([{ id: makeId(), ...nowLocal(), sample: 'Sangre', text: '' }]);
+  };
+  const updateSavedResult = () => {
+    if (!selected || !editingResult) return;
+    persist(episodes.map((episode) => episode.id === selected.id ? {
+      ...episode,
+        results: (episode.results || []).map((item) => item.id === editingResult.id ? {
+        ...item,
+        name: editingResult.name,
+        collectedAt: editingResult.collectedAt,
+        value: editingResult.valueText === undefined ? Number(editingResult.value) : item.value,
+        valueText: editingResult.valueText,
+        unit: editingResult.unit,
+      } : item),
+    } : episode));
+    setEditingResult(null);
+  };
+  const deleteSavedResult = () => {
+    if (!selected || !resultToDelete) return;
+    persist(episodes.map((episode) => episode.id === selected.id ? {
+      ...episode,
+      results: (episode.results || []).filter((item) => item.id !== resultToDelete.id),
+    } : episode));
+    setResultToDelete(null);
   };
   const columns = useMemo(() => [...new Set((selected?.results || []).filter((item) => item.category !== 'Microbiología').map((item) => item.collectedAt))].sort(), [selected]);
   const rows = useMemo(() => {
@@ -558,17 +585,19 @@ function CurvaExamenes() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
 
-  const renderCurveTable = () => rows.length ? (
+  const resultActions = (item) => <span className="curve-no-print ml-1 inline-flex gap-0.5 align-middle"><button type="button" onClick={() => setEditingResult({ ...item })} className="rounded p-1 text-blue-700 hover:bg-blue-50" aria-label={`Editar ${item.name}`}><Pencil className="h-3 w-3" /></button><button type="button" onClick={() => setResultToDelete(item)} className="rounded p-1 text-rose-700 hover:bg-rose-50" aria-label={`Borrar ${item.name}`}><Trash2 className="h-3 w-3" /></button></span>;
+
+  const renderCurveTable = (interactive = false) => rows.length ? (
     <table className="w-full table-fixed border-collapse text-[10px]">
       <thead><tr><th className="w-40 border bg-slate-100 p-1.5 text-left">Examen</th>{columns.map((date) => <th key={date} className="border bg-slate-100 p-1.5 text-center">{new Date(date).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</th>)}</tr></thead>
-      <tbody>{rows.map((row) => <tr key={row.key}><td className="border bg-white p-1.5"><strong>{row.name}</strong><span className="block text-[9px] text-slate-500">{row.category}</span></td>{row.values.map((value, index) => <td key={columns[index]} className={`border p-1.5 text-center align-middle ${value?.status === 'review' ? 'bg-amber-50 text-amber-900' : ''}`}>{value ? <>{value.comparator || ''}{value.valueText ?? value.value}{value.unit && <span className="ml-1 text-[9px] text-slate-500">{value.unit}</span>}</> : '—'}</td>)}</tr>)}</tbody>
+      <tbody>{rows.map((row) => <tr key={row.key}><td className="border bg-white p-1.5"><strong>{row.name}</strong><span className="block text-[9px] text-slate-500">{row.category}</span></td>{row.values.map((value, index) => <td key={columns[index]} className={`border p-1.5 text-center align-middle ${value?.status === 'review' ? 'bg-amber-50 text-amber-900' : ''}`}>{value ? <>{value.comparator || ''}{value.valueText ?? value.value}{value.unit && <span className="ml-1 text-[9px] text-slate-500">{value.unit}</span>}{interactive && resultActions(value)}</> : '—'}</td>)}</tr>)}</tbody>
     </table>
   ) : <p className="py-5 text-center text-sm text-slate-500">Aún no hay resultados guardados.</p>;
 
-  const renderMicrobiology = () => (
+  const renderMicrobiology = (interactive = false) => (
     <div className="curve-microbiology mt-5 break-inside-avoid">
       <h3 className="mb-2 border-b-2 border-slate-800 pb-1 text-sm font-black text-slate-900">Resultados microbiológicos</h3>
-      {microbiologyResults.length ? <table className="w-full table-fixed border-collapse text-[10px]"><thead><tr><th className="w-32 border bg-slate-100 p-1.5 text-left">Fecha</th><th className="w-40 border bg-slate-100 p-1.5 text-left">Estudio</th><th className="border bg-slate-100 p-1.5 text-left">Resultado</th></tr></thead><tbody>{microbiologyResults.map((item) => <tr key={item.id}><td className="border p-1.5">{new Date(item.collectedAt).toLocaleString('es-CL')}</td><td className="border p-1.5 font-semibold">{item.name}</td><td className="border p-1.5">{item.valueText ?? `${item.value ?? ''} ${item.unit || ''}`.trim()}</td></tr>)}</tbody></table> : <div className="min-h-20 rounded border border-dashed border-slate-400 p-3 text-xs text-slate-500">Sin resultados microbiológicos registrados. Espacio para observaciones:</div>}
+      {microbiologyResults.length ? <table className="w-full table-fixed border-collapse text-[10px]"><thead><tr><th className="w-32 border bg-slate-100 p-1.5 text-left">Fecha</th><th className="w-40 border bg-slate-100 p-1.5 text-left">Estudio</th><th className="border bg-slate-100 p-1.5 text-left">Resultado</th></tr></thead><tbody>{microbiologyResults.map((item) => <tr key={item.id}><td className="border p-1.5">{new Date(item.collectedAt).toLocaleString('es-CL')}</td><td className="border p-1.5 font-semibold">{item.name}</td><td className="border p-1.5">{item.valueText ?? `${item.value ?? ''} ${item.unit || ''}`.trim()}{interactive && resultActions(item)}</td></tr>)}</tbody></table> : <div className="min-h-20 rounded border border-dashed border-slate-400 p-3 text-xs text-slate-500">Sin resultados microbiológicos registrados. Espacio para observaciones:</div>}
     </div>
   );
 
@@ -578,7 +607,7 @@ function CurvaExamenes() {
         <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div><h1 className="text-2xl font-black text-slate-950">Curva de exámenes</h1><p className="text-sm text-slate-600">Seguimiento longitudinal anónimo de pacientes hospitalizados.</p></div>
-            <div className="curve-no-print flex flex-wrap gap-2">{selected && <><Button type="button" variant="outline" onClick={() => setBackConfirmationOpen(true)} className="gap-2"><ArrowLeft className="h-4 w-4" />Volver atrás</Button><Button variant="outline" onClick={() => setPrintPreviewOpen(true)} className="gap-2"><Printer className="h-4 w-4" />Imprimir curva</Button><Button variant="outline" onClick={() => { setEpisodeActionError(''); setEpisodeActionOpen(true); }} className="gap-2 text-rose-700"><LogOut className="h-4 w-4" />Egresar o eliminar</Button></>}</div>
+            <div className="curve-no-print flex flex-wrap gap-2">{selected && <><Button type="button" variant="outline" onClick={() => setBackConfirmationOpen(true)} className="gap-2"><ArrowLeft className="h-4 w-4" />Volver sin guardar</Button><Button variant="outline" onClick={() => setPrintPreviewOpen(true)} className="gap-2"><Printer className="h-4 w-4" />Imprimir curva</Button><Button variant="outline" onClick={() => { setEpisodeActionError(''); setEpisodeActionOpen(true); }} className="gap-2 text-rose-700"><LogOut className="h-4 w-4" />Egresar o eliminar</Button></>}</div>
           </div>
           <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">Este módulo no solicita ni almacena nombre, RUT, ficha, teléfono ni otros identificadores directos.</p>
         </header>
@@ -610,7 +639,7 @@ function CurvaExamenes() {
 
               {review.length > 0 && <section className="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm"><h2 className="font-black text-slate-900">Revisión antes de guardar</h2>{review.some((item) => item.sourceHadIdentifiers) && <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">Se detectó un encabezado con identificadores directos. Fue eliminado del texto fuente y no se guardará con los resultados.</p>}<div className="mt-3 overflow-x-auto"><table className="w-full text-sm"><thead><tr className="bg-slate-100 text-left"><th className="p-2">Examen</th><th>Valor</th><th>Unidad</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>{review.map((item) => <tr key={item.id} className="border-b"><td className="p-2 font-semibold">{item.name}{item.derived && <span className="block text-[10px] font-normal text-blue-600">Calculado: {item.formula}</span>}</td><td>{item.valueText !== undefined ? <Input value={item.valueText} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, valueText: e.target.value } : row))} className="min-w-44" /> : <div className="flex items-center gap-1">{item.comparator && <strong>{item.comparator}</strong>}<Input type="number" value={item.value} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, value: Number(e.target.value) } : row))} className="w-28" /></div>}</td><td><Input value={item.unit} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, unit: e.target.value } : row))} className="w-28" /></td><td className="whitespace-nowrap text-xs">{new Date(item.collectedAt).toLocaleString('es-CL')}</td><td><select value={item.status} onChange={(e) => setReview((current) => current.map((row) => row.id === item.id ? { ...row, status: e.target.value } : row))} className="rounded-md border p-2"><option value="confirmed">Confirmar</option><option value="review">Requiere revisión</option><option value="discarded">Descartar</option></select></td></tr>)}</tbody></table></div><Button onClick={saveResults} className="mt-3 gap-2"><Save className="h-4 w-4" />Guardar resultados</Button></section>}
 
-              <section className="curve-print-document rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="curve-print-header hidden"><h1>Curva de exámenes</h1><p><strong>Código del paciente: {selected.code}</strong></p><p>Cama {selected.bedCode} · Ingreso {new Date(selected.admittedAt).toLocaleString('es-CL')}</p></div><h2 className="curve-no-print font-black text-slate-900">Tabla longitudinal</h2><div className="mt-3 overflow-x-auto">{renderCurveTable()}</div>{renderMicrobiology()}</section>
+              <section className="curve-print-document rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="curve-print-header hidden"><h1>Curva de exámenes</h1><p><strong>Código del paciente: {selected.code}</strong></p><p>Cama {selected.bedCode} · Ingreso {new Date(selected.admittedAt).toLocaleString('es-CL')}</p></div><h2 className="curve-no-print font-black text-slate-900">Tabla longitudinal</h2><div className="mt-3 overflow-x-auto">{renderCurveTable(true)}</div>{renderMicrobiology(true)}</section>
 
               <div className="grid gap-5 lg:grid-cols-2"><section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><h2 className="flex items-center gap-2 font-black"><LineChartIcon className="h-4 w-4" />Curva</h2><select value={selectedExam} onChange={(e) => setSelectedExam(e.target.value)} className="rounded-md border p-2 text-xs">{EXAMS.map((exam) => <option key={exam.key} value={exam.key}>{exam.name}</option>)}</select></div><div className="mt-3 h-64">{chartData.length ? <ResponsiveContainer width="100%" height="100%"><LineChart data={chartData}><XAxis dataKey="date" tick={{ fontSize: 10 }} /><YAxis /><Tooltip /><Line type="monotone" dataKey="value" stroke="#0f766e" strokeWidth={3} dot /></LineChart></ResponsiveContainer> : <p className="py-20 text-center text-sm text-slate-400">Sin valores confirmados para graficar.</p>}</div></section><section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><h2 className="font-black">Cálculos verificables</h2><div className="mt-3 space-y-2">{calculations.length ? calculations.map((calc) => <div key={calc.name} className="rounded-xl border border-blue-100 bg-blue-50 p-3"><div className="flex justify-between gap-3"><strong>{calc.name}</strong><span className="text-lg font-black text-blue-900">{calc.value}</span></div><p className="text-xs text-slate-500">{calc.formula}</p></div>) : <p className="text-sm text-slate-500">Faltan resultados confirmados y compatibles.</p>}</div></section></div>
             </>}
@@ -640,15 +669,43 @@ function CurvaExamenes() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={Boolean(editingResult)} onOpenChange={(open) => { if (!open) setEditingResult(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Editar registro de examen</DialogTitle></DialogHeader>
+          {editingResult && <div className="space-y-4">
+            <div><Label className="mb-1.5 block">Examen</Label><Input value={editingResult.name || ''} onChange={(event) => setEditingResult((current) => ({ ...current, name: event.target.value }))} /></div>
+            <div><Label className="mb-1.5 block">Fecha y hora</Label><Input type="datetime-local" value={String(editingResult.collectedAt || '').slice(0, 16)} onChange={(event) => setEditingResult((current) => ({ ...current, collectedAt: event.target.value }))} /></div>
+            {editingResult.valueText !== undefined
+              ? <div><Label className="mb-1.5 block">Resultado</Label><Textarea value={editingResult.valueText || ''} onChange={(event) => setEditingResult((current) => ({ ...current, valueText: event.target.value }))} rows={3} /></div>
+              : <div className="grid gap-4 sm:grid-cols-2"><div><Label className="mb-1.5 block">Valor</Label><Input type="number" step="any" value={editingResult.value ?? ''} onChange={(event) => setEditingResult((current) => ({ ...current, value: event.target.value }))} /></div><div><Label className="mb-1.5 block">Unidad</Label><Input value={editingResult.unit || ''} onChange={(event) => setEditingResult((current) => ({ ...current, unit: event.target.value }))} /></div></div>}
+          </div>}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setEditingResult(null)}>Cancelar sin guardar</Button>
+            <Button type="button" onClick={updateSavedResult} className="bg-teal-700 hover:bg-teal-800">Guardar cambios</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(resultToDelete)} onOpenChange={(open) => { if (!open) setResultToDelete(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>¿Borrar este registro?</DialogTitle></DialogHeader>
+          <p className="text-sm text-slate-600">Se eliminará <strong>{resultToDelete?.name}</strong> del {resultToDelete?.collectedAt ? new Date(resultToDelete.collectedAt).toLocaleString('es-CL') : ''}. Esta acción no se puede deshacer.</p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setResultToDelete(null)}>Cancelar</Button>
+            <Button type="button" variant="destructive" onClick={deleteSavedResult}>Sí, borrar registro</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={backConfirmationOpen} onOpenChange={setBackConfirmationOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>¿Volver a la vista de camas?</DialogTitle>
+            <DialogTitle>¿Volver sin guardar?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600">Se descartarán los exámenes pegados o procesados que todavía no hayas guardado. Los resultados ya guardados no se modificarán.</p>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setBackConfirmationOpen(false)}>Cancelar</Button>
-            <Button type="button" onClick={goBackWithoutSaving} className="bg-teal-700 hover:bg-teal-800">Sí, volver atrás</Button>
+            <Button type="button" onClick={goBackWithoutSaving} className="bg-teal-700 hover:bg-teal-800">Sí, volver sin guardar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
