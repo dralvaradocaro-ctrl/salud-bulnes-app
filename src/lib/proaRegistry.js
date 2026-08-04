@@ -224,13 +224,18 @@ export async function saveProaPreAdmission(preAdmission) {
     edad: preAdmission.edad || '',
     sexo: preAdmission.sexo || '',
     creatinina: preAdmission.creatinina || '',
+    fecha_creatinina: preAdmission.fecha_creatinina || '',
+    creatininas: preAdmission.creatinina ? [{ fecha: preAdmission.fecha_creatinina || new Date().toISOString().slice(0, 10), valor: preAdmission.creatinina }] : [],
     vfg_estimada: estimatedGfr ?? '',
     fecha_ingreso: preAdmission.fecha_ingreso || '',
-    diagnostico_actual: preAdmission.diagnostico || '',
+    diagnostico_actual: (preAdmission.diagnosticos || []).filter(Boolean).join('; ') || preAdmission.diagnostico || '',
+    diagnosticos_actuales: (preAdmission.diagnosticos || []).filter(Boolean),
     funcion_renal: renalFunction,
     antibioterapia_preingreso: antibioticSummary,
     antibioticos: antibioticItems,
-    parametros_inflamatorios: [],
+    parametros_inflamatorios: Array.isArray(preAdmission.examenes_sangre)
+      ? preAdmission.examenes_sangre.filter((item) => item?.fecha || item?.pcr || item?.pct || item?.leucocitos)
+      : [],
     estudios_micro: Array.isArray(preAdmission.cultivos)
       ? preAdmission.cultivos.filter((item) => item?.tipo_muestra || item?.patogeno)
       : [],
@@ -249,18 +254,30 @@ export function isHistoricalProaRecord(record) {
   return Boolean(record?.evolutions?.[0]?.form?.proa_patient_status === 'historico');
 }
 
-export async function archiveProaRecord(record, dischargeDate = new Date().toISOString().slice(0, 10)) {
+export async function archiveProaRecord(record, dischargeDate = new Date().toISOString().slice(0, 10), dischargeDetails = {}) {
   if (!record?.bedCode) return null;
   const now = new Date().toISOString();
   const originalBed = record.evolutions?.[0]?.form?.cama || record.bedCode;
   const historicalBedCode = `HIST-${record.id}`;
-  const evolutions = (record.evolutions || []).map((evolution) => ({
+  const evolutions = (record.evolutions || []).map((evolution, evolutionIndex) => ({
     ...evolution,
     form: sanitizeProaRecord({
       ...(evolution.form || {}),
       cama: originalBed,
       proa_patient_status: 'historico',
       fecha_egreso: dischargeDate,
+      motivo_egreso: dischargeDetails.motivo || '',
+      destino_egreso_servicio: dischargeDetails.destinoServicio || '',
+      destino_egreso_cama: dischargeDetails.destinoCama || '',
+      antibiotico_alta: dischargeDetails.antibioticoAlta || '',
+      antibiotico_alta_indicacion: dischargeDetails.antibioticoAltaIndicacion || '',
+      antibioticos: evolutionIndex === 0
+        ? (evolution.form?.antibioticos || []).map((item, index) => ({
+          ...item,
+          termino: dischargeDetails.antibioticStops?.[index] || item.termino || '',
+          termino_manual: Boolean(dischargeDetails.antibioticStops?.[index] || item.termino),
+        }))
+        : (evolution.form?.antibioticos || []),
       proa_archived_at: now,
     }),
   }));

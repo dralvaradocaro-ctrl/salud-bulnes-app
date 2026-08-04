@@ -647,6 +647,15 @@ function CurvaExamenes() {
         </div>
       </div>
 
+      {selected && <div className="curve-print-sheet hidden bg-white">
+        <div className="mb-3 border-b-2 border-slate-900 pb-2">
+          <h1 className="text-lg font-black">Curva de exámenes</h1>
+          <p className="text-[10px]"><strong>Código: {selected.code}</strong> · Cama {selected.bedCode} · Ingreso {new Date(selected.admittedAt).toLocaleString('es-CL')}</p>
+        </div>
+        {renderCurveTable()}
+        {renderMicrobiology()}
+      </div>}
+
       <Dialog open={printPreviewOpen} onOpenChange={setPrintPreviewOpen}>
         <DialogContent className="curve-print-preview-dialog z-[100] !flex h-[94vh] max-h-[94vh] max-w-[96vw] flex-col gap-0 overflow-hidden p-0 xl:max-w-[1400px]">
           <DialogHeader className="shrink-0 border-b px-5 py-4">
@@ -759,22 +768,24 @@ function CurvaExamenes() {
       <style>{`
         @media print {
           @page { size: A4 landscape; margin: 8mm; }
-          body { background: white !important; }
-          .curve-print-preview-dialog { display: none !important; }
-          .curve-no-print, header, nav { display: none !important; }
-          .curve-print-header { display: block !important; margin-bottom: 12px; }
-          .curve-print-header h1 { margin: 0 0 6px; font-size: 18px; }
-          .curve-print-header p { margin: 2px 0; font-size: 11px; }
-          .curve-print-header + h2 { display: none !important; }
-          main > section:not(:has(.curve-print-header)), main > div { display: none !important; }
-          main, main > section:has(.curve-print-header) { display: block !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; overflow: visible !important; }
-          .curve-print-document > div { overflow: visible !important; }
-          table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; font-size: 8px !important; }
-          th, td { padding: 3px !important; overflow-wrap: anywhere; }
-          th:first-child, td:first-child { position: static !important; width: 105px !important; min-width: 0 !important; }
-          tr { break-inside: avoid; }
-          .curve-microbiology { margin-top: 10px !important; }
-          .curve-microbiology h3 { font-size: 10px !important; margin-bottom: 4px !important; }
+          html, body { margin: 0 !important; background: white !important; }
+          body * { visibility: hidden !important; }
+          .curve-print-sheet, .curve-print-sheet * { visibility: visible !important; }
+          .curve-print-sheet {
+            display: block !important;
+            position: absolute !important;
+            inset: 0 auto auto 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+          .curve-print-sheet table { width: 100% !important; min-width: 0 !important; table-layout: fixed !important; font-size: 8px !important; }
+          .curve-print-sheet th, .curve-print-sheet td { padding: 3px !important; overflow-wrap: anywhere; }
+          .curve-print-sheet th:first-child, .curve-print-sheet td:first-child { position: static !important; width: 105px !important; min-width: 0 !important; }
+          .curve-print-sheet tr { break-inside: avoid; }
+          .curve-print-sheet .curve-microbiology { margin-top: 10px !important; }
+          .curve-print-sheet .curve-microbiology h3 { font-size: 10px !important; margin-bottom: 4px !important; }
         }
       `}</style>
     </div>

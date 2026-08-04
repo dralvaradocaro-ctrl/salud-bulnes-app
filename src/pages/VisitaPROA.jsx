@@ -44,6 +44,7 @@ export const ANTIBIOTICOS = [
 
 // Presentaciones disponibles para construir dosis concretas por administración.
 export const PRESENTACIONES_ATB = {
+  'Amoxicilina + ácido clavulánico': [{ label: 'Comprimido 500/125 mg', cantidad: 1, unidad: 'comprimido', envase: 'comprimido' }, { label: 'Comprimido 875/125 mg', cantidad: 1, unidad: 'comprimido', envase: 'comprimido' }],
   'Amikacina': [{ label: 'Ampolla 500 mg/2 mL', cantidad: 500, unidad: 'mg', envase: 'ampolla' }, { label: 'Ampolla 100 mg/2 mL', cantidad: 100, unidad: 'mg', envase: 'ampolla' }],
   'Gentamicina': [{ label: 'Ampolla 80 mg/2 mL', cantidad: 80, unidad: 'mg', envase: 'ampolla' }],
   'Ceftriaxona': [{ label: 'Frasco ampolla 1 g', cantidad: 1, unidad: 'g', envase: 'frasco ampolla' }, { label: 'Frasco ampolla 2 g', cantidad: 2, unidad: 'g', envase: 'frasco ampolla' }],
@@ -69,6 +70,7 @@ export const PRESENTACIONES_ATB = {
 };
 
 export const DEFAULT_DOSIS_ATB = {
+  'Amoxicilina + ácido clavulánico': { presentacion: 'Comprimido 875/125 mg', dosis_cantidad: 1, dosis_unidad: 'comprimido', intervalo_horas: '12', via: 'VO' },
   'Amikacina': { presentacion: 'Ampolla 500 mg/2 mL', dosis_por_kg: 15, dosis_unidad: 'mg', intervalo_horas: '24', via: 'EV' },
   'Gentamicina': { presentacion: 'Ampolla 80 mg/2 mL', dosis_por_kg: 5, dosis_unidad: 'mg', intervalo_horas: '24', via: 'EV' },
   'Vancomicina': { presentacion: 'Frasco ampolla 1 g', dosis_por_kg: 15, dosis_unidad: 'mg', intervalo_horas: '12', via: 'EV' },
@@ -92,7 +94,7 @@ export const DEFAULT_DOSIS_ATB = {
   'Fluconazol': { presentacion: 'Frasco 200 mg/100 mL EV', dosis_cantidad: 400, dosis_unidad: 'mg', intervalo_horas: '24', via: 'EV' },
 };
 
-const DOSIS_UNIDADES = ['mg', 'g', 'MUI', 'UI'];
+const DOSIS_UNIDADES = ['mg', 'g', 'MUI', 'UI', 'comprimido', 'cápsula', 'ampolla', 'frasco ampolla', 'bolsa'];
 const INTERVALOS = ['6', '8', '12', '24', '48'];
 const ANTIBIOGRAMA_POOL = [
   ...ANTIBIOTICOS,
@@ -152,6 +154,8 @@ export const TIPOS_MUESTRA = [
   'Cultivo punta de catéter',
   'Coprocultivo',
   'PCR multiplex respiratoria',
+  'IFI viral respiratoria',
+  'Panel viral respiratorio',
   'PCR Clostridioides difficile',
   'Antígeno urinario (Neumococo / Legionella)',
   'Otro',
@@ -229,6 +233,13 @@ export const DIAGNOSTICOS_INFECTO = [
   'Artritis séptica',
   'Empiema pleural',
   'Neutropenia febril',
+  'Asma exacerbada con sospecha infecciosa',
+  'EPOC exacerbado con sospecha infecciosa',
+  'Bronquitis aguda',
+  'Neumonía aspirativa',
+  'Infección de úlcera por presión',
+  'Infección protésica articular',
+  'Fascitis necrosante',
   'COVID-19',
   'Influenza',
   'Candidemia / candidiasis invasora',
@@ -633,6 +644,8 @@ const EMPTY = {
   edad: '',
   sexo: '',
   creatinina: '',
+  fecha_creatinina: '',
+  creatininas: [],
   vfg_estimada: '',
   peso_kg: '',
   n_ficha: '',
@@ -644,6 +657,7 @@ const EMPTY = {
   funcion_renal: '',
   parametros_inflamatorios: [{ ...EMPTY_PARAM_ROW }], // ahora es una planilla curva
   diagnostico_actual: '',
+  diagnosticos_actuales: [''],
   diagnostico_microbiologico: '',
   diag_micro_auto: true, // si true, el campo se autocompleta desde estudios_micro
   estudios_micro: [{ ...EMPTY_CULT }],
@@ -775,6 +789,10 @@ function VisitaPROA() {
       antibioticos: merged.antibioticos?.length
         ? merged.antibioticos
         : [{ ...EMPTY_ATB }],
+      diagnosticos_actuales: merged.diagnosticos_actuales?.length
+        ? merged.diagnosticos_actuales
+        : [merged.diagnostico_actual || ''],
+      fecha_creatinina: merged.fecha_creatinina || merged.fecha || todayIso(),
     };
   });
   const initialSnapshotRef = useRef(JSON.stringify(f));
@@ -858,6 +876,9 @@ function VisitaPROA() {
   const addInvasivo = () => setF(prev => ({ ...prev, invasivos: [...(prev.invasivos || []), { cual: '', desde: '' }] }));
   const updateInvasivo = (i, key, val) => setF(prev => ({ ...prev, invasivos: (prev.invasivos || []).map((d, idx) => idx === i ? { ...d, [key]: val } : d) }));
   const removeInvasivo = (i) => setF(prev => ({ ...prev, invasivos: (prev.invasivos || []).length <= 1 ? prev.invasivos : prev.invasivos.filter((_, idx) => idx !== i) }));
+  const updateDiagnosis = (index, value) => setF((prev) => ({ ...prev, diagnosticos_actuales: prev.diagnosticos_actuales.map((item, itemIndex) => itemIndex === index ? value : item) }));
+  const addDiagnosis = () => setF((prev) => ({ ...prev, diagnosticos_actuales: [...prev.diagnosticos_actuales, ''] }));
+  const removeDiagnosis = (index) => setF((prev) => ({ ...prev, diagnosticos_actuales: prev.diagnosticos_actuales.length === 1 ? [''] : prev.diagnosticos_actuales.filter((_, itemIndex) => itemIndex !== index) }));
   const clear = () => {
     setRegistryMessage('');
     setF({ ...EMPTY, fecha: todayIso(), hora: currentTime() });
@@ -876,6 +897,10 @@ function VisitaPROA() {
     }
     const formToSave = {
       ...f,
+      diagnostico_actual: (f.diagnosticos_actuales || []).filter(Boolean).join('; ') || f.diagnostico_actual,
+      creatininas: f.creatinina
+        ? [...(f.creatininas || []).filter((item) => item.fecha !== f.fecha_creatinina), { fecha: f.fecha_creatinina || f.fecha || todayIso(), valor: f.creatinina }]
+        : (f.creatininas || []),
       proa_discharge_requested: dischargePatient,
       fecha_egreso: dischargeDate,
     };
@@ -953,8 +978,10 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
         if (i !== idx) return a;
         const next = { ...a, [key]: value };
         if (key === 'nombre') {
-          const defaults = DEFAULT_DOSIS_ATB[value];
-          const presentaciones = getEvolutionPresentations(value);
+          const canonicalName = ANTIBIOTICOS.find((name) => normalizeMedicationName(name) === normalizeMedicationName(value)) || value;
+          next.nombre = canonicalName;
+          const defaults = DEFAULT_DOSIS_ATB[canonicalName];
+          const presentaciones = getEvolutionPresentations(canonicalName);
           if (defaults) {
             const defaultAvailable = presentaciones.find((item) => item.label === defaults.presentacion);
             const selectedPresentation = defaultAvailable || presentaciones[0] || null;
@@ -1178,7 +1205,8 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                     <span className="flex h-9 items-center rounded-r-md border border-l-0 border-slate-200 bg-slate-50 px-2 text-xs text-slate-600">mg/dL</span>
                   </div>
                 </Field>
-                <Field label="Función renal calculada" span="md:col-span-2">
+                <Field label="Fecha de creatinina"><DateInputDdmm value={f.fecha_creatinina} onChange={v => u('fecha_creatinina', v)} className="h-9" /></Field>
+                <Field label="Función renal calculada">
                   <div className="flex min-h-9 items-center rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
                     {f.funcion_renal || 'Completa creatinina, edad y sexo para calcular VFG.'}
                   </div>
@@ -1238,14 +1266,8 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
             {/* Diagnósticos */}
             <Section title="Diagnósticos">
               <Grid>
-                <Field label="Diagnóstico actual" span="md:col-span-2">
-                  <input
-                    value={f.diagnostico_actual}
-                    onChange={e => u('diagnostico_actual', e.target.value)}
-                    list="proa-diag-suggestions"
-                    className="w-full h-9 rounded-md border border-slate-200 px-2 text-sm focus:border-teal-400 focus:outline-none"
-                    placeholder="Buscá: NAC, Bacteriemia, ITU, Sepsis…"
-                  />
+                <Field label="Diagnósticos actuales" span="md:col-span-2">
+                  <div className="space-y-2">{f.diagnosticos_actuales.map((diagnosis, index) => <div key={index} className="flex gap-2"><input value={diagnosis} onChange={e => updateDiagnosis(index, e.target.value)} list="proa-diag-suggestions" className="h-9 w-full rounded-md border border-slate-200 px-2 text-sm focus:border-teal-400 focus:outline-none" placeholder="Buscá: NAC, asma exacerbada, pie diabético…" /><button type="button" onClick={() => removeDiagnosis(index)} className="rounded-md p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button></div>)}<Button type="button" size="sm" variant="outline" onClick={addDiagnosis} className="h-7 gap-1 text-xs"><Plus className="h-3 w-3" /> Agregar diagnóstico</Button></div>
                 </Field>
                 <Field label={f.diag_micro_auto ? 'Diagnóstico microbiológico (auto — deducido de estudios)' : 'Diagnóstico microbiológico'} span="md:col-span-2">
                   <div className="flex gap-2 items-center">

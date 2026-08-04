@@ -203,6 +203,17 @@ const EMPTY_PRE_ANTIBIOTIC = {
   termino: '',
 };
 const EMPTY_PRE_CULTURE = { tipo_muestra: '', fecha: '', patogeno: '', sensibilidad: 'Pendiente', resistente: [], sensible: [], intermedio: [], antibiograma_nota: '', antibiograma: '' };
+const EMPTY_PRE_BLOOD_TEST = { fecha: '', pcr: '', pct: '', leucocitos: '', crea: '' };
+const DISCHARGE_REASONS = ['Alta médica', 'Fallecimiento', 'Traslado a otro servicio', 'Traslado a otro establecimiento', 'Otro'];
+
+function latestCreatinine(form) {
+  const dated = [
+    ...(Array.isArray(form?.creatininas) ? form.creatininas.map((item) => ({ fecha: item.fecha, valor: item.valor })) : []),
+    ...(Array.isArray(form?.parametros_inflamatorios) ? form.parametros_inflamatorios.filter((item) => item?.crea).map((item) => ({ fecha: item.fecha, valor: item.crea })) : []),
+    ...(form?.creatinina ? [{ fecha: form.fecha_creatinina || form.fecha || '', valor: form.creatinina }] : []),
+  ].filter((item) => item.valor !== '' && item.valor != null);
+  return dated.sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')))[0] || null;
+}
 
 function formatPreAntibiotic(item) {
   const dose = item.dosis_unidad === 'ampolla'
@@ -277,6 +288,7 @@ function formatAntimicrobial(item, form) {
     dose: dose || 'Dosis no registrada',
     isSuspended,
     statusLabel: isSuspended ? 'Suspendido' : 'Vigente',
+    treatmentDays: preAntibioticTreatmentDays(item),
     duration: item.termino
       ? `FI: ${formatClinicalDate(item.inicio)}${item.hora_inicio ? ` ${item.hora_inicio}` : ''} · FT: ${formatClinicalDate(item.termino)} (${preAntibioticTreatmentDays(item) ?? '—'} días totales)`
       : duration
@@ -505,6 +517,7 @@ function GestionPROA() {
   const [recordToArchive, setRecordToArchive] = useState(null);
   const [archivingRecord, setArchivingRecord] = useState(false);
   const [dischargeDate, setDischargeDate] = useState(new Date().toISOString().slice(0, 10));
+  const [dischargeDetails, setDischargeDetails] = useState({ motivo: '', destinoServicio: '', destinoCama: '', antibioticStops: {}, antibioticoAlta: '', antibioticoAltaIndicacion: '' });
   const [occupiedRecordForPreAdmission, setOccupiedRecordForPreAdmission] = useState(null);
   const [replacementDischargeDate, setReplacementDischargeDate] = useState(new Date().toISOString().slice(0, 10));
   const [resolvingOccupiedBed, setResolvingOccupiedBed] = useState(false);
@@ -513,6 +526,7 @@ function GestionPROA() {
   const [tableScope, setTableScope] = useState('actuales');
   const [tableAntibioticFilter, setTableAntibioticFilter] = useState('');
   const [tableBedFilter, setTableBedFilter] = useState('');
+  const [tableServiceFilter, setTableServiceFilter] = useState('');
   const [tableDateFrom, setTableDateFrom] = useState('');
   const [tableDateTo, setTableDateTo] = useState('');
   const [showCharts, setShowCharts] = useState(false);
@@ -526,10 +540,13 @@ function GestionPROA() {
     edad: '',
     sexo: '',
     creatinina: '',
+    fecha_creatinina: '',
     fecha_ingreso: '',
     antibioticos: [{ ...EMPTY_PRE_ANTIBIOTIC }],
     cultivos: [{ ...EMPTY_PRE_CULTURE }],
     diagnostico: '',
+    diagnosticos: [''],
+    examenes_sangre: [{ ...EMPTY_PRE_BLOOD_TEST }],
   });
 
   const recordsByBed = useMemo(() => (
@@ -581,6 +598,7 @@ function GestionPROA() {
         grouped.get(name).push({
           label,
           unidad: medication.dose_unit || '',
+          envase: /comprimido/i.test(medication.presentation || '') ? 'comprimido' : /cápsula/i.test(medication.presentation || '') ? 'cápsula' : /ampolla/i.test(medication.presentation || '') ? 'ampolla' : /bolsa/i.test(medication.presentation || '') ? 'bolsa' : '',
           sourceId: medication.id,
         });
       });
@@ -614,27 +632,33 @@ function GestionPROA() {
   const historicalTestRecords = historicalRecords.length - historicalClinicalRecords.length;
   const visibleTableRecords = useMemo(() => {
     const scoped = tableScope === 'historicos'
-      ? historicalRecords
+      ? historicalClinicalRecords
       : tableScope === 'todos'
-        ? records
-        : currentRecords;
+        ? clinicalRecords
+        : currentClinicalRecords;
     const query = tableAntibioticFilter.trim().toLowerCase();
     return scoped.filter((record) => {
       const form = getLatestProaForm(record) || {};
       const effectiveBed = form.cama || record.bedCode;
       const matchesBed = !tableBedFilter || effectiveBed === tableBedFilter;
+      const matchesService = !tableServiceFilter || findServiceForBed(effectiveBed) === tableServiceFilter;
       const matchesAntibiotic = !query || (form.antibioticos || [])
         .some((item) => item?.nombre?.toLowerCase().includes(query));
       return matchesBed
+        && matchesService
         && matchesAntibiotic
         && recordOccupiesDateRange(record, tableDateFrom, tableDateTo);
     });
   }, [
     currentRecords,
+    currentClinicalRecords,
     historicalRecords,
+    historicalClinicalRecords,
+    clinicalRecords,
     records,
     tableAntibioticFilter,
     tableBedFilter,
+    tableServiceFilter,
     tableDateFrom,
     tableDateTo,
     tableScope,
@@ -795,10 +819,13 @@ function GestionPROA() {
       edad: '',
       sexo: '',
       creatinina: '',
+      fecha_creatinina: localTodayIso(),
       fecha_ingreso: '',
       antibioticos: [{ ...EMPTY_PRE_ANTIBIOTIC }],
       cultivos: [{ ...EMPTY_PRE_CULTURE }],
       diagnostico: '',
+      diagnosticos: [''],
+      examenes_sangre: [{ ...EMPTY_PRE_BLOOD_TEST }],
     });
     setPreAdmissionArchiveOnly(archiveOnly);
     setPreAdmissionError('');
@@ -827,7 +854,7 @@ function GestionPROA() {
   };
 
   const savePreAdmission = async () => {
-    if (!preAdmission.cama || !preAdmission.edad || !preAdmission.fecha_ingreso || !preAdmission.diagnostico.trim()) {
+    if (!preAdmission.cama || !preAdmission.edad || !preAdmission.fecha_ingreso || !(preAdmission.diagnosticos || [preAdmission.diagnostico]).some((item) => item.trim())) {
       setPreAdmissionError('Completa cama, edad, fecha de ingreso y diagnóstico.');
       return;
     }
@@ -886,14 +913,15 @@ function GestionPROA() {
             ...item,
             presentacion: value,
             presentacion_unidad: presentationInfo?.unidad || item.presentacion_unidad,
-            dosis_unidad: presentationInfo?.unidad || item.dosis_unidad,
+            dosis_unidad: presentationInfo?.envase || presentationInfo?.unidad || item.dosis_unidad,
           };
         }
         if (key !== 'nombre') return { ...item, [key]: value };
-        const preset = DEFAULT_DOSIS_ATB[value];
-        const { options: availablePresentations } = getAvailablePresentations(value);
+        const canonicalName = savedClinicalCatalog.antibiotics.find((name) => normalizeMedicationName(name) === normalizeMedicationName(value)) || value;
+        const preset = DEFAULT_DOSIS_ATB[canonicalName];
+        const { options: availablePresentations } = getAvailablePresentations(canonicalName);
         if (!preset && availablePresentations.length === 0) {
-          return { ...item, nombre: value };
+          return { ...item, nombre: canonicalName };
         }
         const presetExistsInArsenal = availablePresentations.some((option) => option.label === preset?.presentacion);
         const presentation = presetExistsInArsenal
@@ -902,11 +930,11 @@ function GestionPROA() {
         const presentationInfo = availablePresentations.find((option) => option.label === presentation);
         return {
           ...item,
-          nombre: value,
+          nombre: canonicalName,
           presentacion: presentation,
           presentacion_unidad: presentationInfo?.unidad || preset?.dosis_unidad || item.presentacion_unidad,
           dosis_cantidad: preset?.dosis_cantidad || preset?.unidades_por_dosis || item.dosis_cantidad,
-          dosis_unidad: preset?.dosis_modo === 'ampolla' ? 'ampolla' : (preset?.dosis_unidad || item.dosis_unidad),
+          dosis_unidad: presentationInfo?.envase || (preset?.dosis_modo === 'ampolla' ? 'ampolla' : (preset?.dosis_unidad || item.dosis_unidad)),
           intervalo_horas: preset?.intervalo_horas || item.intervalo_horas,
           via: preset?.via || item.via || 'EV',
         };
@@ -941,6 +969,25 @@ function GestionPROA() {
     cultivos: current.cultivos.length === 1
       ? [{ ...EMPTY_PRE_CULTURE }]
       : current.cultivos.filter((_, itemIndex) => itemIndex !== index),
+  }));
+
+  const updatePreDiagnosis = (index, value) => setPreAdmission((current) => ({
+    ...current,
+    diagnosticos: current.diagnosticos.map((item, itemIndex) => itemIndex === index ? value : item),
+  }));
+  const addPreDiagnosis = () => setPreAdmission((current) => ({ ...current, diagnosticos: [...current.diagnosticos, ''] }));
+  const removePreDiagnosis = (index) => setPreAdmission((current) => ({
+    ...current,
+    diagnosticos: current.diagnosticos.length === 1 ? [''] : current.diagnosticos.filter((_, itemIndex) => itemIndex !== index),
+  }));
+  const updatePreBloodTest = (index, key, value) => setPreAdmission((current) => ({
+    ...current,
+    examenes_sangre: current.examenes_sangre.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item),
+  }));
+  const addPreBloodTest = () => setPreAdmission((current) => ({ ...current, examenes_sangre: [...current.examenes_sangre, { ...EMPTY_PRE_BLOOD_TEST }] }));
+  const removePreBloodTest = (index) => setPreAdmission((current) => ({
+    ...current,
+    examenes_sangre: current.examenes_sangre.length === 1 ? [{ ...EMPTY_PRE_BLOOD_TEST }] : current.examenes_sangre.filter((_, itemIndex) => itemIndex !== index),
   }));
 
   const printProaTable = () => {
@@ -1028,6 +1075,12 @@ function GestionPROA() {
 
   const openDischargeDialog = (record) => {
     setDischargeDate(new Date().toISOString().slice(0, 10));
+    const activeAntibiotics = getLatestProaForm(record)?.antibioticos || [];
+    setDischargeDetails({
+      motivo: '', destinoServicio: '', destinoCama: '',
+      antibioticStops: Object.fromEntries(activeAntibiotics.map((item, index) => [index, item.termino || ''])),
+      antibioticoAlta: '', antibioticoAltaIndicacion: '',
+    });
     setRecordToArchive(record);
   };
 
@@ -1035,7 +1088,7 @@ function GestionPROA() {
     if (!recordToArchive || !dischargeDate) return;
     setArchivingRecord(true);
     try {
-      await archiveProaRecord(recordToArchive, dischargeDate);
+      await archiveProaRecord(recordToArchive, dischargeDate, dischargeDetails);
       if (selectedBed === recordToArchive.bedCode) setSelectedBed('');
       setRecordToArchive(null);
       await refreshRecords();
@@ -1150,7 +1203,7 @@ function GestionPROA() {
                 <p className="text-sm text-slate-500">Seguimiento clínico e identificación exclusiva del módulo PROA</p>
               </div>
             </div>
-            <Button onClick={() => openPreAdmission()} className="gap-2 bg-teal-600 hover:bg-teal-700">
+            <Button onClick={() => openPreAdmission(selectedBed)} className="gap-2 bg-teal-600 hover:bg-teal-700">
               <UserPlus className="h-4 w-4" />
               <span className="hidden sm:inline">Agregar paciente PROA</span>
               <span className="sm:hidden">Agregar</span>
@@ -1434,6 +1487,10 @@ function GestionPROA() {
               </select>
             </div>
             <div className="space-y-1 lg:col-span-2">
+              <Label className="text-xs">Servicio</Label>
+              <select value={tableServiceFilter} onChange={(event) => setTableServiceFilter(event.target.value)} className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"><option value="">Todos los servicios</option>{PROA_BED_MAP.filter((service) => service.servicio !== 'Sala de prueba PROA').map((service) => <option key={service.servicio}>{service.servicio}</option>)}</select>
+            </div>
+            <div className="space-y-1 lg:col-span-2">
               <Label className="text-xs">Cama actual o histórica</Label>
               <select
                 value={tableBedFilter}
@@ -1474,11 +1531,12 @@ function GestionPROA() {
                 className="h-9"
               />
             </div>
-            {(tableAntibioticFilter || tableBedFilter || tableDateFrom || tableDateTo || tableScope !== 'actuales') && (
+            {(tableAntibioticFilter || tableBedFilter || tableServiceFilter || tableDateFrom || tableDateTo || tableScope !== 'actuales') && (
               <Button type="button" variant="ghost" size="sm" onClick={() => {
                 setTableScope('actuales');
                 setTableAntibioticFilter('');
                 setTableBedFilter('');
+                setTableServiceFilter('');
                 setTableDateFrom('');
                 setTableDateTo('');
               }} className="lg:col-span-2">Limpiar filtros</Button>
@@ -1606,7 +1664,7 @@ function GestionPROA() {
             <table className="min-w-[1380px] w-full border-collapse text-xs">
               <thead className="bg-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-600">
                 <tr>
-                  {['Paciente', 'Cama', 'Edad / ingreso', 'DG', 'Función renal', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Tratamientos antimicrobianos', 'Plan'].map((heading, index) => (
+                  {['Paciente', 'Cama', 'Edad / ingreso', 'DG', 'Última creatinina', 'DG microbiológico', 'Estudio', 'Últimos 3 PI', 'Tratamientos antimicrobianos', 'Plan'].map((heading, index) => (
                     <th
                       key={heading}
                       className={`border-b border-r border-slate-200 px-3 py-2 font-bold last:border-r-0 ${
@@ -1636,6 +1694,7 @@ function GestionPROA() {
                       const antimicrobials = getChronologicalAntimicrobials(record);
                       const formattedAntimicrobials = antimicrobials.map((item) => formatAntimicrobial(item, item.__sourceForm || form));
                       const piRows = getLastInflammatoryRows(form);
+                      const latestCrea = latestCreatinine(form);
                       const plan = [
                         ...(form.recomendaciones || []),
                         form.recomendaciones_otra,
@@ -1677,7 +1736,7 @@ function GestionPROA() {
                         </span>
                       </td>
                       <td className="max-w-[190px] border-b border-r border-slate-200 px-3 py-3">{form.diagnostico_actual || '—'}</td>
-                      <td className="max-w-[160px] border-b border-r border-slate-200 px-3 py-3">{form.funcion_renal || '—'}</td>
+                      <td className="max-w-[160px] border-b border-r border-slate-200 px-3 py-3">{latestCrea ? <><strong>{latestCrea.valor} mg/dL</strong>{latestCrea.fecha && <span className="block text-slate-500">{formatClinicalDate(latestCrea.fecha)}</span>}</> : '—'}</td>
                       <td className="max-w-[180px] border-b border-r border-slate-200 px-3 py-3">{formatMicrobiologicalDiagnosis(form)}</td>
                       <td className="max-w-[220px] border-b border-r border-slate-200 px-3 py-3">{formatMicroStudies(form)}</td>
                       <td className="max-w-[240px] border-b border-r border-slate-200 px-3 py-3">
@@ -1693,9 +1752,7 @@ function GestionPROA() {
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <p className={`font-bold ${item.isSuspended ? 'text-red-900' : 'text-emerald-900'}`}>{item.name}</p>
-                                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${item.isSuspended ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                    {item.statusLabel}
-                                  </span>
+                                  <div className="flex shrink-0 flex-col items-end gap-1"><span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${item.isSuspended ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>{item.statusLabel}</span>{item.treatmentDays != null && <span className="rounded-md bg-amber-200 px-2 py-1 text-xs font-black text-amber-950">DÍA {item.treatmentDays}</span>}</div>
                                 </div>
                                 <p className={`mt-0.5 ${item.isSuspended ? 'text-red-800' : 'text-emerald-800'}`}>{item.dose}</p>
                                 <p className={`mt-1 border-t pt-1 text-[11px] font-semibold ${item.isSuspended ? 'border-red-200 text-red-700' : 'border-emerald-200 text-emerald-700'}`}>{item.duration}</p>
@@ -1913,7 +1970,8 @@ function GestionPROA() {
                 placeholder="Ej.: 1,20 o 1.20"
               />
             </div>
-            <div className="flex items-end md:col-span-6">
+            <div className="space-y-1.5 md:col-span-3"><Label htmlFor="proa-pre-creatinine-date">Fecha de creatinina</Label><Input id="proa-pre-creatinine-date" type="date" value={preAdmission.fecha_creatinina || ''} onChange={(event) => setPreAdmission((current) => ({ ...current, fecha_creatinina: event.target.value }))} /></div>
+            <div className="flex items-end md:col-span-3">
               <div className="w-full rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
                 {preAdmission.creatinina
                   ? buildRenalFunctionText(preAdmission)
@@ -1936,8 +1994,8 @@ function GestionPROA() {
               <Input id="proa-pre-date" type="date" value={preAdmission.fecha_ingreso} onChange={(event) => setPreAdmission((current) => ({ ...current, fecha_ingreso: event.target.value }))} />
             </div>
             <div className="space-y-1.5 md:col-span-9">
-              <Label htmlFor="proa-pre-diagnosis">Diagnóstico *</Label>
-              <Input id="proa-pre-diagnosis" list="proa-pre-diagnoses" value={preAdmission.diagnostico} onChange={(event) => setPreAdmission((current) => ({ ...current, diagnostico: event.target.value }))} placeholder="Buscar diagnóstico infectológico vigente" />
+              <div className="flex items-center justify-between"><Label>Diagnósticos *</Label><Button type="button" variant="outline" size="sm" onClick={addPreDiagnosis} className="h-8 gap-1"><Plus className="h-3.5 w-3.5" /> Agregar diagnóstico</Button></div>
+              <div className="space-y-2">{preAdmission.diagnosticos.map((diagnosis, index) => <div key={index} className="flex gap-2"><Input list="proa-pre-diagnoses" value={diagnosis} onChange={(event) => updatePreDiagnosis(index, event.target.value)} placeholder="Buscar diagnóstico" /><Button type="button" variant="ghost" size="icon" onClick={() => removePreDiagnosis(index)} className="shrink-0 text-red-600"><Trash2 className="h-4 w-4" /></Button></div>)}</div>
               <datalist id="proa-pre-diagnoses">
                 {savedClinicalCatalog.diagnoses.map((diagnosis) => <option key={diagnosis} value={diagnosis} />)}
               </datalist>
@@ -2050,7 +2108,7 @@ function GestionPROA() {
                           <div className="flex">
                             <Input type="number" min="0" step="0.1" value={item.dosis_cantidad} onChange={(event) => updatePreAntibiotic(index, 'dosis_cantidad', event.target.value)} className="rounded-r-none" placeholder="Ej.: 4,5 o 1" />
                             <select value={item.dosis_unidad} onChange={(event) => updatePreAntibiotic(index, 'dosis_unidad', event.target.value)} className="h-10 rounded-r-md border border-l-0 border-input bg-white px-2 text-sm">
-                              {['g', 'mg', 'MUI', 'UI', 'ampolla'].map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+                              {['g', 'mg', 'MUI', 'UI', 'comprimido', 'cápsula', 'ampolla', 'frasco ampolla', 'bolsa'].map((unit) => <option key={unit} value={unit}>{unit}</option>)}
                             </select>
                           </div>
                         </div>
@@ -2107,6 +2165,11 @@ function GestionPROA() {
                 {['4', '6', '8', '12', '24', '48'].map((hours) => <option key={hours} value={hours}>{`Cada ${hours} horas`}</option>)}
               </datalist>
               <p className="text-[11px] text-slate-500">La presentación y pauta se precargan cuando existen; todos los campos permanecen editables.</p>
+            </div>
+
+            <div className="space-y-1.5 md:col-span-12">
+              <div className="flex items-center justify-between"><Label>Exámenes de sangre</Label><Button type="button" variant="outline" size="sm" onClick={addPreBloodTest} className="h-8 gap-1"><Plus className="h-3.5 w-3.5" /> Agregar control</Button></div>
+              <div className="space-y-2">{preAdmission.examenes_sangre.map((exam, index) => <div key={index} className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 sm:grid-cols-[150px_repeat(4,minmax(90px,1fr))_36px]"><Input type="date" value={exam.fecha} onChange={(event) => updatePreBloodTest(index, 'fecha', event.target.value)} /><Input value={exam.pcr} onChange={(event) => updatePreBloodTest(index, 'pcr', event.target.value)} placeholder="PCR" /><Input value={exam.pct} onChange={(event) => updatePreBloodTest(index, 'pct', event.target.value)} placeholder="PCT" /><Input value={exam.leucocitos} onChange={(event) => updatePreBloodTest(index, 'leucocitos', event.target.value)} placeholder="Leucocitos" /><Input value={exam.crea} onChange={(event) => updatePreBloodTest(index, 'crea', event.target.value)} placeholder="Creatinina" /><Button type="button" variant="ghost" size="icon" onClick={() => removePreBloodTest(index)} className="text-red-600"><Trash2 className="h-4 w-4" /></Button></div>)}</div>
             </div>
 
             <div className="space-y-1.5 md:col-span-12">
@@ -2189,6 +2252,16 @@ function GestionPROA() {
             <Label htmlFor="proa-discharge-date">Fecha de egreso *</Label>
             <Input id="proa-discharge-date" type="date" value={dischargeDate} onChange={(event) => setDischargeDate(event.target.value)} />
           </div>
+          <div className="space-y-1.5">
+            <Label>Motivo de egreso *</Label>
+            <select value={dischargeDetails.motivo} onChange={(event) => setDischargeDetails((current) => ({ ...current, motivo: event.target.value }))} className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm">
+              <option value="">Seleccionar motivo…</option>
+              {DISCHARGE_REASONS.map((reason) => <option key={reason}>{reason}</option>)}
+            </select>
+          </div>
+          {dischargeDetails.motivo === 'Traslado a otro servicio' && <div className="grid gap-3 sm:grid-cols-2"><div><Label className="mb-1.5 block">Servicio de destino</Label><Input value={dischargeDetails.destinoServicio} onChange={(event) => setDischargeDetails((current) => ({ ...current, destinoServicio: event.target.value }))} placeholder="Ej.: MQ2" /></div><div><Label className="mb-1.5 block">Cama de destino</Label><Input value={dischargeDetails.destinoCama} onChange={(event) => setDischargeDetails((current) => ({ ...current, destinoCama: event.target.value }))} placeholder="Ej.: 2-4" /></div></div>}
+          {(getLatestProaForm(recordToArchive)?.antibioticos || []).some((item) => item?.nombre) && <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3"><p className="text-sm font-bold text-amber-950">Antimicrobianos al egreso</p>{(getLatestProaForm(recordToArchive)?.antibioticos || []).map((item, index) => item?.nombre && <div key={`${item.nombre}-${index}`} className="grid items-end gap-2 sm:grid-cols-[1fr_170px]"><div className="text-sm font-semibold text-slate-800">{item.nombre}</div><div><Label className="mb-1 block text-[11px]">Fecha de cese</Label><Input type="date" min={item.inicio || undefined} value={dischargeDetails.antibioticStops[index] || ''} onChange={(event) => setDischargeDetails((current) => ({ ...current, antibioticStops: { ...current.antibioticStops, [index]: event.target.value } }))} className="bg-white" /></div></div>)}</div>}
+          <div className="space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3"><Label className="text-emerald-950">Antimicrobiano de alta (opcional)</Label><Input value={dischargeDetails.antibioticoAlta} onChange={(event) => setDischargeDetails((current) => ({ ...current, antibioticoAlta: event.target.value }))} list="proa-pre-antibiotics" placeholder="Nombre del antimicrobiano" className="bg-white" /><Input value={dischargeDetails.antibioticoAltaIndicacion} onChange={(event) => setDischargeDetails((current) => ({ ...current, antibioticoAltaIndicacion: event.target.value }))} placeholder="Dosis, vía, frecuencia y duración" className="bg-white" /></div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={archivingRecord}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
@@ -2196,7 +2269,7 @@ function GestionPROA() {
                 event.preventDefault();
                 confirmArchiveRecord();
               }}
-              disabled={archivingRecord || !dischargeDate}
+              disabled={archivingRecord || !dischargeDate || !dischargeDetails.motivo}
               className="bg-amber-600 text-white hover:bg-amber-700"
             >
               {archivingRecord ? 'Egresando…' : 'Confirmar egreso'}
