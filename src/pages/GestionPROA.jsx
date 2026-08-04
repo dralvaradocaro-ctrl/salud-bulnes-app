@@ -55,6 +55,11 @@ import {
 
 const moduleCardClass = 'group block h-full rounded-2xl border bg-white p-5 transition-all hover:-translate-y-0.5 hover:shadow-md';
 const CHART_COLORS = ['#0f766e', '#0284c7', '#7c3aed', '#d97706', '#dc2626', '#059669', '#4f46e5', '#be185d'];
+const PROA_TABLE_SERVICE_ORDER = ['MQ1', 'MQ2', 'Pediatría', 'Ginecología Obstetricia', 'Hospitalización domiciliaria', 'Urgencias'];
+const proaServiceOrderIndex = (service) => {
+  const index = PROA_TABLE_SERVICE_ORDER.indexOf(service);
+  return index === -1 ? PROA_TABLE_SERVICE_ORDER.length : index;
+};
 const localTodayIso = () => {
   const now = new Date();
   return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -711,7 +716,16 @@ function GestionPROA() {
   ]);
   const tableRows = useMemo(() => buildProaTableRows(visibleTableRecords), [visibleTableRecords]);
   const printableTableRecords = useMemo(
-    () => visibleTableRecords.filter((record) => !isTestProaRecord(record)),
+    () => visibleTableRecords
+      .filter((record) => !isTestProaRecord(record))
+      .sort((a, b) => {
+        const formA = getLatestProaForm(a) || {};
+        const formB = getLatestProaForm(b) || {};
+        const bedA = formA.cama || a.bedCode;
+        const bedB = formB.cama || b.bedCode;
+        const serviceDifference = proaServiceOrderIndex(findServiceForBed(bedA)) - proaServiceOrderIndex(findServiceForBed(bedB));
+        return serviceDifference || bedA.localeCompare(bedB, 'es', { numeric: true });
+      }),
     [visibleTableRecords],
   );
   const printRows = useMemo(() => buildProaPrintRows(printableTableRecords), [printableTableRecords]);
@@ -733,7 +747,10 @@ function GestionPROA() {
           const bedB = getLatestProaForm(b)?.cama || b.bedCode;
           return bedA.localeCompare(bedB, 'es', { numeric: true });
         }),
-      }));
+      }))
+      .sort((a, b) => {
+        return proaServiceOrderIndex(a.service) - proaServiceOrderIndex(b.service) || a.service.localeCompare(b.service, 'es');
+      });
   }, [visibleTableRecords]);
   const currentProaAnalytics = useMemo(() => {
     const antibioticCounts = new Map();
