@@ -19,13 +19,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { invokeLLM } from '@/lib/gemini';
 import InflammatoryCurve from '@/components/visita-proa/InflammatoryCurve';
 import DateInputDdmm from '@/components/sdm/DateInputDdmm';
-import { SERVICIOS, CAMAS } from '@/lib/hospitalSuggestions';
+import { PROA_BED_MAP as BASE_PROA_BED_MAP } from '@/lib/hospitalSuggestions';
 import { archiveProaRecord, saveProaRecord, takePendingProaForm } from '@/lib/proaRegistry';
 import { buildRenalFunctionText, calculateEgfrCkdEpi2021 } from '@/lib/renalFunction';
 import { getRenalAntimicrobialAlert, getRenalAntimicrobialAlerts } from '@/lib/renalAntimicrobialAlerts';
 import { supabase } from '@/lib/supabase';
 
 // ── Catálogos ──────────────────────────────────────────────
+const EVOLUTION_BED_MAP = [
+  ...BASE_PROA_BED_MAP,
+  { servicio: 'Hospitalización domiciliaria', groups: [{ label: 'Cupos', beds: Array.from({ length: 15 }, (_, index) => `HD-${index + 1}`) }] },
+];
 export const ANTIBIOTICOS = [
   'Ampicilina', 'Ampicilina + sulbactam', 'Amoxicilina', 'Amoxicilina + ácido clavulánico',
   'Cloxacilina', 'Penicilina G sódica',
@@ -1154,22 +1158,19 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                   <Input type="time" value={f.hora} onChange={e => u('hora', e.target.value)} className="h-9" />
                 </Field>
                 <Field label="Servicio">
-                  <input
+                  <select
                     value={f.servicio}
-                    onChange={e => u('servicio', e.target.value)}
-                    list="proa-servicio-suggestions"
-                    placeholder="MQ1, MQ2, Pediatría, Urgencias..."
-                    className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-teal-400 focus:outline-none"
-                  />
+                    onChange={e => setF((prev) => ({ ...prev, servicio: e.target.value, cama: '' }))}
+                    className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:border-teal-400 focus:outline-none"
+                  ><option value="">Seleccionar servicio…</option>{EVOLUTION_BED_MAP.map((service) => <option key={service.servicio} value={service.servicio}>{service.servicio}</option>)}</select>
                 </Field>
                 <Field label="Cama">
-                  <input
+                  <select
                     value={f.cama}
                     onChange={e => u('cama', e.target.value)}
-                    list="proa-cama-suggestions"
-                    className="w-full h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-teal-400 focus:outline-none"
-                    placeholder="1-1, 2-3, Aisl 5-1..."
-                  />
+                    disabled={!f.servicio}
+                    className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm focus:border-teal-400 focus:outline-none disabled:bg-slate-100"
+                  ><option value="">{f.servicio ? 'Seleccionar cama…' : 'Primero selecciona un servicio'}</option>{EVOLUTION_BED_MAP.find((service) => service.servicio === f.servicio)?.groups.flatMap((group) => group.beds).map((bed) => <option key={bed} value={bed}>{bed.replace(/^MQ2-/, '')}</option>)}</select>
                 </Field>
                 <Field label="N° Ficha">
                   <Input value={f.n_ficha} onChange={e => u('n_ficha', e.target.value)} className="h-9" />
@@ -1896,12 +1897,6 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
           </datalist>
           <datalist id="proa-diag-suggestions">
             {DIAGNOSTICOS_INFECTO.map(s => <option key={s} value={s} />)}
-          </datalist>
-          <datalist id="proa-servicio-suggestions">
-            {SERVICIOS.map(s => <option key={s} value={s} />)}
-          </datalist>
-          <datalist id="proa-cama-suggestions">
-            {CAMAS.map(s => <option key={s} value={s} />)}
           </datalist>
         </div>
       )}

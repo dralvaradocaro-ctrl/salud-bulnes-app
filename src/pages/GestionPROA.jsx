@@ -102,6 +102,51 @@ const normalizeMedicationName = (value) => String(value || '')
   .trim()
   .toLocaleLowerCase('es');
 
+function canonicalAntibioticName(value) {
+  const normalized = normalizeMedicationName(value).replace(/[+/_-]+/g, ' ').replace(/\s+/g, ' ');
+  if ((/\bpipe(?:racilina)?\b/.test(normalized) || normalized.includes('piperacilina')) && /\btazo(?:bactam)?\b/.test(normalized)) return 'Piperacilina + tazobactam';
+  if (/\bampi(?:cilina)?\b/.test(normalized) && /\bsulba(?:ctam)?\b/.test(normalized)) return 'Ampicilina + sulbactam';
+  if (/\bamoxi(?:cilina)?\b/.test(normalized) && /\b(?:clav|clavulan|clavulanico|acido clavulanico)\b/.test(normalized)) return 'Amoxicilina + ácido clavulánico';
+  if (/\bimipenem\b/.test(normalized) && /\bcila(?:statina)?\b/.test(normalized)) return 'Imipenem + cilastatina';
+  const catalogMatch = ANTIBIOTICOS.find((name) => normalizeMedicationName(name).replace(/[+/_-]+/g, ' ').replace(/\s+/g, ' ') === normalized);
+  if (catalogMatch) return catalogMatch;
+  return String(value || '').trim().replace(/\s+/g, ' ').replace(/^./, (letter) => letter.toLocaleUpperCase('es'));
+}
+
+function formatCombinedAntibioticDose(item, canonicalName) {
+  if (!canonicalName.includes(' + ')) return '';
+  const presentation = String(item?.presentacion || '');
+  const presentationMatch = presentation.match(/(\d+(?:[.,]\d+)?)\s*(?:mg|g)?\s*[+/]\s*(\d+(?:[.,]\d+)?)\s*(mg|g)/i);
+  const legacyDoseMatch = String(item?.dosis || '').match(/(\d+(?:[.,]\d+)?)\s*(mg|g)\b/i);
+  const amount = Number(String(item?.dosis_cantidad || legacyDoseMatch?.[1] || '').replace(',', '.'));
+  const unit = String(item?.dosis_unidad || legacyDoseMatch?.[2] || '').toLowerCase();
+  const formatAmount = (value) => String(value).replace('.', ',');
+  if (presentationMatch) {
+    const componentA = Number(presentationMatch[1].replace(',', '.'));
+    const componentB = Number(presentationMatch[2].replace(',', '.'));
+    const componentUnit = presentationMatch[3].toLowerCase();
+    const recordedIsFirstComponent = amount > 0 && unit === componentUnit && amount === componentA;
+    const totalText = amount > 0 && !recordedIsFirstComponent
+      ? `${formatAmount(amount)} ${unit || componentUnit}`
+      : `${formatAmount(componentA + componentB)} ${componentUnit}`;
+    return `${totalText} (${presentationMatch[1]} + ${presentationMatch[2]} ${componentUnit})`;
+  }
+  if (canonicalName === 'Amoxicilina + ácido clavulánico') {
+    if (unit === 'mg' && amount === 625) return '625 mg (500 + 125 mg)';
+    if (unit === 'mg' && amount === 1000) return '1000 mg (875 + 125 mg)';
+    if (unit === 'g' && amount === 0.625) return '0,625 g (500 + 125 mg)';
+  }
+  if (canonicalName === 'Ampicilina + sulbactam') {
+    if (unit === 'g' && amount === 1.5) return '1,5 g (1 + 0,5 g)';
+    if (unit === 'g' && amount === 3) return '3 g (2 + 1 g)';
+  }
+  if (canonicalName === 'Piperacilina + tazobactam') {
+    if (unit === 'g' && amount === 4.5) return '4,5 g (4 + 0,5 g)';
+    if (unit === 'g' && amount === 4) return '4,5 g (4 + 0,5 g)';
+  }
+  return '';
+}
+
 function formatArsenalPresentation(medication) {
   const strength = medication?.dose_value != null && medication?.dose_unit
     ? `${medication.dose_value} ${medication.dose_unit}`
@@ -114,7 +159,7 @@ function summarizeLatest(form) {
   const diagnosis = form.diagnostico_actual || 'Sin diagnóstico consignado';
   const atb = (form.antibioticos || [])
     .filter((item) => item.nombre)
-    .map((item) => item.nombre)
+    .map((item) => canonicalAntibioticName(item.nombre))
     .slice(0, 3)
     .join(', ');
   return atb ? `${diagnosis} · ATB: ${atb}` : diagnosis;
@@ -220,7 +265,7 @@ function formatPreAntibiotic(item) {
     ? `${item.dosis_cantidad || ''} ${Number(item.dosis_cantidad) === 1 ? 'ampolla' : 'ampollas'}`
     : `${item.dosis_cantidad || ''} ${item.dosis_unidad || ''}`.trim();
   return [
-    item.nombre,
+    canonicalAntibioticName(item.nombre),
     item.presentacion && `(${item.presentacion})`,
     dose,
     item.intervalo_horas && `c/${item.intervalo_horas} h`,
@@ -268,23 +313,23 @@ function formatMicroStudies(form) {
 }
 
 function formatAntimicrobial(item, form) {
-  const structuredDose = item.dosis_modo === 'ampolla' || item.dosis_unidad === 'ampolla'
+  const canonicalName = canonicalAntibioticName(item.nombre);
+  const combinedDose = formatCombinedAntibioticDose(item, canonicalName);
+  const structuredDose = combinedDose || (item.dosis_modo === 'ampolla' || item.dosis_unidad === 'ampolla'
     ? item.unidades_por_dosis && `${item.unidades_por_dosis} ampolla${Number(item.unidades_por_dosis) === 1 ? '' : 's'}`
-    : item.dosis_cantidad && `${item.dosis_cantidad} ${item.dosis_unidad || ''}`.trim();
-  const dose = item.dosis || [
-    structuredDose,
-    item.intervalo_horas && `c/${item.intervalo_horas} h`,
-    item.via,
-  ].filter(Boolean).join(' ');
+    : item.dosis_cantidad && `${item.dosis_cantidad} ${item.dosis_unidad || ''}`.trim());
+  const dose = combinedDose
+    ? [combinedDose, item.intervalo_horas && `c/${item.intervalo_horas} h`, item.via].filter(Boolean).join(' ')
+    : item.dosis || [structuredDose, item.intervalo_horas && `c/${item.intervalo_horas} h`, item.via].filter(Boolean).join(' ');
   const duration = item.inicio
     ? daysSince(item.inicio, { inclusive: true })
     : null;
   const isSuspended = item.__isCurrent === false || Boolean(item.termino && item.termino <= localTodayIso());
   return {
-    name: item.nombre || '—',
+    name: canonicalName || '—',
     nameWithCourse: item.inicio
-      ? `${item.nombre || '—'} (FI: ${formatClinicalDate(item.inicio)}${item.hora_inicio ? ` ${item.hora_inicio}` : ''} · ${preAntibioticTreatmentDays(item) ?? '—'} día${preAntibioticTreatmentDays(item) === 1 ? '' : 's'}${item.termino ? ' totales' : ''})`
-      : `${item.nombre || '—'} (FI: no registrada)`,
+      ? `${canonicalName || '—'} (FI: ${formatClinicalDate(item.inicio)}${item.hora_inicio ? ` ${item.hora_inicio}` : ''} · ${preAntibioticTreatmentDays(item) ?? '—'} día${preAntibioticTreatmentDays(item) === 1 ? '' : 's'}${item.termino ? ' totales' : ''})`
+      : `${canonicalName || '—'} (FI: no registrada)`,
     dose: dose || 'Dosis no registrada',
     isSuspended,
     statusLabel: isSuspended ? 'Suspendido' : 'Vigente',
@@ -304,7 +349,7 @@ function getChronologicalAntimicrobials(record) {
     (Array.isArray(form.antibioticos) ? form.antibioticos : [])
       .filter((item) => item?.nombre)
       .forEach((item) => {
-        const key = `${String(item.nombre).trim().toLocaleLowerCase('es')}|${item.inicio || 'sin-fecha'}`;
+        const key = `${normalizeMedicationName(canonicalAntibioticName(item.nombre))}|${item.inicio || 'sin-fecha'}`;
         const previous = courses.get(key) || {};
         courses.set(key, { ...previous, ...item, __sourceForm: form });
       });
@@ -312,7 +357,7 @@ function getChronologicalAntimicrobials(record) {
   const latestForm = record?.evolutions?.[0]?.form || {};
   const currentCourseKeys = new Set((Array.isArray(latestForm.antibioticos) ? latestForm.antibioticos : [])
     .filter((item) => item?.nombre)
-    .map((item) => `${String(item.nombre).trim().toLocaleLowerCase('es')}|${item.inicio || 'sin-fecha'}`));
+    .map((item) => `${normalizeMedicationName(canonicalAntibioticName(item.nombre))}|${item.inicio || 'sin-fecha'}`));
   return [...courses.entries()].map(([key, item]) => ({
     ...item,
     __isCurrent: currentCourseKeys.has(key),
@@ -534,6 +579,7 @@ function GestionPROA() {
   const [activeArsenal, setActiveArsenal] = useState([]);
   const [arsenalStatus, setArsenalStatus] = useState('loading');
   const [preAdmission, setPreAdmission] = useState({
+    servicio: '',
     cama: '',
     paciente: '',
     rut: '',
@@ -705,8 +751,11 @@ function GestionPROA() {
       if (antibiotics.length > 0) patientsWithAntibiotics += 1;
       if (antibiotics.length > 0 && positiveCultures.length > 0) patientsWithPositiveCulture += 1;
       antibiotics.forEach((item) => {
-        const name = item.nombre.trim();
-        antibioticCounts.set(name, (antibioticCounts.get(name) || 0) + 1);
+        const canonicalName = canonicalAntibioticName(item.nombre);
+        const presentation = String(item.presentacion || '').trim().replace(/\s+/g, ' ');
+        const key = `${normalizeMedicationName(canonicalName)}|${normalizeMedicationName(presentation)}`;
+        const current = antibioticCounts.get(key) || { name: canonicalName, presentation, count: 0 };
+        antibioticCounts.set(key, { ...current, count: current.count + 1 });
       });
       positiveCultures.forEach((culture) => {
         const pathogen = culture.patogeno.trim();
@@ -714,10 +763,10 @@ function GestionPROA() {
       });
     });
 
-    const totalTreatments = [...antibioticCounts.values()].reduce((sum, count) => sum + count, 0);
-    const antibiotics = [...antibioticCounts.entries()]
-      .map(([name, count]) => ({
-        name,
+    const totalTreatments = [...antibioticCounts.values()].reduce((sum, item) => sum + item.count, 0);
+    const antibiotics = [...antibioticCounts.values()]
+      .map(({ name, presentation, count }) => ({
+        name: presentation ? `${name} · ${presentation}` : name,
         count,
         percentage: totalTreatments ? Math.round((count / totalTreatments) * 1000) / 10 : 0,
       }))
@@ -813,6 +862,7 @@ function GestionPROA() {
 
   const openPreAdmission = (bed = '', { archiveOnly = false } = {}) => {
     setPreAdmission({
+      servicio: findServiceForBed(bed),
       cama: bed,
       paciente: '',
       rut: '',
@@ -1826,7 +1876,7 @@ function GestionPROA() {
             <div className="rounded-lg border border-slate-200 p-3">
               <p className="mb-2 text-xs font-bold uppercase text-slate-500">Antibioterapia</p>
               <p className="whitespace-pre-wrap text-sm text-slate-700">
-                {(viewedLatest?.antibioticos || []).filter((item) => item?.nombre).map((item) => `${item.nombre}: ${formatAntimicrobial(item, viewedLatest).dose}`).join('\n') || '—'}
+                {(viewedLatest?.antibioticos || []).filter((item) => item?.nombre).map((item) => `${canonicalAntibioticName(item.nombre)}: ${formatAntimicrobial(item, viewedLatest).dose}`).join('\n') || '—'}
               </p>
             </div>
             <div className="rounded-lg border border-slate-200 p-3">
@@ -1907,18 +1957,26 @@ function GestionPROA() {
           </DialogHeader>
           <div className="grid gap-x-4 gap-y-3 md:grid-cols-12">
             <div className="space-y-1.5 md:col-span-3">
+              <Label htmlFor="proa-pre-service">Servicio *</Label>
+              <select id="proa-pre-service" value={preAdmission.servicio || ''} onChange={(event) => setPreAdmission((current) => ({ ...current, servicio: event.target.value, cama: '' }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                <option value="">Seleccionar servicio…</option>
+                {PROA_BED_MAP.map((service) => <option key={service.servicio} value={service.servicio}>{service.servicio}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5 md:col-span-3">
               <Label htmlFor="proa-pre-bed">Cama *</Label>
               <select
                 id="proa-pre-bed"
                 value={preAdmission.cama}
+                disabled={!preAdmission.servicio}
                 onChange={(event) => {
                   setPreAdmission((current) => ({ ...current, cama: event.target.value }));
                   setPreAdmissionError('');
                 }}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
-                <option value="">Seleccionar cama...</option>
-                {ALL_PROA_BEDS.map(({ bed, servicio }) => <option key={bed} value={bed}>{servicio} · {displayBedCode(bed)}</option>)}
+                <option value="">{preAdmission.servicio ? 'Seleccionar cama…' : 'Primero selecciona un servicio'}</option>
+                {ALL_PROA_BEDS.filter(({ servicio }) => servicio === preAdmission.servicio).map(({ bed }) => <option key={bed} value={bed}>{displayBedCode(bed)}</option>)}
               </select>
             </div>
             <div className="space-y-1.5 md:col-span-2">
