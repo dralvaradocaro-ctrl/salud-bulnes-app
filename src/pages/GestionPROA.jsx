@@ -20,7 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PROA_BED_MAP as BASE_PROA_BED_MAP } from '@/lib/hospitalSuggestions';
-import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, moveProaRecordToBed, readProaRegistry, saveProaPreAdmission, setPendingProaForm } from '@/lib/proaRegistry';
+import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, moveProaRecordToBed, readProaRegistry, saveProaPreAdmission, saveProaRecord, setPendingProaForm } from '@/lib/proaRegistry';
 import { buildRenalFunctionText, normalizeCreatinine } from '@/lib/renalFunction';
 import { supabase } from '@/lib/supabase';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, DIAGNOSTICOS_INFECTO, PATOGENOS, PRESENTACIONES_ATB, TIPOS_MUESTRA } from '@/pages/VisitaPROA';
@@ -298,6 +298,27 @@ function getLastInflammatoryRows(form) {
     .slice(0, 3);
 }
 
+function getLastInflammatoryRowsForRecord(record, limit = 3) {
+  const unique = new Map();
+  (record?.evolutions || []).forEach((evolution) => {
+    const form = evolution?.form || {};
+    (form.parametros_inflamatorios || []).forEach((row) => {
+      if (!row || !Object.values(row).some(Boolean)) return;
+      const normalized = { ...row, blancos: row.blancos || row.leucocitos || '', crea: row.crea || row.creatinina || '' };
+      const key = `${normalized.fecha || ''}|${normalized.pcr || ''}|${normalized.pct || ''}|${normalized.blancos}|${normalized.crea}`;
+      if (!unique.has(key)) unique.set(key, normalized);
+    });
+    (form.creatininas || []).forEach((item) => {
+      if (!item?.valor) return;
+      const key = `${item.fecha || ''}||||${item.valor}`;
+      if (!unique.has(key)) unique.set(key, { fecha: item.fecha || '', crea: item.valor });
+    });
+  });
+  return [...unique.values()]
+    .sort((a, b) => (parseProaDate(b.fecha)?.getTime() || 0) - (parseProaDate(a.fecha)?.getTime() || 0))
+    .slice(0, limit);
+}
+
 function formatInflammatoryRow(row) {
   const values = [
     row.pcr && `PCR ${row.pcr}`,
@@ -487,7 +508,7 @@ function buildProaTableRows(records) {
       form.funcion_renal || '—',
       formatMicrobiologicalDiagnosis(form),
       formatMicroStudies(form),
-      getLastInflammatoryRows(form).map(formatInflammatoryRow).join('\n') || '—',
+      getLastInflammatoryRowsForRecord(record).map(formatInflammatoryRow).join('\n') || '—',
       formatted.map((item) => `${item.name}\nPauta: ${item.dose}\n${item.duration}`).join('\n\n') || form.antibioterapia_preingreso || '—',
       plan || '—',
     ];
@@ -529,7 +550,7 @@ function buildProaPrintRows(records) {
       `${form.diagnostico_actual || '—'}\n\nFunción renal: ${form.funcion_renal || '—'}`,
       antibioticText,
       microbiology,
-      getLastInflammatoryRows(form).map(formatInflammatoryRow).join('\n') || '—',
+      getLastInflammatoryRowsForRecord(record).map(formatInflammatoryRow).join('\n') || '—',
       plan,
     ];
   });
@@ -599,6 +620,10 @@ function GestionPROA() {
     diagnosticos: [''],
     examenes_sangre: [{ ...EMPTY_PRE_BLOOD_TEST }],
   });
+  const [quickUpdateOpen, setQuickUpdateOpen] = useState(false);
+  const [quickUpdateSaving, setQuickUpdateSaving] = useState(false);
+  const [quickUpdateError, setQuickUpdateError] = useState('');
+  const [quickUpdate, setQuickUpdate] = useState({ antibioticos: [{ ...EMPTY_PRE_ANTIBIOTIC }], examenes_sangre: [{ ...EMPTY_PRE_BLOOD_TEST }] });
 
   const recordsByBed = useMemo(() => (
     records.filter((record) => !isHistoricalProaRecord(record)).reduce((acc, record) => {
@@ -1057,6 +1082,58 @@ function GestionPROA() {
     examenes_sangre: current.examenes_sangre.length === 1 ? [{ ...EMPTY_PRE_BLOOD_TEST }] : current.examenes_sangre.filter((_, itemIndex) => itemIndex !== index),
   }));
 
+  const openQuickUpdate = () => {
+    if (!selectedRecord) return;
+    const currentAntibiotics = (selectedLatest?.antibioticos || []).filter((item) => item?.nombre).map((item) => ({ ...EMPTY_PRE_ANTIBIOTIC, ...item }));
+    setQuickUpdate({ antibioticos: currentAntibiotics.length ? currentAntibiotics : [{ ...EMPTY_PRE_ANTIBIOTIC }], examenes_sangre: [{ ...EMPTY_PRE_BLOOD_TEST, fecha: localTodayIso() }] });
+    setQuickUpdateError('');
+    setQuickUpdateOpen(true);
+  };
+  const updateQuickAntibiotic = (index, key, value) => setQuickUpdate((current) => ({
+    ...current,
+    antibioticos: current.antibioticos.map((item, itemIndex) => {
+      if (itemIndex !== index) return item;
+      if (key === 'presentacion') {
+        const presentation = getAvailablePresentations(item.nombre).options.find((option) => option.label === value);
+        return { ...item, presentacion: value, presentacion_unidad: presentation?.unidad || item.presentacion_unidad, dosis_unidad: presentation?.envase || presentation?.unidad || item.dosis_unidad };
+      }
+      if (key !== 'nombre') return { ...item, [key]: value };
+      const canonicalName = savedClinicalCatalog.antibiotics.find((name) => normalizeMedicationName(name) === normalizeMedicationName(value)) || value;
+      const preset = DEFAULT_DOSIS_ATB[canonicalName] || {};
+      const { options } = getAvailablePresentations(canonicalName);
+      const presentation = options.find((option) => option.label === preset.presentacion) || options[0];
+      return { ...item, ...preset, nombre: canonicalName, presentacion: presentation?.label || preset.presentacion || item.presentacion, presentacion_unidad: presentation?.unidad || preset.dosis_unidad || item.presentacion_unidad };
+    }),
+  }));
+  const updateQuickBloodTest = (index, key, value) => setQuickUpdate((current) => ({ ...current, examenes_sangre: current.examenes_sangre.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item) }));
+  const saveQuickUpdate = async () => {
+    if (!selectedRecord || !selectedLatest) return;
+    const newRows = quickUpdate.examenes_sangre.filter((row) => row.fecha || row.pcr || row.pct || row.leucocitos || row.crea).map((row) => ({ ...row, blancos: row.leucocitos || row.blancos || '' }));
+    setQuickUpdateSaving(true);
+    setQuickUpdateError('');
+    try {
+      const latestCreaRow = [...newRows].filter((row) => row.crea).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)))[0];
+      await saveProaRecord({
+        ...selectedLatest,
+        fecha: localTodayIso(),
+        hora: new Date().toTimeString().slice(0, 5),
+        proa_entry_type: 'actualizacion_rapida',
+        antibioticos: quickUpdate.antibioticos.filter((item) => item.nombre),
+        parametros_inflamatorios: [...newRows, ...(selectedLatest.parametros_inflamatorios || [])],
+        creatinina: latestCreaRow?.crea || selectedLatest.creatinina || '',
+        fecha_creatinina: latestCreaRow?.fecha || selectedLatest.fecha_creatinina || '',
+        creatininas: [...(selectedLatest.creatininas || []), ...newRows.filter((row) => row.crea).map((row) => ({ fecha: row.fecha, valor: row.crea }))],
+      });
+      setQuickUpdateOpen(false);
+      await refreshRecords();
+    } catch (error) {
+      console.error('Error en actualización rápida PROA:', error);
+      setQuickUpdateError('No fue posible guardar la actualización rápida.');
+    } finally {
+      setQuickUpdateSaving(false);
+    }
+  };
+
   const printProaTable = () => {
     const printWindow = window.open('', '_blank', 'width=1400,height=900');
     if (!printWindow) return;
@@ -1465,6 +1542,9 @@ function GestionPROA() {
                     <Button onClick={editFromLatest} className="w-full bg-teal-600 hover:bg-teal-700">
                       Actualizar evolución
                     </Button>
+                    <Button type="button" onClick={openQuickUpdate} variant="outline" className="w-full border-violet-300 bg-white font-semibold text-violet-800 hover:bg-violet-50">
+                      Actualizar antibióticos/exámenes
+                    </Button>
                     <p className="text-[11px] leading-tight text-teal-800">Carga la evolución previa y actualiza días de hospitalización, días de antibiótico y la curva inflamatoria.</p>
                     <Button
                       type="button"
@@ -1760,7 +1840,7 @@ function GestionPROA() {
                       const effectiveBed = form.cama || record.bedCode;
                       const antimicrobials = getChronologicalAntimicrobials(record);
                       const formattedAntimicrobials = antimicrobials.map((item) => formatAntimicrobial(item, item.__sourceForm || form));
-                      const piRows = getLastInflammatoryRows(form);
+                      const piRows = getLastInflammatoryRowsForRecord(record);
                       const latestCrea = latestCreatinine(form);
                       const plan = [
                         ...(form.recomendaciones || []),
@@ -1958,6 +2038,17 @@ function GestionPROA() {
               Imprimir esta vista
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={quickUpdateOpen} onOpenChange={(open) => { if (!quickUpdateSaving) setQuickUpdateOpen(open); }}>
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-2rem)] max-w-5xl overflow-y-auto">
+          <DialogHeader><DialogTitle>Actualizar antibióticos y exámenes</DialogTitle></DialogHeader>
+          <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 text-sm"><strong>{selectedLatest?.paciente || selectedRecord?.code}</strong> · {findServiceForBed(selectedRecord?.bedCode)} · Cama {displayBedCode(selectedRecord?.bedCode)}</div>
+          <section className="space-y-3"><div className="flex items-center justify-between"><h3 className="font-black text-slate-900">Antimicrobianos</h3><Button type="button" variant="outline" size="sm" onClick={() => setQuickUpdate((current) => ({ ...current, antibioticos: [...current.antibioticos, { ...EMPTY_PRE_ANTIBIOTIC }] }))} className="gap-1"><Plus className="h-3.5 w-3.5" /> Agregar</Button></div>{quickUpdate.antibioticos.map((item, index) => { const presentations = getAvailablePresentations(item.nombre).options; return <div key={index} className="grid gap-2 rounded-lg border bg-slate-50 p-3 md:grid-cols-12"><div className="md:col-span-3"><Label className="mb-1 block text-xs">Antibiótico</Label><Input list="proa-quick-antibiotics" value={item.nombre} onChange={(event) => updateQuickAntibiotic(index, 'nombre', event.target.value)} /></div><div className="md:col-span-3"><Label className="mb-1 block text-xs">Presentación</Label><select value={item.presentacion || ''} onChange={(event) => updateQuickAntibiotic(index, 'presentacion', event.target.value)} className="h-10 w-full rounded-md border bg-white px-2 text-sm"><option value="">Seleccionar…</option>{presentations.map((option) => <option key={option.label} value={option.label}>{option.label}</option>)}</select></div><div className="md:col-span-2"><Label className="mb-1 block text-xs">Dosis</Label><div className="flex"><Input value={item.dosis_cantidad || ''} onChange={(event) => updateQuickAntibiotic(index, 'dosis_cantidad', event.target.value)} className="rounded-r-none" /><select value={item.dosis_unidad || 'mg'} onChange={(event) => updateQuickAntibiotic(index, 'dosis_unidad', event.target.value)} className="w-24 rounded-r-md border bg-white px-1 text-xs">{['mg','g','UI','MUI','comprimido','ampolla'].map((unit) => <option key={unit}>{unit}</option>)}</select></div></div><div className="md:col-span-1"><Label className="mb-1 block text-xs">Cada h</Label><Input value={item.intervalo_horas || ''} onChange={(event) => updateQuickAntibiotic(index, 'intervalo_horas', event.target.value)} /></div><div className="md:col-span-1"><Label className="mb-1 block text-xs">Vía</Label><select value={item.via || 'EV'} onChange={(event) => updateQuickAntibiotic(index, 'via', event.target.value)} className="h-10 w-full rounded-md border bg-white px-1 text-sm">{['EV','VO','IM','SC'].map((via) => <option key={via}>{via}</option>)}</select></div><div className="md:col-span-2"><Label className="mb-1 block text-xs">Inicio</Label><Input type="date" value={item.inicio || ''} onChange={(event) => updateQuickAntibiotic(index, 'inicio', event.target.value)} /></div><div className="md:col-span-2"><Label className="mb-1 block text-xs">Término</Label><Input type="date" value={item.termino || ''} onChange={(event) => updateQuickAntibiotic(index, 'termino', event.target.value)} /></div><div className="flex items-end md:col-span-1"><Button type="button" variant="ghost" size="icon" onClick={() => setQuickUpdate((current) => ({ ...current, antibioticos: current.antibioticos.length === 1 ? [{ ...EMPTY_PRE_ANTIBIOTIC }] : current.antibioticos.filter((_, itemIndex) => itemIndex !== index) }))} className="text-red-600"><Trash2 className="h-4 w-4" /></Button></div></div>; })}<datalist id="proa-quick-antibiotics">{savedClinicalCatalog.antibiotics.map((name) => <option key={name} value={name} />)}</datalist></section>
+          <section className="space-y-3"><div className="flex items-center justify-between"><h3 className="font-black text-slate-900">Exámenes de sangre</h3><Button type="button" variant="outline" size="sm" onClick={() => setQuickUpdate((current) => ({ ...current, examenes_sangre: [...current.examenes_sangre, { ...EMPTY_PRE_BLOOD_TEST, fecha: localTodayIso() }] }))} className="gap-1"><Plus className="h-3.5 w-3.5" /> Agregar control</Button></div>{quickUpdate.examenes_sangre.map((exam, index) => <div key={index} className="grid gap-2 rounded-lg border bg-slate-50 p-3 sm:grid-cols-[150px_repeat(4,minmax(90px,1fr))_36px]"><Input type="date" value={exam.fecha} onChange={(event) => updateQuickBloodTest(index, 'fecha', event.target.value)} /><Input value={exam.pcr} onChange={(event) => updateQuickBloodTest(index, 'pcr', event.target.value)} placeholder="PCR" /><Input value={exam.pct} onChange={(event) => updateQuickBloodTest(index, 'pct', event.target.value)} placeholder="PCT" /><Input value={exam.leucocitos} onChange={(event) => updateQuickBloodTest(index, 'leucocitos', event.target.value)} placeholder="Leucocitos" /><Input value={exam.crea} onChange={(event) => updateQuickBloodTest(index, 'crea', event.target.value)} placeholder="Creatinina" /><Button type="button" variant="ghost" size="icon" onClick={() => setQuickUpdate((current) => ({ ...current, examenes_sangre: current.examenes_sangre.length === 1 ? [{ ...EMPTY_PRE_BLOOD_TEST }] : current.examenes_sangre.filter((_, itemIndex) => itemIndex !== index) }))} className="text-red-600"><Trash2 className="h-4 w-4" /></Button></div>)}</section>
+          {quickUpdateError && <p className="text-sm font-semibold text-red-600">{quickUpdateError}</p>}
+          <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setQuickUpdateOpen(false)} disabled={quickUpdateSaving}>Cancelar</Button><Button onClick={saveQuickUpdate} disabled={quickUpdateSaving} className="bg-teal-700 hover:bg-teal-800">{quickUpdateSaving ? 'Guardando…' : 'Guardar actualización'}</Button></div>
         </DialogContent>
       </Dialog>
 

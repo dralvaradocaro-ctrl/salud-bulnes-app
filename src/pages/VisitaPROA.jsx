@@ -32,7 +32,7 @@ const EVOLUTION_BED_MAP = [
 ];
 export const ANTIBIOTICOS = [
   'Ampicilina', 'Ampicilina + sulbactam', 'Amoxicilina', 'Amoxicilina + ácido clavulánico',
-  'Cloxacilina', 'Penicilina G sódica',
+  'Cloxacilina', 'Penicilina G sódica', 'Penicilina G benzatina', 'Penicilina V',
   'Cefazolina', 'Cefuroxima', 'Cefotaxima', 'Ceftriaxona', 'Ceftazidima', 'Cefepime',
   'Ertapenem', 'Meropenem', 'Imipenem + cilastatina',
   'Piperacilina + tazobactam',
@@ -48,6 +48,9 @@ export const ANTIBIOTICOS = [
 
 // Presentaciones disponibles para construir dosis concretas por administración.
 export const PRESENTACIONES_ATB = {
+  'Penicilina G sódica': [{ label: 'Frasco ampolla 1.000.000 UI', cantidad: 1000000, unidad: 'UI', envase: 'frasco ampolla' }, { label: 'Frasco ampolla 5.000.000 UI', cantidad: 5000000, unidad: 'UI', envase: 'frasco ampolla' }],
+  'Penicilina G benzatina': [{ label: 'Frasco ampolla 1.200.000 UI', cantidad: 1200000, unidad: 'UI', envase: 'frasco ampolla' }, { label: 'Frasco ampolla 2.400.000 UI', cantidad: 2400000, unidad: 'UI', envase: 'frasco ampolla' }],
+  'Penicilina V': [{ label: 'Comprimido 500 mg', cantidad: 500, unidad: 'mg', envase: 'comprimido' }],
   'Amoxicilina + ácido clavulánico': [{ label: 'Comprimido 500/125 mg', cantidad: 1, unidad: 'comprimido', envase: 'comprimido' }, { label: 'Comprimido 875/125 mg', cantidad: 1, unidad: 'comprimido', envase: 'comprimido' }],
   'Amikacina': [{ label: 'Ampolla 500 mg/2 mL', cantidad: 500, unidad: 'mg', envase: 'ampolla' }, { label: 'Ampolla 100 mg/2 mL', cantidad: 100, unidad: 'mg', envase: 'ampolla' }],
   'Gentamicina': [{ label: 'Ampolla 80 mg/2 mL', cantidad: 80, unidad: 'mg', envase: 'ampolla' }],
@@ -74,6 +77,9 @@ export const PRESENTACIONES_ATB = {
 };
 
 export const DEFAULT_DOSIS_ATB = {
+  'Penicilina G sódica': { presentacion: 'Frasco ampolla 5.000.000 UI', dosis_cantidad: 4000000, dosis_unidad: 'UI', intervalo_horas: '4', via: 'EV' },
+  'Penicilina G benzatina': { presentacion: 'Frasco ampolla 1.200.000 UI', dosis_cantidad: 1200000, dosis_unidad: 'UI', intervalo_horas: '24', via: 'IM' },
+  'Penicilina V': { presentacion: 'Comprimido 500 mg', dosis_cantidad: 500, dosis_unidad: 'mg', intervalo_horas: '6', via: 'VO' },
   'Amoxicilina + ácido clavulánico': { presentacion: 'Comprimido 875/125 mg', dosis_cantidad: 1, dosis_unidad: 'comprimido', intervalo_horas: '12', via: 'VO' },
   'Amikacina': { presentacion: 'Ampolla 500 mg/2 mL', dosis_por_kg: 15, dosis_unidad: 'mg', intervalo_horas: '24', via: 'EV' },
   'Gentamicina': { presentacion: 'Ampolla 80 mg/2 mL', dosis_por_kg: 5, dosis_unidad: 'mg', intervalo_horas: '24', via: 'EV' },
