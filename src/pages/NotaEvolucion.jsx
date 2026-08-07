@@ -65,7 +65,13 @@ export default function NotaEvolucion() {
       ...prev,
       pacienteNombre: prefill.patient_name || prev.pacienteNombre,
       pacienteRut: prefill.patient_rut ? formatRut(prefill.patient_rut) : prev.pacienteRut,
+      servicio: prefill.servicio || prev.servicio,
+      cama: prefill.cama || prev.cama,
     }));
+    if (prefill.servicio && prefill.cama) {
+      setSelectedService(prefill.servicio);
+      setShowBedSelector(false);
+    }
   }, []);
 
   useEffect(() => {

@@ -935,6 +935,21 @@ export default function Category() {
             )}
 
             {/* Indicaciones clínicas prehechas – solo en Urgencias */}
+            {(hasHospitalizados || hasUrgencias) && (
+              <Link to={createPageUrl('FormulariosHODOM')} className="block">
+                <div className={`${FORM_CARD_CLASS} border-indigo-200 bg-indigo-50/80 hover:border-indigo-300`}>
+                  <div className={`${FORM_ICON_CLASS} bg-indigo-600`}>
+                    <FileText className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900">Hospitalización Domiciliaria (HODOM)</p>
+                    <p className="text-sm text-slate-500 truncate">Derivación y consentimiento informado editables, con vista previa e impresión en formato original.</p>
+                  </div>
+                </div>
+              </Link>
+            )}
+
+            {/* Indicaciones clínicas prehechas – solo en Urgencias */}
             {hasUrgencias && (
               <Link to={createPageUrl('IndicacionesUrgencia')} className="block">
                 <div className={`${FORM_CARD_CLASS} border-rose-200 bg-rose-50/80 hover:border-rose-300`}>
@@ -1047,19 +1062,27 @@ export default function Category() {
                   </div>
                 </Link>
 
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100">
-                      <Database className="h-5 w-5 text-slate-500" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-900">Próximas gestiones</p>
-                      <p className="text-sm text-slate-500 mt-1">
-                        Aquí se podrán sumar tablas de pacientes, planillas Excel y otros flujos administrativos clínicos.
-                      </p>
+                <Link to={createPageUrl('VistaHospitalizados')} className="group block">
+                  <div className="h-full rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-5 transition-all hover:border-emerald-400 hover:shadow-md">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-700 transition-transform group-hover:scale-105">
+                        <Database className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-bold text-slate-900">Vista general</p>
+                          <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">Acceso protegido</Badge>
+                        </div>
+                        <p className="mt-1 text-sm text-slate-600">
+                          Camas, pacientes, diagnósticos, antibioterapia y generación inteligente de documentos.
+                        </p>
+                        <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700">
+                          Abrir <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </Link>
               </motion.div>
             )}
 

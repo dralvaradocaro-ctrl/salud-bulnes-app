@@ -301,6 +301,7 @@ export default function SolicitudExamenes() {
       n_ficha:          p.n_ficha           || prev.n_ficha,
       prevision:        p.prevision         || prev.prevision,
       diagnostico:      p.diagnostico       || prev.diagnostico,
+      procedencia:      p.servicio          || prev.procedencia,
     }));
   }, []);
 

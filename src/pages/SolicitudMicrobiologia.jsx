@@ -307,6 +307,8 @@ export default function SolicitudMicrobiologia() {
       fecha_nacimiento: p.patient_fecha_nac || prev.fecha_nacimiento,
       prevision:        p.prevision         || prev.prevision,
       diagnostico:      p.diagnostico       || prev.diagnostico,
+      servicio:         p.servicio          || prev.servicio,
+      cama:             p.cama              || prev.cama,
     }));
   }, []);
 
