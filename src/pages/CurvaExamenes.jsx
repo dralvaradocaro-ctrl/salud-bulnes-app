@@ -335,6 +335,25 @@ const catalogToProaBed = (bed) => {
 
 const PROA_TO_CATALOG_BED = new Map(ALL_BEDS.map((bed) => [catalogToProaBed(bed), bed.code]).filter(([proaBed]) => proaBed));
 
+const PROA_LAB_DEFINITIONS = [
+  ['pcr', 'PCR', 'mg/L'], ['pct', 'Procalcitonina', 'ng/mL'], ['blancos', 'Leucocitos', '/mm³'],
+  ['crea', 'Creatinina', 'mg/dL'], ['vhs', 'VHS', 'mm/h'], ['temp', 'Temperatura', '°C'],
+];
+const proaLabResults = (record) => {
+  const form = getLatestProaForm(record) || {};
+  return (form.parametros_inflamatorios || []).flatMap((row) => PROA_LAB_DEFINITIONS.flatMap(([key, name, unit]) => {
+    const raw = row?.[key] ?? (key === 'blancos' ? row?.leucocitos : '');
+    if (raw === '' || raw == null) return [];
+    const collectedAt = `${row.fecha || form.fecha || new Date().toISOString().slice(0, 10)}T12:00:00`;
+    return [{ id: `proa-${record.id}-${key}-${collectedAt}`, examKey: key === 'blancos' ? 'wbc' : key, name, category: 'Sangre', value: Number(String(raw).replace(',', '.')), unit, originalUnit: unit, collectedAt, originalText: '', sourceHadIdentifiers: false, status: 'confirmed', confidence: 'alta', source: 'proa' }];
+  }));
+};
+
+const mergeProaLabResults = (episode, record) => {
+  const manual = (episode.results || []).filter((item) => item.source !== 'proa');
+  return { ...episode, results: [...manual, ...proaLabResults(record)] };
+};
+
 function CurvaExamenes() {
   const initial = useMemo(loadState, []);
   const [episodes, setEpisodes] = useState(initial.episodes);
@@ -424,10 +443,12 @@ function CurvaExamenes() {
         if (proaRecord) {
           const form = getLatestProaForm(proaRecord) || {};
           const catalogBed = PROA_TO_CATALOG_BED.get(form.cama || proaRecord.bedCode);
+          const syncedEpisode = mergeProaLabResults(episode, proaRecord);
+          changed = true;
           if (catalogBed && catalogBed !== episode.bedCode) {
-            changed = true;
-            return [{ ...episode, bedCode: catalogBed, service: ALL_BEDS.find((bed) => bed.code === catalogBed)?.serviceShort || episode.service, movements: [...(episode.movements || []), { type: 'traslado', bedCode: catalogBed, at: new Date().toISOString(), source: 'proa' }] }];
+            return [{ ...syncedEpisode, bedCode: catalogBed, service: ALL_BEDS.find((bed) => bed.code === catalogBed)?.serviceShort || episode.service, movements: [...(episode.movements || []), { type: 'traslado', bedCode: catalogBed, at: new Date().toISOString(), source: 'proa' }] }];
           }
+          return [syncedEpisode];
         }
         return [episode];
       });
@@ -440,7 +461,7 @@ function CurvaExamenes() {
         if (!bed) return;
         const existingIndex = next.findIndex((episode) => episode.status === 'hospitalizado' && episode.bedCode === catalogBed && !episode.proaRecordId);
         if (existingIndex >= 0) {
-          next[existingIndex] = { ...next[existingIndex], proaRecordId: record.id, source: 'proa' };
+          next[existingIndex] = mergeProaLabResults({ ...next[existingIndex], proaRecordId: record.id, source: 'proa' }, record);
           changed = true;
           return;
         }
@@ -449,7 +470,7 @@ function CurvaExamenes() {
         next.unshift({
           id: makeId(), code: makeCode(), bedCode: catalogBed, service: bed.serviceShort,
           admittedAt, ageRange: '', clinicalSex: '', admissionConfirmed: true,
-          proaRecordId: record.id, source: 'proa', status: 'hospitalizado', results: [],
+          proaRecordId: record.id, source: 'proa', status: 'hospitalizado', results: proaLabResults(record),
           movements: [{ type: 'ingreso', bedCode: catalogBed, at: admittedAt, source: 'proa' }],
         });
         changed = true;

@@ -567,6 +567,11 @@ function escapeHtml(value) {
 
 function GestionPROA() {
   const navigate = useNavigate();
+  const deepLinkHandled = useRef(false);
+  const deepLink = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return { bed: params.get('bed') || '', action: params.get('action') || '' };
+  }, []);
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
     else navigate(createPageUrl('Home'));
@@ -828,6 +833,20 @@ function GestionPROA() {
 
   // Cargar desde Supabase al montar (fuente de verdad, multi-dispositivo).
   useEffect(() => { fetchProaRecords().then(setRecords); }, []);
+  useEffect(() => {
+    if (deepLinkHandled.current || !deepLink.bed || records.length === 0) return;
+    const record = records.find(item => !isHistoricalProaRecord(item) && item.bedCode === deepLink.bed);
+    setSelectedBed(deepLink.bed);
+    setActiveService(findServiceForBed(deepLink.bed));
+    deepLinkHandled.current = true;
+    if (deepLink.action === 'evolve' && record) {
+      const latest = getLatestProaForm(record);
+      if (latest) {
+        setPendingProaForm(latest);
+        navigate(createPageUrl('VisitaPROA'));
+      }
+    }
+  }, [deepLink, navigate, records]);
   useEffect(() => {
     let active = true;
     supabase
