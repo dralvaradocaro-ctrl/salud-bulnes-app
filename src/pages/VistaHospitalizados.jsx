@@ -11,7 +11,7 @@ import { createPageUrl } from '@/utils';
 const STORAGE_KEY = 'vista_general_hospitalizados_v1';
 const EMPTY = {
   nombre: '', rut: '', fechaNacimiento: '', edad: '', sexo: '', nFicha: '', prevision: '', telefono: '', direccion: '', comuna: '',
-  fechaIngreso: '', diagnostico: '', antecedentes: '', antibioterapia: '', aislamiento: '', medicoTratante: '', observaciones: '',
+  fechaIngreso: '', diagnostico: '', antecedentes: '', antibioterapia: '', antibioticos: [], aislamiento: '', medicoTratante: '', observaciones: '',
   resumenCaso: '', ultimaEvolucion: '', planesPendientes: '', estudiosComplementarios: '', estudiosDetalle: [], patogenoAislado: '', ultimoLaboratorio: '',
   letIndicacion: '', iotIndicacion: '', rcpIndicacion: '', historialActualizaciones: [],
 };
@@ -36,6 +36,14 @@ function hospitalDays(date) {
   const start = new Date(`${date}T00:00:00`);
   if (Number.isNaN(start.getTime())) return 0;
   return Math.max(1, Math.floor((new Date().setHours(0, 0, 0, 0) - start.getTime()) / 86400000) + 1);
+}
+
+function treatmentDays(startDate, endDate) {
+  if (!startDate) return null;
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = endDate ? new Date(`${endDate}T00:00:00`) : new Date(new Date().setHours(0, 0, 0, 0));
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
+  return Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
 }
 
 const SNAPSHOT_FIELDS = ['diagnostico', 'resumenCaso', 'ultimaEvolucion', 'planesPendientes', 'estudiosComplementarios', 'antibioterapia', 'patogenoAislado', 'ultimoLaboratorio', 'letIndicacion', 'iotIndicacion', 'rcpIndicacion', 'observaciones'];
@@ -94,6 +102,16 @@ function structuredAntibioticSummary(items) {
   return (items || []).filter(item => item?.nombre).map(item => [item.nombre, item.presentacion && `(${item.presentacion})`, item.dosis || [item.dosis_cantidad, item.dosis_unidad].filter(Boolean).join(' '), item.intervalo_horas && `c/${item.intervalo_horas} h`, item.via, item.inicio && `desde ${item.inicio}`, item.termino && `hasta ${item.termino}`].filter(Boolean).join(' ')).join('\n');
 }
 
+function antibioticVisitSummary(record) {
+  const items = (record.antibioticos || []).filter(item => item?.nombre);
+  if (!items.length) return record.antibioterapia || '';
+  return items.map(item => {
+    const days = treatmentDays(item.inicio, item.termino);
+    const treatment = [item.nombre, item.presentacion && `(${item.presentacion})`, item.dosis || [item.dosis_cantidad, item.dosis_unidad].filter(Boolean).join(' '), item.intervalo_horas && `c/${item.intervalo_horas} h`, item.via].filter(Boolean).join(' ');
+    return `${treatment}${days ? ` (Día ${days})` : ''}`;
+  }).join('\n');
+}
+
 function pathogenSummary(form) {
   if (form.diagnostico_microbiologico) return form.diagnostico_microbiologico;
   return (form.estudios_micro || []).filter(item => item?.patogeno).map(item => [item.patogeno, item.tipo_muestra].filter(Boolean).join(' · ')).join('\n');
@@ -118,7 +136,7 @@ function proaToPatient(record) {
     nFicha: form.n_ficha || '', prevision: form.prevision || '', telefono: form.telefono || '',
     direccion: form.direccion || '', comuna: form.comuna || '', fechaIngreso: form.fecha_ingreso || '',
     diagnostico: form.diagnostico_actual || form.diagnostico || '',
-    antecedentes: form.antecedentes || '', antibioterapia: antibioticSummary(form),
+    antecedentes: form.antecedentes || '', antibioterapia: antibioticSummary(form), antibioticos: (form.antibioticos || []).filter(item => item?.nombre),
     aislamiento: form.aislamiento || '', medicoTratante: form.medico || form.medico_tratante || '',
     observaciones: (form.recomendaciones || []).join(' · '),
     resumenCaso: form.resumen_caso || '',
@@ -161,7 +179,7 @@ function VisitTable({ rows, service }) {
         <td>{record.resumenCaso || '—'}</td>
         <td>{record.ultimaEvolucion || '—'}</td>
         <td>{record.estudiosComplementarios || '—'}</td>
-        <td>{record.antibioterapia ? <><strong>ATB:</strong> {record.antibioterapia}</> : 'Sin ATB'}{record.patogenoAislado && <><br /><strong>Patógeno:</strong> {record.patogenoAislado}</>}</td>
+        <td>{record.antibioterapia ? <><strong>ATB:</strong> <span className="whitespace-pre-wrap">{antibioticVisitSummary(record)}</span></> : 'Sin ATB'}{record.patogenoAislado && <><br /><strong>Patógeno:</strong> {record.patogenoAislado}</>}</td>
         <td>{record.ultimoLaboratorio || '—'}</td>
         <td><strong>LET:</strong> {record.letIndicacion || 'NC'}<br /><strong>IOT:</strong> {record.iotIndicacion || 'NC'}<br /><strong>RCP:</strong> {record.rcpIndicacion || 'NC'}</td>
         <td>{record.planesPendientes || '—'}</td>
@@ -427,7 +445,7 @@ function VistaHospitalizados() {
         fecha: new Date().toISOString().slice(0, 10), hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'actualizacion_vista_general',
       });
       const pathogen = cultures.map(item => item.patogeno).filter(Boolean).join(', ');
-      const nextDraft = { ...draft, aislamiento: proaQuick.aislamiento, antibioterapia: antibioticText, patogenoAislado: pathogen, updatedAt: new Date().toISOString() };
+      const nextDraft = { ...draft, aislamiento: proaQuick.aislamiento, antibioterapia: antibioticText, antibioticos: antibiotics, patogenoAislado: pathogen, updatedAt: new Date().toISOString() };
       const nextRegistry = { ...registry, [selectedCode]: nextDraft };
       setDraft(nextDraft); setRegistry(nextRegistry); localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRegistry));
       setProaOpen(false); setSaved(true);
