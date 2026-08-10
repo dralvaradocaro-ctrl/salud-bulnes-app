@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Apple, BedDouble, Calculator, ChevronDown, ChevronLeft, ChevronUp, ClipboardList, FileText, FlaskConical, HeartHandshake, Image, Microscope, Pill, Plus, Printer, Save, Search, ShieldCheck } from 'lucide-react';
+import { Activity, Apple, BedDouble, Calculator, ChevronDown, ChevronLeft, ChevronUp, ClipboardList, FileText, FlaskConical, HeartHandshake, Image, LogOut, Microscope, Pill, Plus, Printer, Save, Search, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { ALL_BEDS } from '@/components/agenda-diaria/bedCatalog';
 import { setMultiPrefill } from '@/lib/multiTemplatePrefill';
-import { fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, isProaEnrolledRecord, saveProaPreAdmission, saveProaRecord } from '@/lib/proaRegistry';
+import { archiveProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, isProaEnrolledRecord, saveProaPreAdmission, saveProaRecord } from '@/lib/proaRegistry';
 import { createPageUrl } from '@/utils';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, PRESENTACIONES_ATB } from '@/pages/VisitaPROA';
 import { allCalculators, calculatorReferences } from '@/components/calculators/catalog';
@@ -31,6 +31,7 @@ const PRINT_SERVICE_OPTIONS = [
   { value: 'HODOM', label: 'HODOM' },
 ];
 const PRINT_SERVICE_ORDER = new Map(PRINT_SERVICE_OPTIONS.map((option, index) => [option.value, index]));
+const DISCHARGE_REASONS = ['Alta médica', 'Fallecimiento', 'Traslado a otro servicio', 'Traslado a otro establecimiento', 'Hospitalización domiciliaria', 'Otro'];
 
 function readRegistry() {
   try { const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); return parsed && typeof parsed === 'object' ? parsed : {}; } catch { return {}; }
@@ -63,6 +64,11 @@ function treatmentDays(startDate, endDate) {
   const end = endDate ? new Date(`${endDate}T00:00:00`) : new Date(new Date().setHours(0, 0, 0, 0));
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
   return Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+}
+
+function displayClinicalDate(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : String(value || '');
 }
 
 const SNAPSHOT_FIELDS = ['diagnosticoPrincipal', 'diagnostico', 'resumenCaso', 'ultimaEvolucion', 'planesPendientes', 'estudiosComplementarios', 'antibioterapia', 'patogenoAislado', 'ultimoLaboratorio', 'letIndicacion', 'iotIndicacion', 'rcpIndicacion', 'observaciones'];
@@ -128,8 +134,11 @@ function antibioticVisitItems(record) {
   return items.reduce((groups, item) => {
     const days = treatmentDays(item.inicio, item.termino);
     const treatment = [item.nombre, item.presentacion && `(${item.presentacion})`, item.dosis || [item.dosis_cantidad, item.dosis_unidad].filter(Boolean).join(' '), item.intervalo_horas && `c/${item.intervalo_horas} h`, item.via].filter(Boolean).join(' ');
-    const text = `${treatment}${days ? ` (Día ${days})` : ''}`;
-    groups[item.termino && item.termino < today ? 'suspended' : 'current'].push(text);
+    const suspended = Boolean(item.termino && item.termino < today);
+    const dates = [item.inicio && `FI ${displayClinicalDate(item.inicio)}`, suspended && item.termino && `FT ${displayClinicalDate(item.termino)}`].filter(Boolean).join(' · ');
+    const duration = days ? `${suspended ? `${days} días` : `Día ${days}`}${dates ? ` · ${dates}` : ''}` : dates;
+    const text = `${treatment}${duration ? ` (${duration})` : ''}`;
+    groups[suspended ? 'suspended' : 'current'].push(text);
     return groups;
   }, { current: [], suspended: [] });
 }
@@ -215,6 +224,14 @@ function studyVisitSummary(record) {
   return [record.estudiosComplementarios, scale && `Escala ${scale.nombre} (${scale.fecha}): ${scale.puntaje} pts${scale.resultado ? ` · ${scale.resultado}` : ''}`, nutrition && `Nutrición (${nutrition.fecha}): ${nutrition.tamizaje}${nutrition.puntaje ? ` · ${nutrition.puntaje} pts · ${nutrition.riesgo}` : ''} · Eval.: ${nutrition.evaluacion}`].filter(Boolean).join('\n');
 }
 
+function nutritionVisitSummary(record) {
+  const nutrition = record.evaluacionesNutricionales?.[0];
+  if (!nutrition) return '';
+  if (nutrition.tamizaje !== 'Sí') return `Nutri: tamizaje ${String(nutrition.tamizaje || 'NC').toLocaleLowerCase('es-CL')} · Eval. ${String(nutrition.evaluacion || 'NC').toLocaleLowerCase('es-CL')}`;
+  const risk = nutrition.riesgo ? nutrition.riesgo.replace(/nutricional/gi, '').trim().toLocaleLowerCase('es-CL') : '';
+  return `Nutri: ${nutrition.puntaje || '—'} pt${risk ? ` · ${risk}` : ''} · Eval. ${String(nutrition.evaluacion || 'NC').toLocaleLowerCase('es-CL')}`;
+}
+
 function VisitTable({ rows, service }) {
   return <>
     <div className="hospital-print-header"><div><h1>Visita médica — Hospitalizados</h1><p>{service} · {new Date().toLocaleDateString('es-CL')}</p></div><p>{rows.length} paciente{rows.length === 1 ? '' : 's'}</p></div>
@@ -222,7 +239,7 @@ function VisitTable({ rows, service }) {
       {rows.map(({ bed, record }) => <tr key={bed.code}>
         <td><strong>{bed.serviceShort} · {bed.cell}</strong><br />{record.nombre || 'Sin nombre'}<br /><span>{record.rut || ''}</span></td>
         <td><strong>Día {hospitalDays(record.fechaIngreso)}</strong><br /><strong>{record.diagnosticoPrincipal || record.diagnostico || '—'}{record.pacienteSocial ? ' (caso sociosanitario)' : ''}</strong>{record.diagnosticoPrincipal && record.diagnostico && <><br />{record.diagnostico}</>}</td>
-        <td>{record.resumenCaso || '—'}</td>
+        <td>{record.resumenCaso || (!nutritionVisitSummary(record) ? '—' : '')}{nutritionVisitSummary(record) && <div className="mt-1 text-[0.92em] font-semibold text-lime-800">{nutritionVisitSummary(record)}</div>}</td>
         <td>{record.ultimaEvolucion || '—'}</td>
         <td>{studyVisitSummary(record) || '—'}</td>
         <td>{record.antibioterapia || record.antibioticos?.length ? (() => { const groups = antibioticVisitItems(record); return <><strong>ATB actual:</strong>{groups.current.length ? groups.current.map((item, index) => <div key={`current-${index}`} className="font-bold text-slate-950">{item}</div>) : <div className="text-slate-500">Sin ATB activo</div>}{groups.suspended.length > 0 && <div className="mt-1 border-t border-slate-300 pt-1 text-slate-400 opacity-70"><span className="font-semibold">Suspendido:</span>{groups.suspended.map((item, index) => <div key={`suspended-${index}`}>{item}</div>)}</div>}</>; })() : 'Sin ATB'}{record.patogenoAislado && <><br /><strong>Patógeno:</strong> {record.patogenoAislado}</>}</td>
@@ -335,6 +352,9 @@ function VistaHospitalizados() {
   const [studiesRows, setStudiesRows] = useState([]);
   const [proaOpen, setProaOpen] = useState(false);
   const [proaSaving, setProaSaving] = useState(false);
+  const [dischargeOpen, setDischargeOpen] = useState(false);
+  const [discharging, setDischarging] = useState(false);
+  const [dischargeDraft, setDischargeDraft] = useState({ fecha: new Date().toISOString().slice(0, 10), motivo: '', destinoServicio: '', destinoCama: '', antibioticActions: {}, antibioticStopDates: {}, antibioticoAltaIndicacion: '' });
   const [proaQuick, setProaQuick] = useState({ paciente: '', rut: '', edad: '', sexo: '', fecha_ingreso: '', diagnostico: '', aislamiento: '', antibioticos: [{ ...EMPTY_QUICK_ATB }], cultivos: [{ fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }] });
   const [labSaving, setLabSaving] = useState(false);
   const emptyLabRow = () => ({ fecha: new Date().toISOString().slice(0, 10), pcr: '', pct: '', blancos: '', crea: '', vhs: '', temp: '' });
@@ -351,14 +371,22 @@ function VistaHospitalizados() {
       setHodomRows(currentHodomRows);
       setRegistry(current => {
         const fromProa = {};
+        const activeRecordLocations = new Map();
         records.filter(record => !isHistoricalProaRecord(record)).forEach(record => {
           const catalogCode = PROA_TO_CATALOG.get(record.bedCode)
             || (ALL_BEDS.some(bed => bed.code === record.bedCode) ? record.bedCode : null);
-          if (catalogCode) fromProa[catalogCode] = proaToPatient(record);
+          if (catalogCode) {
+            fromProa[catalogCode] = proaToPatient(record);
+            activeRecordLocations.set(record.id, catalogCode);
+          }
         });
-        currentHodomRows.forEach(({ bed, record }) => { fromProa[bed.code] = record; });
+        currentHodomRows.forEach(({ bed, record }) => {
+          fromProa[bed.code] = record;
+          if (record.proaRecordId) activeRecordLocations.set(record.proaRecordId, bed.code);
+        });
         const merged = { ...fromProa };
         Object.entries(current).forEach(([bedCode, local]) => {
+          if (local?.proaRecordId && activeRecordLocations.get(local.proaRecordId) !== bedCode) return;
           merged[bedCode] = mergePatient(fromProa[bedCode] || {}, local);
         });
         localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
@@ -513,6 +541,40 @@ function VistaHospitalizados() {
       const records = await fetchProaRecords();
       const latest = getLatestProaForm(records.find(item => item.id === savedDraft.proaRecordId)) || {};
       await saveProaRecord({ ...latest, paciente_social: nextValue, fecha: new Date().toISOString().slice(0, 10), hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'clasificacion_social_vista_general' });
+    }
+  };
+  const openDischarge = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const activeActions = Object.fromEntries((draft.antibioticos || []).map((item, index) => [index, item.termino && item.termino < today ? 'suspendido' : 'suspender']));
+    const stopDates = Object.fromEntries((draft.antibioticos || []).map((item, index) => [index, item.termino || today]));
+    setDischargeDraft({ fecha: today, motivo: '', destinoServicio: '', destinoCama: '', antibioticActions: activeActions, antibioticStopDates: stopDates, antibioticoAltaIndicacion: '' });
+    setDischargeOpen(true);
+  };
+  const confirmDischarge = async () => {
+    if (!dischargeDraft.fecha || !dischargeDraft.motivo || discharging) return;
+    setDischarging(true);
+    try {
+      const antibiotics = draft.antibioticos || [];
+      const antibioticStops = {};
+      const continued = [];
+      antibiotics.forEach((item, index) => {
+        if (!item?.nombre) return;
+        const action = dischargeDraft.antibioticActions[index];
+        if (action === 'suspender' || action === 'suspendido') antibioticStops[index] = dischargeDraft.antibioticStopDates[index] || item.termino || dischargeDraft.fecha;
+        if (action === 'continuar') continued.push([item.nombre, item.dosis || [item.dosis_cantidad, item.dosis_unidad].filter(Boolean).join(' '), item.intervalo_horas && `c/${item.intervalo_horas} h`, item.via].filter(Boolean).join(' '));
+      });
+      if (draft.proaRecordId) {
+        const records = await fetchProaRecords();
+        const record = records.find(item => item.id === draft.proaRecordId);
+        if (record) await archiveProaRecord(record, dischargeDraft.fecha, { motivo: dischargeDraft.motivo, destinoServicio: dischargeDraft.destinoServicio, destinoCama: dischargeDraft.destinoCama, antibioticStops, antibioticoAlta: continued.join('\n'), antibioticoAltaIndicacion: dischargeDraft.antibioticoAltaIndicacion });
+      }
+      const next = { ...registry }; delete next[selectedCode];
+      setRegistry(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      setHodomRows(rows => rows.filter(item => item.bed.code !== selectedCode));
+      setDraft({ ...EMPTY }); setSelectedCode(''); sessionStorage.removeItem(SELECTED_BED_KEY);
+      setDischargeOpen(false); setSaved(false);
+    } finally {
+      setDischarging(false);
     }
   };
   const openLatestEvolution = () => { setEvolutionDraft(draft.ultimaEvolucion || ''); setEvolutionOpen(true); };
@@ -730,7 +792,7 @@ function VistaHospitalizados() {
       <aside className="min-w-0 pb-20 xl:sticky xl:top-20 xl:max-h-[calc(100vh-10rem)] xl:overflow-y-auto">
         {!selectedBed ? <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center"><BedDouble className="mx-auto h-12 w-12 text-slate-300" /><h2 className="mt-4 font-bold text-slate-800">Selecciona una cama</h2><p className="mt-1 text-sm text-slate-500">Podrás registrar al paciente y generar todos sus documentos desde una sola ficha.</p></div> : <div className="space-y-4">
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className={`flex flex-wrap items-start justify-between gap-3 ${detailsOpen ? 'mb-4' : ''}`}><div><p className="text-xs font-bold uppercase tracking-wider text-teal-700">{selectedBed.serviceShort} · {selectedBed.salaLabel}</p><h2 className="text-2xl font-black text-slate-950">Cama {selectedBed.cell}</h2>{draft.nombre && <p className="flex flex-wrap items-center gap-1.5 font-bold text-slate-800">{draft.nombre} {draft.rut && <span className="font-normal text-slate-500">· {draft.rut}</span>}{draft.pacienteSocial && <span className="inline-flex items-center gap-1 rounded-full bg-fuchsia-100 px-2 py-0.5 text-[10px] font-bold text-fuchsia-800"><HeartHandshake className="h-3 w-3" />Paciente social</span>}</p>}{occupied && <p className="text-xs font-semibold text-emerald-700">Ingreso {draft.fechaIngreso || 'sin fecha'} · Día {hospitalDays(draft.fechaIngreso)}</p>}</div><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setDetailsOpen(open => !open)} className="gap-2">{detailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}{detailsOpen ? 'Ocultar ficha' : 'Ver ficha'}</Button><Button type="button" variant="outline" onClick={saveAllChanges} disabled={savingAll || !occupied} className="gap-2 border-emerald-300 bg-emerald-50 font-bold text-emerald-800 hover:bg-emerald-100"><Save className="h-4 w-4" />{savingAll ? 'Guardando…' : saved ? 'Cambios guardados' : 'Guardar todos los cambios'}</Button><Button onClick={openGeneral} className="gap-2 bg-teal-700 hover:bg-teal-800"><ClipboardList className="h-4 w-4" />Editar ficha general</Button></div></div>
+            <div className={`flex flex-wrap items-start justify-between gap-3 ${detailsOpen ? 'mb-4' : ''}`}><div><p className="text-xs font-bold uppercase tracking-wider text-teal-700">{selectedBed.serviceShort} · {selectedBed.salaLabel}</p><h2 className="text-2xl font-black text-slate-950">Cama {selectedBed.cell}</h2>{draft.nombre && <p className="flex flex-wrap items-center gap-1.5 font-bold text-slate-800">{draft.nombre} {draft.rut && <span className="font-normal text-slate-500">· {draft.rut}</span>}{draft.pacienteSocial && <span className="inline-flex items-center gap-1 rounded-full bg-fuchsia-100 px-2 py-0.5 text-[10px] font-bold text-fuchsia-800"><HeartHandshake className="h-3 w-3" />Paciente social</span>}</p>}{occupied && <p className="text-xs font-semibold text-emerald-700">Ingreso {draft.fechaIngreso || 'sin fecha'} · Día {hospitalDays(draft.fechaIngreso)}</p>}</div><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setDetailsOpen(open => !open)} className="gap-2">{detailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}{detailsOpen ? 'Ocultar ficha' : 'Ver ficha'}</Button><Button type="button" variant="outline" onClick={saveAllChanges} disabled={savingAll || !occupied} className="gap-2 border-emerald-300 bg-emerald-50 font-bold text-emerald-800 hover:bg-emerald-100"><Save className="h-4 w-4" />{savingAll ? 'Guardando…' : saved ? 'Cambios guardados' : 'Guardar todos los cambios'}</Button><Button type="button" variant="outline" onClick={openDischarge} disabled={!occupied} className="gap-2 border-red-300 bg-red-50 font-bold text-red-700 hover:bg-red-100"><LogOut className="h-4 w-4" />Egresar paciente</Button><Button onClick={openGeneral} className="gap-2 bg-teal-700 hover:bg-teal-800"><ClipboardList className="h-4 w-4" />Editar ficha general</Button></div></div>
             {detailsOpen && <>
             <div className="mb-5 flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /><p>Información clínica protegida por código de acceso. Los datos se reutilizan únicamente al abrir documentos desde esta ficha.</p></div>
             <div className="mb-4 flex flex-wrap gap-2">
@@ -777,6 +839,23 @@ function VistaHospitalizados() {
       </aside>
     </main>
     {activeTab === 'estadistica' && <StatisticsDashboard statistics={statistics} />}
+    {dischargeOpen && <div className="fixed inset-0 z-[92] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
+      <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 via-white to-amber-50 shadow-2xl">
+        <div className="border-b border-red-200 bg-red-100/80 px-5 py-4"><h2 className="text-lg font-black text-red-950">Egresar paciente — {draft.nombre || selectedBed?.cell}</h2><p className="text-xs text-red-700">La ficha se conservará como histórica y la cama quedará libre.</p></div>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+          <div className="grid gap-3 sm:grid-cols-2"><Field label="Fecha de egreso"><input type="date" className={input} value={dischargeDraft.fecha} onChange={e => setDischargeDraft(old => ({ ...old, fecha: e.target.value }))} /></Field><Field label="Causa de egreso"><select className={input} value={dischargeDraft.motivo} onChange={e => setDischargeDraft(old => ({ ...old, motivo: e.target.value }))}><option value="">Seleccionar causa…</option>{DISCHARGE_REASONS.map(reason => <option key={reason}>{reason}</option>)}</select></Field></div>
+          {dischargeDraft.motivo === 'Traslado a otro servicio' && <div className="grid gap-3 sm:grid-cols-2"><Field label="Servicio de destino"><input className={input} value={dischargeDraft.destinoServicio} onChange={e => setDischargeDraft(old => ({ ...old, destinoServicio: e.target.value }))} /></Field><Field label="Cama de destino"><input className={input} value={dischargeDraft.destinoCama} onChange={e => setDischargeDraft(old => ({ ...old, destinoCama: e.target.value }))} /></Field></div>}
+          {(draft.antibioticos || []).some(item => item?.nombre) ? <section className="rounded-xl border border-amber-200 bg-amber-50/80 p-4"><h3 className="font-black text-amber-950">Conducta con antibioterapia registrada</h3><p className="mb-3 text-xs text-amber-700">Selecciona la conducta y registra directamente la fecha de cese.</p><div className="space-y-2">{(draft.antibioticos || []).map((item, index) => {
+            if (!item?.nombre) return null;
+            const action = dischargeDraft.antibioticActions[index] || 'suspender';
+            const stopDate = dischargeDraft.antibioticStopDates[index] || '';
+            const days = stopDate ? treatmentDays(item.inicio, stopDate) : null;
+            return <div key={`${item.nombre}-${index}`} className="rounded-lg border border-amber-100 bg-white p-3"><div className="grid items-end gap-2 sm:grid-cols-[1fr_205px_170px]"><div><p className="text-sm font-bold text-slate-900">{item.nombre}{days ? ` (${days} días)` : ''}</p><p className="text-xs text-slate-500">{[item.dosis || [item.dosis_cantidad, item.dosis_unidad].filter(Boolean).join(' '), item.intervalo_horas && `c/${item.intervalo_horas} h`, item.via, item.inicio && `desde ${item.inicio}`].filter(Boolean).join(' · ')}</p></div><Field label="Conducta"><select className={input} value={action} onChange={e => setDischargeDraft(old => ({ ...old, antibioticActions: { ...old.antibioticActions, [index]: e.target.value }, antibioticStopDates: e.target.value === 'continuar' ? old.antibioticStopDates : { ...old.antibioticStopDates, [index]: old.antibioticStopDates[index] || old.fecha } }))}><option value="suspender">Suspender al egreso</option><option value="continuar">Continuar al alta</option><option value="suspendido">Ya estaba suspendido</option></select></Field>{action !== 'continuar' && <Field label="Fecha de cese"><input type="date" min={item.inicio || undefined} className={input} value={stopDate} onChange={e => setDischargeDraft(old => ({ ...old, antibioticStopDates: { ...old.antibioticStopDates, [index]: e.target.value } }))} /></Field>}</div></div>;
+          })}</div>{Object.values(dischargeDraft.antibioticActions).includes('continuar') && <div className="mt-3"><Field label="Indicación antimicrobiana al alta"><textarea className={textarea} value={dischargeDraft.antibioticoAltaIndicacion} onChange={e => setDischargeDraft(old => ({ ...old, antibioticoAltaIndicacion: e.target.value }))} placeholder="Duración restante, controles y otras indicaciones" /></Field></div>}</section> : <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">Sin antibioterapia registrada.</div>}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-red-200 bg-white/80 px-5 py-4"><Button variant="outline" onClick={() => setDischargeOpen(false)} disabled={discharging}>Cancelar</Button><Button onClick={confirmDischarge} disabled={discharging || !dischargeDraft.fecha || !dischargeDraft.motivo} className="bg-red-700 hover:bg-red-800"><LogOut className="mr-1 h-4 w-4" />{discharging ? 'Egresando…' : 'Confirmar egreso'}</Button></div>
+      </div>
+    </div>}
     {diagnosisOpen && <div className="fixed inset-0 z-[88] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-blue-50 p-5 shadow-2xl"><h2 className="text-lg font-black text-sky-950">Diagnósticos compartidos</h2><p className="mb-4 text-xs text-sky-700">El diagnóstico principal y su desglose se sincronizan con PROA.</p><div className="space-y-3"><Field label="Diagnóstico principal"><input className={input} value={diagnosisDraft.principal} onChange={e => setDiagnosisDraft(old => ({ ...old, principal: e.target.value }))} /></Field><Field label="Desglose / diagnósticos asociados"><textarea className={textarea} value={diagnosisDraft.desglose} onChange={e => setDiagnosisDraft(old => ({ ...old, desglose: e.target.value }))} placeholder="Uno por línea" /></Field></div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setDiagnosisOpen(false)}>Cancelar</Button><Button onClick={saveDiagnosis} className="bg-sky-700 hover:bg-sky-800">Guardar y sincronizar</Button></div></div></div>}
     {scalesOpen && <div className="fixed inset-0 z-[88] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm"><div className="flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 via-white to-orange-50 shadow-2xl"><div className="flex items-start justify-between gap-3 border-b border-rose-200 bg-rose-100/80 px-5 py-4"><div><h2 className="text-lg font-black text-rose-950">Escalas, calculadoras y scores — Cama {selectedBed?.cell}</h2><p className="text-xs text-rose-700">Aplica la calculadora aquí mismo y guarda el resultado fechado para este paciente.</p></div><Button variant="outline" size="sm" onClick={() => setScalesOpen(false)}>Cerrar</Button></div><div className="min-h-0 flex-1 overflow-y-auto p-5"><div className="grid gap-3 sm:grid-cols-[180px_1fr]"><Field label="Fecha"><input type="date" className={input} value={scaleDraft.fecha} onChange={e => setScaleDraft(old => ({ ...old, fecha: e.target.value }))} /></Field><Field label="Escala / calculadora"><select className={input} value={scaleDraft.calculatorId} onChange={e => { const calculator = allCalculators.find(item => item.id === e.target.value); setScaleDraft(old => ({ ...old, calculatorId: e.target.value, nombre: calculator?.name || '', puntaje: '', resultado: '' })); }}><option value="">Seleccionar…</option>{calculatorReferences.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field></div>{SelectedCalculatorComponent ? <div className="mt-4 overflow-hidden rounded-2xl border border-rose-200 bg-white shadow-sm"><SelectedCalculatorComponent key={scaleDraft.calculatorId} /></div> : <div className="mt-4 rounded-xl border border-dashed border-rose-300 bg-white/70 p-8 text-center text-sm text-rose-700"><Calculator className="mx-auto mb-2 h-7 w-7" />Selecciona una calculadora para aplicarla sin salir de la ficha.</div>}<div className="mt-4 rounded-xl border border-rose-200 bg-white/85 p-4"><p className="mb-3 text-sm font-black text-rose-950">Registrar resultado en la ficha</p><div className="grid gap-3 sm:grid-cols-2"><Field label="Puntaje / resultado"><input className={input} value={scaleDraft.puntaje} onChange={e => setScaleDraft(old => ({ ...old, puntaje: e.target.value }))} placeholder="Copia aquí el resultado calculado" /></Field><Field label="Interpretación"><input className={input} value={scaleDraft.resultado} onChange={e => setScaleDraft(old => ({ ...old, resultado: e.target.value }))} placeholder="Riesgo o interpretación clínica" /></Field></div></div>{(draft.escalas || []).length > 0 && <div className="mt-4 border-t border-rose-200 pt-3"><p className="mb-2 text-xs font-bold text-rose-900">Resultados previos</p>{draft.escalas.slice(0, 5).map((item, index) => <p key={index} className="text-xs text-slate-700">{item.fecha} · {item.nombre}: {item.puntaje} pts {item.resultado && `· ${item.resultado}`}</p>)}</div>}</div><div className="flex justify-end gap-2 border-t border-rose-200 bg-white/80 px-5 py-4"><Button variant="outline" onClick={() => setScalesOpen(false)}>Cancelar</Button><Button onClick={saveScale} disabled={!scaleDraft.nombre || !scaleDraft.puntaje} className="bg-rose-700 hover:bg-rose-800">Guardar resultado</Button></div></div></div>}
     {nutritionOpen && <div className="fixed inset-0 z-[88] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl border border-lime-200 bg-gradient-to-br from-lime-50 via-white to-green-50 p-5 shadow-2xl"><h2 className="text-lg font-black text-lime-950">Evaluación nutricional</h2><p className="mb-4 text-xs text-lime-800">Tamizaje NRS-2002: 0–2 puntos sin riesgo; ≥3 puntos con riesgo nutricional.</p><div className="grid gap-3 sm:grid-cols-2"><Field label="Fecha"><input type="date" className={input} value={nutritionDraft.fecha} onChange={e => setNutritionDraft(old => ({ ...old, fecha: e.target.value }))} /></Field><Field label="Score / tamizaje aplicado"><select className={input} value={nutritionDraft.tamizaje} onChange={e => setNutritionDraft(old => ({ ...old, tamizaje: e.target.value }))}><option value="">Seleccionar…</option><option value="Sí">Sí</option><option value="No">No</option><option value="No aplica">No aplica</option></select></Field><Field label="Resultado (puntos)"><input type="number" min="0" className={input} value={nutritionDraft.puntaje} disabled={nutritionDraft.tamizaje !== 'Sí'} onChange={e => setNutritionDraft(old => ({ ...old, puntaje: e.target.value }))} /></Field><Field label="Riesgo automático"><input className={`${input} bg-white/70`} value={nutritionDraft.tamizaje === 'Sí' ? nutritionRisk(nutritionDraft.puntaje) : nutritionDraft.tamizaje} readOnly /></Field><Field label="Evaluación nutricional realizada" wide><select className={input} value={nutritionDraft.evaluacion} onChange={e => setNutritionDraft(old => ({ ...old, evaluacion: e.target.value }))}><option value="">Seleccionar…</option><option value="Sí">Sí</option><option value="No">No</option><option value="No aplica">No aplica</option></select></Field></div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setNutritionOpen(false)}>Cancelar</Button><Button onClick={saveNutrition} className="bg-lime-700 hover:bg-lime-800">Guardar evaluación</Button></div></div></div>}
