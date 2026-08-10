@@ -135,6 +135,18 @@ const persist = async (candidate, existing = null, enrolled = false) => {
     ...previousForm,
     ...candidate.form,
     proa_enrolled: enrolled,
+    ...(enrolled ? {
+      antibioticos: previousForm.antibioticos || [],
+      antibioterapia_preingreso: previousForm.antibioterapia_preingreso || '',
+      parametros_inflamatorios: previousForm.parametros_inflamatorios || [],
+      estudios_micro: previousForm.estudios_micro || [],
+      estudios_imagen: previousForm.estudios_imagen || '',
+      aislamiento: previousForm.aislamiento || '',
+      creatinina: previousForm.creatinina || '',
+      fecha_creatinina: previousForm.fecha_creatinina || '',
+      funcion_renal: previousForm.funcion_renal || '',
+      vfg_estimada: previousForm.vfg_estimada || '',
+    } : {}),
     diagnostico_desglose: enrolled && previousDiagnosis !== candidate.form.diagnostico_principal ? previousDiagnosis : previousForm.diagnostico_desglose || '',
     diagnostico_actual: enrolled && previousDiagnosis ? previousDiagnosis : candidate.form.diagnostico_principal,
     diagnosticos_actuales: enrolled && previousDiagnosis && previousDiagnosis !== candidate.form.diagnostico_principal ? [candidate.form.diagnostico_principal, previousDiagnosis] : [candidate.form.diagnostico_principal],
@@ -159,7 +171,9 @@ for (const action of actions) {
     const { error } = await supabase.from('proa_records').delete().eq('id', action.row.id);
     if (error) throw error;
   }
-  await persist(action.candidate, ['merge', 'move'].includes(action.type) ? action.row : null, ['merge', 'move'].includes(action.type));
+  const existing = ['merge', 'move'].includes(action.type) ? action.row : null;
+  const wasEnrolled = existing ? existing.evolutions?.[0]?.form?.proa_enrolled !== false : false;
+  await persist(action.candidate, existing, wasEnrolled);
 }
 
 console.log(`Censo integrado: ${candidates.length} pacientes.`);

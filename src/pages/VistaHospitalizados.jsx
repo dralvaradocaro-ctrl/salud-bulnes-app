@@ -9,6 +9,7 @@ import { fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, isProaEnro
 import { createPageUrl } from '@/utils';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, PRESENTACIONES_ATB } from '@/pages/VisitaPROA';
 import { allCalculators, calculatorReferences } from '@/components/calculators/catalog';
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 const STORAGE_KEY = 'vista_general_hospitalizados_v1';
 const SELECTED_BED_KEY = 'vista_general_hospitalizados_selected_bed';
@@ -120,14 +121,17 @@ function structuredAntibioticSummary(items) {
   return (items || []).filter(item => item?.nombre).map(item => [item.nombre, item.presentacion && `(${item.presentacion})`, item.dosis || [item.dosis_cantidad, item.dosis_unidad].filter(Boolean).join(' '), item.intervalo_horas && `c/${item.intervalo_horas} h`, item.via, item.inicio && `desde ${item.inicio}`, item.termino && `hasta ${item.termino}`].filter(Boolean).join(' ')).join('\n');
 }
 
-function antibioticVisitSummary(record) {
+function antibioticVisitItems(record) {
   const items = (record.antibioticos || []).filter(item => item?.nombre);
-  if (!items.length) return record.antibioterapia || '';
-  return items.map(item => {
+  if (!items.length) return { current: record.antibioterapia ? [record.antibioterapia] : [], suspended: [] };
+  const today = new Date().toISOString().slice(0, 10);
+  return items.reduce((groups, item) => {
     const days = treatmentDays(item.inicio, item.termino);
     const treatment = [item.nombre, item.presentacion && `(${item.presentacion})`, item.dosis || [item.dosis_cantidad, item.dosis_unidad].filter(Boolean).join(' '), item.intervalo_horas && `c/${item.intervalo_horas} h`, item.via].filter(Boolean).join(' ');
-    return `${treatment}${days ? ` (Día ${days})` : ''}`;
-  }).join('\n');
+    const text = `${treatment}${days ? ` (Día ${days})` : ''}`;
+    groups[item.termino && item.termino < today ? 'suspended' : 'current'].push(text);
+    return groups;
+  }, { current: [], suspended: [] });
 }
 
 function pathogenSummary(form) {
@@ -147,15 +151,25 @@ function isAutoRenalText(value) {
   return /^\s*Creatinina\s+[\d,.]+\s*mg\/dL\s*·\s*VFG\s+estimada/i.test(String(value || ''));
 }
 
+function latestStructuredAntibiotics(record) {
+  for (const evolution of record?.evolutions || []) {
+    const items = evolution?.form?.antibioticos;
+    if (Array.isArray(items) && items.some(item => item?.nombre)) return items.filter(item => item?.nombre);
+  }
+  return [];
+}
+
 function proaToPatient(record) {
   const form = getLatestProaForm(record) || {};
+  const structuredAntibiotics = latestStructuredAntibiotics(record);
+  const formWithAntibiotics = { ...form, antibioticos: structuredAntibiotics };
   return {
     nombre: normalizeName(form.paciente), rut: formatRut(form.rut), fechaNacimiento: form.fecha_nacimiento || '', edad: form.edad || '', sexo: form.sexo || '',
     nFicha: form.n_ficha || '', prevision: form.prevision || '', telefono: form.telefono || '',
     direccion: form.direccion || '', comuna: form.comuna || '', fechaIngreso: form.fecha_ingreso || '',
     diagnosticoPrincipal: normalizeClinicalText(form.diagnostico_principal || form.diagnosticos_actuales?.[0] || form.diagnostico_actual || ''),
     diagnostico: normalizeClinicalText((form.diagnosticos_actuales || []).slice(1).join('\n') || form.diagnostico_desglose || form.diagnostico_actual || form.diagnostico || ''),
-    antecedentes: form.antecedentes || '', antibioterapia: antibioticSummary(form), antibioticos: (form.antibioticos || []).filter(item => item?.nombre),
+    antecedentes: form.antecedentes || '', antibioterapia: antibioticSummary(formWithAntibiotics), antibioticos: structuredAntibiotics,
     aislamiento: form.aislamiento || '', medicoTratante: form.medico || form.medico_tratante || '',
     observaciones: form.vista_observaciones || (form.recomendaciones || []).join(' · '),
     resumenCaso: form.resumen_caso || '',
@@ -211,13 +225,35 @@ function VisitTable({ rows, service }) {
         <td>{record.resumenCaso || '—'}</td>
         <td>{record.ultimaEvolucion || '—'}</td>
         <td>{studyVisitSummary(record) || '—'}</td>
-        <td>{record.antibioterapia ? <><strong>ATB:</strong> <span className="whitespace-pre-wrap">{antibioticVisitSummary(record)}</span></> : 'Sin ATB'}{record.patogenoAislado && <><br /><strong>Patógeno:</strong> {record.patogenoAislado}</>}</td>
+        <td>{record.antibioterapia || record.antibioticos?.length ? (() => { const groups = antibioticVisitItems(record); return <><strong>ATB actual:</strong>{groups.current.length ? groups.current.map((item, index) => <div key={`current-${index}`} className="font-bold text-slate-950">{item}</div>) : <div className="text-slate-500">Sin ATB activo</div>}{groups.suspended.length > 0 && <div className="mt-1 border-t border-slate-300 pt-1 text-slate-400 opacity-70"><span className="font-semibold">Suspendido:</span>{groups.suspended.map((item, index) => <div key={`suspended-${index}`}>{item}</div>)}</div>}</>; })() : 'Sin ATB'}{record.patogenoAislado && <><br /><strong>Patógeno:</strong> {record.patogenoAislado}</>}</td>
         <td>{record.ultimoLaboratorio || '—'}</td>
         <td><strong>LET:</strong> {record.letIndicacion || 'NC'}<br /><strong>IOT:</strong> {record.iotIndicacion || 'NC'}<br /><strong>RCP:</strong> {record.rcpIndicacion || 'NC'}</td>
         <td>{record.planesPendientes || '—'}</td>
       </tr>)}
     </tbody></table>
   </>;
+}
+
+const CHART_COLORS = ['#0f766e', '#2563eb', '#7c3aed', '#db2777', '#d97706', '#0891b2', '#65a30d'];
+function StatisticsDashboard({ statistics }) {
+  const percentageChart = (key) => statistics.byService.map(item => ({ servicio: item.label, porcentaje: item[key] }));
+  const metricCards = [
+    ['Ocupación global', statistics.overall.occupancyPct, `${statistics.overall.occupied}/${statistics.overall.capacity} camas`],
+    ['Hospitalización >7 días', statistics.overall.longStayPct, `${statistics.overall.longStay}/${statistics.overall.nonSocial} pacientes no sociales`],
+    ['Con antibioterapia', statistics.overall.atbPct, `${statistics.overall.withAtb}/${statistics.overall.occupied} pacientes`],
+  ];
+  const ServiceBars = ({ data, color }) => <ResponsiveContainer width="100%" height={250}><BarChart data={data} margin={{ top: 8, right: 18, left: -12, bottom: 12 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="servicio" tick={{ fontSize: 11 }} /><YAxis domain={[0, 100]} tickFormatter={value => `${value}%`} tick={{ fontSize: 10 }} /><Tooltip formatter={value => [`${value}%`, 'Porcentaje']} /><Bar dataKey="porcentaje" fill={color} radius={[7, 7, 0, 0]} /></BarChart></ResponsiveContainer>;
+  return <main className="mx-auto max-w-[1500px] space-y-5 p-4 pb-32">
+    <div><h2 className="text-2xl font-black text-slate-950">Estadística hospitalaria</h2><p className="text-sm text-slate-500">Indicadores calculados con la ocupación vigente de Vista General.</p></div>
+    <section className="grid gap-3 md:grid-cols-3">{metricCards.map(([label, value, detail], index) => <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><p className="text-sm font-bold text-slate-600">{label}</p><span className="h-3 w-3 rounded-full" style={{ backgroundColor: CHART_COLORS[index] }} /></div><p className="mt-2 text-4xl font-black text-slate-950">{value}%</p><p className="mt-1 text-xs text-slate-500">{detail}</p></div>)}</section>
+    <section className="grid gap-4 xl:grid-cols-3">
+      {[['Ocupación de camas por servicio', 'occupancyPct', '#0f766e'], ['Hospitalización >7 días por servicio', 'longStayPct', '#7c3aed'], ['Antibioterapia por servicio', 'atbPct', '#d97706']].map(([title, key, color]) => <div key={key} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><h3 className="font-black text-slate-900">{title}</h3><p className="mb-2 text-xs text-slate-500">{key === 'longStayPct' ? 'Excluye pacientes sociales del denominador.' : 'Porcentaje sobre el servicio correspondiente.'}</p><ServiceBars data={percentageChart(key)} color={color} /></div>)}
+    </section>
+    <section className="grid gap-4 lg:grid-cols-2">
+      <div className="rounded-2xl border border-teal-200 bg-white p-4 shadow-sm"><h3 className="font-black text-teal-950">PROA · Antibióticos activos</h3><p className="mb-3 text-xs text-slate-500">Distribución de tratamientos vigentes.</p>{statistics.antibiotics.length ? <ResponsiveContainer width="100%" height={300}><BarChart data={statistics.antibiotics} layout="vertical" margin={{ left: 30, right: 20 }}><CartesianGrid strokeDasharray="3 3" horizontal={false} /><XAxis type="number" allowDecimals={false} /><YAxis dataKey="name" type="category" width={135} tick={{ fontSize: 10 }} /><Tooltip /><Bar dataKey="count" name="Pacientes" fill="#0f766e" radius={[0, 7, 7, 0]} /></BarChart></ResponsiveContainer> : <p className="py-16 text-center text-sm text-slate-400">Sin antibioterapia activa registrada.</p>}</div>
+      <div className="rounded-2xl border border-cyan-200 bg-white p-4 shadow-sm"><h3 className="font-black text-cyan-950">PROA · Patógenos aislados</h3><p className="mb-3 text-xs text-slate-500">Registros microbiológicos vigentes.</p>{statistics.pathogens.length ? <ResponsiveContainer width="100%" height={300}><PieChart><Pie data={statistics.pathogens} dataKey="count" nameKey="name" innerRadius={55} outerRadius={100} paddingAngle={2} label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`}>{statistics.pathogens.map((item, index) => <Cell key={item.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer> : <p className="py-16 text-center text-sm text-slate-400">Sin patógenos aislados registrados.</p>}</div>
+    </section>
+  </main>;
 }
 
 function ProaQuickModal({ bed, hasRecord, value, setValue, saving, onClose, onFull, onSave }) {
@@ -237,7 +273,7 @@ function ProaQuickModal({ bed, hasRecord, value, setValue, saving, onClose, onFu
           <div className="sm:col-span-1"><Field label="Unidad"><select className={input} value={atb.dosis_unidad || 'mg'} onChange={e => updateAtb(index, 'dosis_unidad', e.target.value)}>{['mg','g','UI','MUI','comprimido','ampolla'].map(unit => <option key={unit}>{unit}</option>)}</select></Field></div>
           <div className="sm:col-span-1"><Field label="Cada h"><input className={input} value={atb.intervalo_horas || ''} onChange={e => updateAtb(index, 'intervalo_horas', e.target.value)} /></Field></div>
           <div className="sm:col-span-1"><Field label="Vía"><select className={input} value={atb.via || 'EV'} onChange={e => updateAtb(index, 'via', e.target.value)}>{['EV','VO','IM','SC'].map(via => <option key={via}>{via}</option>)}</select></Field></div>
-          <div className="sm:col-span-2"><Field label="Inicio"><input type="date" className={input} value={atb.inicio || ''} onChange={e => updateAtb(index, 'inicio', e.target.value)} /></Field></div>
+          <div className="sm:col-span-2"><Field label={atb.inicio && treatmentDays(atb.inicio, atb.termino) ? `Inicio · Día ${treatmentDays(atb.inicio, atb.termino)}` : 'Inicio'}><input type="date" className={input} value={atb.inicio || ''} onChange={e => updateAtb(index, 'inicio', e.target.value)} /></Field></div>
           <div className="sm:col-span-2"><Field label="Término"><input type="date" className={input} value={atb.termino || ''} onChange={e => updateAtb(index, 'termino', e.target.value)} /></Field></div>
           <div className="flex items-end sm:col-span-1"><Button type="button" variant="ghost" size="sm" onClick={() => setValue(old => ({ ...old, antibioticos: old.antibioticos.length === 1 ? [{ ...EMPTY_QUICK_ATB }] : old.antibioticos.filter((_, itemIndex) => itemIndex !== index) }))} className="text-red-600">Quitar</Button></div>
         </div>)}</div>
@@ -275,6 +311,7 @@ function VistaHospitalizados() {
   const [service, setService] = useState('all');
   const [status, setStatus] = useState('all');
   const [query, setQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('camas');
   const [saved, setSaved] = useState(false);
   const [savingAll, setSavingAll] = useState(false);
   const [syncState, setSyncState] = useState('loading');
@@ -305,12 +342,13 @@ function VistaHospitalizados() {
 
   useEffect(() => {
     let active = true;
-    fetchProaRecords().then(records => {
+    const synchronize = () => fetchProaRecords().then(records => {
       if (!active) return;
-      setHodomRows(records.filter(record => !isHistoricalProaRecord(record) && (/^HD-/i.test(record.bedCode) || /domiciliaria/i.test(record.servicio || ''))).map(record => ({
+      const currentHodomRows = records.filter(record => !isHistoricalProaRecord(record) && (/^HD-/i.test(record.bedCode) || /domiciliaria/i.test(record.servicio || ''))).map(record => ({
         bed: { code: record.bedCode, cell: record.bedCode, serviceShort: 'HODOM', salaLabel: 'Hospitalización domiciliaria' },
         record: proaToPatient(record),
-      })));
+      }));
+      setHodomRows(currentHodomRows);
       setRegistry(current => {
         const fromProa = {};
         records.filter(record => !isHistoricalProaRecord(record)).forEach(record => {
@@ -318,6 +356,7 @@ function VistaHospitalizados() {
             || (ALL_BEDS.some(bed => bed.code === record.bedCode) ? record.bedCode : null);
           if (catalogCode) fromProa[catalogCode] = proaToPatient(record);
         });
+        currentHodomRows.forEach(({ bed, record }) => { fromProa[bed.code] = record; });
         const merged = { ...fromProa };
         Object.entries(current).forEach(([bedCode, local]) => {
           merged[bedCode] = mergePatient(fromProa[bedCode] || {}, local);
@@ -327,16 +366,28 @@ function VistaHospitalizados() {
       });
       setSyncState('ready');
     }).catch(() => { if (active) setSyncState('offline'); });
-    return () => { active = false; };
+    synchronize();
+    const intervalId = window.setInterval(synchronize, 60000);
+    const refreshWhenVisible = () => { if (document.visibilityState === 'visible') synchronize(); };
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    window.addEventListener('focus', synchronize);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+      window.removeEventListener('focus', synchronize);
+    };
   }, []);
 
-  const services = [...new Set(ALL_BEDS.map(b => b.serviceShort))];
-  const selectedBed = ALL_BEDS.find(b => b.code === selectedCode);
+  const displayBeds = useMemo(() => [...ALL_BEDS, ...hodomRows.map(item => item.bed)].sort((a, b) => (PRINT_SERVICE_ORDER.get(a.serviceShort) ?? 99) - (PRINT_SERVICE_ORDER.get(b.serviceShort) ?? 99)
+    || String(a.cell).localeCompare(String(b.cell), 'es', { numeric: true })), [hodomRows]);
+  const services = [...new Set(displayBeds.map(b => b.serviceShort))];
+  const selectedBed = displayBeds.find(b => b.code === selectedCode);
   const selectedCalculator = allCalculators.find(item => item.id === scaleDraft.calculatorId);
   const SelectedCalculatorComponent = selectedCalculator?.component;
   const occupied = Boolean(draft.nombre || draft.rut || draft.fechaIngreso || draft.diagnostico);
   const normalizedQuery = query.trim().toLocaleLowerCase('es');
-  const visibleBeds = useMemo(() => ALL_BEDS.filter(b => {
+  const visibleBeds = useMemo(() => displayBeds.filter(b => {
     const record = registry[b.code] || {};
     const isOccupied = Boolean(record.nombre || record.rut || record.fechaIngreso || record.diagnostico);
     if (service !== 'all' && b.serviceShort !== service) return false;
@@ -345,12 +396,41 @@ function VistaHospitalizados() {
     if (!normalizedQuery) return true;
     return [b.code, b.cell, b.serviceShort, b.salaLabel, record.nombre, record.rut, record.diagnostico]
       .some(value => String(value || '').toLocaleLowerCase('es').includes(normalizedQuery));
-  }), [registry, service, status, normalizedQuery]);
+  }), [displayBeds, registry, service, status, normalizedQuery]);
 
   const totals = useMemo(() => {
-    const occupiedCount = ALL_BEDS.filter(b => { const r = registry[b.code] || {}; return r.nombre || r.rut || r.fechaIngreso || r.diagnostico; }).length;
-    return { occupied: occupiedCount, free: ALL_BEDS.length - occupiedCount };
-  }, [registry]);
+    const occupiedCount = displayBeds.filter(b => { const r = registry[b.code] || {}; return r.nombre || r.rut || r.fechaIngreso || r.diagnosticoPrincipal || r.diagnostico; }).length;
+    return { occupied: occupiedCount, free: displayBeds.length - occupiedCount };
+  }, [displayBeds, registry]);
+
+  const statistics = useMemo(() => {
+    const percent = (numerator, denominator) => denominator ? Math.round((numerator / denominator) * 1000) / 10 : 0;
+    const today = new Date().toISOString().slice(0, 10);
+    const occupiedRows = displayBeds.map(bed => ({ bed, record: registry[bed.code] || {} })).filter(({ record }) => record.nombre || record.rut || record.fechaIngreso || record.diagnosticoPrincipal || record.diagnostico);
+    const hasActiveAtb = record => (record.antibioticos || []).some(item => item?.nombre && (!item.termino || item.termino >= today)) || (!record.antibioticos?.length && Boolean(record.antibioterapia));
+    const byService = PRINT_SERVICE_OPTIONS.map(option => {
+      const serviceBeds = displayBeds.filter(bed => bed.serviceShort === option.value);
+      const patients = occupiedRows.filter(({ bed }) => bed.serviceShort === option.value);
+      const nonSocial = patients.filter(({ record }) => !record.pacienteSocial);
+      const longStay = nonSocial.filter(({ record }) => hospitalDays(record.fechaIngreso) > 7);
+      const withAtb = patients.filter(({ record }) => hasActiveAtb(record));
+      return { service: option.value, label: option.label, capacity: serviceBeds.length, occupied: patients.length, nonSocial: nonSocial.length, longStay: longStay.length, withAtb: withAtb.length, occupancyPct: percent(patients.length, serviceBeds.length), longStayPct: percent(longStay.length, nonSocial.length), atbPct: percent(withAtb.length, patients.length) };
+    });
+    const nonSocial = occupiedRows.filter(({ record }) => !record.pacienteSocial);
+    const longStay = nonSocial.filter(({ record }) => hospitalDays(record.fechaIngreso) > 7);
+    const withAtb = occupiedRows.filter(({ record }) => hasActiveAtb(record));
+    const antibioticCounts = new Map(); const pathogenCounts = new Map();
+    occupiedRows.forEach(({ record }) => {
+      (record.antibioticos || []).filter(item => item?.nombre && (!item.termino || item.termino >= today)).forEach(item => antibioticCounts.set(item.nombre, (antibioticCounts.get(item.nombre) || 0) + 1));
+      String(record.patogenoAislado || '').split(/\n|,|;/).map(item => item.trim()).filter(Boolean).forEach(item => pathogenCounts.set(item, (pathogenCounts.get(item) || 0) + 1));
+    });
+    return {
+      byService,
+      overall: { capacity: displayBeds.length, occupied: occupiedRows.length, nonSocial: nonSocial.length, longStay: longStay.length, withAtb: withAtb.length, occupancyPct: percent(occupiedRows.length, displayBeds.length), longStayPct: percent(longStay.length, nonSocial.length), atbPct: percent(withAtb.length, occupiedRows.length) },
+      antibiotics: [...antibioticCounts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+      pathogens: [...pathogenCounts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+    };
+  }, [displayBeds, registry]);
 
   const printRows = useMemo(() => [
     ...ALL_BEDS.map(bed => ({ bed, record: registry[bed.code] || {} })),
@@ -559,11 +639,13 @@ function VistaHospitalizados() {
   };
   const openProaPopup = async () => {
     let latest = {};
+    let selectedRecord = null;
     if (draft.proaRecordId) {
       const records = await fetchProaRecords();
-      latest = getLatestProaForm(records.find(item => item.id === draft.proaRecordId)) || {};
+      selectedRecord = records.find(item => item.id === draft.proaRecordId) || null;
+      latest = getLatestProaForm(selectedRecord) || {};
     }
-    const storedAntibiotics = (latest.antibioticos || []).filter(item => item?.nombre);
+    const storedAntibiotics = latestStructuredAntibiotics(selectedRecord);
     setProaQuick({
       paciente: latest.paciente || draft.nombre || '', rut: latest.rut || draft.rut || '', edad: latest.edad || draft.edad || '', sexo: latest.sexo || draft.sexo || '',
       fecha_ingreso: latest.fecha_ingreso || draft.fechaIngreso || '', diagnostico: latest.diagnostico_principal || latest.diagnostico_actual || draft.diagnosticoPrincipal || draft.diagnostico || '',
@@ -617,12 +699,13 @@ function VistaHospitalizados() {
       <div className="mx-auto flex max-w-[1500px] items-center gap-3 px-4 py-3">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ChevronLeft className="h-5 w-5" /></Button>
         <div className="min-w-0 flex-1"><h1 className="truncate text-lg font-black text-slate-950">Vista general</h1><p className="text-xs text-slate-500">{syncState === 'loading' ? 'Sincronizando pacientes desde PROA…' : syncState === 'offline' ? 'Mostrando última información disponible' : 'Camas, situación clínica y documentos del paciente'}</p></div>
+        <div className="flex rounded-lg bg-slate-100 p-1"><button type="button" onClick={() => setActiveTab('camas')} className={`rounded-md px-3 py-1.5 text-xs font-bold transition ${activeTab === 'camas' ? 'bg-white text-teal-800 shadow-sm' : 'text-slate-500'}`}><BedDouble className="mr-1 inline h-3.5 w-3.5" />Camas</button><button type="button" onClick={() => setActiveTab('estadistica')} className={`rounded-md px-3 py-1.5 text-xs font-bold transition ${activeTab === 'estadistica' ? 'bg-white text-violet-800 shadow-sm' : 'text-slate-500'}`}><Activity className="mr-1 inline h-3.5 w-3.5" />Estadística</button></div>
         <Button variant="outline" size="sm" onClick={() => setPrintPreview(true)} className="gap-2"><Printer className="h-4 w-4" /><span className="hidden sm:inline">Tabla de visita</span></Button>
         <div className="hidden items-center gap-2 sm:flex"><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">{totals.occupied} ocupadas</span><span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200">{totals.free} libres</span></div>
       </div>
     </header>
 
-    <main className="mx-auto grid max-w-[1500px] gap-4 p-4 pb-32 xl:grid-cols-[minmax(480px,0.9fr)_minmax(560px,1.1fr)]">
+    <main className={`${activeTab === 'camas' ? 'grid' : 'hidden'} mx-auto max-w-[1500px] gap-4 p-4 pb-32 xl:grid-cols-[minmax(480px,0.9fr)_minmax(560px,1.1fr)]`}>
       <section className="min-w-0">
         <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
           <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
@@ -693,6 +776,7 @@ function VistaHospitalizados() {
         </div>}
       </aside>
     </main>
+    {activeTab === 'estadistica' && <StatisticsDashboard statistics={statistics} />}
     {diagnosisOpen && <div className="fixed inset-0 z-[88] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-blue-50 p-5 shadow-2xl"><h2 className="text-lg font-black text-sky-950">Diagnósticos compartidos</h2><p className="mb-4 text-xs text-sky-700">El diagnóstico principal y su desglose se sincronizan con PROA.</p><div className="space-y-3"><Field label="Diagnóstico principal"><input className={input} value={diagnosisDraft.principal} onChange={e => setDiagnosisDraft(old => ({ ...old, principal: e.target.value }))} /></Field><Field label="Desglose / diagnósticos asociados"><textarea className={textarea} value={diagnosisDraft.desglose} onChange={e => setDiagnosisDraft(old => ({ ...old, desglose: e.target.value }))} placeholder="Uno por línea" /></Field></div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setDiagnosisOpen(false)}>Cancelar</Button><Button onClick={saveDiagnosis} className="bg-sky-700 hover:bg-sky-800">Guardar y sincronizar</Button></div></div></div>}
     {scalesOpen && <div className="fixed inset-0 z-[88] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm"><div className="flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 via-white to-orange-50 shadow-2xl"><div className="flex items-start justify-between gap-3 border-b border-rose-200 bg-rose-100/80 px-5 py-4"><div><h2 className="text-lg font-black text-rose-950">Escalas, calculadoras y scores — Cama {selectedBed?.cell}</h2><p className="text-xs text-rose-700">Aplica la calculadora aquí mismo y guarda el resultado fechado para este paciente.</p></div><Button variant="outline" size="sm" onClick={() => setScalesOpen(false)}>Cerrar</Button></div><div className="min-h-0 flex-1 overflow-y-auto p-5"><div className="grid gap-3 sm:grid-cols-[180px_1fr]"><Field label="Fecha"><input type="date" className={input} value={scaleDraft.fecha} onChange={e => setScaleDraft(old => ({ ...old, fecha: e.target.value }))} /></Field><Field label="Escala / calculadora"><select className={input} value={scaleDraft.calculatorId} onChange={e => { const calculator = allCalculators.find(item => item.id === e.target.value); setScaleDraft(old => ({ ...old, calculatorId: e.target.value, nombre: calculator?.name || '', puntaje: '', resultado: '' })); }}><option value="">Seleccionar…</option>{calculatorReferences.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field></div>{SelectedCalculatorComponent ? <div className="mt-4 overflow-hidden rounded-2xl border border-rose-200 bg-white shadow-sm"><SelectedCalculatorComponent key={scaleDraft.calculatorId} /></div> : <div className="mt-4 rounded-xl border border-dashed border-rose-300 bg-white/70 p-8 text-center text-sm text-rose-700"><Calculator className="mx-auto mb-2 h-7 w-7" />Selecciona una calculadora para aplicarla sin salir de la ficha.</div>}<div className="mt-4 rounded-xl border border-rose-200 bg-white/85 p-4"><p className="mb-3 text-sm font-black text-rose-950">Registrar resultado en la ficha</p><div className="grid gap-3 sm:grid-cols-2"><Field label="Puntaje / resultado"><input className={input} value={scaleDraft.puntaje} onChange={e => setScaleDraft(old => ({ ...old, puntaje: e.target.value }))} placeholder="Copia aquí el resultado calculado" /></Field><Field label="Interpretación"><input className={input} value={scaleDraft.resultado} onChange={e => setScaleDraft(old => ({ ...old, resultado: e.target.value }))} placeholder="Riesgo o interpretación clínica" /></Field></div></div>{(draft.escalas || []).length > 0 && <div className="mt-4 border-t border-rose-200 pt-3"><p className="mb-2 text-xs font-bold text-rose-900">Resultados previos</p>{draft.escalas.slice(0, 5).map((item, index) => <p key={index} className="text-xs text-slate-700">{item.fecha} · {item.nombre}: {item.puntaje} pts {item.resultado && `· ${item.resultado}`}</p>)}</div>}</div><div className="flex justify-end gap-2 border-t border-rose-200 bg-white/80 px-5 py-4"><Button variant="outline" onClick={() => setScalesOpen(false)}>Cancelar</Button><Button onClick={saveScale} disabled={!scaleDraft.nombre || !scaleDraft.puntaje} className="bg-rose-700 hover:bg-rose-800">Guardar resultado</Button></div></div></div>}
     {nutritionOpen && <div className="fixed inset-0 z-[88] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl border border-lime-200 bg-gradient-to-br from-lime-50 via-white to-green-50 p-5 shadow-2xl"><h2 className="text-lg font-black text-lime-950">Evaluación nutricional</h2><p className="mb-4 text-xs text-lime-800">Tamizaje NRS-2002: 0–2 puntos sin riesgo; ≥3 puntos con riesgo nutricional.</p><div className="grid gap-3 sm:grid-cols-2"><Field label="Fecha"><input type="date" className={input} value={nutritionDraft.fecha} onChange={e => setNutritionDraft(old => ({ ...old, fecha: e.target.value }))} /></Field><Field label="Score / tamizaje aplicado"><select className={input} value={nutritionDraft.tamizaje} onChange={e => setNutritionDraft(old => ({ ...old, tamizaje: e.target.value }))}><option value="">Seleccionar…</option><option value="Sí">Sí</option><option value="No">No</option><option value="No aplica">No aplica</option></select></Field><Field label="Resultado (puntos)"><input type="number" min="0" className={input} value={nutritionDraft.puntaje} disabled={nutritionDraft.tamizaje !== 'Sí'} onChange={e => setNutritionDraft(old => ({ ...old, puntaje: e.target.value }))} /></Field><Field label="Riesgo automático"><input className={`${input} bg-white/70`} value={nutritionDraft.tamizaje === 'Sí' ? nutritionRisk(nutritionDraft.puntaje) : nutritionDraft.tamizaje} readOnly /></Field><Field label="Evaluación nutricional realizada" wide><select className={input} value={nutritionDraft.evaluacion} onChange={e => setNutritionDraft(old => ({ ...old, evaluacion: e.target.value }))}><option value="">Seleccionar…</option><option value="Sí">Sí</option><option value="No">No</option><option value="No aplica">No aplica</option></select></Field></div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setNutritionOpen(false)}>Cancelar</Button><Button onClick={saveNutrition} className="bg-lime-700 hover:bg-lime-800">Guardar evaluación</Button></div></div></div>}
