@@ -107,9 +107,11 @@ export default function Templates() {
   const urlParams = new URLSearchParams(window.location.search);
   const selectedTemplateId = urlParams.get('id');
   const openMultiOnLoad = urlParams.get('multi') === '1';
+  const requestedType = urlParams.get('type');
+  const openImageOnLoad = urlParams.get('image') === '1';
 
   const [activeTemplate, setActiveTemplate] = useState(null);
-  const [activeType, setActiveType] = useState('all');
+  const [activeType, setActiveType] = useState(requestedType || 'all');
 
   const HIDDEN_TYPES = ['Estudio Endoscópico'];
 
@@ -129,6 +131,12 @@ export default function Templates() {
       if (template) setActiveTemplate(template);
     }
   }, [selectedTemplateId, templates]);
+
+  useEffect(() => {
+    if (!openImageOnLoad || rawTemplates.length === 0) return;
+    const imageTemplate = rawTemplates.find(template => template.type === 'Protocolo Imágenes');
+    if (imageTemplate) setActiveTemplate(imageTemplate);
+  }, [openImageOnLoad, rawTemplates]);
 
   // Get unique types
   const types = [...new Set(templates.map(t => t.type).filter(Boolean))];

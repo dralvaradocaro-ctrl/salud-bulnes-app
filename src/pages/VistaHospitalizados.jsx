@@ -9,6 +9,7 @@ import { fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, saveProaRe
 import { createPageUrl } from '@/utils';
 
 const STORAGE_KEY = 'vista_general_hospitalizados_v1';
+const SELECTED_BED_KEY = 'vista_general_hospitalizados_selected_bed';
 const EMPTY = {
   nombre: '', rut: '', fechaNacimiento: '', edad: '', sexo: '', nFicha: '', prevision: '', telefono: '', direccion: '', comuna: '',
   fechaIngreso: '', diagnostico: '', antecedentes: '', antibioterapia: '', antibioticos: [], aislamiento: '', medicoTratante: '', observaciones: '',
@@ -225,14 +226,17 @@ const ACTIONS = [
   { label: 'HODOM / consentimientos', route: 'FormulariosHODOM', icon: FileText, color: 'text-indigo-700 bg-indigo-50' },
   { label: 'Formulario / Constancia GES', route: 'FormularioGES', icon: ShieldCheck, color: 'text-emerald-700 bg-emerald-50' },
   { label: 'IRA grave / ISP', route: 'FormularioIRAGrave', icon: Activity, color: 'text-rose-700 bg-rose-50' },
-  { label: 'Protocolos de imágenes y otros', route: 'Templates?multi=1', icon: Image, color: 'text-violet-700 bg-violet-50' },
+  { label: 'Solicitar protocolo de imágenes', route: 'Templates?image=1', icon: Image, color: 'text-violet-700 bg-violet-50' },
 ];
 
 function VistaHospitalizados() {
   const navigate = useNavigate();
   const [registry, setRegistry] = useState(readRegistry);
-  const [selectedCode, setSelectedCode] = useState('');
-  const [draft, setDraft] = useState(EMPTY);
+  const [selectedCode, setSelectedCode] = useState(() => sessionStorage.getItem(SELECTED_BED_KEY) || '');
+  const [draft, setDraft] = useState(() => {
+    const savedCode = sessionStorage.getItem(SELECTED_BED_KEY) || '';
+    return { ...EMPTY, ...(savedCode ? readRegistry()[savedCode] : {}) };
+  });
   const [service, setService] = useState('all');
   const [status, setStatus] = useState('all');
   const [query, setQuery] = useState('');
@@ -304,6 +308,7 @@ function VistaHospitalizados() {
 
   const openBed = (bed) => {
     setSelectedCode(bed.code);
+    sessionStorage.setItem(SELECTED_BED_KEY, bed.code);
     setDraft({ ...EMPTY, ...(registry[bed.code] || {}) });
     setHistoryOpen(false);
     setDetailsOpen(true);
@@ -340,6 +345,7 @@ function VistaHospitalizados() {
       patient_name: draft.nombre, patient_rut: draft.rut, patient_fecha_nac: draft.fechaNacimiento,
       patient_direccion: draft.direccion, patient_comuna: draft.comuna, patient_telefono: draft.telefono,
       prevision: draft.prevision, diagnostico: draft.diagnostico, n_ficha: draft.nFicha,
+      aislamiento: draft.aislamiento, clinical_text: [draft.resumenCaso, draft.antecedentes].filter(Boolean).join('\n'),
       servicio: selectedBed?.serviceShort || '', cama: selectedBed?.cell || selectedBed?.code || '',
     };
     setMultiPrefill(data);
@@ -462,7 +468,7 @@ function VistaHospitalizados() {
       </div>
     </header>
 
-    <main className="mx-auto grid max-w-[1500px] gap-4 p-4 xl:grid-cols-[minmax(480px,0.9fr)_minmax(560px,1.1fr)]">
+    <main className="mx-auto grid max-w-[1500px] gap-4 p-4 pb-32 xl:grid-cols-[minmax(480px,0.9fr)_minmax(560px,1.1fr)]">
       <section className="min-w-0">
         <div className="mb-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
           <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
@@ -484,7 +490,7 @@ function VistaHospitalizados() {
         </div>
       </section>
 
-      <aside className="min-w-0 xl:sticky xl:top-20 xl:max-h-[calc(100vh-6rem)] xl:overflow-y-auto">
+      <aside className="min-w-0 pb-20 xl:sticky xl:top-20 xl:max-h-[calc(100vh-10rem)] xl:overflow-y-auto">
         {!selectedBed ? <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center"><BedDouble className="mx-auto h-12 w-12 text-slate-300" /><h2 className="mt-4 font-bold text-slate-800">Selecciona una cama</h2><p className="mt-1 text-sm text-slate-500">Podrás registrar al paciente y generar todos sus documentos desde una sola ficha.</p></div> : <div className="space-y-4">
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className={`flex flex-wrap items-start justify-between gap-3 ${detailsOpen ? 'mb-4' : ''}`}><div><p className="text-xs font-bold uppercase tracking-wider text-teal-700">{selectedBed.serviceShort} · {selectedBed.salaLabel}</p><h2 className="text-2xl font-black text-slate-950">Cama {selectedBed.cell}</h2>{draft.nombre && <p className="font-bold text-slate-800">{draft.nombre} {draft.rut && <span className="font-normal text-slate-500">· {draft.rut}</span>}</p>}{occupied && <p className="text-xs font-semibold text-emerald-700">Ingreso {draft.fechaIngreso || 'sin fecha'} · Día {hospitalDays(draft.fechaIngreso)}</p>}</div><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setDetailsOpen(open => !open)} className="gap-2">{detailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}{detailsOpen ? 'Ocultar ficha' : 'Ver ficha'}</Button><Button onClick={openGeneral} className="gap-2 bg-teal-700 hover:bg-teal-800"><Save className="h-4 w-4" />Editar ficha general</Button></div></div>
@@ -497,6 +503,7 @@ function VistaHospitalizados() {
               <Button type="button" size="sm" variant="outline" onClick={() => setLabOpen(true)} className="border-blue-300 bg-blue-50 text-blue-700 shadow-[0_0_0_3px_rgba(147,197,253,0.2)] hover:bg-blue-100"><FlaskConical className="mr-1 h-3.5 w-3.5" />Laboratorio</Button>
               <Button type="button" size="sm" variant="outline" onClick={openProaPopup} className="border-teal-400 bg-teal-50 font-bold text-teal-800 shadow-[0_0_0_3px_rgba(45,212,191,0.2)] hover:bg-teal-100"><ShieldCheck className="mr-1 h-3.5 w-3.5" />PROA</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setStatsOpen(true)} className="border-violet-300 bg-violet-50 text-violet-700 shadow-[0_0_0_3px_rgba(196,181,253,0.2)] hover:bg-violet-100"><Activity className="mr-1 h-3.5 w-3.5" />Datos / estadísticas</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => goToSection('hospital-documentos')} className="border-indigo-300 bg-indigo-50 text-indigo-700 shadow-[0_0_0_3px_rgba(165,180,252,0.2)] hover:bg-indigo-100"><FileText className="mr-1 h-3.5 w-3.5" />Documentos y solicitudes</Button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Nombre completo" wide><input className={`${input} cursor-not-allowed bg-slate-50`} value={draft.nombre} readOnly /></Field>
@@ -522,7 +529,7 @@ function VistaHospitalizados() {
             </>}
           </section>
 
-          <section className="rounded-2xl border border-teal-200 bg-white p-5 shadow-sm">
+          <section id="hospital-documentos" className="scroll-mt-24 rounded-2xl border border-teal-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center gap-2"><Plus className="h-5 w-5 text-teal-700" /><div><h3 className="font-black text-slate-900">Documentos y solicitudes</h3><p className="text-xs text-slate-500">La ficha se guarda y los datos compatibles se cargan automáticamente.</p></div></div>
             <div className="grid gap-2 sm:grid-cols-2">{ACTIONS.map(action => { const Icon = action.icon; return <button key={action.label} onClick={() => openAction(action.route, action.proa)} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-left transition hover:border-teal-300 hover:shadow-sm"><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${action.color}`}><Icon className="h-4 w-4" /></span><span className="text-sm font-semibold text-slate-800">{action.label}</span></button>; })}</div>
           </section>

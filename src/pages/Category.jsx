@@ -1052,7 +1052,7 @@ export default function Category() {
                           <Badge className="bg-teal-100 text-teal-800 border-teal-200">Disponible</Badge>
                         </div>
                         <p className="text-sm text-slate-600 mt-1">
-                          Gestión del Programa de Optimización del Uso de Antimicrobianos: evolución, pacientes, plantillas y seguimiento.
+                          Herramientas del Programa de Optimización del Uso de Antimicrobianos: plantillas y seguimiento operativo.
                         </p>
                         <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-teal-700">
                           Abrir gestión <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -1074,7 +1074,7 @@ export default function Category() {
                           <Badge className="border-emerald-200 bg-emerald-100 text-emerald-800">Acceso protegido</Badge>
                         </div>
                         <p className="mt-1 text-sm text-slate-600">
-                          Camas, pacientes, diagnósticos, antibioterapia y generación inteligente de documentos.
+                          Panel operativo protegido para coordinación hospitalaria y generación de documentos.
                         </p>
                         <div className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700">
                           Abrir <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />

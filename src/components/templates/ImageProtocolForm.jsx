@@ -275,7 +275,9 @@ export default function ImageProtocolForm({ onClose, embedded = false }) {
       patientRut: prev.patientRut || (p.patient_rut ? formatRut(p.patient_rut) : ''),
       patientBirthDate: prev.patientBirthDate || p.patient_fecha_nac || '',
       patientAge: prev.patientAge || (p.patient_fecha_nac ? calcAge(p.patient_fecha_nac) : ''),
+      isolation: p.aislamiento && !/^no$/i.test(String(p.aislamiento).trim()) ? 'SÍ' : prev.isolation,
       diagnosis: prev.diagnosis || p.diagnostico || '',
+      clinicalText: prev.clinicalText || p.clinical_text || '',
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
