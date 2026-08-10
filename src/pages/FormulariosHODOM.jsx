@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, Download, Eye, FileSignature, Printer, RotateCcw } from 'lucide-react';
+import { ChevronLeft, Download, Eye, FileSignature, Printer, RotateCcw, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import { archiveProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, saveProaRecord } from '@/lib/proaRegistry';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const EMPTY = {
@@ -107,10 +108,52 @@ export default function FormulariosHODOM() {
   const [f, setF] = useState(EMPTY);
   const [preview, setPreview] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [prefillContext, setPrefillContext] = useState(null);
+  const [registryPrompt, setRegistryPrompt] = useState(null);
+  const [savingRegistry, setSavingRegistry] = useState(false);
+  const [registryError, setRegistryError] = useState('');
   const exportRef = useRef(null);
   const update = useCallback((key, value) => setF(old => ({ ...old, [key]: value })), []);
-  useEffect(() => { const p = getMultiPrefill(); if (p) setF(old => ({ ...old, nombre: p.patient_name || '', rut: formatRut(p.patient_rut), telefono: p.patient_telefono || '', domicilio: p.patient_direccion || '', diagnosticoConsentimiento: p.diagnostico || '' })); }, []);
+  useEffect(() => { const p = getMultiPrefill(); if (p) { setPrefillContext(p); setF(old => ({ ...old, nombre: p.patient_name || '', rut: formatRut(p.patient_rut), edad: p.edad || '', telefono: p.patient_telefono || '', domicilio: p.patient_direccion || '', antecedentes: p.clinical_text || '', diagnosticos: p.diagnostico_principal || p.diagnostico || '', diagnosticoConsentimiento: p.diagnostico_principal || p.diagnostico || '' })); } }, []);
   const reset = () => setF({ ...EMPTY, fechaDerivacion: today(), fechaConsentimiento: today() });
+  const normalizedRut = value => String(value || '').replace(/[^0-9kK]/g, '').toUpperCase();
+  const prepareRegistryPrompt = async () => {
+    if (!f.nombre.trim() || !normalizedRut(f.rut)) return;
+    setRegistryError('');
+    const records = await fetchProaRecords();
+    const activeRecords = records.filter(record => !isHistoricalProaRecord(record));
+    const fromHodomBed = prefillContext?.source_service === 'HODOM';
+    const matching = (fromHodomBed && activeRecords.find(record => record.bedCode === prefillContext?.source_bed))
+      || activeRecords.find(record => normalizedRut(getLatestProaForm(record)?.rut) === normalizedRut(f.rut));
+    const alreadyHodom = matching && (/^HD-/i.test(matching.bedCode) || /domiciliaria/i.test(matching.servicio || ''));
+    setRegistryPrompt({ records, matching, fromHodomBed, alreadyHodom });
+  };
+  const addToHodomRegistry = async () => {
+    if (!registryPrompt || savingRegistry) return;
+    setSavingRegistry(true); setRegistryError('');
+    try {
+      const { records, matching, alreadyHodom } = registryPrompt;
+      const occupiedHodom = new Set(records.filter(record => !isHistoricalProaRecord(record)).map(record => record.bedCode));
+      const targetBed = alreadyHodom ? matching.bedCode : Array.from({ length: 50 }, (_, index) => `HD-${index + 1}`).find(code => !occupiedHodom.has(code));
+      if (!targetBed) throw new Error('No hay una cama HODOM disponible en el registro.');
+      const previous = matching ? getLatestProaForm(matching) || {} : {};
+      if (matching && !alreadyHodom) await archiveProaRecord(matching, today(), { motivo: 'Hospitalización domiciliaria', destinoServicio: 'Hospitalización domiciliaria', destinoCama: targetBed });
+      await saveProaRecord({
+        ...previous,
+        proa_entry_type: 'ingreso_hodom_desde_documento', proa_enrolled: false, hodom_patient: true,
+        paciente: f.nombre.trim(), rut: formatRut(f.rut), edad: f.edad || previous.edad || '', telefono: f.telefono || previous.telefono || '', direccion: f.domicilio || previous.direccion || '',
+        antecedentes: f.antecedentes || previous.antecedentes || '', diagnostico_principal: f.diagnosticos || f.diagnosticoConsentimiento || previous.diagnostico_principal || previous.diagnostico_actual || '',
+        diagnostico_actual: f.diagnosticos || f.diagnosticoConsentimiento || previous.diagnostico_actual || '', diagnosticos_actuales: [f.diagnosticos || f.diagnosticoConsentimiento || previous.diagnostico_actual].filter(Boolean),
+        resumen_caso: f.anamnesis || previous.resumen_caso || '', plan_duracion: f.planes || previous.plan_duracion || '', recomendaciones_otra: f.indicaciones || previous.recomendaciones_otra || '',
+        fecha_ingreso: f.fechaDerivacion || today(), fecha: today(), hora: new Date().toTimeString().slice(0, 5), servicio: 'Hospitalización domiciliaria', cama: targetBed,
+      });
+      setRegistryPrompt(null);
+    } catch (error) {
+      setRegistryError(error?.message || 'No fue posible agregar el paciente al registro HODOM.');
+    } finally {
+      setSavingRegistry(false);
+    }
+  };
   const downloadPdf = async () => {
     if (!exportRef.current || exportingPdf) return;
     setExportingPdf(true);
@@ -128,11 +171,13 @@ export default function FormulariosHODOM() {
       }
       const patient = (f.nombre || 'paciente').trim().replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ_-]+/g, '_');
       pdf.save(`${active === 'derivacion' ? 'Derivacion_HODOM' : 'Consentimiento_HODOM'}_${patient}.pdf`);
+      await prepareRegistryPrompt();
     } finally {
       exportRef.current?.classList.remove('hodom-exporting');
       setExportingPdf(false);
     }
   };
+  const printDocument = () => { window.print(); window.setTimeout(prepareRegistryPrompt, 300); };
   const longField = (key, label, rows = 5) => <Field label={label} wide><textarea className={textarea} rows={rows} value={f[key]} onChange={e => update(key, e.target.value)} /></Field>;
 
   return <>
@@ -145,7 +190,7 @@ export default function FormulariosHODOM() {
       .hodom-print{display:none}.hodom-print.hodom-exporting{display:block!important;position:fixed;left:-10000px;top:0;z-index:-1;width:max-content;background:#fff}
     `}</style>
     <div className="hodom-screen min-h-screen bg-slate-100">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur"><div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3"><Button variant="ghost" size="icon" onClick={() => window.history.back()}><ChevronLeft className="h-5 w-5" /></Button><div className="min-w-0 flex-1"><h1 className="truncate font-bold text-slate-900">Hospitalización Domiciliaria (HODOM)</h1><p className="text-xs text-slate-500">Formularios oficiales editables · HCSF Bulnes</p></div><Button variant="outline" size="sm" onClick={reset}><RotateCcw className="mr-1 h-4 w-4" />Limpiar</Button><Button variant="outline" size="sm" onClick={downloadPdf} disabled={exportingPdf}><Download className="mr-1 h-4 w-4" />{exportingPdf ? 'Generando…' : 'Descargar PDF'}</Button><Button size="sm" onClick={() => window.print()}><Printer className="mr-1 h-4 w-4" />Imprimir</Button></div></header>
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur"><div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3"><Button variant="ghost" size="icon" onClick={() => window.history.back()}><ChevronLeft className="h-5 w-5" /></Button><div className="min-w-0 flex-1"><h1 className="truncate font-bold text-slate-900">Hospitalización Domiciliaria (HODOM)</h1><p className="text-xs text-slate-500">Formularios oficiales editables · HCSF Bulnes</p></div><Button variant="outline" size="sm" onClick={reset}><RotateCcw className="mr-1 h-4 w-4" />Limpiar</Button><Button variant="outline" size="sm" onClick={downloadPdf} disabled={exportingPdf}><Download className="mr-1 h-4 w-4" />{exportingPdf ? 'Generando…' : 'Descargar PDF'}</Button><Button size="sm" onClick={printDocument}><Printer className="mr-1 h-4 w-4" />Imprimir</Button></div></header>
       <main className="mx-auto max-w-5xl p-4"><div className="mb-4 grid grid-cols-2 rounded-xl border bg-white p-1"><button onClick={() => setActive('derivacion')} className={`rounded-lg px-3 py-2 text-sm font-semibold ${active === 'derivacion' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>Derivación HODOM</button><button onClick={() => setActive('consentimiento')} className={`rounded-lg px-3 py-2 text-sm font-semibold ${active === 'consentimiento' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>Consentimiento informado</button></div>
         <div className="mb-4 flex items-center justify-between"><p className="text-sm text-slate-600">{active === 'derivacion' ? 'Original en tamaño Carta, 2 páginas.' : 'Original en tamaño A4, 1 página.'}</p><Button variant="outline" size="sm" onClick={() => setPreview(v => !v)}><Eye className="mr-1 h-4 w-4" />{preview ? 'Ocultar vista previa' : 'Vista previa'}</Button></div>
         {!preview && <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="mb-5 flex items-center gap-2"><FileSignature className="h-5 w-5 text-blue-600" /><h2 className="font-semibold">Campos editables</h2></div><div className="grid gap-4 sm:grid-cols-2">
@@ -154,6 +199,7 @@ export default function FormulariosHODOM() {
         {preview && <div className="hodom-preview-wrap">{active === 'derivacion' ? <DerivacionDocument f={f} /> : <ConsentimientoDocument f={f} />}</div>}
       </main>
     </div>
+    {registryPrompt && <div className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"><div className="w-full max-w-lg rounded-2xl border border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-5 shadow-2xl"><div className="mb-4 flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-100 text-indigo-700"><UserPlus className="h-5 w-5" /></span><div><h2 className="font-black text-slate-950">Agregar paciente al registro HODOM</h2><p className="text-sm text-slate-600">{f.nombre} · {f.rut}</p></div></div>{registryPrompt.alreadyHodom || registryPrompt.fromHodomBed ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">El paciente ya proviene de una cama HODOM. Se actualizará su registro sin solicitar egreso ni traslado.</div> : registryPrompt.matching ? <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950"><p className="font-bold">Paciente actualmente hospitalizado en {registryPrompt.matching.servicio} · cama {registryPrompt.matching.bedCode}.</p><p className="mt-1">¿Quieres egresarlo de esa cama y trasladarlo al registro HODOM?</p></div> : <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">No se encontró una hospitalización activa. Se creará un nuevo ingreso en el registro HODOM.</div>}{registryError && <p className="mt-3 rounded-lg bg-red-50 p-2 text-sm font-semibold text-red-700">{registryError}</p>}<div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setRegistryPrompt(null)} disabled={savingRegistry}>No agregar</Button><Button onClick={addToHodomRegistry} disabled={savingRegistry} className="bg-indigo-700 hover:bg-indigo-800"><UserPlus className="mr-1 h-4 w-4" />{savingRegistry ? 'Agregando…' : registryPrompt.matching && !registryPrompt.alreadyHodom && !registryPrompt.fromHodomBed ? 'Sí, egresar y trasladar' : registryPrompt.alreadyHodom || registryPrompt.fromHodomBed ? 'Actualizar registro HODOM' : 'Agregar a HODOM'}</Button></div></div></div>}
     <div ref={exportRef} className="hodom-print">{active === 'derivacion' ? <DerivacionDocument f={f} /> : <ConsentimientoDocument f={f} />}</div>
   </>;
 }

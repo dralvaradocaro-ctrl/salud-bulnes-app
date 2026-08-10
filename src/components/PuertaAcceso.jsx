@@ -79,7 +79,7 @@ export default function PuertaAcceso({ codigo, storageKey, titulo, descripcion, 
         />
         {error && <p className="mt-2 text-xs font-medium text-red-600">Código incorrecto.</p>}
         <div className="mt-4 flex gap-2">
-          <Button type="submit" disabled={!valor.trim()} className="flex-1">Entrar</Button>
+          <Button type="submit" disabled={!valor.trim()} className="flex-1">Agregar código</Button>
           <Button type="button" variant="outline" onClick={() => navigate(-1)}>Salir</Button>
         </div>
       </form>

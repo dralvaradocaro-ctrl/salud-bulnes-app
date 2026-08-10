@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Activity, Apple, BedDouble, Calculator, ChevronDown, ChevronLeft, ChevronUp, ClipboardList, FileText, FlaskConical, HeartHandshake, Image, LogOut, Microscope, Pill, Plus, Printer, Save, Search, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ const EMPTY = {
   fechaIngreso: '', diagnosticoPrincipal: '', diagnostico: '', antecedentes: '', antibioterapia: '', antibioticos: [], aislamiento: '', medicoTratante: '', observaciones: '',
   resumenCaso: '', ultimaEvolucion: '', planesPendientes: '', estudiosComplementarios: '', estudiosDetalle: [], patogenoAislado: '', ultimoLaboratorio: '',
   letIndicacion: '', iotIndicacion: '', rcpIndicacion: '', pacienteSocial: false, escalas: [], evaluacionesNutricionales: [], historialActualizaciones: [],
+  reingresoEvaluado: false, reingresoMenor30: false, reingresoFechaEgresoPrevia: '', reingresoEvaluadoEn: '',
 };
 
 const input = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100';
@@ -32,9 +33,21 @@ const PRINT_SERVICE_OPTIONS = [
 ];
 const PRINT_SERVICE_ORDER = new Map(PRINT_SERVICE_OPTIONS.map((option, index) => [option.value, index]));
 const DISCHARGE_REASONS = ['Alta médica', 'Fallecimiento', 'Traslado a otro servicio', 'Traslado a otro establecimiento', 'Hospitalización domiciliaria', 'Otro'];
+const TEST_BED = { code: 'TEST-VISTA-PROA-1', cell: 'Prueba 1', serviceShort: 'PRUEBA', salaLabel: 'Sala exclusiva de prueba · no contabiliza' };
+const TEST_PATIENT = {
+  ...EMPTY, nombre: 'Paciente PROA de Prueba', rut: '11.111.111-1', edad: '68', sexo: 'F', fechaNacimiento: '1958-05-14', fechaIngreso: '2026-08-08',
+  diagnosticoPrincipal: 'Neumonía adquirida en la comunidad', diagnostico: 'Insuficiencia respiratoria aguda hipoxémica', antecedentes: 'Hipertensión arterial. Diabetes mellitus tipo 2.',
+  resumenCaso: 'Paciente estable, afebril y con requerimiento bajo de oxígeno.', ultimaEvolucion: 'Evolución favorable; menor disnea y sin fiebre.', planesPendientes: 'Control de laboratorio y reevaluación de antibioterapia.',
+  estudiosComplementarios: 'Imagenología · 2026-08-08 · Radiografía de tórax: infiltrado basal derecho · Informado', estudiosDetalle: [{ fecha: '2026-08-08', tipo: 'Imagenología', estudio: 'Radiografía de tórax: infiltrado basal derecho', estado: 'Informado' }],
+  aislamiento: 'Precauciones de gotitas', antibioticos: [{ nombre: 'Ceftriaxona', presentacion: 'Polvo para solución inyectable · 1 g', dosis_cantidad: '2', dosis_unidad: 'g', intervalo_horas: '24', via: 'EV', inicio: '2026-08-08', termino: '' }],
+  antibioterapia: 'Ceftriaxona 2 g c/24 h EV', patogenoAislado: 'Streptococcus pneumoniae', ultimoLaboratorio: '2026-08-10 · PCR 42 · Leucocitos 10.200 · Creatinina 0,8 mg/dL',
+  laboratorios: [{ fecha: '2026-08-10', pcr: '42', blancos: '10200', crea: '0.8', pct: '0.18', vhs: '35', temp: '36.7' }],
+  letIndicacion: 'No', iotIndicacion: 'Sí', rcpIndicacion: 'Sí', evaluacionesNutricionales: [{ fecha: '2026-08-09', tamizaje: 'Sí', puntaje: '2', riesgo: 'Sin riesgo nutricional', evaluacion: 'Sí' }],
+  reingresoEvaluado: false, reingresoMenor30: false, reingresoFechaEgresoPrevia: '', egresoPrevioConocido: '2026-07-25', reingresoEvaluadoEn: '', proaIsTest: true,
+};
 
 function readRegistry() {
-  try { const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); return parsed && typeof parsed === 'object' ? parsed : {}; } catch { return {}; }
+  try { const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); return parsed && typeof parsed === 'object' ? { [TEST_BED.code]: TEST_PATIENT, ...parsed } : { [TEST_BED.code]: TEST_PATIENT }; } catch { return { [TEST_BED.code]: TEST_PATIENT }; }
 }
 
 function formatRut(value) {
@@ -87,6 +100,7 @@ function withHistorySnapshot(record) {
 }
 
 function catalogToProaBed(bed) {
+  if (bed?.code === TEST_BED.code) return 'TEST-PROA-1';
   if (bed.serviceShort === 'MQ1') {
     if (/^\d+-\d+$/.test(bed.cell)) return bed.cell;
     const isolation = /^Aisl(\d+)-(\d+)$/.exec(bed.cell);
@@ -110,7 +124,7 @@ function catalogToProaBed(bed) {
   return null;
 }
 
-const PROA_TO_CATALOG = new Map(ALL_BEDS.map(bed => [catalogToProaBed(bed), bed.code]).filter(([key]) => key));
+const PROA_TO_CATALOG = new Map([...ALL_BEDS, TEST_BED].map(bed => [catalogToProaBed(bed), bed.code]).filter(([key]) => key));
 
 function antibioticSummary(form) {
   if (form.antibioterapia_preingreso) return form.antibioterapia_preingreso;
@@ -357,6 +371,9 @@ function VistaHospitalizados() {
   const [dischargeDraft, setDischargeDraft] = useState({ fecha: new Date().toISOString().slice(0, 10), motivo: '', destinoServicio: '', destinoCama: '', antibioticActions: {}, antibioticStopDates: {}, antibioticoAltaIndicacion: '' });
   const [proaQuick, setProaQuick] = useState({ paciente: '', rut: '', edad: '', sexo: '', fecha_ingreso: '', diagnostico: '', aislamiento: '', antibioticos: [{ ...EMPTY_QUICK_ATB }], cultivos: [{ fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }] });
   const [labSaving, setLabSaving] = useState(false);
+  const [readmissionOpen, setReadmissionOpen] = useState(false);
+  const [readmissionDraft, setReadmissionDraft] = useState({ value: '', detected: false, previousDischargeDate: '' });
+  const pendingClinicalAction = useRef(null);
   const emptyLabRow = () => ({ fecha: new Date().toISOString().slice(0, 10), pcr: '', pct: '', blancos: '', crea: '', vhs: '', temp: '' });
   const [labRows, setLabRows] = useState(() => [emptyLabRow()]);
 
@@ -407,10 +424,16 @@ function VistaHospitalizados() {
     };
   }, []);
 
-  const displayBeds = useMemo(() => [...ALL_BEDS, ...hodomRows.map(item => item.bed)].sort((a, b) => (PRINT_SERVICE_ORDER.get(a.serviceShort) ?? 99) - (PRINT_SERVICE_ORDER.get(b.serviceShort) ?? 99)
+  const displayBeds = useMemo(() => [...ALL_BEDS, ...hodomRows.map(item => item.bed), TEST_BED].sort((a, b) => (PRINT_SERVICE_ORDER.get(a.serviceShort) ?? 99) - (PRINT_SERVICE_ORDER.get(b.serviceShort) ?? 99)
     || String(a.cell).localeCompare(String(b.cell), 'es', { numeric: true })), [hodomRows]);
   const services = [...new Set(displayBeds.map(b => b.serviceShort))];
   const selectedBed = displayBeds.find(b => b.code === selectedCode);
+  const destinationBeds = useMemo(() => displayBeds
+    .filter(bed => bed.serviceShort === dischargeDraft.destinoServicio && bed.code !== selectedCode)
+    .map(bed => {
+      const record = registry[bed.code] || {};
+      return { ...bed, occupied: Boolean(record.nombre || record.rut || record.fechaIngreso || record.diagnosticoPrincipal || record.diagnostico) };
+    }), [displayBeds, dischargeDraft.destinoServicio, registry, selectedCode]);
   const selectedCalculator = allCalculators.find(item => item.id === scaleDraft.calculatorId);
   const SelectedCalculatorComponent = selectedCalculator?.component;
   const occupied = Boolean(draft.nombre || draft.rut || draft.fechaIngreso || draft.diagnostico);
@@ -427,14 +450,16 @@ function VistaHospitalizados() {
   }), [displayBeds, registry, service, status, normalizedQuery]);
 
   const totals = useMemo(() => {
-    const occupiedCount = displayBeds.filter(b => { const r = registry[b.code] || {}; return r.nombre || r.rut || r.fechaIngreso || r.diagnosticoPrincipal || r.diagnostico; }).length;
-    return { occupied: occupiedCount, free: displayBeds.length - occupiedCount };
+    const censusBeds = displayBeds.filter(b => b.code !== TEST_BED.code);
+    const occupiedCount = censusBeds.filter(b => { const r = registry[b.code] || {}; return r.nombre || r.rut || r.fechaIngreso || r.diagnosticoPrincipal || r.diagnostico; }).length;
+    return { occupied: occupiedCount, free: censusBeds.length - occupiedCount };
   }, [displayBeds, registry]);
 
   const statistics = useMemo(() => {
     const percent = (numerator, denominator) => denominator ? Math.round((numerator / denominator) * 1000) / 10 : 0;
     const today = new Date().toISOString().slice(0, 10);
-    const occupiedRows = displayBeds.map(bed => ({ bed, record: registry[bed.code] || {} })).filter(({ record }) => record.nombre || record.rut || record.fechaIngreso || record.diagnosticoPrincipal || record.diagnostico);
+    const censusBeds = displayBeds.filter(bed => bed.code !== TEST_BED.code);
+    const occupiedRows = censusBeds.map(bed => ({ bed, record: registry[bed.code] || {} })).filter(({ record }) => record.nombre || record.rut || record.fechaIngreso || record.diagnosticoPrincipal || record.diagnostico);
     const hasActiveAtb = record => (record.antibioticos || []).some(item => item?.nombre && (!item.termino || item.termino >= today)) || (!record.antibioticos?.length && Boolean(record.antibioterapia));
     const byService = PRINT_SERVICE_OPTIONS.map(option => {
       const serviceBeds = displayBeds.filter(bed => bed.serviceShort === option.value);
@@ -454,7 +479,7 @@ function VistaHospitalizados() {
     });
     return {
       byService,
-      overall: { capacity: displayBeds.length, occupied: occupiedRows.length, nonSocial: nonSocial.length, longStay: longStay.length, withAtb: withAtb.length, occupancyPct: percent(occupiedRows.length, displayBeds.length), longStayPct: percent(longStay.length, nonSocial.length), atbPct: percent(withAtb.length, occupiedRows.length) },
+      overall: { capacity: censusBeds.length, occupied: occupiedRows.length, nonSocial: nonSocial.length, longStay: longStay.length, withAtb: withAtb.length, occupancyPct: percent(occupiedRows.length, censusBeds.length), longStayPct: percent(longStay.length, nonSocial.length), atbPct: percent(withAtb.length, occupiedRows.length) },
       antibiotics: [...antibioticCounts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
       pathogens: [...pathogenCounts].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
     };
@@ -551,7 +576,8 @@ function VistaHospitalizados() {
     setDischargeOpen(true);
   };
   const confirmDischarge = async () => {
-    if (!dischargeDraft.fecha || !dischargeDraft.motivo || discharging) return;
+    const missingDestination = dischargeDraft.motivo === 'Traslado a otro servicio' && (!dischargeDraft.destinoServicio || !dischargeDraft.destinoCama);
+    if (!dischargeDraft.fecha || !dischargeDraft.motivo || missingDestination || discharging) return;
     setDischarging(true);
     try {
       const antibiotics = draft.antibioticos || [];
@@ -620,12 +646,55 @@ function VistaHospitalizados() {
       aislamiento: draft.aislamiento, clinical_text: [draft.resumenCaso, draft.antecedentes].filter(Boolean).join('\n'),
       edad: draft.edad, sexo: draft.sexo, fecha_ingreso: draft.fechaIngreso, proa_antibioticos: draft.antibioticos || [], proa_examenes: draft.laboratorios || [],
       servicio: selectedBed?.serviceShort || '', cama: selectedBed?.cell || selectedBed?.code || '',
+      source: 'vista_general', source_service: selectedBed?.serviceShort || '', source_bed: draft.proaBedCode || selectedBed?.code || '',
     };
     setMultiPrefill(data);
     return data;
   };
 
-  const openAction = (route, isProa = false) => {
+  const requestFirstClinicalUse = async (action) => {
+    if (draft.reingresoEvaluado) { action(); return; }
+    pendingClinicalAction.current = action;
+    let previousDischargeDate = draft.egresoPrevioConocido || '';
+    if (!previousDischargeDate && draft.rut) {
+      try {
+        const normalizedRut = String(draft.rut).replace(/[^0-9k]/gi, '').toUpperCase();
+        const records = await fetchProaRecords();
+        previousDischargeDate = records
+          .filter(record => isHistoricalProaRecord(record))
+          .map(record => getLatestProaForm(record) || {})
+          .filter(form => String(form.rut || '').replace(/[^0-9k]/gi, '').toUpperCase() === normalizedRut && form.fecha_egreso)
+          .map(form => form.fecha_egreso)
+          .sort().at(-1) || '';
+      } catch { /* Permite confirmar manualmente si el histórico remoto no está disponible. */ }
+    }
+    const admission = draft.fechaIngreso ? new Date(`${draft.fechaIngreso}T00:00:00`) : new Date();
+    const previous = previousDischargeDate ? new Date(`${previousDischargeDate}T00:00:00`) : null;
+    const elapsedDays = previous && !Number.isNaN(previous.getTime()) ? Math.floor((admission.getTime() - previous.getTime()) / 86400000) : null;
+    const detected = elapsedDays !== null && elapsedDays >= 0 && elapsedDays <= 30;
+    setReadmissionDraft({ value: detected ? 'Sí' : '', detected, previousDischargeDate: detected ? previousDischargeDate : '' });
+    setReadmissionOpen(true);
+  };
+
+  const confirmReadmission = () => {
+    if (!readmissionDraft.value) return;
+    const now = new Date().toISOString();
+    const savedDraft = {
+      ...draft,
+      reingresoEvaluado: true,
+      reingresoMenor30: readmissionDraft.value === 'Sí',
+      reingresoFechaEgresoPrevia: readmissionDraft.value === 'Sí' ? readmissionDraft.previousDischargeDate : '',
+      reingresoEvaluadoEn: now,
+      updatedAt: now,
+    };
+    const next = { ...registry, [selectedCode]: savedDraft };
+    setDraft(savedDraft); setRegistry(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setReadmissionOpen(false);
+    const action = pendingClinicalAction.current; pendingClinicalAction.current = null;
+    window.setTimeout(() => action?.(), 0);
+  };
+
+  const openActionDirect = (route, isProa = false) => {
     save();
     prefill();
     if (isProa) {
@@ -636,6 +705,7 @@ function VistaHospitalizados() {
     const [page, search] = route.split('?');
     navigate(`${createPageUrl(page)}${search ? `?${search}` : ''}`);
   };
+  const openAction = (route, isProa = false) => requestFirstClinicalUse(() => openActionDirect(route, isProa));
   const openFullProa = () => {
     setProaOpen(false); save(); prefill();
     const proaBed = draft.proaBedCode || catalogToProaBed(selectedBed);
@@ -717,6 +787,9 @@ function VistaHospitalizados() {
     });
     setProaOpen(true);
   };
+  const openStudiesChecked = () => requestFirstClinicalUse(openStudies);
+  const openProaChecked = () => requestFirstClinicalUse(openProaPopup);
+  const openLabChecked = () => requestFirstClinicalUse(() => setLabOpen(true));
   const saveProaQuick = async () => {
     setProaSaving(true);
     try {
@@ -726,7 +799,7 @@ function VistaHospitalizados() {
         const created = await saveProaPreAdmission({
           paciente: proaQuick.paciente, rut: proaQuick.rut, edad: proaQuick.edad, sexo: proaQuick.sexo,
           fecha_ingreso: proaQuick.fecha_ingreso, diagnostico: proaQuick.diagnostico,
-          diagnosticos: [proaQuick.diagnostico].filter(Boolean), servicio: selectedBed?.serviceShort || '',
+          diagnosticos: [proaQuick.diagnostico].filter(Boolean), servicio: selectedBed?.serviceShort || '', proa_is_test: selectedBed?.code === TEST_BED.code,
           cama: catalogToProaBed(selectedBed) || selectedBed?.code || '', antibioticos: antibiotics, cultivos,
         });
         const latestCreated = getLatestProaForm(created) || {};
@@ -781,9 +854,9 @@ function VistaHospitalizados() {
             const record = registry[bed.code] || {};
             const isOccupied = Boolean(record.nombre || record.rut || record.fechaIngreso || record.diagnostico);
             const active = selectedCode === bed.code;
-            return <button key={bed.code} onClick={() => openBed(bed)} className={`min-h-36 rounded-xl border p-3 text-left transition ${active ? 'border-teal-600 bg-teal-50 ring-2 ring-teal-200' : isOccupied ? 'border-emerald-200 bg-white hover:border-emerald-400' : 'border-slate-200 bg-white hover:border-teal-300'}`}>
+            return <button key={bed.code} onClick={() => openBed(bed)} className={`min-h-36 rounded-xl border p-3 text-left transition ${active ? 'border-teal-600 bg-teal-50 ring-2 ring-teal-200' : bed.code === TEST_BED.code ? 'border-violet-300 bg-violet-50 hover:border-violet-500' : isOccupied ? 'border-emerald-200 bg-white hover:border-emerald-400' : 'border-slate-200 bg-white hover:border-teal-300'}`}>
               <div className="flex items-start justify-between gap-2"><div><span className="block text-[10px] font-bold uppercase tracking-wide text-slate-500">{bed.serviceShort} · {bed.salaLabel}</span><span className="block text-lg font-black text-slate-950">Cama {bed.cell}</span></div><BedDouble className={`h-5 w-5 ${isOccupied ? 'text-emerald-600' : 'text-slate-300'}`} /></div>
-              {isOccupied ? <><div className="mt-2 flex min-w-0 items-center gap-1.5"><p className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900">{record.nombre || 'Paciente sin nombre'}</p>{record.pacienteSocial && <span title="Paciente social" aria-label="Paciente social" className="inline-flex shrink-0 items-center rounded-full bg-fuchsia-100 p-1 text-fuchsia-700"><HeartHandshake className="h-3.5 w-3.5" /></span>}</div><p className="truncate text-xs text-slate-500">{record.diagnosticoPrincipal || record.diagnostico || 'Sin diagnóstico registrado'}</p><p className="mt-2 text-[11px] font-bold text-emerald-700">Día {hospitalDays(record.fechaIngreso)} de hospitalización</p>{record.antibioterapia && <p className="mt-1 truncate text-[10px] font-semibold text-amber-700">ATB: {record.antibioterapia}</p>}</> : <><span className="mt-5 inline-flex rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">LIBRE / SIN INFORMACIÓN</span><p className="mt-2 text-[10px] text-slate-400">Abrir para ingresar paciente</p></>}
+              {isOccupied ? <><div className="mt-2 flex min-w-0 items-center gap-1.5"><p className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900">{record.nombre || 'Paciente sin nombre'}</p>{bed.code === TEST_BED.code && <span className="rounded-full bg-violet-200 px-1.5 py-0.5 text-[9px] font-black text-violet-900">PRUEBA</span>}{record.pacienteSocial && <span title="Paciente social" aria-label="Paciente social" className="inline-flex shrink-0 items-center rounded-full bg-fuchsia-100 p-1 text-fuchsia-700"><HeartHandshake className="h-3.5 w-3.5" /></span>}</div><p className="truncate text-xs text-slate-500">{record.diagnosticoPrincipal || record.diagnostico || 'Sin diagnóstico registrado'}</p><p className="mt-2 text-[11px] font-bold text-emerald-700">Día {hospitalDays(record.fechaIngreso)} de hospitalización</p>{record.antibioterapia && <p className="mt-1 truncate text-[10px] font-semibold text-amber-700">ATB: {record.antibioterapia}</p>}</> : <><span className="mt-5 inline-flex rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">LIBRE / SIN INFORMACIÓN</span><p className="mt-2 text-[10px] text-slate-400">Abrir para ingresar paciente</p></>}
             </button>;
           })}
         </div>
@@ -795,14 +868,15 @@ function VistaHospitalizados() {
             <div className={`flex flex-wrap items-start justify-between gap-3 ${detailsOpen ? 'mb-4' : ''}`}><div><p className="text-xs font-bold uppercase tracking-wider text-teal-700">{selectedBed.serviceShort} · {selectedBed.salaLabel}</p><h2 className="text-2xl font-black text-slate-950">Cama {selectedBed.cell}</h2>{draft.nombre && <p className="flex flex-wrap items-center gap-1.5 font-bold text-slate-800">{draft.nombre} {draft.rut && <span className="font-normal text-slate-500">· {draft.rut}</span>}{draft.pacienteSocial && <span className="inline-flex items-center gap-1 rounded-full bg-fuchsia-100 px-2 py-0.5 text-[10px] font-bold text-fuchsia-800"><HeartHandshake className="h-3 w-3" />Paciente social</span>}</p>}{occupied && <p className="text-xs font-semibold text-emerald-700">Ingreso {draft.fechaIngreso || 'sin fecha'} · Día {hospitalDays(draft.fechaIngreso)}</p>}</div><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setDetailsOpen(open => !open)} className="gap-2">{detailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}{detailsOpen ? 'Ocultar ficha' : 'Ver ficha'}</Button><Button type="button" variant="outline" onClick={saveAllChanges} disabled={savingAll || !occupied} className="gap-2 border-emerald-300 bg-emerald-50 font-bold text-emerald-800 hover:bg-emerald-100"><Save className="h-4 w-4" />{savingAll ? 'Guardando…' : saved ? 'Cambios guardados' : 'Guardar todos los cambios'}</Button><Button type="button" variant="outline" onClick={openDischarge} disabled={!occupied} className="gap-2 border-red-300 bg-red-50 font-bold text-red-700 hover:bg-red-100"><LogOut className="h-4 w-4" />Egresar paciente</Button><Button onClick={openGeneral} className="gap-2 bg-teal-700 hover:bg-teal-800"><ClipboardList className="h-4 w-4" />Editar ficha general</Button></div></div>
             {detailsOpen && <>
             <div className="mb-5 flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /><p>Información clínica protegida por código de acceso. Los datos se reutilizan únicamente al abrir documentos desde esta ficha.</p></div>
+            {draft.reingresoMenor30 && <div className="mb-4 flex items-start gap-2 rounded-xl border-2 border-orange-300 bg-orange-50 p-3 text-orange-950 shadow-sm"><Activity className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" /><div><p className="text-sm font-black">Segundo ingreso en menos de 30 días</p><p className="text-xs text-orange-800">Reingreso marcado{draft.reingresoFechaEgresoPrevia ? ` · egreso previo: ${displayClinicalDate(draft.reingresoFechaEgresoPrevia)}` : ''}.</p></div></div>}
             <div className="mb-4 flex flex-wrap gap-2">
               <Button type="button" size="sm" variant="outline" onClick={openGeneral} className="border-sky-300 bg-sky-50 text-sky-800 shadow-[0_0_0_3px_rgba(125,211,252,0.18)] hover:bg-sky-100"><ClipboardList className="mr-1 h-3.5 w-3.5" />Resumen actual</Button>
               <Button type="button" size="sm" variant="outline" onClick={openGeneral} className="border-amber-300 bg-amber-50 text-amber-800 shadow-[0_0_0_3px_rgba(252,211,77,0.18)] hover:bg-amber-100"><FileText className="mr-1 h-3.5 w-3.5" />Planes</Button>
-              <Button type="button" size="sm" variant="outline" onClick={openStudies} className="border-cyan-300 bg-cyan-50 text-cyan-800 shadow-[0_0_0_3px_rgba(103,232,249,0.18)] hover:bg-cyan-100"><Image className="mr-1 h-3.5 w-3.5" />Estudios</Button>
+              <Button type="button" size="sm" variant="outline" onClick={openStudiesChecked} className="border-cyan-300 bg-cyan-50 text-cyan-800 shadow-[0_0_0_3px_rgba(103,232,249,0.18)] hover:bg-cyan-100"><Image className="mr-1 h-3.5 w-3.5" />Estudios</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setScalesOpen(true)} className="border-rose-300 bg-rose-50 text-rose-700 shadow-[0_0_0_3px_rgba(253,164,175,0.18)] hover:bg-rose-100"><Calculator className="mr-1 h-3.5 w-3.5" />Escalas</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setNutritionOpen(true)} className="border-lime-300 bg-lime-50 text-lime-800 shadow-[0_0_0_3px_rgba(190,242,100,0.2)] hover:bg-lime-100"><Apple className="mr-1 h-3.5 w-3.5" />Evaluación nutricional</Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => setLabOpen(true)} className="border-blue-300 bg-blue-50 text-blue-700 shadow-[0_0_0_3px_rgba(147,197,253,0.2)] hover:bg-blue-100"><FlaskConical className="mr-1 h-3.5 w-3.5" />Laboratorio</Button>
-              <Button type="button" size="sm" variant="outline" onClick={openProaPopup} className="border-teal-400 bg-teal-50 font-bold text-teal-800 shadow-[0_0_0_3px_rgba(45,212,191,0.2)] hover:bg-teal-100"><ShieldCheck className="mr-1 h-3.5 w-3.5" />PROA</Button>
+              <Button type="button" size="sm" variant="outline" onClick={openLabChecked} className="border-blue-300 bg-blue-50 text-blue-700 shadow-[0_0_0_3px_rgba(147,197,253,0.2)] hover:bg-blue-100"><FlaskConical className="mr-1 h-3.5 w-3.5" />Laboratorio</Button>
+              <Button type="button" size="sm" variant="outline" onClick={openProaChecked} className="border-teal-400 bg-teal-50 font-bold text-teal-800 shadow-[0_0_0_3px_rgba(45,212,191,0.2)] hover:bg-teal-100"><ShieldCheck className="mr-1 h-3.5 w-3.5" />PROA</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setStatsOpen(true)} className="border-violet-300 bg-violet-50 text-violet-700 shadow-[0_0_0_3px_rgba(196,181,253,0.2)] hover:bg-violet-100"><Activity className="mr-1 h-3.5 w-3.5" />Datos / estadísticas</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => goToSection('hospital-documentos')} className="border-indigo-300 bg-indigo-50 text-indigo-700 shadow-[0_0_0_3px_rgba(165,180,252,0.2)] hover:bg-indigo-100"><FileText className="mr-1 h-3.5 w-3.5" />Documentos y solicitudes</Button>
               <Button type="button" size="sm" variant="outline" aria-pressed={draft.pacienteSocial} onClick={toggleSocialPatient} className={draft.pacienteSocial ? 'border-fuchsia-400 bg-fuchsia-100 font-bold text-fuchsia-800 shadow-[0_0_0_3px_rgba(232,121,249,0.2)] hover:bg-fuchsia-200' : 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100'}><span aria-hidden="true" className={`mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded border text-[10px] ${draft.pacienteSocial ? 'border-fuchsia-700 bg-fuchsia-700 text-white' : 'border-fuchsia-400 bg-white'}`}>{draft.pacienteSocial ? '✓' : ''}</span><HeartHandshake className="mr-1 h-3.5 w-3.5" />Paciente social</Button>
@@ -815,12 +889,12 @@ function VistaHospitalizados() {
               <Field label="Fecha de ingreso"><input type="date" className={`${input} cursor-not-allowed bg-slate-50`} value={draft.fechaIngreso} readOnly /></Field>
               <div className="sm:col-span-2 rounded-xl border border-sky-200 bg-sky-50/60 p-3"><div className="mb-2 flex items-center justify-between"><p className="text-sm font-black text-sky-950">Diagnósticos compartidos con PROA</p><Button type="button" size="sm" variant="outline" onClick={openDiagnosis} className="border-sky-300 bg-white text-sky-800">Editar</Button></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Diagnóstico principal"><input className={`${input} cursor-not-allowed bg-white/70`} value={draft.diagnosticoPrincipal} readOnly /></Field><Field label="Desglose / diagnósticos asociados"><textarea className={`${textarea} cursor-not-allowed bg-white/70`} value={draft.diagnostico} readOnly /></Field></div></div>
               <Field label="Antecedentes relevantes" wide><textarea className={`${textarea} cursor-not-allowed bg-slate-50`} value={draft.antecedentes} readOnly /></Field>
-              <div className="sm:col-span-2 rounded-xl border border-teal-200 bg-teal-50/60 p-3"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-black text-teal-950">Información PROA</p><p className="text-xs text-teal-700">Antibioterapia, aislamiento, precauciones y cultivos se editan exclusivamente desde PROA.</p></div><Button type="button" size="sm" variant="outline" onClick={openProaPopup} className="border-teal-400 bg-white font-bold text-teal-800"><ShieldCheck className="mr-1 h-3.5 w-3.5" />Editar en PROA</Button></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Antibioterapia" wide><textarea className={`${textarea} cursor-not-allowed bg-white/70 text-slate-600`} value={draft.antibioterapia} readOnly aria-readonly="true" placeholder="Sin antibioterapia registrada en PROA" /></Field><Field label="Aislamiento / precauciones"><input className={`${input} cursor-not-allowed bg-white/70 text-slate-600`} value={draft.aislamiento} readOnly aria-readonly="true" placeholder="Sin indicación registrada" /></Field><Field label="Patógeno / cultivos"><input className={`${input} cursor-not-allowed bg-white/70 text-slate-600`} value={draft.patogenoAislado} readOnly aria-readonly="true" placeholder="Sin aislamiento registrado" /></Field></div></div>
+              <div className="sm:col-span-2 rounded-xl border border-teal-200 bg-teal-50/60 p-3"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-black text-teal-950">Información PROA</p><p className="text-xs text-teal-700">Antibioterapia, aislamiento, precauciones y cultivos se editan exclusivamente desde PROA.</p></div><Button type="button" size="sm" variant="outline" onClick={openProaChecked} className="border-teal-400 bg-white font-bold text-teal-800"><ShieldCheck className="mr-1 h-3.5 w-3.5" />Editar en PROA</Button></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Antibioterapia" wide><textarea className={`${textarea} cursor-not-allowed bg-white/70 text-slate-600`} value={draft.antibioterapia} readOnly aria-readonly="true" placeholder="Sin antibioterapia registrada en PROA" /></Field><Field label="Aislamiento / precauciones"><input className={`${input} cursor-not-allowed bg-white/70 text-slate-600`} value={draft.aislamiento} readOnly aria-readonly="true" placeholder="Sin indicación registrada" /></Field><Field label="Patógeno / cultivos"><input className={`${input} cursor-not-allowed bg-white/70 text-slate-600`} value={draft.patogenoAislado} readOnly aria-readonly="true" placeholder="Sin aislamiento registrado" /></Field></div></div>
               <Field label="Observaciones"><input className={`${input} cursor-not-allowed bg-slate-50`} value={draft.observaciones} readOnly /></Field>
               <div id="hospital-resumen" className="sm:col-span-2"><Field label="Resumen breve del caso" wide><textarea className={`${textarea} cursor-not-allowed bg-slate-50`} value={draft.resumenCaso} readOnly placeholder="Sin resumen registrado" /></Field></div>
               <div className="sm:col-span-2 rounded-xl border border-cyan-200 bg-cyan-50/70 p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-bold text-cyan-900">Última evolución</p><p className="mt-1 whitespace-pre-line text-sm text-slate-700">{draft.ultimaEvolucion || 'Sin evolución breve registrada'}</p></div><Button type="button" size="sm" variant="outline" onClick={openLatestEvolution} className="shrink-0 border-cyan-300 bg-white text-cyan-800">Editar</Button></div></div>
               <div id="hospital-planes" className="sm:col-span-2"><Field label="Planes pendientes" wide><textarea className={`${textarea} cursor-not-allowed bg-slate-50`} value={draft.planesPendientes} readOnly placeholder="Sin planes registrados" /></Field></div>
-              <div id="hospital-estudios" className="sm:col-span-2"><div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-sm font-bold text-slate-700">Estudios, escalas y evaluación nutricional</p><p className="mt-1 whitespace-pre-line text-xs text-slate-600">{studyVisitSummary(draft) || 'Sin estudios ni evaluaciones registradas'}</p></div><Button type="button" size="sm" variant="outline" onClick={openStudies} className="shrink-0">Agregar / ver</Button></div></div></div>
+              <div id="hospital-estudios" className="sm:col-span-2"><div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-sm font-bold text-slate-700">Estudios, escalas y evaluación nutricional</p><p className="mt-1 whitespace-pre-line text-xs text-slate-600">{studyVisitSummary(draft) || 'Sin estudios ni evaluaciones registradas'}</p></div><Button type="button" size="sm" variant="outline" onClick={openStudiesChecked} className="shrink-0">Agregar / ver</Button></div></div></div>
               <Field label="Último laboratorio"><input className={`${input} cursor-not-allowed bg-slate-50`} value={draft.ultimoLaboratorio} readOnly placeholder="Sin laboratorio registrado" /></Field>
               <div className="sm:col-span-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3"><p className="mb-2 text-xs font-black uppercase tracking-wide text-amber-900">Decisiones y adecuación del esfuerzo terapéutico</p><div className="grid grid-cols-3 gap-2"><Field label="LET"><input className={`${input} cursor-not-allowed bg-white/70`} value={draft.letIndicacion || 'No consignado'} readOnly /></Field><Field label="IOT"><input className={`${input} cursor-not-allowed bg-white/70`} value={draft.iotIndicacion || 'No consignado'} readOnly /></Field><Field label="RCP"><input className={`${input} cursor-not-allowed bg-white/70`} value={draft.rcpIndicacion || 'No consignado'} readOnly /></Field></div></div>
             </div>
@@ -839,12 +913,13 @@ function VistaHospitalizados() {
       </aside>
     </main>
     {activeTab === 'estadistica' && <StatisticsDashboard statistics={statistics} />}
+    {readmissionOpen && <div className="fixed inset-0 z-[96] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"><div className="w-full max-w-xl overflow-hidden rounded-2xl border border-orange-300 bg-gradient-to-br from-orange-50 via-white to-amber-50 shadow-2xl"><div className="border-b border-orange-200 bg-orange-100/80 px-5 py-4"><h2 className="text-lg font-black text-orange-950">Verificación de reingreso</h2><p className="text-xs text-orange-800">Se registra una sola vez antes del primer uso clínico del paciente.</p></div><div className="space-y-4 p-5">{readmissionDraft.detected && <div className="rounded-xl border border-orange-300 bg-orange-100 p-3 text-sm font-semibold text-orange-950"><Activity className="mr-2 inline h-4 w-4" />Antecedente detectado automáticamente: egreso el {displayClinicalDate(readmissionDraft.previousDischargeDate)}, dentro de los 30 días previos al ingreso actual.</div>}<Field label="¿El paciente ha tenido un ingreso hospitalario en los últimos 30 días?"><select className={input} value={readmissionDraft.value} onChange={e => setReadmissionDraft(old => ({ ...old, value: e.target.value, detected: old.detected && e.target.value === 'Sí' }))}><option value="">Seleccionar…</option><option value="Sí">Sí</option><option value="No">No</option></select></Field>{readmissionDraft.value === 'Sí' && <Field label="Fecha de egreso anterior (si se conoce)"><input type="date" className={input} value={readmissionDraft.previousDischargeDate} onChange={e => setReadmissionDraft(old => ({ ...old, previousDischargeDate: e.target.value }))} /></Field>}<p className="text-xs text-slate-500">Si marcas “Sí”, la ficha mostrará una alerta de “Segundo ingreso en menos de 30 días”.</p></div><div className="flex justify-end gap-2 border-t border-orange-200 bg-white/80 px-5 py-4"><Button variant="outline" onClick={() => { pendingClinicalAction.current = null; setReadmissionOpen(false); }}>Cancelar</Button><Button onClick={confirmReadmission} disabled={!readmissionDraft.value} className="bg-orange-600 hover:bg-orange-700">Guardar y continuar</Button></div></div></div>}
     {dischargeOpen && <div className="fixed inset-0 z-[92] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
       <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 via-white to-amber-50 shadow-2xl">
         <div className="border-b border-red-200 bg-red-100/80 px-5 py-4"><h2 className="text-lg font-black text-red-950">Egresar paciente — {draft.nombre || selectedBed?.cell}</h2><p className="text-xs text-red-700">La ficha se conservará como histórica y la cama quedará libre.</p></div>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Fecha de egreso"><input type="date" className={input} value={dischargeDraft.fecha} onChange={e => setDischargeDraft(old => ({ ...old, fecha: e.target.value }))} /></Field><Field label="Causa de egreso"><select className={input} value={dischargeDraft.motivo} onChange={e => setDischargeDraft(old => ({ ...old, motivo: e.target.value }))}><option value="">Seleccionar causa…</option>{DISCHARGE_REASONS.map(reason => <option key={reason}>{reason}</option>)}</select></Field></div>
-          {dischargeDraft.motivo === 'Traslado a otro servicio' && <div className="grid gap-3 sm:grid-cols-2"><Field label="Servicio de destino"><input className={input} value={dischargeDraft.destinoServicio} onChange={e => setDischargeDraft(old => ({ ...old, destinoServicio: e.target.value }))} /></Field><Field label="Cama de destino"><input className={input} value={dischargeDraft.destinoCama} onChange={e => setDischargeDraft(old => ({ ...old, destinoCama: e.target.value }))} /></Field></div>}
+          {dischargeDraft.motivo === 'Traslado a otro servicio' && <div className="grid gap-3 sm:grid-cols-2"><Field label="Servicio de destino"><select className={input} value={dischargeDraft.destinoServicio} onChange={e => setDischargeDraft(old => ({ ...old, destinoServicio: e.target.value, destinoCama: '' }))}><option value="">Seleccionar servicio…</option>{PRINT_SERVICE_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field><Field label="Cama de destino"><select className={input} value={dischargeDraft.destinoCama} disabled={!dischargeDraft.destinoServicio} onChange={e => setDischargeDraft(old => ({ ...old, destinoCama: e.target.value }))}><option value="">{dischargeDraft.destinoServicio ? 'Seleccionar cama…' : 'Primero selecciona el servicio'}</option>{destinationBeds.map(bed => <option key={bed.code} value={bed.code} disabled={bed.occupied}>{bed.salaLabel} · Cama {bed.cell}{bed.occupied ? ' · Ocupada' : ' · Disponible'}</option>)}</select></Field></div>}
           {(draft.antibioticos || []).some(item => item?.nombre) ? <section className="rounded-xl border border-amber-200 bg-amber-50/80 p-4"><h3 className="font-black text-amber-950">Conducta con antibioterapia registrada</h3><p className="mb-3 text-xs text-amber-700">Selecciona la conducta y registra directamente la fecha de cese.</p><div className="space-y-2">{(draft.antibioticos || []).map((item, index) => {
             if (!item?.nombre) return null;
             const action = dischargeDraft.antibioticActions[index] || 'suspender';
@@ -853,7 +928,7 @@ function VistaHospitalizados() {
             return <div key={`${item.nombre}-${index}`} className="rounded-lg border border-amber-100 bg-white p-3"><div className="grid items-end gap-2 sm:grid-cols-[1fr_205px_170px]"><div><p className="text-sm font-bold text-slate-900">{item.nombre}{days ? ` (${days} días)` : ''}</p><p className="text-xs text-slate-500">{[item.dosis || [item.dosis_cantidad, item.dosis_unidad].filter(Boolean).join(' '), item.intervalo_horas && `c/${item.intervalo_horas} h`, item.via, item.inicio && `desde ${item.inicio}`].filter(Boolean).join(' · ')}</p></div><Field label="Conducta"><select className={input} value={action} onChange={e => setDischargeDraft(old => ({ ...old, antibioticActions: { ...old.antibioticActions, [index]: e.target.value }, antibioticStopDates: e.target.value === 'continuar' ? old.antibioticStopDates : { ...old.antibioticStopDates, [index]: old.antibioticStopDates[index] || old.fecha } }))}><option value="suspender">Suspender al egreso</option><option value="continuar">Continuar al alta</option><option value="suspendido">Ya estaba suspendido</option></select></Field>{action !== 'continuar' && <Field label="Fecha de cese"><input type="date" min={item.inicio || undefined} className={input} value={stopDate} onChange={e => setDischargeDraft(old => ({ ...old, antibioticStopDates: { ...old.antibioticStopDates, [index]: e.target.value } }))} /></Field>}</div></div>;
           })}</div>{Object.values(dischargeDraft.antibioticActions).includes('continuar') && <div className="mt-3"><Field label="Indicación antimicrobiana al alta"><textarea className={textarea} value={dischargeDraft.antibioticoAltaIndicacion} onChange={e => setDischargeDraft(old => ({ ...old, antibioticoAltaIndicacion: e.target.value }))} placeholder="Duración restante, controles y otras indicaciones" /></Field></div>}</section> : <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">Sin antibioterapia registrada.</div>}
         </div>
-        <div className="flex justify-end gap-2 border-t border-red-200 bg-white/80 px-5 py-4"><Button variant="outline" onClick={() => setDischargeOpen(false)} disabled={discharging}>Cancelar</Button><Button onClick={confirmDischarge} disabled={discharging || !dischargeDraft.fecha || !dischargeDraft.motivo} className="bg-red-700 hover:bg-red-800"><LogOut className="mr-1 h-4 w-4" />{discharging ? 'Egresando…' : 'Confirmar egreso'}</Button></div>
+        <div className="flex justify-end gap-2 border-t border-red-200 bg-white/80 px-5 py-4"><Button variant="outline" onClick={() => setDischargeOpen(false)} disabled={discharging}>Cancelar</Button><Button onClick={confirmDischarge} disabled={discharging || !dischargeDraft.fecha || !dischargeDraft.motivo || (dischargeDraft.motivo === 'Traslado a otro servicio' && (!dischargeDraft.destinoServicio || !dischargeDraft.destinoCama))} className="bg-red-700 hover:bg-red-800"><LogOut className="mr-1 h-4 w-4" />{discharging ? 'Egresando…' : 'Confirmar egreso'}</Button></div>
       </div>
     </div>}
     {diagnosisOpen && <div className="fixed inset-0 z-[88] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-blue-50 p-5 shadow-2xl"><h2 className="text-lg font-black text-sky-950">Diagnósticos compartidos</h2><p className="mb-4 text-xs text-sky-700">El diagnóstico principal y su desglose se sincronizan con PROA.</p><div className="space-y-3"><Field label="Diagnóstico principal"><input className={input} value={diagnosisDraft.principal} onChange={e => setDiagnosisDraft(old => ({ ...old, principal: e.target.value }))} /></Field><Field label="Desglose / diagnósticos asociados"><textarea className={textarea} value={diagnosisDraft.desglose} onChange={e => setDiagnosisDraft(old => ({ ...old, desglose: e.target.value }))} placeholder="Uno por línea" /></Field></div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setDiagnosisOpen(false)}>Cancelar</Button><Button onClick={saveDiagnosis} className="bg-sky-700 hover:bg-sky-800">Guardar y sincronizar</Button></div></div></div>}
@@ -903,5 +978,5 @@ function VistaHospitalizados() {
 export default conPuertaAcceso(VistaHospitalizados, {
   storageKey: 'acceso_vista_hospitalizados',
   titulo: 'Vista general',
-  descripcion: 'Ingresa el código BULNESMEDICO para acceder a camas y fichas de pacientes hospitalizados.',
+  descripcion: 'Agrega el código para acceder a camas y fichas de pacientes hospitalizados.',
 });
