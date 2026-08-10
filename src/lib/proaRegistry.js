@@ -215,6 +215,7 @@ export async function saveProaPreAdmission(preAdmission) {
     .join('\n');
   const form = {
     proa_entry_type: 'preingreso',
+    proa_enrolled: true,
     fecha: new Date().toISOString().slice(0, 10),
     hora: new Date().toTimeString().slice(0, 5),
     servicio: preAdmission.servicio || '',
@@ -228,6 +229,8 @@ export async function saveProaPreAdmission(preAdmission) {
     creatininas: preAdmission.creatinina ? [{ fecha: preAdmission.fecha_creatinina || new Date().toISOString().slice(0, 10), valor: preAdmission.creatinina }] : [],
     vfg_estimada: estimatedGfr ?? '',
     fecha_ingreso: preAdmission.fecha_ingreso || '',
+    diagnostico_principal: (preAdmission.diagnosticos || []).filter(Boolean)[0] || preAdmission.diagnostico || '',
+    diagnostico_desglose: (preAdmission.diagnosticos || []).filter(Boolean).slice(1).join('\n'),
     diagnostico_actual: (preAdmission.diagnosticos || []).filter(Boolean).join('; ') || preAdmission.diagnostico || '',
     diagnosticos_actuales: (preAdmission.diagnosticos || []).filter(Boolean),
     funcion_renal: renalFunction,
@@ -252,6 +255,12 @@ export async function saveProaPreAdmission(preAdmission) {
 
 export function isHistoricalProaRecord(record) {
   return Boolean(record?.evolutions?.[0]?.form?.proa_patient_status === 'historico');
+}
+
+// Un registro de censo alimenta Vista General sin convertir automáticamente
+// al paciente en integrante del programa PROA.
+export function isProaEnrolledRecord(record) {
+  return record?.evolutions?.[0]?.form?.proa_enrolled !== false;
 }
 
 export async function archiveProaRecord(record, dischargeDate = new Date().toISOString().slice(0, 10), dischargeDetails = {}) {

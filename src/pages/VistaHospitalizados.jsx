@@ -1,25 +1,35 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, BedDouble, ChevronDown, ChevronLeft, ChevronUp, ClipboardList, FileText, FlaskConical, Image, Microscope, Pill, Plus, Printer, Save, Search, ShieldCheck } from 'lucide-react';
+import { Activity, Apple, BedDouble, Calculator, ChevronDown, ChevronLeft, ChevronUp, ClipboardList, FileText, FlaskConical, HeartHandshake, Image, Microscope, Pill, Plus, Printer, Save, Search, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { ALL_BEDS } from '@/components/agenda-diaria/bedCatalog';
 import { setMultiPrefill } from '@/lib/multiTemplatePrefill';
-import { fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, saveProaRecord } from '@/lib/proaRegistry';
+import { fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, isProaEnrolledRecord, saveProaPreAdmission, saveProaRecord } from '@/lib/proaRegistry';
 import { createPageUrl } from '@/utils';
+import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, PRESENTACIONES_ATB } from '@/pages/VisitaPROA';
+import { allCalculators, calculatorReferences } from '@/components/calculators/catalog';
 
 const STORAGE_KEY = 'vista_general_hospitalizados_v1';
 const SELECTED_BED_KEY = 'vista_general_hospitalizados_selected_bed';
 const EMPTY = {
   nombre: '', rut: '', fechaNacimiento: '', edad: '', sexo: '', nFicha: '', prevision: '', telefono: '', direccion: '', comuna: '',
-  fechaIngreso: '', diagnostico: '', antecedentes: '', antibioterapia: '', antibioticos: [], aislamiento: '', medicoTratante: '', observaciones: '',
+  fechaIngreso: '', diagnosticoPrincipal: '', diagnostico: '', antecedentes: '', antibioterapia: '', antibioticos: [], aislamiento: '', medicoTratante: '', observaciones: '',
   resumenCaso: '', ultimaEvolucion: '', planesPendientes: '', estudiosComplementarios: '', estudiosDetalle: [], patogenoAislado: '', ultimoLaboratorio: '',
-  letIndicacion: '', iotIndicacion: '', rcpIndicacion: '', historialActualizaciones: [],
+  letIndicacion: '', iotIndicacion: '', rcpIndicacion: '', pacienteSocial: false, escalas: [], evaluacionesNutricionales: [], historialActualizaciones: [],
 };
 
 const input = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100';
 const textarea = `${input} min-h-24 resize-y`;
 const EMPTY_QUICK_ATB = { nombre: '', presentacion: '', dosis_cantidad: '', dosis_unidad: 'mg', intervalo_horas: '', via: 'EV', inicio: '', termino: '' };
+const PRINT_SERVICE_OPTIONS = [
+  { value: 'MQ1', label: 'MQ1' },
+  { value: 'MQ2', label: 'MQ2' },
+  { value: 'PED', label: 'Pediatría' },
+  { value: 'GINE', label: 'Gineco-Obstetricia' },
+  { value: 'HODOM', label: 'HODOM' },
+];
+const PRINT_SERVICE_ORDER = new Map(PRINT_SERVICE_OPTIONS.map((option, index) => [option.value, index]));
 
 function readRegistry() {
   try { const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); return parsed && typeof parsed === 'object' ? parsed : {}; } catch { return {}; }
@@ -31,6 +41,13 @@ function formatRut(value) {
   if (clean.length === 1) return clean;
   return `${clean.slice(0, -1).replace(/\B(?=(\d{3})+(?!\d))/g, '.')}-${clean.slice(-1)}`;
 }
+
+const CLINICAL_ACRONYMS = new Set(['EPOC', 'VIH', 'ITU', 'AVE', 'NAC', 'TAC', 'ECG', 'PCR', 'RCP', 'IOT', 'LET', 'HTA', 'DM', 'ERC', 'IRA', 'VRS']);
+const normalizeName = (value) => String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es-CL').replace(/(^|[\s-])([a-záéíóúüñ])/giu, (_, prefix, letter) => `${prefix}${letter.toLocaleUpperCase('es-CL')}`);
+const normalizeClinicalText = (value) => String(value || '').trim().replace(/[ \t]+/g, ' ').split('\n').map(line => {
+  const lowered = line.toLocaleLowerCase('es-CL').replace(/(^|[.!?]\s+)([a-záéíóúüñ])/giu, (_, prefix, letter) => `${prefix}${letter.toLocaleUpperCase('es-CL')}`);
+  return lowered.replace(/\b[A-Za-zÁÉÍÓÚÜÑ]{2,4}\b/g, word => CLINICAL_ACRONYMS.has(word.toLocaleUpperCase('es-CL')) ? word.toLocaleUpperCase('es-CL') : word);
+}).join('\n');
 
 function hospitalDays(date) {
   if (!date) return 0;
@@ -47,7 +64,7 @@ function treatmentDays(startDate, endDate) {
   return Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
 }
 
-const SNAPSHOT_FIELDS = ['diagnostico', 'resumenCaso', 'ultimaEvolucion', 'planesPendientes', 'estudiosComplementarios', 'antibioterapia', 'patogenoAislado', 'ultimoLaboratorio', 'letIndicacion', 'iotIndicacion', 'rcpIndicacion', 'observaciones'];
+const SNAPSHOT_FIELDS = ['diagnosticoPrincipal', 'diagnostico', 'resumenCaso', 'ultimaEvolucion', 'planesPendientes', 'estudiosComplementarios', 'antibioterapia', 'patogenoAislado', 'ultimoLaboratorio', 'letIndicacion', 'iotIndicacion', 'rcpIndicacion', 'observaciones'];
 function clinicalSnapshot(record) {
   return SNAPSHOT_FIELDS.reduce((snapshot, key) => ({ ...snapshot, [key]: record[key] || '' }), {});
 }
@@ -133,18 +150,22 @@ function isAutoRenalText(value) {
 function proaToPatient(record) {
   const form = getLatestProaForm(record) || {};
   return {
-    nombre: form.paciente || '', rut: formatRut(form.rut), fechaNacimiento: form.fecha_nacimiento || '', edad: form.edad || '', sexo: form.sexo || '',
+    nombre: normalizeName(form.paciente), rut: formatRut(form.rut), fechaNacimiento: form.fecha_nacimiento || '', edad: form.edad || '', sexo: form.sexo || '',
     nFicha: form.n_ficha || '', prevision: form.prevision || '', telefono: form.telefono || '',
     direccion: form.direccion || '', comuna: form.comuna || '', fechaIngreso: form.fecha_ingreso || '',
-    diagnostico: form.diagnostico_actual || form.diagnostico || '',
+    diagnosticoPrincipal: normalizeClinicalText(form.diagnostico_principal || form.diagnosticos_actuales?.[0] || form.diagnostico_actual || ''),
+    diagnostico: normalizeClinicalText((form.diagnosticos_actuales || []).slice(1).join('\n') || form.diagnostico_desglose || form.diagnostico_actual || form.diagnostico || ''),
     antecedentes: form.antecedentes || '', antibioterapia: antibioticSummary(form), antibioticos: (form.antibioticos || []).filter(item => item?.nombre),
     aislamiento: form.aislamiento || '', medicoTratante: form.medico || form.medico_tratante || '',
-    observaciones: (form.recomendaciones || []).join(' · '),
+    observaciones: form.vista_observaciones || (form.recomendaciones || []).join(' · '),
     resumenCaso: form.resumen_caso || '',
-    planesPendientes: [form.plan_duracion, ...(form.recomendaciones || []), form.recomendaciones_otra].filter(Boolean).join(' · '),
-    estudiosComplementarios: [form.estudios_imagen, form.diagnostico_microbiologico].filter(Boolean).join(' · '),
+    ultimaEvolucion: form.vista_ultima_evolucion || '',
+    planesPendientes: form.vista_planes_pendientes || [form.plan_duracion, ...(form.recomendaciones || []), form.recomendaciones_otra].filter(Boolean).join(' · '),
+    estudiosComplementarios: form.vista_estudios_complementarios || [form.estudios_imagen, form.diagnostico_microbiologico].filter(Boolean).join(' · '),
+    estudiosDetalle: Array.isArray(form.vista_estudios_detalle) ? form.vista_estudios_detalle : [],
     patogenoAislado: pathogenSummary(form), ultimoLaboratorio: latestLabSummary(form),
-    letIndicacion: form.let_indicacion || form.let || '', iotIndicacion: form.iot_indicacion || form.iot || '', rcpIndicacion: form.rcp_indicacion || form.rcp || '',
+    letIndicacion: form.let_indicacion || form.let || '', iotIndicacion: form.iot_indicacion || form.iot || '', rcpIndicacion: form.rcp_indicacion || form.rcp || '', pacienteSocial: Boolean(form.paciente_social),
+    escalas: Array.isArray(form.vista_escalas) ? form.vista_escalas : [], evaluacionesNutricionales: Array.isArray(form.vista_evaluaciones_nutricionales) ? form.vista_evaluaciones_nutricionales : [],
     historialActualizaciones: form.evolucion ? [{
       fecha: String(record.updatedAt || '').slice(0, 10), guardadoEn: record.updatedAt,
       diagnostico: form.diagnostico_actual || '', resumenCaso: form.evolucion,
@@ -153,7 +174,7 @@ function proaToPatient(record) {
       patogenoAislado: pathogenSummary(form), ultimoLaboratorio: latestLabSummary(form), observaciones: '',
       letIndicacion: form.let_indicacion || form.let || '', iotIndicacion: form.iot_indicacion || form.iot || '', rcpIndicacion: form.rcp_indicacion || form.rcp || '',
     }] : [],
-    proaRecordId: record.id, proaBedCode: record.bedCode, proaUpdatedAt: record.updatedAt,
+    proaRecordId: record.id, proaBedCode: record.bedCode, proaEnrolled: isProaEnrolledRecord(record), proaUpdatedAt: record.updatedAt,
   };
 }
 
@@ -163,6 +184,10 @@ function mergePatient(base, local) {
     if (key === 'antecedentes' && isAutoRenalText(value)) return;
     if (value !== '' && value !== null && value !== undefined) merged[key] = value;
   });
+  const proaIsNewer = String(base.proaUpdatedAt || '') > String(local?.updatedAt || '');
+  if (proaIsNewer) ['nombre', 'rut', 'fechaNacimiento', 'edad', 'sexo', 'direccion', 'comuna', 'fechaIngreso', 'proaRecordId', 'proaBedCode', 'proaEnrolled', 'pacienteSocial', 'diagnosticoPrincipal', 'diagnostico', 'antibioterapia', 'antibioticos', 'aislamiento', 'patogenoAislado', 'ultimoLaboratorio'].forEach(key => {
+    if (base[key] !== '' && base[key] !== undefined) merged[key] = base[key];
+  });
   return merged;
 }
 
@@ -170,16 +195,22 @@ function Field({ label, children, wide = false }) {
   return <label className={wide ? 'block sm:col-span-2' : 'block'}><span className="mb-1 block text-xs font-semibold text-slate-600">{label}</span>{children}</label>;
 }
 
+function studyVisitSummary(record) {
+  const scale = record.escalas?.[0];
+  const nutrition = record.evaluacionesNutricionales?.[0];
+  return [record.estudiosComplementarios, scale && `Escala ${scale.nombre} (${scale.fecha}): ${scale.puntaje} pts${scale.resultado ? ` · ${scale.resultado}` : ''}`, nutrition && `Nutrición (${nutrition.fecha}): ${nutrition.tamizaje}${nutrition.puntaje ? ` · ${nutrition.puntaje} pts · ${nutrition.riesgo}` : ''} · Eval.: ${nutrition.evaluacion}`].filter(Boolean).join('\n');
+}
+
 function VisitTable({ rows, service }) {
   return <>
-    <div className="hospital-print-header"><div><h1>Visita médica — Hospitalizados</h1><p>{service === 'all' ? 'Todos los servicios' : service} · {new Date().toLocaleDateString('es-CL')}</p></div><p>{rows.length} paciente{rows.length === 1 ? '' : 's'}</p></div>
+    <div className="hospital-print-header"><div><h1>Visita médica — Hospitalizados</h1><p>{service} · {new Date().toLocaleDateString('es-CL')}</p></div><p>{rows.length} paciente{rows.length === 1 ? '' : 's'}</p></div>
     <table><thead><tr><th>Cama / paciente</th><th>Día / diagnóstico</th><th>Resumen</th><th>Última evolución</th><th>Estudios</th><th>ATB / patógeno</th><th>Últ. lab.</th><th>LET/IOT/RCP</th><th>Planes pendientes</th></tr></thead><tbody>
       {rows.map(({ bed, record }) => <tr key={bed.code}>
         <td><strong>{bed.serviceShort} · {bed.cell}</strong><br />{record.nombre || 'Sin nombre'}<br /><span>{record.rut || ''}</span></td>
-        <td><strong>Día {hospitalDays(record.fechaIngreso)}</strong><br />{record.diagnostico || '—'}</td>
+        <td><strong>Día {hospitalDays(record.fechaIngreso)}</strong><br /><strong>{record.diagnosticoPrincipal || record.diagnostico || '—'}{record.pacienteSocial ? ' (caso sociosanitario)' : ''}</strong>{record.diagnosticoPrincipal && record.diagnostico && <><br />{record.diagnostico}</>}</td>
         <td>{record.resumenCaso || '—'}</td>
         <td>{record.ultimaEvolucion || '—'}</td>
-        <td>{record.estudiosComplementarios || '—'}</td>
+        <td>{studyVisitSummary(record) || '—'}</td>
         <td>{record.antibioterapia ? <><strong>ATB:</strong> <span className="whitespace-pre-wrap">{antibioticVisitSummary(record)}</span></> : 'Sin ATB'}{record.patogenoAislado && <><br /><strong>Patógeno:</strong> {record.patogenoAislado}</>}</td>
         <td>{record.ultimoLaboratorio || '—'}</td>
         <td><strong>LET:</strong> {record.letIndicacion || 'NC'}<br /><strong>IOT:</strong> {record.iotIndicacion || 'NC'}<br /><strong>RCP:</strong> {record.rcpIndicacion || 'NC'}</td>
@@ -191,15 +222,17 @@ function VisitTable({ rows, service }) {
 
 function ProaQuickModal({ bed, hasRecord, value, setValue, saving, onClose, onFull, onSave }) {
   const updateAtb = (index, key, nextValue) => setValue(old => ({ ...old, antibioticos: old.antibioticos.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: nextValue } : item) }));
+  const selectAtb = (index, name) => setValue(old => ({ ...old, antibioticos: old.antibioticos.map((item, itemIndex) => itemIndex === index ? { ...item, nombre: name, ...(DEFAULT_DOSIS_ATB[name] || {}) } : item) }));
   const updateCulture = (index, key, nextValue) => setValue(old => ({ ...old, cultivos: old.cultivos.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: nextValue } : item) }));
   return <div className="fixed inset-0 z-[86] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="flex max-h-[92vh] w-full max-w-6xl flex-col rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-5 shadow-2xl">
-    <div className="mb-4 rounded-xl bg-emerald-100/80 p-3"><h2 className="text-lg font-black text-teal-950">PROA — Cama {bed?.cell}</h2><p className="text-xs text-emerald-800">Consulta y actualización rápida de aislamiento, antimicrobianos y cultivos.</p></div>
-    {hasRecord ? <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
+    <div className="mb-4 rounded-xl bg-emerald-100/80 p-3"><h2 className="text-lg font-black text-teal-950">{hasRecord ? 'PROA' : 'Agregar paciente PROA'} — Cama {bed?.cell}</h2><p className="text-xs text-emerald-800">{hasRecord ? 'Consulta y actualización rápida de aislamiento, antimicrobianos y cultivos.' : 'Ingreso rápido con los datos ya disponibles en Vista general.'}</p></div>
+    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
+      {!hasRecord && <section className="rounded-xl border border-emerald-200 bg-white/80 p-4"><div className="mb-3 flex items-center justify-between gap-2"><div><h3 className="text-sm font-black text-emerald-950">Datos precargados del paciente</h3><p className="text-xs text-emerald-700">Puedes corregirlos antes de crear el registro PROA.</p></div><span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-800">NUEVO PROA</span></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Nombre completo" wide><input className={input} value={value.paciente || ''} onChange={e => setValue(old => ({ ...old, paciente: e.target.value }))} /></Field><Field label="RUT"><input className={input} value={value.rut || ''} onChange={e => setValue(old => ({ ...old, rut: formatRut(e.target.value) }))} /></Field><Field label="Edad"><input type="number" min="0" max="130" className={input} value={value.edad || ''} onChange={e => setValue(old => ({ ...old, edad: e.target.value }))} /></Field><Field label="Sexo"><select className={input} value={value.sexo || ''} onChange={e => setValue(old => ({ ...old, sexo: e.target.value }))}><option value="">No consignado</option><option value="F">Femenino</option><option value="M">Masculino</option><option value="Otro">Otro</option></select></Field><Field label="Fecha de ingreso"><input type="date" className={input} value={value.fecha_ingreso || ''} onChange={e => setValue(old => ({ ...old, fecha_ingreso: e.target.value }))} /></Field><Field label="Diagnóstico principal" wide><textarea className={textarea} value={value.diagnostico || ''} onChange={e => setValue(old => ({ ...old, diagnostico: e.target.value }))} /></Field></div></section>}
       <Field label="Aislamiento / precauciones"><input className={input} value={value.aislamiento} onChange={e => setValue(old => ({ ...old, aislamiento: e.target.value }))} placeholder="Contacto, gotitas, aéreo…" /></Field>
       <section><div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-black text-slate-900">Antibioterapia actual</h3><Button type="button" size="sm" variant="outline" onClick={() => setValue(old => ({ ...old, antibioticos: [...old.antibioticos, { ...EMPTY_QUICK_ATB }] }))}><Plus className="mr-1 h-3.5 w-3.5" />Agregar ATB</Button></div>
         <div className="space-y-2">{value.antibioticos.map((atb, index) => <div key={index} className="grid gap-2 rounded-xl border bg-slate-50 p-3 sm:grid-cols-12">
-          <div className="sm:col-span-3"><Field label="Antibiótico"><input className={input} value={atb.nombre || ''} onChange={e => updateAtb(index, 'nombre', e.target.value)} /></Field></div>
-          <div className="sm:col-span-3"><Field label="Presentación"><input className={input} value={atb.presentacion || ''} onChange={e => updateAtb(index, 'presentacion', e.target.value)} /></Field></div>
+          <div className="sm:col-span-3"><Field label="Antibiótico"><input list="vista-proa-antibioticos" className={input} value={atb.nombre || ''} onChange={e => selectAtb(index, e.target.value)} /></Field></div>
+          <div className="sm:col-span-3"><Field label="Presentación"><select className={input} value={atb.presentacion || ''} onChange={e => updateAtb(index, 'presentacion', e.target.value)}><option value="">Seleccionar…</option>{(PRESENTACIONES_ATB[atb.nombre] || []).map(option => <option key={option.label} value={option.label}>{option.label}</option>)}</select></Field></div>
           <div className="sm:col-span-2"><Field label="Dosis"><input className={input} value={atb.dosis_cantidad || atb.dosis || ''} onChange={e => { updateAtb(index, 'dosis_cantidad', e.target.value); updateAtb(index, 'dosis', ''); }} /></Field></div>
           <div className="sm:col-span-1"><Field label="Unidad"><select className={input} value={atb.dosis_unidad || 'mg'} onChange={e => updateAtb(index, 'dosis_unidad', e.target.value)}>{['mg','g','UI','MUI','comprimido','ampolla'].map(unit => <option key={unit}>{unit}</option>)}</select></Field></div>
           <div className="sm:col-span-1"><Field label="Cada h"><input className={input} value={atb.intervalo_horas || ''} onChange={e => updateAtb(index, 'intervalo_horas', e.target.value)} /></Field></div>
@@ -208,12 +241,13 @@ function ProaQuickModal({ bed, hasRecord, value, setValue, saving, onClose, onFu
           <div className="sm:col-span-2"><Field label="Término"><input type="date" className={input} value={atb.termino || ''} onChange={e => updateAtb(index, 'termino', e.target.value)} /></Field></div>
           <div className="flex items-end sm:col-span-1"><Button type="button" variant="ghost" size="sm" onClick={() => setValue(old => ({ ...old, antibioticos: old.antibioticos.length === 1 ? [{ ...EMPTY_QUICK_ATB }] : old.antibioticos.filter((_, itemIndex) => itemIndex !== index) }))} className="text-red-600">Quitar</Button></div>
         </div>)}</div>
+        <datalist id="vista-proa-antibioticos">{ANTIBIOTICOS.map(name => <option key={name} value={name} />)}</datalist>
       </section>
       <section><div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-black text-slate-900">Cultivos</h3><Button type="button" size="sm" variant="outline" onClick={() => setValue(old => ({ ...old, cultivos: [...old.cultivos, { fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }] }))}><Plus className="mr-1 h-3.5 w-3.5" />Agregar cultivo</Button></div>
         <div className="space-y-2">{value.cultivos.map((culture, index) => <div key={index} className="grid gap-2 rounded-xl border bg-slate-50 p-3 sm:grid-cols-[140px_1fr_1fr_150px_auto]"><input type="date" className={input} value={culture.fecha || ''} onChange={e => updateCulture(index, 'fecha', e.target.value)} /><input className={input} value={culture.tipo_muestra || ''} onChange={e => updateCulture(index, 'tipo_muestra', e.target.value)} placeholder="Muestra" /><input className={input} value={culture.patogeno || ''} onChange={e => updateCulture(index, 'patogeno', e.target.value)} placeholder="Patógeno" /><select className={input} value={culture.sensibilidad || 'Pendiente'} onChange={e => updateCulture(index, 'sensibilidad', e.target.value)}><option>Pendiente</option><option>Sensible</option><option>Resistente</option><option>Sin desarrollo</option></select><Button type="button" variant="ghost" size="sm" onClick={() => setValue(old => ({ ...old, cultivos: old.cultivos.length === 1 ? [{ fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }] : old.cultivos.filter((_, itemIndex) => itemIndex !== index) }))} className="text-red-600">Quitar</Button></div>)}</div>
       </section>
-    </div> : <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">Este paciente todavía no tiene registro PROA. Puedes abrir la evolución completa para crearlo.</div>}
-    <div className="mt-5 flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={onClose}>Cerrar</Button><Button variant="outline" onClick={onFull} className="border-teal-300 text-teal-800">Abrir evolución PROA completa</Button>{hasRecord && <Button onClick={onSave} disabled={saving} className="bg-teal-700 hover:bg-teal-800">{saving ? 'Guardando…' : 'Guardar actualización PROA'}</Button>}</div>
+    </div>
+    <div className="mt-5 flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={onClose}>Cerrar</Button><Button variant="outline" onClick={onFull} className="border-teal-300 text-teal-800">{hasRecord ? 'Abrir y evolucionar paciente PROA' : 'Abrir ingreso y evolución PROA'}</Button><Button onClick={onSave} disabled={saving || (!hasRecord && (!value.paciente || !value.rut))} className="bg-teal-700 hover:bg-teal-800">{saving ? 'Guardando…' : hasRecord ? 'Guardar actualización PROA' : 'Agregar paciente PROA'}</Button></div>
   </div></div>;
 }
 
@@ -232,6 +266,7 @@ const ACTIONS = [
 function VistaHospitalizados() {
   const navigate = useNavigate();
   const [registry, setRegistry] = useState(readRegistry);
+  const [hodomRows, setHodomRows] = useState([]);
   const [selectedCode, setSelectedCode] = useState(() => sessionStorage.getItem(SELECTED_BED_KEY) || '');
   const [draft, setDraft] = useState(() => {
     const savedCode = sessionStorage.getItem(SELECTED_BED_KEY) || '';
@@ -241,8 +276,10 @@ function VistaHospitalizados() {
   const [status, setStatus] = useState('all');
   const [query, setQuery] = useState('');
   const [saved, setSaved] = useState(false);
+  const [savingAll, setSavingAll] = useState(false);
   const [syncState, setSyncState] = useState('loading');
   const [printPreview, setPrintPreview] = useState(false);
+  const [printServices, setPrintServices] = useState(() => PRINT_SERVICE_OPTIONS.map(option => option.value));
   const [historyOpen, setHistoryOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [labOpen, setLabOpen] = useState(false);
@@ -251,11 +288,17 @@ function VistaHospitalizados() {
   const [generalDraft, setGeneralDraft] = useState(EMPTY);
   const [evolutionOpen, setEvolutionOpen] = useState(false);
   const [evolutionDraft, setEvolutionDraft] = useState('');
+  const [scalesOpen, setScalesOpen] = useState(false);
+  const [scaleDraft, setScaleDraft] = useState({ fecha: new Date().toISOString().slice(0, 10), calculatorId: '', nombre: '', puntaje: '', resultado: '' });
+  const [nutritionOpen, setNutritionOpen] = useState(false);
+  const [nutritionDraft, setNutritionDraft] = useState({ fecha: new Date().toISOString().slice(0, 10), tamizaje: '', puntaje: '', evaluacion: '' });
+  const [diagnosisOpen, setDiagnosisOpen] = useState(false);
+  const [diagnosisDraft, setDiagnosisDraft] = useState({ principal: '', desglose: '' });
   const [studiesOpen, setStudiesOpen] = useState(false);
   const [studiesRows, setStudiesRows] = useState([]);
   const [proaOpen, setProaOpen] = useState(false);
   const [proaSaving, setProaSaving] = useState(false);
-  const [proaQuick, setProaQuick] = useState({ aislamiento: '', antibioticos: [{ ...EMPTY_QUICK_ATB }], cultivos: [{ fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }] });
+  const [proaQuick, setProaQuick] = useState({ paciente: '', rut: '', edad: '', sexo: '', fecha_ingreso: '', diagnostico: '', aislamiento: '', antibioticos: [{ ...EMPTY_QUICK_ATB }], cultivos: [{ fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }] });
   const [labSaving, setLabSaving] = useState(false);
   const emptyLabRow = () => ({ fecha: new Date().toISOString().slice(0, 10), pcr: '', pct: '', blancos: '', crea: '', vhs: '', temp: '' });
   const [labRows, setLabRows] = useState(() => [emptyLabRow()]);
@@ -264,6 +307,10 @@ function VistaHospitalizados() {
     let active = true;
     fetchProaRecords().then(records => {
       if (!active) return;
+      setHodomRows(records.filter(record => !isHistoricalProaRecord(record) && (/^HD-/i.test(record.bedCode) || /domiciliaria/i.test(record.servicio || ''))).map(record => ({
+        bed: { code: record.bedCode, cell: record.bedCode, serviceShort: 'HODOM', salaLabel: 'Hospitalización domiciliaria' },
+        record: proaToPatient(record),
+      })));
       setRegistry(current => {
         const fromProa = {};
         records.filter(record => !isHistoricalProaRecord(record)).forEach(record => {
@@ -285,6 +332,8 @@ function VistaHospitalizados() {
 
   const services = [...new Set(ALL_BEDS.map(b => b.serviceShort))];
   const selectedBed = ALL_BEDS.find(b => b.code === selectedCode);
+  const selectedCalculator = allCalculators.find(item => item.id === scaleDraft.calculatorId);
+  const SelectedCalculatorComponent = selectedCalculator?.component;
   const occupied = Boolean(draft.nombre || draft.rut || draft.fechaIngreso || draft.diagnostico);
   const normalizedQuery = query.trim().toLocaleLowerCase('es');
   const visibleBeds = useMemo(() => ALL_BEDS.filter(b => {
@@ -303,8 +352,16 @@ function VistaHospitalizados() {
     return { occupied: occupiedCount, free: ALL_BEDS.length - occupiedCount };
   }, [registry]);
 
-  const printRows = useMemo(() => visibleBeds.map(bed => ({ bed, record: registry[bed.code] || {} }))
-    .filter(({ record }) => record.nombre || record.rut || record.fechaIngreso || record.diagnostico), [registry, visibleBeds]);
+  const printRows = useMemo(() => [
+    ...ALL_BEDS.map(bed => ({ bed, record: registry[bed.code] || {} })),
+    ...hodomRows,
+  ].filter(({ bed, record }) => printServices.includes(bed.serviceShort) && (record.nombre || record.rut || record.fechaIngreso || record.diagnosticoPrincipal || record.diagnostico))
+    .sort((a, b) => (PRINT_SERVICE_ORDER.get(a.bed.serviceShort) ?? 99) - (PRINT_SERVICE_ORDER.get(b.bed.serviceShort) ?? 99)
+      || String(a.bed.cell).localeCompare(String(b.bed.cell), 'es', { numeric: true })), [registry, hodomRows, printServices]);
+  const printServiceLabel = printServices.length === PRINT_SERVICE_OPTIONS.length
+    ? 'Todos los servicios'
+    : PRINT_SERVICE_OPTIONS.filter(option => printServices.includes(option.value)).map(option => option.label).join(' · ') || 'Sin servicios seleccionados';
+  const togglePrintService = value => setPrintServices(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]);
 
   const openBed = (bed) => {
     setSelectedCode(bed.code);
@@ -324,13 +381,59 @@ function VistaHospitalizados() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     setSaved(true);
   };
-  const openGeneral = () => { setGeneralDraft({ ...draft }); setGeneralOpen(true); };
-  const updateGeneral = (key, value) => setGeneralDraft(old => ({ ...old, [key]: value }));
-  const saveGeneral = () => {
-    const savedDraft = withHistorySnapshot({ ...generalDraft, updatedAt: new Date().toISOString() });
+  const saveAllChanges = async () => {
+    if (!selectedCode || savingAll) return;
+    setSavingAll(true); setSaved(false);
+    const savedDraft = withHistorySnapshot({ ...draft, nombre: normalizeName(draft.nombre), diagnosticoPrincipal: normalizeClinicalText(draft.diagnosticoPrincipal), diagnostico: normalizeClinicalText(draft.diagnostico), updatedAt: new Date().toISOString() });
     const next = { ...registry, [selectedCode]: savedDraft };
     setDraft(savedDraft); setRegistry(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    try {
+      if (savedDraft.proaRecordId) {
+        const records = await fetchProaRecords();
+        const latest = getLatestProaForm(records.find(item => item.id === savedDraft.proaRecordId)) || {};
+        const diagnoses = [savedDraft.diagnosticoPrincipal, ...String(savedDraft.diagnostico || '').split(/\n|;/)].map(item => item.trim()).filter(Boolean);
+        await saveProaRecord({
+          ...latest, paciente: savedDraft.nombre, rut: savedDraft.rut, fecha_nacimiento: savedDraft.fechaNacimiento, edad: savedDraft.edad, sexo: savedDraft.sexo,
+          direccion: savedDraft.direccion, comuna: savedDraft.comuna, fecha_ingreso: savedDraft.fechaIngreso, antecedentes: savedDraft.antecedentes,
+          diagnostico_principal: savedDraft.diagnosticoPrincipal, diagnostico_desglose: savedDraft.diagnostico, diagnosticos_actuales: diagnoses, diagnostico_actual: diagnoses.join('; '),
+          resumen_caso: savedDraft.resumenCaso, vista_ultima_evolucion: savedDraft.ultimaEvolucion, vista_planes_pendientes: savedDraft.planesPendientes,
+          vista_estudios_complementarios: savedDraft.estudiosComplementarios, vista_estudios_detalle: savedDraft.estudiosDetalle || [], vista_observaciones: savedDraft.observaciones,
+          let_indicacion: savedDraft.letIndicacion, iot_indicacion: savedDraft.iotIndicacion, rcp_indicacion: savedDraft.rcpIndicacion, paciente_social: Boolean(savedDraft.pacienteSocial),
+          vista_escalas: savedDraft.escalas || [], vista_evaluaciones_nutricionales: savedDraft.evaluacionesNutricionales || [],
+          fecha: new Date().toISOString().slice(0, 10), hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'actualizacion_general_vista_hospitalizados',
+        });
+      }
+      setSaved(true); setSyncState('ready');
+    } catch {
+      setSyncState('offline');
+    } finally {
+      setSavingAll(false);
+    }
+  };
+  const openGeneral = () => { setGeneralDraft({ ...draft }); setGeneralOpen(true); };
+  const updateGeneral = (key, value) => setGeneralDraft(old => ({ ...old, [key]: value }));
+  const saveGeneral = async () => {
+    const savedDraft = withHistorySnapshot({ ...generalDraft, nombre: normalizeName(generalDraft.nombre), diagnosticoPrincipal: normalizeClinicalText(generalDraft.diagnosticoPrincipal), diagnostico: normalizeClinicalText(generalDraft.diagnostico), updatedAt: new Date().toISOString() });
+    const next = { ...registry, [selectedCode]: savedDraft };
+    setDraft(savedDraft); setRegistry(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    if (savedDraft.proaRecordId) {
+      const records = await fetchProaRecords();
+      const latest = getLatestProaForm(records.find(item => item.id === savedDraft.proaRecordId)) || {};
+      const diagnoses = [savedDraft.diagnosticoPrincipal, ...String(savedDraft.diagnostico || '').split(/\n|;/)].map(item => item.trim()).filter(Boolean);
+      await saveProaRecord({ ...latest, diagnostico_principal: savedDraft.diagnosticoPrincipal, diagnostico_desglose: savedDraft.diagnostico, diagnosticos_actuales: diagnoses, diagnostico_actual: diagnoses.join('; '), fecha: new Date().toISOString().slice(0, 10), hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'diagnostico_vista_general' });
+    }
     setGeneralOpen(false); setSaved(true);
+  };
+  const toggleSocialPatient = async () => {
+    const nextValue = !draft.pacienteSocial;
+    const savedDraft = { ...draft, pacienteSocial: nextValue, updatedAt: new Date().toISOString() };
+    const next = { ...registry, [selectedCode]: savedDraft };
+    setDraft(savedDraft); setRegistry(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); setSaved(true);
+    if (savedDraft.proaRecordId) {
+      const records = await fetchProaRecords();
+      const latest = getLatestProaForm(records.find(item => item.id === savedDraft.proaRecordId)) || {};
+      await saveProaRecord({ ...latest, paciente_social: nextValue, fecha: new Date().toISOString().slice(0, 10), hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'clasificacion_social_vista_general' });
+    }
   };
   const openLatestEvolution = () => { setEvolutionDraft(draft.ultimaEvolucion || ''); setEvolutionOpen(true); };
   const saveLatestEvolution = () => {
@@ -339,13 +442,41 @@ function VistaHospitalizados() {
     setDraft(savedDraft); setRegistry(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     setEvolutionOpen(false); setSaved(true);
   };
+  const saveScale = () => {
+    if (!scaleDraft.nombre || !scaleDraft.puntaje) return;
+    const item = { ...scaleDraft, guardadoEn: new Date().toISOString() };
+    const savedDraft = withHistorySnapshot({ ...draft, escalas: [item, ...(draft.escalas || [])], updatedAt: item.guardadoEn });
+    const next = { ...registry, [selectedCode]: savedDraft };
+    setDraft(savedDraft); setRegistry(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); setScalesOpen(false); setSaved(true);
+  };
+  const nutritionRisk = score => score === '' ? '' : Number(score) >= 3 ? 'Riesgo nutricional' : 'Sin riesgo nutricional';
+  const saveNutrition = () => {
+    if (!nutritionDraft.tamizaje || !nutritionDraft.evaluacion) return;
+    const item = { ...nutritionDraft, riesgo: nutritionDraft.tamizaje === 'Sí' ? nutritionRisk(nutritionDraft.puntaje) : nutritionDraft.tamizaje, guardadoEn: new Date().toISOString() };
+    const savedDraft = withHistorySnapshot({ ...draft, evaluacionesNutricionales: [item, ...(draft.evaluacionesNutricionales || [])], updatedAt: item.guardadoEn });
+    const next = { ...registry, [selectedCode]: savedDraft };
+    setDraft(savedDraft); setRegistry(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); setNutritionOpen(false); setSaved(true);
+  };
+  const openDiagnosis = () => { setDiagnosisDraft({ principal: draft.diagnosticoPrincipal || '', desglose: draft.diagnostico || '' }); setDiagnosisOpen(true); };
+  const saveDiagnosis = async () => {
+    const savedDraft = withHistorySnapshot({ ...draft, diagnosticoPrincipal: normalizeClinicalText(diagnosisDraft.principal), diagnostico: normalizeClinicalText(diagnosisDraft.desglose), updatedAt: new Date().toISOString() });
+    const next = { ...registry, [selectedCode]: savedDraft };
+    setDraft(savedDraft); setRegistry(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    if (savedDraft.proaRecordId) {
+      const records = await fetchProaRecords(); const latest = getLatestProaForm(records.find(item => item.id === savedDraft.proaRecordId)) || {};
+      const diagnoses = [savedDraft.diagnosticoPrincipal, ...savedDraft.diagnostico.split(/\n|;/)].map(item => item.trim()).filter(Boolean);
+      await saveProaRecord({ ...latest, diagnostico_principal: savedDraft.diagnosticoPrincipal, diagnostico_desglose: savedDraft.diagnostico, diagnosticos_actuales: diagnoses, diagnostico_actual: diagnoses.join('; '), fecha: new Date().toISOString().slice(0, 10), hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'diagnostico_vista_general' });
+    }
+    setDiagnosisOpen(false); setSaved(true);
+  };
 
   const prefill = () => {
     const data = {
       patient_name: draft.nombre, patient_rut: draft.rut, patient_fecha_nac: draft.fechaNacimiento,
       patient_direccion: draft.direccion, patient_comuna: draft.comuna, patient_telefono: draft.telefono,
-      prevision: draft.prevision, diagnostico: draft.diagnostico, n_ficha: draft.nFicha,
+      prevision: draft.prevision, diagnostico: draft.diagnosticoPrincipal || draft.diagnostico, diagnostico_principal: draft.diagnosticoPrincipal, diagnostico_desglose: draft.diagnostico, n_ficha: draft.nFicha,
       aislamiento: draft.aislamiento, clinical_text: [draft.resumenCaso, draft.antecedentes].filter(Boolean).join('\n'),
+      edad: draft.edad, sexo: draft.sexo, fecha_ingreso: draft.fechaIngreso, proa_antibioticos: draft.antibioticos || [], proa_examenes: draft.laboratorios || [],
       servicio: selectedBed?.serviceShort || '', cama: selectedBed?.cell || selectedBed?.code || '',
     };
     setMultiPrefill(data);
@@ -357,11 +488,16 @@ function VistaHospitalizados() {
     prefill();
     if (isProa) {
       const proaBed = draft.proaBedCode || catalogToProaBed(selectedBed);
-      navigate(`${createPageUrl('GestionPROA')}?bed=${encodeURIComponent(proaBed || selectedBed.code)}&action=evolve`);
+      navigate(`${createPageUrl('GestionPROA')}?bed=${encodeURIComponent(proaBed || selectedBed.code)}&action=${draft.proaEnrolled ? 'evolve' : 'admit'}`);
       return;
     }
     const [page, search] = route.split('?');
     navigate(`${createPageUrl(page)}${search ? `?${search}` : ''}`);
+  };
+  const openFullProa = () => {
+    setProaOpen(false); save(); prefill();
+    const proaBed = draft.proaBedCode || catalogToProaBed(selectedBed);
+    navigate(`${createPageUrl('GestionPROA')}?bed=${encodeURIComponent(proaBed || selectedBed.code)}&action=${draft.proaEnrolled ? 'evolve' : 'admit'}`);
   };
 
   const goToSection = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -429,6 +565,8 @@ function VistaHospitalizados() {
     }
     const storedAntibiotics = (latest.antibioticos || []).filter(item => item?.nombre);
     setProaQuick({
+      paciente: latest.paciente || draft.nombre || '', rut: latest.rut || draft.rut || '', edad: latest.edad || draft.edad || '', sexo: latest.sexo || draft.sexo || '',
+      fecha_ingreso: latest.fecha_ingreso || draft.fechaIngreso || '', diagnostico: latest.diagnostico_principal || latest.diagnostico_actual || draft.diagnosticoPrincipal || draft.diagnostico || '',
       aislamiento: latest.aislamiento || draft.aislamiento || '',
       antibioticos: storedAntibiotics.length ? storedAntibiotics : [{ ...EMPTY_QUICK_ATB, nombre: antibioticSummary(latest) || draft.antibioterapia || '' }],
       cultivos: (latest.estudios_micro || []).length ? latest.estudios_micro : [{ fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }],
@@ -436,9 +574,25 @@ function VistaHospitalizados() {
     setProaOpen(true);
   };
   const saveProaQuick = async () => {
-    if (!draft.proaRecordId) return;
     setProaSaving(true);
     try {
+      if (!draft.proaRecordId) {
+        const antibiotics = proaQuick.antibioticos.filter(item => item.nombre);
+        const cultures = proaQuick.cultivos.filter(item => item.fecha || item.tipo_muestra || item.patogeno);
+        const created = await saveProaPreAdmission({
+          paciente: proaQuick.paciente, rut: proaQuick.rut, edad: proaQuick.edad, sexo: proaQuick.sexo,
+          fecha_ingreso: proaQuick.fecha_ingreso, diagnostico: proaQuick.diagnostico,
+          diagnosticos: [proaQuick.diagnostico].filter(Boolean), servicio: selectedBed?.serviceShort || '',
+          cama: catalogToProaBed(selectedBed) || selectedBed?.code || '', antibioticos: antibiotics, cultivos,
+        });
+        const latestCreated = getLatestProaForm(created) || {};
+        if (proaQuick.aislamiento) await saveProaRecord({ ...latestCreated, aislamiento: proaQuick.aislamiento, fecha: new Date().toISOString().slice(0, 10), hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'ingreso_rapido_vista_general' });
+        const antibioticText = structuredAntibioticSummary(antibiotics);
+        const nextDraft = { ...draft, nombre: proaQuick.paciente, rut: formatRut(proaQuick.rut), edad: proaQuick.edad, sexo: proaQuick.sexo, fechaIngreso: proaQuick.fecha_ingreso, diagnosticoPrincipal: proaQuick.diagnostico, aislamiento: proaQuick.aislamiento, antibioterapia: antibioticText, antibioticos: antibiotics, patogenoAislado: cultures.map(item => item.patogeno).filter(Boolean).join(', '), proaRecordId: created.id, proaBedCode: created.bedCode, proaUpdatedAt: created.updatedAt, updatedAt: new Date().toISOString() };
+        const nextRegistry = { ...registry, [selectedCode]: nextDraft };
+        setDraft(nextDraft); setRegistry(nextRegistry); localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRegistry)); setProaOpen(false); setSaved(true);
+        return;
+      }
       const records = await fetchProaRecords();
       const record = records.find(item => item.id === draft.proaRecordId);
       const latest = getLatestProaForm(record) || {};
@@ -484,7 +638,7 @@ function VistaHospitalizados() {
             const active = selectedCode === bed.code;
             return <button key={bed.code} onClick={() => openBed(bed)} className={`min-h-36 rounded-xl border p-3 text-left transition ${active ? 'border-teal-600 bg-teal-50 ring-2 ring-teal-200' : isOccupied ? 'border-emerald-200 bg-white hover:border-emerald-400' : 'border-slate-200 bg-white hover:border-teal-300'}`}>
               <div className="flex items-start justify-between gap-2"><div><span className="block text-[10px] font-bold uppercase tracking-wide text-slate-500">{bed.serviceShort} · {bed.salaLabel}</span><span className="block text-lg font-black text-slate-950">Cama {bed.cell}</span></div><BedDouble className={`h-5 w-5 ${isOccupied ? 'text-emerald-600' : 'text-slate-300'}`} /></div>
-              {isOccupied ? <><p className="mt-2 truncate text-sm font-bold text-slate-900">{record.nombre || 'Paciente sin nombre'}</p><p className="truncate text-xs text-slate-500">{record.diagnostico || 'Sin diagnóstico registrado'}</p><p className="mt-2 text-[11px] font-bold text-emerald-700">Día {hospitalDays(record.fechaIngreso)} de hospitalización</p>{record.antibioterapia && <p className="mt-1 truncate text-[10px] font-semibold text-amber-700">ATB: {record.antibioterapia}</p>}</> : <><span className="mt-5 inline-flex rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">LIBRE / SIN INFORMACIÓN</span><p className="mt-2 text-[10px] text-slate-400">Abrir para ingresar paciente</p></>}
+              {isOccupied ? <><div className="mt-2 flex min-w-0 items-center gap-1.5"><p className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900">{record.nombre || 'Paciente sin nombre'}</p>{record.pacienteSocial && <span title="Paciente social" aria-label="Paciente social" className="inline-flex shrink-0 items-center rounded-full bg-fuchsia-100 p-1 text-fuchsia-700"><HeartHandshake className="h-3.5 w-3.5" /></span>}</div><p className="truncate text-xs text-slate-500">{record.diagnosticoPrincipal || record.diagnostico || 'Sin diagnóstico registrado'}</p><p className="mt-2 text-[11px] font-bold text-emerald-700">Día {hospitalDays(record.fechaIngreso)} de hospitalización</p>{record.antibioterapia && <p className="mt-1 truncate text-[10px] font-semibold text-amber-700">ATB: {record.antibioterapia}</p>}</> : <><span className="mt-5 inline-flex rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">LIBRE / SIN INFORMACIÓN</span><p className="mt-2 text-[10px] text-slate-400">Abrir para ingresar paciente</p></>}
             </button>;
           })}
         </div>
@@ -493,17 +647,20 @@ function VistaHospitalizados() {
       <aside className="min-w-0 pb-20 xl:sticky xl:top-20 xl:max-h-[calc(100vh-10rem)] xl:overflow-y-auto">
         {!selectedBed ? <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center"><BedDouble className="mx-auto h-12 w-12 text-slate-300" /><h2 className="mt-4 font-bold text-slate-800">Selecciona una cama</h2><p className="mt-1 text-sm text-slate-500">Podrás registrar al paciente y generar todos sus documentos desde una sola ficha.</p></div> : <div className="space-y-4">
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className={`flex flex-wrap items-start justify-between gap-3 ${detailsOpen ? 'mb-4' : ''}`}><div><p className="text-xs font-bold uppercase tracking-wider text-teal-700">{selectedBed.serviceShort} · {selectedBed.salaLabel}</p><h2 className="text-2xl font-black text-slate-950">Cama {selectedBed.cell}</h2>{draft.nombre && <p className="font-bold text-slate-800">{draft.nombre} {draft.rut && <span className="font-normal text-slate-500">· {draft.rut}</span>}</p>}{occupied && <p className="text-xs font-semibold text-emerald-700">Ingreso {draft.fechaIngreso || 'sin fecha'} · Día {hospitalDays(draft.fechaIngreso)}</p>}</div><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setDetailsOpen(open => !open)} className="gap-2">{detailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}{detailsOpen ? 'Ocultar ficha' : 'Ver ficha'}</Button><Button onClick={openGeneral} className="gap-2 bg-teal-700 hover:bg-teal-800"><Save className="h-4 w-4" />Editar ficha general</Button></div></div>
+            <div className={`flex flex-wrap items-start justify-between gap-3 ${detailsOpen ? 'mb-4' : ''}`}><div><p className="text-xs font-bold uppercase tracking-wider text-teal-700">{selectedBed.serviceShort} · {selectedBed.salaLabel}</p><h2 className="text-2xl font-black text-slate-950">Cama {selectedBed.cell}</h2>{draft.nombre && <p className="flex flex-wrap items-center gap-1.5 font-bold text-slate-800">{draft.nombre} {draft.rut && <span className="font-normal text-slate-500">· {draft.rut}</span>}{draft.pacienteSocial && <span className="inline-flex items-center gap-1 rounded-full bg-fuchsia-100 px-2 py-0.5 text-[10px] font-bold text-fuchsia-800"><HeartHandshake className="h-3 w-3" />Paciente social</span>}</p>}{occupied && <p className="text-xs font-semibold text-emerald-700">Ingreso {draft.fechaIngreso || 'sin fecha'} · Día {hospitalDays(draft.fechaIngreso)}</p>}</div><div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setDetailsOpen(open => !open)} className="gap-2">{detailsOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}{detailsOpen ? 'Ocultar ficha' : 'Ver ficha'}</Button><Button type="button" variant="outline" onClick={saveAllChanges} disabled={savingAll || !occupied} className="gap-2 border-emerald-300 bg-emerald-50 font-bold text-emerald-800 hover:bg-emerald-100"><Save className="h-4 w-4" />{savingAll ? 'Guardando…' : saved ? 'Cambios guardados' : 'Guardar todos los cambios'}</Button><Button onClick={openGeneral} className="gap-2 bg-teal-700 hover:bg-teal-800"><ClipboardList className="h-4 w-4" />Editar ficha general</Button></div></div>
             {detailsOpen && <>
             <div className="mb-5 flex items-start gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /><p>Información clínica protegida por código de acceso. Los datos se reutilizan únicamente al abrir documentos desde esta ficha.</p></div>
             <div className="mb-4 flex flex-wrap gap-2">
               <Button type="button" size="sm" variant="outline" onClick={openGeneral} className="border-sky-300 bg-sky-50 text-sky-800 shadow-[0_0_0_3px_rgba(125,211,252,0.18)] hover:bg-sky-100"><ClipboardList className="mr-1 h-3.5 w-3.5" />Resumen actual</Button>
               <Button type="button" size="sm" variant="outline" onClick={openGeneral} className="border-amber-300 bg-amber-50 text-amber-800 shadow-[0_0_0_3px_rgba(252,211,77,0.18)] hover:bg-amber-100"><FileText className="mr-1 h-3.5 w-3.5" />Planes</Button>
               <Button type="button" size="sm" variant="outline" onClick={openStudies} className="border-cyan-300 bg-cyan-50 text-cyan-800 shadow-[0_0_0_3px_rgba(103,232,249,0.18)] hover:bg-cyan-100"><Image className="mr-1 h-3.5 w-3.5" />Estudios</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setScalesOpen(true)} className="border-rose-300 bg-rose-50 text-rose-700 shadow-[0_0_0_3px_rgba(253,164,175,0.18)] hover:bg-rose-100"><Calculator className="mr-1 h-3.5 w-3.5" />Escalas</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setNutritionOpen(true)} className="border-lime-300 bg-lime-50 text-lime-800 shadow-[0_0_0_3px_rgba(190,242,100,0.2)] hover:bg-lime-100"><Apple className="mr-1 h-3.5 w-3.5" />Evaluación nutricional</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setLabOpen(true)} className="border-blue-300 bg-blue-50 text-blue-700 shadow-[0_0_0_3px_rgba(147,197,253,0.2)] hover:bg-blue-100"><FlaskConical className="mr-1 h-3.5 w-3.5" />Laboratorio</Button>
               <Button type="button" size="sm" variant="outline" onClick={openProaPopup} className="border-teal-400 bg-teal-50 font-bold text-teal-800 shadow-[0_0_0_3px_rgba(45,212,191,0.2)] hover:bg-teal-100"><ShieldCheck className="mr-1 h-3.5 w-3.5" />PROA</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setStatsOpen(true)} className="border-violet-300 bg-violet-50 text-violet-700 shadow-[0_0_0_3px_rgba(196,181,253,0.2)] hover:bg-violet-100"><Activity className="mr-1 h-3.5 w-3.5" />Datos / estadísticas</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => goToSection('hospital-documentos')} className="border-indigo-300 bg-indigo-50 text-indigo-700 shadow-[0_0_0_3px_rgba(165,180,252,0.2)] hover:bg-indigo-100"><FileText className="mr-1 h-3.5 w-3.5" />Documentos y solicitudes</Button>
+              <Button type="button" size="sm" variant="outline" aria-pressed={draft.pacienteSocial} onClick={toggleSocialPatient} className={draft.pacienteSocial ? 'border-fuchsia-400 bg-fuchsia-100 font-bold text-fuchsia-800 shadow-[0_0_0_3px_rgba(232,121,249,0.2)] hover:bg-fuchsia-200' : 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700 hover:bg-fuchsia-100'}><span aria-hidden="true" className={`mr-1.5 inline-flex h-4 w-4 items-center justify-center rounded border text-[10px] ${draft.pacienteSocial ? 'border-fuchsia-700 bg-fuchsia-700 text-white' : 'border-fuchsia-400 bg-white'}`}>{draft.pacienteSocial ? '✓' : ''}</span><HeartHandshake className="mr-1 h-3.5 w-3.5" />Paciente social</Button>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Nombre completo" wide><input className={`${input} cursor-not-allowed bg-slate-50`} value={draft.nombre} readOnly /></Field>
@@ -511,14 +668,14 @@ function VistaHospitalizados() {
               <Field label="Dirección"><input className={`${input} cursor-not-allowed bg-slate-50`} value={draft.direccion} readOnly /></Field>
               <Field label="Comuna"><input className={`${input} cursor-not-allowed bg-slate-50`} value={draft.comuna} readOnly /></Field>
               <Field label="Fecha de ingreso"><input type="date" className={`${input} cursor-not-allowed bg-slate-50`} value={draft.fechaIngreso} readOnly /></Field>
-              <Field label="Diagnóstico(s)" wide><textarea className={`${textarea} cursor-not-allowed bg-slate-50`} value={draft.diagnostico} readOnly /></Field>
+              <div className="sm:col-span-2 rounded-xl border border-sky-200 bg-sky-50/60 p-3"><div className="mb-2 flex items-center justify-between"><p className="text-sm font-black text-sky-950">Diagnósticos compartidos con PROA</p><Button type="button" size="sm" variant="outline" onClick={openDiagnosis} className="border-sky-300 bg-white text-sky-800">Editar</Button></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Diagnóstico principal"><input className={`${input} cursor-not-allowed bg-white/70`} value={draft.diagnosticoPrincipal} readOnly /></Field><Field label="Desglose / diagnósticos asociados"><textarea className={`${textarea} cursor-not-allowed bg-white/70`} value={draft.diagnostico} readOnly /></Field></div></div>
               <Field label="Antecedentes relevantes" wide><textarea className={`${textarea} cursor-not-allowed bg-slate-50`} value={draft.antecedentes} readOnly /></Field>
               <div className="sm:col-span-2 rounded-xl border border-teal-200 bg-teal-50/60 p-3"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><p className="text-sm font-black text-teal-950">Información PROA</p><p className="text-xs text-teal-700">Antibioterapia, aislamiento, precauciones y cultivos se editan exclusivamente desde PROA.</p></div><Button type="button" size="sm" variant="outline" onClick={openProaPopup} className="border-teal-400 bg-white font-bold text-teal-800"><ShieldCheck className="mr-1 h-3.5 w-3.5" />Editar en PROA</Button></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Antibioterapia" wide><textarea className={`${textarea} cursor-not-allowed bg-white/70 text-slate-600`} value={draft.antibioterapia} readOnly aria-readonly="true" placeholder="Sin antibioterapia registrada en PROA" /></Field><Field label="Aislamiento / precauciones"><input className={`${input} cursor-not-allowed bg-white/70 text-slate-600`} value={draft.aislamiento} readOnly aria-readonly="true" placeholder="Sin indicación registrada" /></Field><Field label="Patógeno / cultivos"><input className={`${input} cursor-not-allowed bg-white/70 text-slate-600`} value={draft.patogenoAislado} readOnly aria-readonly="true" placeholder="Sin aislamiento registrado" /></Field></div></div>
               <Field label="Observaciones"><input className={`${input} cursor-not-allowed bg-slate-50`} value={draft.observaciones} readOnly /></Field>
               <div id="hospital-resumen" className="sm:col-span-2"><Field label="Resumen breve del caso" wide><textarea className={`${textarea} cursor-not-allowed bg-slate-50`} value={draft.resumenCaso} readOnly placeholder="Sin resumen registrado" /></Field></div>
               <div className="sm:col-span-2 rounded-xl border border-cyan-200 bg-cyan-50/70 p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-bold text-cyan-900">Última evolución</p><p className="mt-1 whitespace-pre-line text-sm text-slate-700">{draft.ultimaEvolucion || 'Sin evolución breve registrada'}</p></div><Button type="button" size="sm" variant="outline" onClick={openLatestEvolution} className="shrink-0 border-cyan-300 bg-white text-cyan-800">Editar</Button></div></div>
               <div id="hospital-planes" className="sm:col-span-2"><Field label="Planes pendientes" wide><textarea className={`${textarea} cursor-not-allowed bg-slate-50`} value={draft.planesPendientes} readOnly placeholder="Sin planes registrados" /></Field></div>
-              <div id="hospital-estudios" className="sm:col-span-2"><div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-sm font-bold text-slate-700">Estudios complementarios</p><p className="mt-1 whitespace-pre-line text-xs text-slate-600">{draft.estudiosComplementarios || 'Sin estudios registrados'}</p></div><Button type="button" size="sm" variant="outline" onClick={openStudies} className="shrink-0">Agregar / ver</Button></div></div></div>
+              <div id="hospital-estudios" className="sm:col-span-2"><div className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-sm font-bold text-slate-700">Estudios, escalas y evaluación nutricional</p><p className="mt-1 whitespace-pre-line text-xs text-slate-600">{studyVisitSummary(draft) || 'Sin estudios ni evaluaciones registradas'}</p></div><Button type="button" size="sm" variant="outline" onClick={openStudies} className="shrink-0">Agregar / ver</Button></div></div></div>
               <Field label="Último laboratorio"><input className={`${input} cursor-not-allowed bg-slate-50`} value={draft.ultimoLaboratorio} readOnly placeholder="Sin laboratorio registrado" /></Field>
               <div className="sm:col-span-2 rounded-xl border border-amber-200 bg-amber-50/70 p-3"><p className="mb-2 text-xs font-black uppercase tracking-wide text-amber-900">Decisiones y adecuación del esfuerzo terapéutico</p><div className="grid grid-cols-3 gap-2"><Field label="LET"><input className={`${input} cursor-not-allowed bg-white/70`} value={draft.letIndicacion || 'No consignado'} readOnly /></Field><Field label="IOT"><input className={`${input} cursor-not-allowed bg-white/70`} value={draft.iotIndicacion || 'No consignado'} readOnly /></Field><Field label="RCP"><input className={`${input} cursor-not-allowed bg-white/70`} value={draft.rcpIndicacion || 'No consignado'} readOnly /></Field></div></div>
             </div>
@@ -536,20 +693,23 @@ function VistaHospitalizados() {
         </div>}
       </aside>
     </main>
+    {diagnosisOpen && <div className="fixed inset-0 z-[88] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50 via-white to-blue-50 p-5 shadow-2xl"><h2 className="text-lg font-black text-sky-950">Diagnósticos compartidos</h2><p className="mb-4 text-xs text-sky-700">El diagnóstico principal y su desglose se sincronizan con PROA.</p><div className="space-y-3"><Field label="Diagnóstico principal"><input className={input} value={diagnosisDraft.principal} onChange={e => setDiagnosisDraft(old => ({ ...old, principal: e.target.value }))} /></Field><Field label="Desglose / diagnósticos asociados"><textarea className={textarea} value={diagnosisDraft.desglose} onChange={e => setDiagnosisDraft(old => ({ ...old, desglose: e.target.value }))} placeholder="Uno por línea" /></Field></div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setDiagnosisOpen(false)}>Cancelar</Button><Button onClick={saveDiagnosis} className="bg-sky-700 hover:bg-sky-800">Guardar y sincronizar</Button></div></div></div>}
+    {scalesOpen && <div className="fixed inset-0 z-[88] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm"><div className="flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl border border-rose-200 bg-gradient-to-br from-rose-50 via-white to-orange-50 shadow-2xl"><div className="flex items-start justify-between gap-3 border-b border-rose-200 bg-rose-100/80 px-5 py-4"><div><h2 className="text-lg font-black text-rose-950">Escalas, calculadoras y scores — Cama {selectedBed?.cell}</h2><p className="text-xs text-rose-700">Aplica la calculadora aquí mismo y guarda el resultado fechado para este paciente.</p></div><Button variant="outline" size="sm" onClick={() => setScalesOpen(false)}>Cerrar</Button></div><div className="min-h-0 flex-1 overflow-y-auto p-5"><div className="grid gap-3 sm:grid-cols-[180px_1fr]"><Field label="Fecha"><input type="date" className={input} value={scaleDraft.fecha} onChange={e => setScaleDraft(old => ({ ...old, fecha: e.target.value }))} /></Field><Field label="Escala / calculadora"><select className={input} value={scaleDraft.calculatorId} onChange={e => { const calculator = allCalculators.find(item => item.id === e.target.value); setScaleDraft(old => ({ ...old, calculatorId: e.target.value, nombre: calculator?.name || '', puntaje: '', resultado: '' })); }}><option value="">Seleccionar…</option>{calculatorReferences.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field></div>{SelectedCalculatorComponent ? <div className="mt-4 overflow-hidden rounded-2xl border border-rose-200 bg-white shadow-sm"><SelectedCalculatorComponent key={scaleDraft.calculatorId} /></div> : <div className="mt-4 rounded-xl border border-dashed border-rose-300 bg-white/70 p-8 text-center text-sm text-rose-700"><Calculator className="mx-auto mb-2 h-7 w-7" />Selecciona una calculadora para aplicarla sin salir de la ficha.</div>}<div className="mt-4 rounded-xl border border-rose-200 bg-white/85 p-4"><p className="mb-3 text-sm font-black text-rose-950">Registrar resultado en la ficha</p><div className="grid gap-3 sm:grid-cols-2"><Field label="Puntaje / resultado"><input className={input} value={scaleDraft.puntaje} onChange={e => setScaleDraft(old => ({ ...old, puntaje: e.target.value }))} placeholder="Copia aquí el resultado calculado" /></Field><Field label="Interpretación"><input className={input} value={scaleDraft.resultado} onChange={e => setScaleDraft(old => ({ ...old, resultado: e.target.value }))} placeholder="Riesgo o interpretación clínica" /></Field></div></div>{(draft.escalas || []).length > 0 && <div className="mt-4 border-t border-rose-200 pt-3"><p className="mb-2 text-xs font-bold text-rose-900">Resultados previos</p>{draft.escalas.slice(0, 5).map((item, index) => <p key={index} className="text-xs text-slate-700">{item.fecha} · {item.nombre}: {item.puntaje} pts {item.resultado && `· ${item.resultado}`}</p>)}</div>}</div><div className="flex justify-end gap-2 border-t border-rose-200 bg-white/80 px-5 py-4"><Button variant="outline" onClick={() => setScalesOpen(false)}>Cancelar</Button><Button onClick={saveScale} disabled={!scaleDraft.nombre || !scaleDraft.puntaje} className="bg-rose-700 hover:bg-rose-800">Guardar resultado</Button></div></div></div>}
+    {nutritionOpen && <div className="fixed inset-0 z-[88] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl border border-lime-200 bg-gradient-to-br from-lime-50 via-white to-green-50 p-5 shadow-2xl"><h2 className="text-lg font-black text-lime-950">Evaluación nutricional</h2><p className="mb-4 text-xs text-lime-800">Tamizaje NRS-2002: 0–2 puntos sin riesgo; ≥3 puntos con riesgo nutricional.</p><div className="grid gap-3 sm:grid-cols-2"><Field label="Fecha"><input type="date" className={input} value={nutritionDraft.fecha} onChange={e => setNutritionDraft(old => ({ ...old, fecha: e.target.value }))} /></Field><Field label="Score / tamizaje aplicado"><select className={input} value={nutritionDraft.tamizaje} onChange={e => setNutritionDraft(old => ({ ...old, tamizaje: e.target.value }))}><option value="">Seleccionar…</option><option value="Sí">Sí</option><option value="No">No</option><option value="No aplica">No aplica</option></select></Field><Field label="Resultado (puntos)"><input type="number" min="0" className={input} value={nutritionDraft.puntaje} disabled={nutritionDraft.tamizaje !== 'Sí'} onChange={e => setNutritionDraft(old => ({ ...old, puntaje: e.target.value }))} /></Field><Field label="Riesgo automático"><input className={`${input} bg-white/70`} value={nutritionDraft.tamizaje === 'Sí' ? nutritionRisk(nutritionDraft.puntaje) : nutritionDraft.tamizaje} readOnly /></Field><Field label="Evaluación nutricional realizada" wide><select className={input} value={nutritionDraft.evaluacion} onChange={e => setNutritionDraft(old => ({ ...old, evaluacion: e.target.value }))}><option value="">Seleccionar…</option><option value="Sí">Sí</option><option value="No">No</option><option value="No aplica">No aplica</option></select></Field></div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setNutritionOpen(false)}>Cancelar</Button><Button onClick={saveNutrition} className="bg-lime-700 hover:bg-lime-800">Guardar evaluación</Button></div></div></div>}
     {evolutionOpen && <div className="fixed inset-0 z-[87] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl border border-cyan-200 bg-gradient-to-br from-cyan-50 via-white to-blue-50 p-5 shadow-2xl"><div className="mb-4 rounded-xl bg-cyan-100/80 p-3"><h2 className="text-lg font-black text-cyan-950">Última evolución — Cama {selectedBed?.cell}</h2><p className="text-xs text-cyan-700">Solo esta síntesis breve aparecerá en la columna “Última evolución” de la tabla de visita.</p></div><Field label="Síntesis de la última evolución"><textarea className={textarea} value={evolutionDraft} onChange={e => setEvolutionDraft(e.target.value)} placeholder="Ej.: Afebril, hemodinámicamente estable, con menor requerimiento de oxígeno." /></Field><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setEvolutionOpen(false)}>Cancelar</Button><Button onClick={saveLatestEvolution} className="bg-cyan-700 hover:bg-cyan-800">Guardar evolución breve</Button></div></div></div>}
     {generalOpen && <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-cyan-50 shadow-2xl"><div className="border-b border-teal-200 bg-teal-100/80 px-5 py-4"><h2 className="text-lg font-black text-teal-950">Ficha general — Cama {selectedBed?.cell}</h2><p className="text-xs text-teal-700">Al guardar se crea un registro fechado con toda la información vigente del paciente.</p></div><div className="min-h-0 flex-1 overflow-y-auto p-5"><div className="grid gap-3 sm:grid-cols-2"><Field label="Nombre completo" wide><input className={input} value={generalDraft.nombre} onChange={e => updateGeneral('nombre', e.target.value)} /></Field><Field label="RUT"><input className={input} value={generalDraft.rut} onChange={e => updateGeneral('rut', formatRut(e.target.value))} placeholder="12.345.678-9" /></Field><Field label="Dirección"><input className={input} value={generalDraft.direccion} onChange={e => updateGeneral('direccion', e.target.value)} /></Field><Field label="Comuna"><input className={input} value={generalDraft.comuna} onChange={e => updateGeneral('comuna', e.target.value)} /></Field><Field label="Fecha de ingreso"><input type="date" className={input} value={generalDraft.fechaIngreso} onChange={e => updateGeneral('fechaIngreso', e.target.value)} /></Field><Field label="Diagnóstico(s)" wide><textarea className={textarea} value={generalDraft.diagnostico} onChange={e => updateGeneral('diagnostico', e.target.value)} /></Field><Field label="Antecedentes relevantes" wide><textarea className={textarea} value={generalDraft.antecedentes} onChange={e => updateGeneral('antecedentes', e.target.value)} /></Field><Field label="Resumen breve del caso" wide><textarea className={textarea} value={generalDraft.resumenCaso} onChange={e => updateGeneral('resumenCaso', e.target.value)} placeholder="Situación clínica actual en pocas líneas" /></Field><Field label="Observaciones" wide><input className={input} value={generalDraft.observaciones} onChange={e => updateGeneral('observaciones', e.target.value)} /></Field><div className="sm:col-span-2 rounded-xl border border-amber-200 bg-amber-50 p-3"><p className="mb-2 text-xs font-black uppercase tracking-wide text-amber-900">Decisiones terapéuticas</p><div className="grid grid-cols-3 gap-2">{[['letIndicacion','LET'],['iotIndicacion','IOT'],['rcpIndicacion','RCP']].map(([key, label]) => <Field key={key} label={label}><select className={input} value={generalDraft[key]} onChange={e => updateGeneral(key, e.target.value)}><option value="">No consignado</option><option value="Sí">Sí</option><option value="No">No</option></select></Field>)}</div></div><Field label="Planes pendientes" wide><textarea className={textarea} value={generalDraft.planesPendientes} onChange={e => updateGeneral('planesPendientes', e.target.value)} placeholder="Conductas o decisiones por completar" /></Field></div></div><div className="flex justify-end gap-2 border-t border-teal-200 bg-white/80 px-5 py-4"><Button variant="outline" onClick={() => setGeneralOpen(false)}>Cancelar</Button><Button onClick={saveGeneral} className="bg-teal-700 hover:bg-teal-800"><Save className="mr-1 h-4 w-4" />Guardar actualización general</Button></div></div></div>}
-    {proaOpen && <ProaQuickModal bed={selectedBed} hasRecord={Boolean(draft.proaRecordId)} value={proaQuick} setValue={setProaQuick} saving={proaSaving} onClose={() => setProaOpen(false)} onFull={() => { setProaOpen(false); openAction("GestionPROA", true); }} onSave={saveProaQuick} />}
+    {proaOpen && <ProaQuickModal bed={selectedBed} hasRecord={Boolean(draft.proaRecordId)} value={proaQuick} setValue={setProaQuick} saving={proaSaving} onClose={() => setProaOpen(false)} onFull={openFullProa} onSave={saveProaQuick} />}
     {studiesOpen && <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-emerald-50 p-5 shadow-2xl"><div className="mb-4 rounded-xl bg-teal-100/80 p-3"><h2 className="text-lg font-black text-teal-950">Estudios complementarios — Cama {selectedBed?.cell}</h2><p className="text-xs text-teal-700">Registra varias fechas y clasifica cada estudio para mantener un resumen clínico breve.</p></div><div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">{studiesRows.map((row, index) => <div key={index} className="rounded-xl border border-teal-100 bg-white/80 p-3"><div className="mb-2 flex items-center justify-between"><strong className="text-xs text-slate-700">Estudio {index + 1}</strong>{studiesRows.length > 1 && <Button type="button" variant="ghost" size="sm" onClick={() => setStudiesRows(rows => rows.filter((_, rowIndex) => rowIndex !== index))} className="text-red-600">Quitar</Button>}</div><div className="grid gap-3 sm:grid-cols-[150px_190px_1fr_150px]"><Field label="Fecha"><input type="date" className={input} value={row.fecha} onChange={e => setStudiesRows(rows => rows.map((item, rowIndex) => rowIndex === index ? { ...item, fecha: e.target.value } : item))} /></Field><Field label="Tipo"><select className={input} value={row.tipo} onChange={e => setStudiesRows(rows => rows.map((item, rowIndex) => rowIndex === index ? { ...item, tipo: e.target.value } : item))}><option>Imagenología</option><option>Estudio funcional</option><option>Anatomía patológica</option><option>Otro</option></select></Field><Field label="Estudio / resultado"><input className={input} value={row.estudio} onChange={e => setStudiesRows(rows => rows.map((item, rowIndex) => rowIndex === index ? { ...item, estudio: e.target.value } : item))} placeholder="Ej.: TAC tórax solicitado" /></Field><Field label="Estado"><select className={input} value={row.estado} onChange={e => setStudiesRows(rows => rows.map((item, rowIndex) => rowIndex === index ? { ...item, estado: e.target.value } : item))}><option>Pendiente</option><option>Solicitado</option><option>Informado</option><option>Suspendido</option></select></Field></div></div>)}<Button type="button" variant="outline" onClick={() => setStudiesRows(rows => [...rows, { fecha: '', tipo: 'Imagenología', estudio: '', estado: 'Pendiente' }])} className="w-full border-dashed border-teal-300 bg-white/70 text-teal-700"><Plus className="mr-1 h-4 w-4" />Agregar otro estudio / fecha</Button></div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setStudiesOpen(false)}>Cancelar</Button><Button onClick={saveStudies} disabled={!studiesRows.some(row => row.estudio || row.fecha)} className="bg-teal-700 hover:bg-teal-800">Guardar estudios</Button></div></div></div>}
     {statsOpen && <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl bg-white p-5 shadow-2xl"><div className="mb-4"><h2 className="text-lg font-black text-slate-900">Datos del paciente</h2><p className="text-xs text-slate-500">Identificación y variables estadísticas que no se muestran permanentemente en la ficha.</p></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Nombre completo" wide><input className={input} value={draft.nombre} onChange={e => update('nombre', e.target.value)} /></Field><Field label="RUT"><input className={input} value={draft.rut} onChange={e => update('rut', formatRut(e.target.value))} placeholder="12.345.678-9" /></Field><Field label="Fecha de nacimiento"><input type="date" className={input} value={draft.fechaNacimiento} onChange={e => update('fechaNacimiento', e.target.value)} /></Field><Field label="Edad"><input type="number" min="0" max="130" className={input} value={draft.edad} onChange={e => update('edad', e.target.value)} /></Field><Field label="Sexo clínico"><select className={input} value={draft.sexo} onChange={e => update('sexo', e.target.value)}><option value="">No consignado</option><option value="F">Femenino</option><option value="M">Masculino</option><option value="Otro">Otro</option></select></Field><Field label="Previsión"><input className={input} value={draft.prevision} onChange={e => update('prevision', e.target.value)} placeholder="Fonasa A, B, C, D…" /></Field></div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setStatsOpen(false)}>Cancelar</Button><Button onClick={saveStats} className="bg-violet-700 hover:bg-violet-800">Guardar datos</Button></div></div></div>}
     {labOpen && <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="flex max-h-[90vh] w-full max-w-5xl flex-col rounded-2xl bg-white p-5 shadow-2xl"><div className="mb-4"><h2 className="text-lg font-black text-slate-900">Agregar laboratorio — Cama {selectedBed?.cell}</h2><p className="text-xs text-slate-500">Puedes ingresar varias fechas; se incorporarán a Visita PROA y Curva de exámenes.</p></div>{draft.proaRecordId ? <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">{labRows.map((row, index) => <div key={index} className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="mb-2 flex items-center justify-between"><strong className="text-xs text-slate-700">Control {index + 1}</strong>{labRows.length > 1 && <Button type="button" variant="ghost" size="sm" onClick={() => setLabRows(rows => rows.filter((_, rowIndex) => rowIndex !== index))} className="text-red-600">Quitar</Button>}</div><div className="grid gap-3 sm:grid-cols-4"><Field label="Fecha"><input type="date" className={input} value={row.fecha} onChange={e => setLabRows(rows => rows.map((item, rowIndex) => rowIndex === index ? { ...item, fecha: e.target.value } : item))} /></Field>{[['pcr','PCR'],['pct','PCT'],['blancos','Leucocitos'],['crea','Creatinina'],['vhs','VHS'],['temp','Temperatura']].map(([key, label]) => <Field key={key} label={label}><input className={input} value={row[key]} onChange={e => setLabRows(rows => rows.map((item, rowIndex) => rowIndex === index ? { ...item, [key]: e.target.value } : item))} /></Field>)}</div></div>)}<Button type="button" variant="outline" onClick={() => setLabRows(rows => [...rows, emptyLabRow()])} className="w-full border-dashed border-blue-300 text-blue-700"><Plus className="mr-1 h-4 w-4" />Agregar otra fecha</Button></div> : <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">Este paciente aún no tiene registro PROA asociado. Créalo primero desde “Evolución PROA”.</p>}<div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setLabOpen(false)}>Cancelar</Button><Button onClick={saveLab} disabled={!draft.proaRecordId || labSaving || !labRows.some(row => Object.entries(row).some(([key, value]) => key !== 'fecha' && value))} className="bg-blue-700 hover:bg-blue-800">{labSaving ? 'Guardando…' : `Guardar ${labRows.filter(row => Object.entries(row).some(([key, value]) => key !== 'fecha' && value)).length} control(es)`}</Button></div></div></div>}
     {printPreview && <div className="hospital-preview-overlay" role="dialog" aria-modal="true" aria-label="Vista previa de tabla de visita">
       <div className="hospital-preview-dialog">
-        <div className="hospital-preview-toolbar"><div><h2>Vista previa — Tabla de visita</h2><p>A4 horizontal · se respetan los filtros activos</p></div><div className="flex gap-2"><Button variant="outline" onClick={() => setPrintPreview(false)}>Cerrar</Button><Button onClick={() => window.print()} className="gap-2 bg-teal-700 hover:bg-teal-800"><Printer className="h-4 w-4" />Imprimir</Button></div></div>
-        <div className="hospital-preview-canvas"><div className="hospital-preview-page"><VisitTable rows={printRows} service={service} /></div></div>
+        <div className="hospital-preview-toolbar"><div><h2>Vista previa — Tabla de visita</h2><p>A4 horizontal · selecciona uno o varios servicios</p></div><div className="flex flex-wrap items-center gap-2">{PRINT_SERVICE_OPTIONS.map(option => <label key={option.value} className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold ${printServices.includes(option.value) ? 'border-teal-400 bg-teal-50 text-teal-800' : 'border-slate-200 bg-white text-slate-500'}`}><input type="checkbox" checked={printServices.includes(option.value)} onChange={() => togglePrintService(option.value)} className="h-3.5 w-3.5 accent-teal-700" />{option.label}</label>)}<Button variant="outline" onClick={() => setPrintPreview(false)}>Cerrar</Button><Button onClick={() => window.print()} disabled={!printServices.length || !printRows.length} className="gap-2 bg-teal-700 hover:bg-teal-800"><Printer className="h-4 w-4" />Imprimir</Button></div></div>
+        <div className="hospital-preview-canvas"><div className="hospital-preview-page"><VisitTable rows={printRows} service={printServiceLabel} /></div></div>
       </div>
     </div>}
     <section className="hospital-print-sheet">
-      <VisitTable rows={printRows} service={service} />
+      <VisitTable rows={printRows} service={printServiceLabel} />
     </section>
     <style>{`
       .hospital-print-sheet{display:none}

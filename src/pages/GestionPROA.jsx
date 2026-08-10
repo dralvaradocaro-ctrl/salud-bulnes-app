@@ -20,9 +20,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PROA_BED_MAP as BASE_PROA_BED_MAP } from '@/lib/hospitalSuggestions';
-import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, moveProaRecordToBed, readProaRegistry, saveProaPreAdmission, saveProaRecord, setPendingProaForm } from '@/lib/proaRegistry';
+import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, isProaEnrolledRecord, moveProaRecordToBed, readProaRegistry, saveProaPreAdmission, saveProaRecord, setPendingProaForm } from '@/lib/proaRegistry';
 import { buildRenalFunctionText, normalizeCreatinine } from '@/lib/renalFunction';
 import { supabase } from '@/lib/supabase';
+import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, DIAGNOSTICOS_INFECTO, PATOGENOS, PRESENTACIONES_ATB, TIPOS_MUESTRA } from '@/pages/VisitaPROA';
 import {
   Bar,
@@ -631,7 +632,7 @@ function GestionPROA() {
   const [quickUpdate, setQuickUpdate] = useState({ antibioticos: [{ ...EMPTY_PRE_ANTIBIOTIC }], examenes_sangre: [{ ...EMPTY_PRE_BLOOD_TEST }] });
 
   const recordsByBed = useMemo(() => (
-    records.filter((record) => !isHistoricalProaRecord(record)).reduce((acc, record) => {
+    records.filter((record) => !isHistoricalProaRecord(record) && isProaEnrolledRecord(record)).reduce((acc, record) => {
       acc[record.bedCode] = record;
       return acc;
     }, {})
@@ -698,9 +699,9 @@ function GestionPROA() {
     setRecords(nextRecords);
     return nextRecords;
   });
-  const currentRecords = useMemo(() => records.filter((record) => !isHistoricalProaRecord(record)), [records]);
-  const historicalRecords = useMemo(() => records.filter(isHistoricalProaRecord), [records]);
-  const clinicalRecords = useMemo(() => records.filter((record) => !isTestProaRecord(record)), [records]);
+  const currentRecords = useMemo(() => records.filter((record) => !isHistoricalProaRecord(record) && isProaEnrolledRecord(record)), [records]);
+  const historicalRecords = useMemo(() => records.filter((record) => isHistoricalProaRecord(record) && isProaEnrolledRecord(record)), [records]);
+  const clinicalRecords = useMemo(() => records.filter((record) => isProaEnrolledRecord(record) && !isTestProaRecord(record)), [records]);
   const currentClinicalRecords = useMemo(
     () => currentRecords.filter((record) => !isTestProaRecord(record)),
     [currentRecords],
@@ -834,10 +835,23 @@ function GestionPROA() {
   // Cargar desde Supabase al montar (fuente de verdad, multi-dispositivo).
   useEffect(() => { fetchProaRecords().then(setRecords); }, []);
   useEffect(() => {
-    if (deepLinkHandled.current || !deepLink.bed || records.length === 0) return;
-    const record = records.find(item => !isHistoricalProaRecord(item) && item.bedCode === deepLink.bed);
+    if (deepLinkHandled.current || !deepLink.bed) return;
+    if (deepLink.action === 'evolve' && records.length === 0) return;
+    const record = records.find(item => !isHistoricalProaRecord(item) && isProaEnrolledRecord(item) && item.bedCode === deepLink.bed);
     setSelectedBed(deepLink.bed);
     setActiveService(findServiceForBed(deepLink.bed));
+    if (deepLink.action === 'admit' && !record) {
+      const shared = getMultiPrefill() || {};
+      const diagnoses = [shared.diagnostico_principal || shared.diagnostico, ...String(shared.diagnostico_desglose || '').split(/\n|;/)].map(item => String(item || '').trim()).filter(Boolean);
+      setPreAdmission({
+        servicio: findServiceForBed(deepLink.bed), cama: deepLink.bed, paciente: shared.patient_name || '', rut: shared.patient_rut || '', edad: shared.edad || '', sexo: shared.sexo || '',
+        creatinina: '', fecha_creatinina: localTodayIso(), fecha_ingreso: shared.fecha_ingreso || localTodayIso(),
+        antibioticos: shared.proa_antibioticos?.length ? shared.proa_antibioticos : [{ ...EMPTY_PRE_ANTIBIOTIC }], cultivos: [{ ...EMPTY_PRE_CULTURE }],
+        diagnostico: diagnoses[0] || '', diagnosticos: diagnoses.length ? diagnoses : [''],
+        examenes_sangre: shared.proa_examenes?.length ? shared.proa_examenes : [{ ...EMPTY_PRE_BLOOD_TEST }],
+      });
+      setShowPreAdmission(true);
+    }
     deepLinkHandled.current = true;
     if (deepLink.action === 'evolve' && record) {
       const latest = getLatestProaForm(record);
