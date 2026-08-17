@@ -10,6 +10,8 @@ import { createPageUrl } from '@/utils';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, PRESENTACIONES_ATB } from '@/pages/VisitaPROA';
 import { allCalculators, calculatorReferences } from '@/components/calculators/catalog';
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import HospitalCareDocuments, { HospitalCareDocumentButtons } from '@/components/hospitalizados/HospitalCareDocuments';
+import HospitalLabCurvePreview from '@/components/hospitalizados/HospitalLabCurvePreview';
 
 const STORAGE_KEY = 'vista_general_hospitalizados_v1';
 const SELECTED_BED_KEY = 'vista_general_hospitalizados_selected_bed';
@@ -348,6 +350,10 @@ function VistaHospitalizados() {
   const [syncState, setSyncState] = useState('loading');
   const [printPreview, setPrintPreview] = useState(false);
   const [printServices, setPrintServices] = useState(() => PRINT_SERVICE_OPTIONS.map(option => option.value));
+  const [careDocumentOpen, setCareDocumentOpen] = useState(false);
+  const [labCurveOpen, setLabCurveOpen] = useState(false);
+  const [labCurveLoading, setLabCurveLoading] = useState(false);
+  const [labCurveRows, setLabCurveRows] = useState([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [labOpen, setLabOpen] = useState(false);
@@ -713,6 +719,22 @@ function VistaHospitalizados() {
   };
 
   const goToSection = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const openLabCurve = async () => {
+    setLabCurveOpen(true);
+    setLabCurveLoading(true);
+    try {
+      let rows = Array.isArray(draft.laboratorios) ? draft.laboratorios : [];
+      if (draft.proaRecordId) {
+        const records = await fetchProaRecords();
+        const record = records.find(item => item.id === draft.proaRecordId);
+        const form = getLatestProaForm(record) || {};
+        if (Array.isArray(form.parametros_inflamatorios) && form.parametros_inflamatorios.length) rows = form.parametros_inflamatorios;
+      }
+      setLabCurveRows(rows);
+    } catch {
+      setLabCurveRows(Array.isArray(draft.laboratorios) ? draft.laboratorios : []);
+    } finally { setLabCurveLoading(false); }
+  };
   const saveLab = async () => {
     if (!draft.proaRecordId) return;
     setLabSaving(true);
@@ -907,12 +929,16 @@ function VistaHospitalizados() {
 
           <section id="hospital-documentos" className="scroll-mt-24 rounded-2xl border border-teal-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center gap-2"><Plus className="h-5 w-5 text-teal-700" /><div><h3 className="font-black text-slate-900">Documentos y solicitudes</h3><p className="text-xs text-slate-500">La ficha se guarda y los datos compatibles se cargan automáticamente.</p></div></div>
+            <HospitalCareDocumentButtons onOpen={() => setCareDocumentOpen(true)} />
+            <button type="button" onClick={openLabCurve} className="mb-3 flex w-full items-center gap-3 rounded-xl border-2 border-cyan-200 bg-cyan-50 p-4 text-left transition hover:border-cyan-400 hover:bg-cyan-100"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-cyan-700 text-white"><Activity className="h-5 w-5" /></span><span><b className="block text-sm text-slate-950">Ver e imprimir curva de exámenes</b><small className="block text-xs text-slate-600">Vista previa con tabla y gráficos seriados</small></span><Printer className="ml-auto h-5 w-5 text-cyan-700" /></button>
             <div className="grid gap-2 sm:grid-cols-2">{ACTIONS.map(action => { const Icon = action.icon; return <button key={action.label} onClick={() => openAction(action.route, action.proa)} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-left transition hover:border-teal-300 hover:shadow-sm"><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${action.color}`}><Icon className="h-4 w-4" /></span><span className="text-sm font-semibold text-slate-800">{action.label}</span></button>; })}</div>
           </section>
         </div>}
       </aside>
     </main>
     {activeTab === 'estadistica' && <StatisticsDashboard statistics={statistics} />}
+    <HospitalCareDocuments open={careDocumentOpen} patient={draft} bed={selectedBed} onClose={() => setCareDocumentOpen(false)} />
+    <HospitalLabCurvePreview open={labCurveOpen} rows={labCurveRows} patient={draft} bed={selectedBed} loading={labCurveLoading} onClose={() => setLabCurveOpen(false)} />
     {readmissionOpen && <div className="fixed inset-0 z-[96] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"><div className="w-full max-w-xl overflow-hidden rounded-2xl border border-orange-300 bg-gradient-to-br from-orange-50 via-white to-amber-50 shadow-2xl"><div className="border-b border-orange-200 bg-orange-100/80 px-5 py-4"><h2 className="text-lg font-black text-orange-950">Verificación de reingreso</h2><p className="text-xs text-orange-800">Se registra una sola vez antes del primer uso clínico del paciente.</p></div><div className="space-y-4 p-5">{readmissionDraft.detected && <div className="rounded-xl border border-orange-300 bg-orange-100 p-3 text-sm font-semibold text-orange-950"><Activity className="mr-2 inline h-4 w-4" />Antecedente detectado automáticamente: egreso el {displayClinicalDate(readmissionDraft.previousDischargeDate)}, dentro de los 30 días previos al ingreso actual.</div>}<Field label="¿El paciente ha tenido un ingreso hospitalario en los últimos 30 días?"><select className={input} value={readmissionDraft.value} onChange={e => setReadmissionDraft(old => ({ ...old, value: e.target.value, detected: old.detected && e.target.value === 'Sí' }))}><option value="">Seleccionar…</option><option value="Sí">Sí</option><option value="No">No</option></select></Field>{readmissionDraft.value === 'Sí' && <Field label="Fecha de egreso anterior (si se conoce)"><input type="date" className={input} value={readmissionDraft.previousDischargeDate} onChange={e => setReadmissionDraft(old => ({ ...old, previousDischargeDate: e.target.value }))} /></Field>}<p className="text-xs text-slate-500">Si marcas “Sí”, la ficha mostrará una alerta de “Segundo ingreso en menos de 30 días”.</p></div><div className="flex justify-end gap-2 border-t border-orange-200 bg-white/80 px-5 py-4"><Button variant="outline" onClick={() => { pendingClinicalAction.current = null; setReadmissionOpen(false); }}>Cancelar</Button><Button onClick={confirmReadmission} disabled={!readmissionDraft.value} className="bg-orange-600 hover:bg-orange-700">Guardar y continuar</Button></div></div></div>}
     {dischargeOpen && <div className="fixed inset-0 z-[92] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
       <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 via-white to-amber-50 shadow-2xl">

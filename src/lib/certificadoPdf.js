@@ -64,7 +64,9 @@ async function loadImage(src) {
  * @returns {Promise<jsPDF>}
  */
 export async function buildCertificadoPdf(cert) {
-  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  // A4 real: evita que impresoras configuradas en A4 recorten el pie de una
+  // página creada originalmente como Carta.
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const M = 56;
@@ -137,8 +139,9 @@ export async function buildCertificadoPdf(cert) {
   // Zonas fijas del pie: a la izquierda el recuadro de firma electrónica, a la
   // derecha el espacio en blanco para la firma manuscrita sobre la línea con
   // los datos del médico; abajo, el bloque de verificación con el QR.
-  const QR_TOP = H - 136;
-  const LINE_Y = QR_TOP - 62;
+  const PAGE_FOOTER_Y = H - 25;
+  const QR_TOP = H - 145;
+  const LINE_Y = QR_TOP - 66;
   const ESPACIO_FIRMA = 62; // aire sobre la línea para firmar a mano
   const SELLO_W = 236;
   const SELLO_H = 74;
@@ -168,10 +171,13 @@ export async function buildCertificadoPdf(cert) {
     });
   };
 
+  const BODY_BOTTOM = LINE_Y - ESPACIO_FIRMA - 24;
   parrafos.forEach((p) => {
     const lines = doc.splitTextToSize(p.trim() || ' ', CW);
     lines.forEach((line, i) => {
-      if (y > LINE_Y - ESPACIO_FIRMA - 24) { doc.addPage(); y = M; }
+      // El texto nunca se reduce para hacerlo caber. Si alcanza la zona
+      // reservada para las firmas, continúa naturalmente en otra hoja.
+      if (y > BODY_BOTTOM) { doc.addPage('a4'); y = M; }
       // Justificar manualmente: al enviar cada línea por separado, jsPDF la
       // considera una última línea y no aplica correctamente align: justify.
       const esUltima = i === lines.length - 1;
@@ -270,6 +276,23 @@ export async function buildCertificadoPdf(cert) {
     tx,
     QR_TOP + 60,
   );
+  doc.setTextColor(15, 23, 42);
+
+  // Pie persistente: se dibuja al final, una vez conocido el total de hojas,
+  // y por eso aparece incluso si el cuerpo del certificado crece a 2+ páginas.
+  const pageCount = doc.getNumberOfPages();
+  for (let page = 1; page <= pageCount; page += 1) {
+    doc.setPage(page);
+    doc.setDrawColor(200, 208, 218);
+    doc.setLineWidth(0.6);
+    doc.line(M, PAGE_FOOTER_Y - 11, W - M, PAGE_FOOTER_Y - 11);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(105, 115, 130);
+    doc.text(`${centro.nombre} · ${centro.direccion} · Fono ${centro.fono}`, M, PAGE_FOOTER_Y);
+    doc.text(`Código ${cert.code} · Página ${page} de ${pageCount}`, W - M, PAGE_FOOTER_Y, { align: 'right' });
+  }
+  doc.setPage(pageCount);
   doc.setTextColor(15, 23, 42);
 
   return doc;
