@@ -223,6 +223,27 @@ function DateDMA({ dia, mes, ano, onChange }) {
   );
 }
 
+// Deben vivir fuera de FormularioIRAGrave. Si se declaran dentro, su función
+// cambia de identidad en cada actualización del formulario y React desmonta el
+// input activo, haciendo que el foco salte mientras se escribe una fecha o texto.
+function QuickField({ label, children, span = 'col-span-1' }) {
+  return (
+    <div className={span}>
+      <label className="mb-1 block text-[11px] font-medium text-slate-600">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function QuickInput({ className = '', ...props }) {
+  return (
+    <input
+      {...props}
+      className={`h-9 w-full rounded-md border border-slate-300 px-2.5 text-sm focus:border-blue-400 focus:outline-none ${className}`}
+    />
+  );
+}
+
 export default function FormularioIRAGrave() {
   const navigate = useNavigate();
   const goBack = () => {
@@ -334,19 +355,6 @@ export default function FormularioIRAGrave() {
       horaObt: nowHHMM(),
     }));
   };
-
-  const QuickField = ({ label, children, span = 'col-span-1' }) => (
-    <div className={span}>
-      <label className="block text-[11px] font-medium text-slate-600 mb-1">{label}</label>
-      {children}
-    </div>
-  );
-  const QuickInput = (props) => (
-    <input
-      {...props}
-      className={`w-full h-9 rounded-md border border-slate-300 px-2.5 text-sm focus:border-blue-400 focus:outline-none ${props.className || ''}`}
-    />
-  );
 
   return (
     <>
