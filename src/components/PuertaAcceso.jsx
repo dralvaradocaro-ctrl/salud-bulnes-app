@@ -63,7 +63,7 @@ export default function PuertaAcceso({ codigo, storageKey, titulo, descripcion, 
           <h2 className="text-base font-semibold">{titulo || 'Acceso restringido'}</h2>
         </div>
         <p className="mb-4 text-sm text-slate-500">
-          {descripcion || 'Ingresa el código de acceso para usar esta herramienta.'}
+          {descripcion || 'Ingresa tu código para acceder a la información reservada.'}
         </p>
         <input
           type="password"

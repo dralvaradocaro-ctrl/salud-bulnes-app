@@ -1040,6 +1040,6 @@ function VistaHospitalizados() {
 
 export default conPuertaAcceso(VistaHospitalizados, {
   storageKey: 'acceso_vista_hospitalizados',
-  titulo: 'Vista general',
-  descripcion: 'Agrega el código para acceder a camas y fichas de pacientes hospitalizados.',
+  titulo: 'Acceso restringido',
+  descripcion: 'Ingresa tu código para acceder a la información reservada.',
 });
