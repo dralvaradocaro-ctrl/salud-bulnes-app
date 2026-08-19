@@ -10,7 +10,7 @@ import { createPageUrl } from '@/utils';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, PRESENTACIONES_ATB } from '@/pages/VisitaPROA';
 import { allCalculators, calculatorReferences } from '@/components/calculators/catalog';
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import HospitalCareDocuments, { HospitalCareDocumentButtons } from '@/components/hospitalizados/HospitalCareDocuments';
+import HospitalCareDocuments from '@/components/hospitalizados/HospitalCareDocuments';
 import HospitalLabCurvePreview from '@/components/hospitalizados/HospitalLabCurvePreview';
 
 const STORAGE_KEY = 'vista_general_hospitalizados_v1';
@@ -321,7 +321,6 @@ function ProaQuickModal({ bed, hasRecord, value, setValue, saving, onClose, onFu
 }
 
 const ACTIONS = [
-  { label: 'Nota de evolución', route: 'NotaEvolucion', icon: ClipboardList, color: 'text-slate-700 bg-slate-100' },
   { label: 'Evolución PROA', route: 'GestionPROA', proa: true, icon: ShieldCheck, color: 'text-teal-800 bg-teal-50' },
   { label: 'Solicitud de exámenes', route: 'SolicitudExamenes', icon: FlaskConical, color: 'text-blue-700 bg-blue-50' },
   { label: 'Microbiología', route: 'SolicitudMicrobiologia', icon: Microscope, color: 'text-cyan-700 bg-cyan-50' },
@@ -650,7 +649,7 @@ function VistaHospitalizados() {
       patient_direccion: draft.direccion, patient_comuna: draft.comuna, patient_telefono: draft.telefono,
       prevision: draft.prevision, diagnostico: draft.diagnosticoPrincipal || draft.diagnostico, diagnostico_principal: draft.diagnosticoPrincipal, diagnostico_desglose: draft.diagnostico, n_ficha: draft.nFicha,
       aislamiento: draft.aislamiento, clinical_text: [draft.resumenCaso, draft.antecedentes].filter(Boolean).join('\n'),
-      edad: draft.edad, sexo: draft.sexo, fecha_ingreso: draft.fechaIngreso, proa_antibioticos: draft.antibioticos || [], proa_examenes: draft.laboratorios || [],
+      edad: draft.edad, sexo: draft.sexo, fecha_ingreso: draft.fechaIngreso, proa_antibioticos: draft.antibioticos || [], proa_examenes: draft.laboratorios || [], ultimo_laboratorio: draft.ultimoLaboratorio || '',
       servicio: selectedBed?.serviceShort || '', cama: selectedBed?.cell || selectedBed?.code || '',
       source: 'vista_general', source_service: selectedBed?.serviceShort || '', source_bed: draft.proaBedCode || selectedBed?.code || '',
     };
@@ -894,10 +893,14 @@ function VistaHospitalizados() {
             <div className="mb-4 flex flex-wrap gap-2">
               <Button type="button" size="sm" variant="outline" onClick={openGeneral} className="border-sky-300 bg-sky-50 text-sky-800 shadow-[0_0_0_3px_rgba(125,211,252,0.18)] hover:bg-sky-100"><ClipboardList className="mr-1 h-3.5 w-3.5" />Resumen actual</Button>
               <Button type="button" size="sm" variant="outline" onClick={openGeneral} className="border-amber-300 bg-amber-50 text-amber-800 shadow-[0_0_0_3px_rgba(252,211,77,0.18)] hover:bg-amber-100"><FileText className="mr-1 h-3.5 w-3.5" />Planes</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => openAction('NotaEvolucion')} className="border-slate-300 bg-slate-50 font-bold text-slate-800 shadow-[0_0_0_3px_rgba(203,213,225,0.24)] hover:bg-slate-100"><ClipboardList className="mr-1 h-3.5 w-3.5" />Nota de evolución</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setCareDocumentOpen(true)} className="border-amber-300 bg-amber-50 font-bold text-amber-900 shadow-[0_0_0_3px_rgba(252,211,77,0.22)] hover:bg-amber-100"><HeartHandshake className="mr-1 h-3.5 w-3.5" />Adecuación / límites</Button>
               <Button type="button" size="sm" variant="outline" onClick={openStudiesChecked} className="border-cyan-300 bg-cyan-50 text-cyan-800 shadow-[0_0_0_3px_rgba(103,232,249,0.18)] hover:bg-cyan-100"><Image className="mr-1 h-3.5 w-3.5" />Estudios</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setScalesOpen(true)} className="border-rose-300 bg-rose-50 text-rose-700 shadow-[0_0_0_3px_rgba(253,164,175,0.18)] hover:bg-rose-100"><Calculator className="mr-1 h-3.5 w-3.5" />Escalas</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setNutritionOpen(true)} className="border-lime-300 bg-lime-50 text-lime-800 shadow-[0_0_0_3px_rgba(190,242,100,0.2)] hover:bg-lime-100"><Apple className="mr-1 h-3.5 w-3.5" />Evaluación nutricional</Button>
               <Button type="button" size="sm" variant="outline" onClick={openLabChecked} className="border-blue-300 bg-blue-50 text-blue-700 shadow-[0_0_0_3px_rgba(147,197,253,0.2)] hover:bg-blue-100"><FlaskConical className="mr-1 h-3.5 w-3.5" />Laboratorio</Button>
+              <Button type="button" size="sm" variant="outline" onClick={openLabCurve} className="border-cyan-300 bg-cyan-50 font-bold text-cyan-800 shadow-[0_0_0_3px_rgba(103,232,249,0.2)] hover:bg-cyan-100"><Activity className="mr-1 h-3.5 w-3.5" />Curva de exámenes</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => openAction('ProtocoloInsulina')} className="border-sky-300 bg-sky-50 font-bold text-sky-800 shadow-[0_0_0_3px_rgba(125,211,252,0.2)] hover:bg-sky-100"><Activity className="mr-1 h-3.5 w-3.5" />Protocolo insulínico</Button>
               <Button type="button" size="sm" variant="outline" onClick={openProaChecked} className="border-teal-400 bg-teal-50 font-bold text-teal-800 shadow-[0_0_0_3px_rgba(45,212,191,0.2)] hover:bg-teal-100"><ShieldCheck className="mr-1 h-3.5 w-3.5" />PROA</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setStatsOpen(true)} className="border-violet-300 bg-violet-50 text-violet-700 shadow-[0_0_0_3px_rgba(196,181,253,0.2)] hover:bg-violet-100"><Activity className="mr-1 h-3.5 w-3.5" />Datos / estadísticas</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => goToSection('hospital-documentos')} className="border-indigo-300 bg-indigo-50 text-indigo-700 shadow-[0_0_0_3px_rgba(165,180,252,0.2)] hover:bg-indigo-100"><FileText className="mr-1 h-3.5 w-3.5" />Documentos y solicitudes</Button>
@@ -929,8 +932,6 @@ function VistaHospitalizados() {
 
           <section id="hospital-documentos" className="scroll-mt-24 rounded-2xl border border-teal-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center gap-2"><Plus className="h-5 w-5 text-teal-700" /><div><h3 className="font-black text-slate-900">Documentos y solicitudes</h3><p className="text-xs text-slate-500">La ficha se guarda y los datos compatibles se cargan automáticamente.</p></div></div>
-            <HospitalCareDocumentButtons onOpen={() => setCareDocumentOpen(true)} />
-            <button type="button" onClick={openLabCurve} className="mb-3 flex w-full items-center gap-3 rounded-xl border-2 border-cyan-200 bg-cyan-50 p-4 text-left transition hover:border-cyan-400 hover:bg-cyan-100"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-cyan-700 text-white"><Activity className="h-5 w-5" /></span><span><b className="block text-sm text-slate-950">Ver e imprimir curva de exámenes</b><small className="block text-xs text-slate-600">Vista previa con tabla y gráficos seriados</small></span><Printer className="ml-auto h-5 w-5 text-cyan-700" /></button>
             <div className="grid gap-2 sm:grid-cols-2">{ACTIONS.map(action => { const Icon = action.icon; return <button key={action.label} onClick={() => openAction(action.route, action.proa)} className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 text-left transition hover:border-teal-300 hover:shadow-sm"><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${action.color}`}><Icon className="h-4 w-4" /></span><span className="text-sm font-semibold text-slate-800">{action.label}</span></button>; })}</div>
           </section>
         </div>}

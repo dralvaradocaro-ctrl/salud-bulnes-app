@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DemographicStep } from '@/components/insulina/DemographicStep';
@@ -12,6 +12,7 @@ import { classifyPatient } from '@/utils/insulina/protocolLogic';
 import { Activity, FileText, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 
 const ProtocoloInsulina = () => {
   const navigate = useNavigate();
@@ -39,6 +40,28 @@ const ProtocoloInsulina = () => {
     vfg: 0,
     usoPrevioNPH: 0,
   });
+
+  // Si se abre desde Vista Hospitalizados, reutiliza los datos clínicos
+  // compatibles sin copiar identificadores al resultado del protocolo.
+  useEffect(() => {
+    const prefill = getMultiPrefill();
+    if (!prefill || prefill.source !== 'vista_general') return;
+    const exams = Array.isArray(prefill.proa_examenes) ? prefill.proa_examenes : [];
+    const latestExam = exams.slice().sort((a, b) => String(b?.fecha || '').localeCompare(String(a?.fecha || '')))[0] || {};
+    const summaryCreatinine = String(prefill.ultimo_laboratorio || '').match(/(?:creatinina|crea)\s*([\d,.]+)/i)?.[1] || '';
+    const rawCreatinine = latestExam.crea ?? latestExam.creatinina ?? summaryCreatinine;
+    const creatinine = Number(String(rawCreatinine).replace(',', '.'));
+    const age = Number(prefill.edad);
+    const clinicalSex = String(prefill.sexo || '').toUpperCase() === 'M'
+      ? 'masculino'
+      : String(prefill.sexo || '').toUpperCase() === 'F' ? 'femenino' : '';
+    setPatientData((current) => ({
+      ...current,
+      edad: Number.isFinite(age) && age > 0 ? age : current.edad,
+      sexo: clinicalSex || current.sexo,
+      creatinina: Number.isFinite(creatinine) && creatinine > 0 ? creatinine : current.creatinina,
+    }));
+  }, []);
 
   const updatePatientData = (field: keyof PatientData, value: number | boolean | string) => {
     setPatientData((prev) => ({ ...prev, [field]: value }));
