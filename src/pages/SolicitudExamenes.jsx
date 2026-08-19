@@ -302,6 +302,7 @@ export default function SolicitudExamenes() {
       prevision:        p.prevision         || prev.prevision,
       diagnostico:      p.diagnostico       || prev.diagnostico,
       procedencia:      p.servicio          || prev.procedencia,
+      sala_cama:        p.sala_cama || [p.servicio, p.cama].filter(Boolean).join(' · ') || prev.sala_cama,
     }));
   }, []);
 

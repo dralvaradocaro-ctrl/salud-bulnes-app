@@ -130,6 +130,8 @@ const EXAMS = [
   { key: 'plaq', name: 'Plaquetas', category: 'Hemograma', unit: '/µL', aliases: ['RCTO. DE PLAQUETAS', 'RCTO DE PLAQUETAS', 'PLAQUETAS', 'PLAQ', 'PLQ', 'PLT'] },
   { key: 'vhs', name: 'VHS', category: 'Inflamatorios', unit: 'mm/h', aliases: ['VHS', 'VELOCIDAD DE ERITROSEDIMENTACION'] },
   { key: 'pcr', name: 'Proteína C reactiva', category: 'Inflamatorios', unit: 'mg/L', aliases: ['PROTEINA C REACTIVA', 'PCR', 'CRP'] },
+  { key: 'pct', name: 'Procalcitonina', category: 'Inflamatorios', unit: 'ng/mL', aliases: ['PROCALCITONINA', 'PCT'] },
+  { key: 'temp', name: 'Temperatura', category: 'Signos vitales', unit: '°C', aliases: ['TEMPERATURA', 'TEMP'] },
   { key: 'crea', name: 'Creatinina', category: 'Función renal', unit: 'mg/dL', aliases: ['CREATININA EN SANGRE', 'CREATININA', 'CREA', 'CREAT', 'CR'] },
   { key: 'urea', name: 'Uremia', category: 'Función renal', unit: 'mg/dL', aliases: ['UREMIA', 'UREA'] },
   { key: 'bun', name: 'Nitrógeno ureico (BUN)', category: 'Función renal', unit: 'mg/dL', aliases: ['NITROGENO UREICO', 'BUN', 'NU'] },
@@ -305,6 +307,12 @@ const parseText = (text, block) => {
   });
   return [...found, ...parseUrineAndMicrobiology(normalized, safeSource, block, sourceHadIdentifiers), ...parseBiologicalFluids(normalized, safeSource, block, sourceHadIdentifiers)];
 };
+
+// API compartida para que otros módulos reutilicen exactamente el mismo
+// parser de Curva de exámenes sin duplicar reglas ni expresiones regulares.
+export const parseLabReportText = (text, date, time = '12:00') => parseText(text, {
+  id: makeId(), date: date || nowLocal().date, time, sample: 'Sangre', text,
+});
 
 const daysInHospital = (episode) => Math.max(0, Math.floor((Date.now() - new Date(episode.admittedAt).getTime()) / 86400000));
 

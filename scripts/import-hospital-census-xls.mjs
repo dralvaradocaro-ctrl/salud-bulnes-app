@@ -4,6 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 
 const sourcePath = process.argv.slice(2).find((arg) => !arg.startsWith('--'));
 const apply = process.argv.includes('--apply');
+const expectedArg = process.argv.find((arg) => arg.startsWith('--expected='));
+const expectedPatients = expectedArg ? Number(expectedArg.split('=')[1]) : null;
 if (!sourcePath) throw new Error('Uso: node scripts/import-hospital-census-xls.mjs <archivo.xls> [--apply]');
 
 const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
@@ -33,6 +35,7 @@ function bedFor(row) {
   if (row.Servicio === 'MATHB') return row.Sala.includes('OBSTETRICIA') ? `OBS-${bed}` : `GINE-${bed}`;
   if (row.Servicio === 'MQMCHB') {
     if (row.Sala === 'SALA 5') return 'MQ2-Aislamiento 1';
+    if (row.Sala === 'SALA 6') return 'MQ2-Aislamiento 2';
     return `MQ2-${room}-${bed}`;
   }
   if (row.Servicio === 'MQHB') {
@@ -54,7 +57,8 @@ const html = await fs.readFile(sourcePath, 'utf8');
 const rawRows = [...html.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)].map((match) => [...match[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map((cell) => repairEncoding(clean(cell[1]))));
 const headers = rawRows.shift();
 const rows = rawRows.map((values) => Object.fromEntries(headers.map((header, index) => [header, values[index] || '']))).filter((row) => row.Paciente);
-if (rows.length !== 45) throw new Error(`Se esperaban 45 pacientes ocupando cama; se detectaron ${rows.length}.`);
+if (!rows.length) throw new Error('El archivo no contiene pacientes ocupando cama.');
+if (Number.isFinite(expectedPatients) && rows.length !== expectedPatients) throw new Error(`Se esperaban ${expectedPatients} pacientes ocupando cama; se detectaron ${rows.length}.`);
 
 const candidates = rows.map((row) => {
   const birthDate = isoDate(row['Fecha Nacimiento']);
@@ -117,7 +121,14 @@ for (const candidate of candidates) {
 }
 
 const summary = actions.reduce((counts, item) => ({ ...counts, [item.type]: (counts[item.type] || 0) + 1 }), {});
-console.log(JSON.stringify({ apply, patients: candidates.length, summary, actions: actions.map((item) => ({ type: item.type, bed: item.candidate.bed, patient: item.candidate.form.paciente, previous: item.row?.evolutions?.[0]?.form?.paciente || '' })) }, null, 2));
+const referencedCurrentIds = new Set(actions.map((item) => item.row?.id).filter(Boolean));
+const notInCensusRows = activeRows.filter((row) => !referencedCurrentIds.has(row.id) && !/^(?:TEST|HD-)/i.test(row.bed_code || ''));
+const notInCensus = notInCensusRows.map((row) => ({
+  bed: row.bed_code,
+  patient: row.evolutions?.[0]?.form?.paciente || '',
+  enrolled: row.evolutions?.[0]?.form?.proa_enrolled !== false,
+}));
+console.log(JSON.stringify({ apply, patients: candidates.length, summary: { ...summary, notInCensus: notInCensus.length }, actions: actions.map((item) => ({ type: item.type, bed: item.candidate.bed, patient: item.candidate.form.paciente, previous: item.row?.evolutions?.[0]?.form?.paciente || '' })), notInCensus }, null, 2));
 if (!apply) process.exit(0);
 
 const archive = async (row, reason) => {
@@ -162,6 +173,10 @@ const persist = async (candidate, existing = null, enrolled = false) => {
   const { error } = await supabase.from('proa_records').upsert(row, { onConflict: 'bed_code' });
   if (error) throw error;
 };
+
+for (const row of notInCensusRows) {
+  await archive(row, 'Paciente ausente del nuevo censo hospitalario');
+}
 
 for (const action of actions) {
   if (action.type === 'replace') await archive(action.row, 'Reemplazo confirmado por nuevo censo hospitalario');
