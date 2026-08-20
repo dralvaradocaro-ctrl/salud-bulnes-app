@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Eye, FileText, Printer, X } from 'lucide-react';
+import { Eye, FileText, Printer, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const input = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100';
@@ -55,6 +55,7 @@ function treatmentSummary(patient) {
     patient?.antibioterapia && `Tratamiento antimicrobiano: ${patient.antibioterapia}`,
     patient?.aislamiento && `Precauciones / aislamiento: ${patient.aislamiento}`,
     patient?.planesPendientes,
+    patient?.planAlta && `Plan de alta: ${patient.planAlta}`,
   ].filter(Boolean).join('\n');
 }
 
@@ -113,26 +114,39 @@ function Field({ label, children, wide }) {
   return <label className={wide ? 'block sm:col-span-2' : 'block'}><span className="mb-1 block text-xs font-bold text-slate-600">{label}</span>{children}</label>;
 }
 
-export default function HospitalMedicalReports({ open, patient, bed, onClose }) {
+export default function HospitalMedicalReports({ open, patient, bed, reports = [], onSave, onClose }) {
   const [form, setForm] = useState(() => initialForm(patient, bed));
   const [preview, setPreview] = useState(true);
-  useEffect(() => { if (open) { setForm(initialForm(patient, bed)); setPreview(true); } }, [open, patient, bed]);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+  useEffect(() => { if (open) { setForm(initialForm(patient, bed)); setPreview(true); setSaveMessage(''); } }, [open, patient?.rut, bed?.code]);
   const markup = useMemo(() => documentMarkup(form), [form]);
   if (!open) return null;
   const config = REPORT_TYPES[form.type];
   const update = (key, value) => setForm(old => ({ ...old, [key]: value }));
+  const saveReport = async () => {
+    if (!onSave || saving || !form.nombre.trim()) return;
+    setSaving(true); setSaveMessage('');
+    try {
+      const result = await onSave({ ...form, id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`, createdAt: new Date().toISOString(), title: REPORT_TYPES[form.type].label });
+      setSaveMessage(result?.synced === false ? 'Informe guardado en la ficha local; sincronización central pendiente.' : 'Informe guardado y sincronizado como una nueva versión.');
+    } catch {
+      setSaveMessage('No fue posible guardar el informe. Intenta nuevamente.');
+    } finally { setSaving(false); }
+  };
   return <div className="fixed inset-0 z-[99] flex items-center justify-center bg-slate-950/70 p-2 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label="Generador de informes médicos">
     <div className="flex h-[97vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
       <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-emerald-700 text-white"><FileText className="h-5 w-5" /></span><div><h2 className="font-black text-slate-950">Generador de informes médicos</h2><p className="text-xs text-slate-500">Datos precargados desde la ficha · revisión profesional obligatoria</p></div></div><div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => setPreview(value => !value)} className="lg:hidden"><Eye className="mr-1 h-4 w-4" />{preview ? 'Formulario' : 'Vista previa'}</Button><Button variant="ghost" size="icon" onClick={onClose} aria-label="Cerrar"><X className="h-5 w-5" /></Button></div></header>
       <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(430px,.82fr)_minmax(620px,1.18fr)]">
         <div className={`${preview ? 'hidden lg:block' : 'block'} min-h-0 overflow-y-auto p-5`}>
+          {reports.length > 0 && <section className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-3"><h3 className="mb-2 text-sm font-black text-slate-900">Informes almacenados ({reports.length})</h3><div className="max-h-44 space-y-2 overflow-y-auto">{reports.map(report => <button key={report.id || report.createdAt} type="button" onClick={() => { setForm({ ...initialForm(patient, bed), ...report }); setSaveMessage('Versión almacenada cargada para consultar o reimprimir.'); }} className="w-full rounded-lg border border-slate-200 bg-white p-2 text-left hover:border-emerald-300"><b className="block text-xs text-slate-800">{report.title || REPORT_TYPES[report.type]?.label || 'Informe médico'}</b><span className="text-[11px] text-slate-500">{new Date(report.createdAt || report.fecha).toLocaleString('es-CL')} · {report.medico || 'Profesional no consignado'}</span></button>)}</div></section>}
           <section className="mb-5"><h3 className="mb-2 text-sm font-black text-emerald-950">Tipo de informe</h3><div className="grid gap-2">{Object.entries(REPORT_TYPES).map(([key, option]) => <button key={key} type="button" onClick={() => update('type', key)} className={`rounded-xl border p-3 text-left transition ${form.type === key ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-200 hover:bg-slate-50'}`}><b className="block text-sm text-slate-900">{option.label}</b><span className="text-xs text-slate-500">{option.description}</span></button>)}</div></section>
           <section className="mb-5 grid gap-3 sm:grid-cols-2"><Field label="Nombre del paciente" wide><input className={input} value={form.nombre} onChange={e => update('nombre', e.target.value)} /></Field><Field label="RUT"><input className={input} value={form.rut} onChange={e => update('rut', e.target.value)} /></Field><Field label="N.º ficha"><input className={input} value={form.ficha} onChange={e => update('ficha', e.target.value)} /></Field><Field label="Fecha de emisión"><input type="date" className={input} value={form.fecha} onChange={e => update('fecha', e.target.value)} /></Field><Field label="Médico/a responsable"><input className={input} value={form.medico} onChange={e => update('medico', e.target.value)} /></Field><Field label="RUT profesional"><input className={input} value={form.rutMedico} onChange={e => update('rutMedico', e.target.value)} /></Field>{form.type === 'traslado' && <Field label="Destino del traslado" wide><input className={input} value={form.destino} onChange={e => update('destino', e.target.value)} placeholder="Establecimiento, servicio y/o unidad receptora" /></Field>}</section>
           <section><h3 className="mb-3 text-sm font-black text-emerald-950">Contenido clínico</h3><div className="space-y-3">{config.sections.map(([key, label]) => <Field key={key} label={label}><textarea className={textarea} value={form[key]} onChange={e => update(key, e.target.value)} /></Field>)}</div></section>
         </div>
         <div className={`${preview ? 'block' : 'hidden lg:block'} min-h-0 overflow-auto bg-slate-300 p-3 sm:p-6`}><div className="mx-auto min-h-[1123px] w-[794px] origin-top bg-white p-[56px] shadow-xl max-lg:scale-[.72] max-sm:scale-[.44]"><style>{documentCss}</style><div dangerouslySetInnerHTML={{ __html: markup }} /></div></div>
       </div>
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-3"><p className="text-[11px] text-slate-500">Revise diagnósticos, tratamientos e indicaciones antes de imprimir o guardar como PDF.</p><div className="flex gap-2"><Button variant="outline" onClick={onClose}>Cerrar</Button><Button onClick={() => printDocument(form)} disabled={!form.nombre.trim()} className="gap-2 bg-emerald-700 hover:bg-emerald-800"><Printer className="h-4 w-4" />Imprimir / guardar PDF</Button></div></footer>
+      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-3"><p className={`text-[11px] ${saveMessage.startsWith('No fue') ? 'font-bold text-red-700' : saveMessage ? 'font-bold text-emerald-700' : 'text-slate-500'}`}>{saveMessage || 'Guarde una versión en la ficha antes de imprimir el documento definitivo.'}</p><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={onClose}>Cerrar</Button><Button variant="outline" onClick={saveReport} disabled={saving || !form.nombre.trim()} className="gap-2 border-emerald-300 text-emerald-800"><Save className="h-4 w-4" />{saving ? 'Guardando…' : 'Guardar versión'}</Button><Button onClick={() => printDocument(form)} disabled={!form.nombre.trim()} className="gap-2 bg-emerald-700 hover:bg-emerald-800"><Printer className="h-4 w-4" />Imprimir / guardar PDF</Button></div></footer>
     </div>
   </div>;
 }
