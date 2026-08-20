@@ -12,6 +12,7 @@ import { allCalculators, calculatorReferences } from '@/components/calculators/c
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import HospitalCareDocuments from '@/components/hospitalizados/HospitalCareDocuments';
 import HospitalLabCurvePreview from '@/components/hospitalizados/HospitalLabCurvePreview';
+import HospitalMedicalReports from '@/components/hospitalizados/HospitalMedicalReports';
 import { parseLabReportText } from '@/pages/CurvaExamenes';
 
 const STORAGE_KEY = 'vista_general_hospitalizados_v1';
@@ -351,6 +352,7 @@ function VistaHospitalizados() {
   const [printPreview, setPrintPreview] = useState(false);
   const [printServices, setPrintServices] = useState(() => PRINT_SERVICE_OPTIONS.map(option => option.value));
   const [careDocumentOpen, setCareDocumentOpen] = useState(false);
+  const [medicalReportsOpen, setMedicalReportsOpen] = useState(false);
   const [labWorkspaceTab, setLabWorkspaceTab] = useState('registro');
   const [labCurveLoading, setLabCurveLoading] = useState(false);
   const [labCurveRows, setLabCurveRows] = useState([]);
@@ -919,6 +921,7 @@ function VistaHospitalizados() {
             {draft.reingresoMenor30 && <div className="mb-4 flex items-start gap-2 rounded-xl border-2 border-orange-300 bg-orange-50 p-3 text-orange-950 shadow-sm"><Activity className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" /><div><p className="text-sm font-black">Segundo ingreso en menos de 30 días</p><p className="text-xs text-orange-800">Reingreso marcado{draft.reingresoFechaEgresoPrevia ? ` · egreso previo: ${displayClinicalDate(draft.reingresoFechaEgresoPrevia)}` : ''}.</p></div></div>}
             <div className="mb-4 flex flex-wrap gap-2">
               <Button type="button" size="sm" variant="outline" onClick={openGeneral} className="border-sky-300 bg-sky-50 text-sky-800 shadow-[0_0_0_3px_rgba(125,211,252,0.18)] hover:bg-sky-100"><ClipboardList className="mr-1 h-3.5 w-3.5" />Resumen actual</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setMedicalReportsOpen(true)} className="border-emerald-300 bg-emerald-50 font-bold text-emerald-800 shadow-[0_0_0_3px_rgba(110,231,183,0.2)] hover:bg-emerald-100"><FileText className="mr-1 h-3.5 w-3.5" />Informes médicos</Button>
               <Button type="button" size="sm" variant="outline" onClick={openGeneral} className="border-amber-300 bg-amber-50 text-amber-800 shadow-[0_0_0_3px_rgba(252,211,77,0.18)] hover:bg-amber-100"><FileText className="mr-1 h-3.5 w-3.5" />Planes</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => openAction('NotaEvolucion')} className="border-slate-300 bg-slate-50 font-bold text-slate-800 shadow-[0_0_0_3px_rgba(203,213,225,0.24)] hover:bg-slate-100"><ClipboardList className="mr-1 h-3.5 w-3.5" />Nota de evolución</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setCareDocumentOpen(true)} className="border-amber-300 bg-amber-50 font-bold text-amber-900 shadow-[0_0_0_3px_rgba(252,211,77,0.22)] hover:bg-amber-100"><HeartHandshake className="mr-1 h-3.5 w-3.5" />Adecuación / límites</Button>
@@ -965,6 +968,7 @@ function VistaHospitalizados() {
     </main>
     {activeTab === 'estadistica' && <StatisticsDashboard statistics={statistics} />}
     <HospitalCareDocuments open={careDocumentOpen} patient={draft} bed={selectedBed} onClose={() => setCareDocumentOpen(false)} />
+    <HospitalMedicalReports open={medicalReportsOpen} patient={draft} bed={selectedBed} onClose={() => setMedicalReportsOpen(false)} />
     {readmissionOpen && <div className="fixed inset-0 z-[96] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"><div className="w-full max-w-xl overflow-hidden rounded-2xl border border-orange-300 bg-gradient-to-br from-orange-50 via-white to-amber-50 shadow-2xl"><div className="border-b border-orange-200 bg-orange-100/80 px-5 py-4"><h2 className="text-lg font-black text-orange-950">Verificación de reingreso</h2><p className="text-xs text-orange-800">Se registra una sola vez antes del primer uso clínico del paciente.</p></div><div className="space-y-4 p-5">{readmissionDraft.detected && <div className="rounded-xl border border-orange-300 bg-orange-100 p-3 text-sm font-semibold text-orange-950"><Activity className="mr-2 inline h-4 w-4" />Antecedente detectado automáticamente: egreso el {displayClinicalDate(readmissionDraft.previousDischargeDate)}, dentro de los 30 días previos al ingreso actual.</div>}<Field label="¿El paciente ha tenido un ingreso hospitalario en los últimos 30 días?"><select className={input} value={readmissionDraft.value} onChange={e => setReadmissionDraft(old => ({ ...old, value: e.target.value, detected: old.detected && e.target.value === 'Sí' }))}><option value="">Seleccionar…</option><option value="Sí">Sí</option><option value="No">No</option></select></Field>{readmissionDraft.value === 'Sí' && <Field label="Fecha de egreso anterior (si se conoce)"><input type="date" className={input} value={readmissionDraft.previousDischargeDate} onChange={e => setReadmissionDraft(old => ({ ...old, previousDischargeDate: e.target.value }))} /></Field>}<p className="text-xs text-slate-500">Si marcas “Sí”, la ficha mostrará una alerta de “Segundo ingreso en menos de 30 días”.</p></div><div className="flex justify-end gap-2 border-t border-orange-200 bg-white/80 px-5 py-4"><Button variant="outline" onClick={() => { pendingClinicalAction.current = null; setReadmissionOpen(false); }}>Cancelar</Button><Button onClick={confirmReadmission} disabled={!readmissionDraft.value} className="bg-orange-600 hover:bg-orange-700">Guardar y continuar</Button></div></div></div>}
     {dischargeOpen && <div className="fixed inset-0 z-[92] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
       <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-red-200 bg-gradient-to-br from-red-50 via-white to-amber-50 shadow-2xl">
