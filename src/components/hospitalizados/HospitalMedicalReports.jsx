@@ -79,7 +79,7 @@ function initialForm(patient, bed) {
     resumen: patient?.resumenCaso || patient?.ultimaEvolucion || '',
     estadoActual: [patient?.ultimaEvolucion, patient?.resumenCaso].filter(Boolean).join('\n'),
     historiaClinica: [patient?.resumenCaso, patient?.ultimaEvolucion].filter(Boolean).join('\n'),
-    anamnesis: patient?.antecedentes || '', estudios,
+    anamnesis: patient?.antecedentes || '', estudios: studies,
     planes: treatmentSummary(patient), indicaciones: indicationSummary(patient),
   };
 }

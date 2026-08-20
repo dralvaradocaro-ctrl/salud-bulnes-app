@@ -850,7 +850,7 @@ function VistaHospitalizados() {
           paciente: proaQuick.paciente, rut: proaQuick.rut, edad: proaQuick.edad, sexo: proaQuick.sexo,
           fecha_ingreso: proaQuick.fecha_ingreso, diagnostico: proaQuick.diagnostico,
           diagnosticos: [proaQuick.diagnostico].filter(Boolean), servicio: selectedBed?.serviceShort || '', proa_is_test: selectedBed?.code === TEST_BED.code,
-          cama: catalogToProaBed(selectedBed) || selectedBed?.code || '', antibioticos: antibiotics, cultivos,
+          cama: catalogToProaBed(selectedBed) || selectedBed?.code || '', antibioticos: antibiotics, cultivos: cultures,
         });
         const latestCreated = getLatestProaForm(created) || {};
         if (proaQuick.aislamiento) await saveProaRecord({ ...latestCreated, aislamiento: proaQuick.aislamiento, fecha: new Date().toISOString().slice(0, 10), hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'ingreso_rapido_vista_general' });
