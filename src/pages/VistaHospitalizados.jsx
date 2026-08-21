@@ -13,6 +13,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
 import HospitalCareDocuments from '@/components/hospitalizados/HospitalCareDocuments';
 import HospitalLabCurvePreview from '@/components/hospitalizados/HospitalLabCurvePreview';
 import HospitalMedicalReports from '@/components/hospitalizados/HospitalMedicalReports';
+import { emptyHospitalLabRow, HOSPITAL_LAB_FIELDS, HOSPITAL_LAB_GROUPS, LAB_FIELD_BY_EXAM } from '@/components/hospitalizados/hospitalLabCatalog';
 import { parseLabReportText } from '@/pages/CurvaExamenes';
 
 const STORAGE_KEY = 'vista_general_hospitalizados_v1';
@@ -22,7 +23,7 @@ const EMPTY = {
   fechaIngreso: '', diagnosticoPrincipal: '', diagnostico: '', antecedentes: '', antibioterapia: '', antibioticos: [], aislamiento: '', medicoTratante: '', observaciones: '',
   resumenCaso: '', ultimaEvolucion: '', planesPendientes: '', planAlta: '', estudiosComplementarios: '', estudiosDetalle: [], patogenoAislado: '', ultimoLaboratorio: '',
   letIndicacion: '', iotIndicacion: '', rcpIndicacion: '', pacienteSocial: false, escalas: [], evaluacionesNutricionales: [], historialActualizaciones: [],
-  informesMedicos: [],
+  informesMedicos: [], cultivos: [],
   reingresoEvaluado: false, reingresoMenor30: false, reingresoFechaEgresoPrevia: '', reingresoEvaluadoEn: '',
 };
 
@@ -114,6 +115,34 @@ function splitDiagnosisAndHistory(value) {
   return { diagnostico: parts.shift()?.trim() || '', antecedentes: parts.join('\n').trim() };
 }
 
+const cultureKey = item => [item?.fecha, item?.tipo_muestra, item?.patogeno].map(value => String(value || '').trim().toLocaleLowerCase('es-CL')).join('|');
+function deduplicateCultures(items) {
+  const seen = new Set();
+  return (items || []).filter(item => item?.fecha || item?.tipo_muestra || item?.patogeno).filter(item => {
+    const key = cultureKey(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function mergeLaboratoryRows(current, incoming) {
+  const byDate = new Map();
+  [...(current || []), ...(incoming || [])].forEach(row => {
+    const fecha = String(row?.fecha || '').slice(0, 10);
+    if (!fecha) return;
+    byDate.set(fecha, { ...emptyHospitalLabRow(fecha), ...(byDate.get(fecha) || {}), ...row, fecha });
+  });
+  return [...byDate.values()].sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+}
+
+function cultureFromParsedResult(result) {
+  const text = String(result?.valueText || '').trim();
+  const upper = text.toLocaleUpperCase('es-CL');
+  const sensibilidad = /SIN DESARROLLO|NEGATIV|NO DETECTAD/.test(upper) ? 'Sin desarrollo' : /RESISTENTE/.test(upper) ? 'Resistente' : /SENSIBLE/.test(upper) ? 'Sensible' : 'Pendiente';
+  return { fecha: String(result?.collectedAt || '').slice(0, 10), tipo_muestra: result?.name || 'Estudio microbiológico', patogeno: text, sensibilidad, resistente: [], sensible: [], intermedio: [], antibiograma_nota: text, antibiograma: '' };
+}
+
 function catalogToProaBed(bed) {
   if (bed?.code === TEST_BED.code) return 'TEST-PROA-1';
   if (bed.serviceShort === 'MQ1') {
@@ -182,7 +211,8 @@ function latestLabSummary(form) {
   const latest = rows.slice().sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')))[0];
   const renal = form.funcion_renal || [form.creatinina && `Creatinina ${form.creatinina} mg/dL`, form.vfg_estimada && `VFG estimada ${form.vfg_estimada} mL/min/1,73 m²`].filter(Boolean).join(' · ');
   if (!latest) return [form.fecha_creatinina, renal].filter(Boolean).join(' · ');
-  return [latest.fecha, latest.pcr && `PCR ${latest.pcr}`, latest.pct && `PCT ${latest.pct}`, (latest.leucocitos || latest.blancos) && `Leu ${latest.leucocitos || latest.blancos}`, (latest.crea || latest.creatinina) && `Creatinina ${latest.crea || latest.creatinina} mg/dL`, renal && !latest.crea && !latest.creatinina ? renal : ''].filter(Boolean).join(' · ');
+  const values = HOSPITAL_LAB_FIELDS.filter(([key]) => latest[key] !== '' && latest[key] != null).slice(0, 6).map(([key, label, unit]) => `${label} ${latest[key]}${unit ? ` ${unit}` : ''}`);
+  return [latest.fecha, ...values, !values.length ? renal : ''].filter(Boolean).join(' · ');
 }
 
 function isAutoRenalText(value) {
@@ -216,7 +246,8 @@ function proaToPatient(record) {
     planAlta: form.vista_plan_alta || '',
     estudiosComplementarios: form.vista_estudios_complementarios || [form.estudios_imagen, form.diagnostico_microbiologico].filter(Boolean).join(' · '),
     estudiosDetalle: Array.isArray(form.vista_estudios_detalle) ? form.vista_estudios_detalle : [],
-    patogenoAislado: pathogenSummary(form), ultimoLaboratorio: latestLabSummary(form),
+    patogenoAislado: pathogenSummary(form), ultimoLaboratorio: latestLabSummary(form), laboratorios: Array.isArray(form.parametros_inflamatorios) ? form.parametros_inflamatorios : [],
+    cultivos: Array.isArray(form.estudios_micro) ? form.estudios_micro : [],
     letIndicacion: form.let_indicacion || form.let || '', iotIndicacion: form.iot_indicacion || form.iot || '', rcpIndicacion: form.rcp_indicacion || form.rcp || '', pacienteSocial: Boolean(form.paciente_social),
     escalas: Array.isArray(form.vista_escalas) ? form.vista_escalas : [], evaluacionesNutricionales: Array.isArray(form.vista_evaluaciones_nutricionales) ? form.vista_evaluaciones_nutricionales : [],
     informesMedicos: Array.isArray(form.vista_informes_medicos) ? form.vista_informes_medicos : [],
@@ -239,7 +270,7 @@ function mergePatient(base, local) {
     if (value !== '' && value !== null && value !== undefined) merged[key] = value;
   });
   const proaIsNewer = String(base.proaUpdatedAt || '') > String(local?.updatedAt || '');
-  if (proaIsNewer) ['nombre', 'rut', 'fechaNacimiento', 'edad', 'sexo', 'direccion', 'comuna', 'fechaIngreso', 'proaRecordId', 'proaBedCode', 'proaEnrolled', 'pacienteSocial', 'diagnosticoPrincipal', 'diagnostico', 'antibioterapia', 'antibioticos', 'aislamiento', 'patogenoAislado', 'ultimoLaboratorio', 'planAlta', 'informesMedicos'].forEach(key => {
+  if (proaIsNewer) ['nombre', 'rut', 'fechaNacimiento', 'edad', 'sexo', 'direccion', 'comuna', 'fechaIngreso', 'proaRecordId', 'proaBedCode', 'proaEnrolled', 'pacienteSocial', 'diagnosticoPrincipal', 'diagnostico', 'antibioterapia', 'antibioticos', 'aislamiento', 'patogenoAislado', 'ultimoLaboratorio', 'laboratorios', 'cultivos', 'planAlta', 'informesMedicos'].forEach(key => {
     if (base[key] !== '' && base[key] !== undefined) merged[key] = base[key];
   });
   return merged;
@@ -335,6 +366,16 @@ function ProaQuickModal({ bed, hasRecord, value, setValue, saving, onClose, onFu
   </div></div>;
 }
 
+function HospitalLabEntry({ rows, setRows, cultures, setCultures, pasteText, setPasteText, parseMessage, setParseMessage, onParse }) {
+  const updateCulture = (index, key, value) => setCultures(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item));
+  return <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+    <section className="rounded-xl border border-blue-200 bg-blue-50/70 p-4"><div className="mb-2"><h3 className="text-sm font-black text-blue-950">Carga automática desde informe</h3><p className="text-xs text-blue-700">Reconoce laboratorio general y microbiología. Los cultivos se sincronizan con PROA cuando el paciente está vinculado.</p></div><textarea className={`${textarea} min-h-32 bg-white font-mono text-xs`} value={pasteText} onChange={e => { setPasteText(e.target.value); setParseMessage(''); }} placeholder="Pega hemograma, función renal/hepática, electrolitos, coagulación, perfil lipídico, cultivos o paneles microbiológicos…" /><div className="mt-2 flex flex-wrap items-center justify-between gap-2">{parseMessage ? <p className={`text-xs font-semibold ${parseMessage.startsWith('No se') ? 'text-amber-700' : 'text-emerald-700'}`}>{parseMessage}</p> : <span />}<Button type="button" size="sm" onClick={onParse} disabled={!pasteText.trim()} className="bg-blue-700 hover:bg-blue-800"><FlaskConical className="mr-1 h-4 w-4" />Procesar y cargar</Button></div></section>
+    {rows.map((row, index) => <section key={`${row.fecha}-${index}`} className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="mb-3 flex items-end justify-between gap-3"><Field label={`Control ${index + 1} · fecha`}><input type="date" className={input} value={row.fecha} onChange={e => setRows(current => current.map((item, rowIndex) => rowIndex === index ? { ...item, fecha: e.target.value } : item))} /></Field><Button type="button" variant="ghost" size="sm" onClick={() => setRows(current => current.filter((_, rowIndex) => rowIndex !== index))} className="text-red-600">Eliminar fecha y exámenes</Button></div><div className="space-y-2">{HOSPITAL_LAB_GROUPS.map((group, groupIndex) => <details key={group.name} open={groupIndex < 3} className="rounded-lg border border-slate-200 bg-white"><summary className="cursor-pointer px-3 py-2 text-xs font-black text-slate-700">{group.name}</summary><div className="grid gap-3 border-t border-slate-100 p-3 sm:grid-cols-3 lg:grid-cols-4">{group.fields.map(([key, label, unit]) => <Field key={key} label={`${label}${unit ? ` · ${unit}` : ''}`}><input className={input} value={row[key] || ''} onChange={e => setRows(current => current.map((item, rowIndex) => rowIndex === index ? { ...item, [key]: e.target.value } : item))} /></Field>)}</div></details>)}</div></section>)}
+    <Button type="button" variant="outline" onClick={() => setRows(current => [...current, emptyHospitalLabRow()])} className="w-full border-dashed border-blue-300 text-blue-700"><Plus className="mr-1 h-4 w-4" />Agregar otra fecha</Button>
+    <section className="rounded-xl border border-violet-200 bg-violet-50/60 p-4"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h3 className="text-sm font-black text-violet-950">Microbiología</h3><p className="text-xs text-violet-700">Resultados detectados por el parser o provenientes de PROA.</p></div><Button type="button" size="sm" variant="outline" onClick={() => setCultures(current => [...current, { fecha: new Date().toISOString().slice(0, 10), tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }])}><Plus className="mr-1 h-4 w-4" />Agregar estudio</Button></div>{cultures.length ? <div className="space-y-2">{cultures.map((culture, index) => <div key={`${cultureKey(culture)}-${index}`} className="grid gap-2 rounded-lg border border-violet-100 bg-white p-3 sm:grid-cols-[140px_1fr_2fr_150px_auto]"><input type="date" className={input} value={culture.fecha || ''} onChange={e => updateCulture(index, 'fecha', e.target.value)} /><input className={input} value={culture.tipo_muestra || ''} onChange={e => updateCulture(index, 'tipo_muestra', e.target.value)} placeholder="Muestra / estudio" /><textarea className={`${input} min-h-10`} value={culture.patogeno || ''} onChange={e => updateCulture(index, 'patogeno', e.target.value)} placeholder="Resultado / patógeno" /><select className={input} value={culture.sensibilidad || 'Pendiente'} onChange={e => updateCulture(index, 'sensibilidad', e.target.value)}><option>Pendiente</option><option>Sensible</option><option>Resistente</option><option>Sin desarrollo</option></select><Button type="button" variant="ghost" size="sm" onClick={() => setCultures(current => current.filter((_, itemIndex) => itemIndex !== index))} className="text-red-600">Quitar</Button></div>)}</div> : <p className="rounded-lg border border-dashed border-violet-200 bg-white/60 p-4 text-center text-xs text-violet-700">Sin estudios microbiológicos registrados.</p>}</section>
+  </div>;
+}
+
 const ACTIONS = [
   { label: 'Evolución PROA', route: 'GestionPROA', proa: true, icon: ShieldCheck, color: 'text-teal-800 bg-teal-50' },
   { label: 'Solicitud de exámenes', route: 'SolicitudExamenes', icon: FlaskConical, color: 'text-blue-700 bg-blue-50' },
@@ -393,12 +434,13 @@ function VistaHospitalizados() {
   const [dischargeDraft, setDischargeDraft] = useState({ fecha: new Date().toISOString().slice(0, 10), motivo: '', destinoServicio: '', destinoCama: '', antibioticActions: {}, antibioticStopDates: {}, antibioticoAltaIndicacion: '' });
   const [proaQuick, setProaQuick] = useState({ paciente: '', rut: '', edad: '', sexo: '', fecha_ingreso: '', diagnostico: '', aislamiento: '', antibioticos: [{ ...EMPTY_QUICK_ATB }], cultivos: [{ fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }] });
   const [labSaving, setLabSaving] = useState(false);
+  const [labCultures, setLabCultures] = useState([]);
   const [labPasteText, setLabPasteText] = useState('');
   const [labParseMessage, setLabParseMessage] = useState('');
   const [readmissionOpen, setReadmissionOpen] = useState(false);
   const [readmissionDraft, setReadmissionDraft] = useState({ value: '', detected: false, previousDischargeDate: '' });
   const pendingClinicalAction = useRef(null);
-  const emptyLabRow = () => ({ fecha: new Date().toISOString().slice(0, 10), pcr: '', pct: '', blancos: '', crea: '', vhs: '', temp: '' });
+  const emptyLabRow = () => emptyHospitalLabRow();
   const [labRows, setLabRows] = useState(() => [emptyLabRow()]);
 
   useEffect(() => {
@@ -777,46 +819,54 @@ function VistaHospitalizados() {
   const parsePastedLabs = () => {
     const fallbackDate = labRows[0]?.fecha || new Date().toISOString().slice(0, 10);
     const parsed = parseLabReportText(labPasteText, fallbackDate);
-    const fieldByExam = { pcr: 'pcr', pct: 'pct', leu: 'blancos', wbc: 'blancos', crea: 'crea', vhs: 'vhs', temp: 'temp' };
     const grouped = new Map();
     parsed.forEach(result => {
-      const field = fieldByExam[result.examKey];
+      if (result.category === 'Microbiología') return;
+      const field = LAB_FIELD_BY_EXAM[result.examKey];
       if (!field || result.value == null || !Number.isFinite(Number(result.value))) return;
       const fecha = String(result.collectedAt || fallbackDate).slice(0, 10);
-      const row = grouped.get(fecha) || { fecha, pcr: '', pct: '', blancos: '', crea: '', vhs: '', temp: '' };
+      const row = grouped.get(fecha) || emptyHospitalLabRow(fecha);
       row[field] = `${result.comparator || ''}${result.value}`;
       grouped.set(fecha, row);
     });
     const rows = [...grouped.values()].sort((a, b) => a.fecha.localeCompare(b.fecha));
-    if (!rows.length) {
+    const parsedCultures = parsed.filter(result => result.category === 'Microbiología' && result.valueText).map(cultureFromParsedResult);
+    if (parsedCultures.length) setLabCultures(current => deduplicateCultures([...parsedCultures, ...current]));
+    if (!rows.length && !parsedCultures.length) {
       setLabParseMessage('No se reconocieron resultados compatibles. Revisa el texto o ingrésalos manualmente.');
       return;
     }
-    setLabRows(rows);
-    setLabParseMessage(`Se cargaron ${rows.length} fecha(s) y ${rows.reduce((total, row) => total + Object.entries(row).filter(([key, value]) => key !== 'fecha' && value !== '').length, 0)} resultado(s). Revísalos antes de guardar.`);
+    if (rows.length) setLabRows(current => mergeLaboratoryRows(current, rows));
+    const resultCount = rows.reduce((total, row) => total + Object.entries(row).filter(([key, value]) => key !== 'fecha' && value !== '').length, 0);
+    setLabParseMessage(`Se cargaron ${rows.length} fecha(s), ${resultCount} resultado(s) y ${parsedCultures.length} estudio(s) microbiológico(s). Revísalos antes de guardar.`);
   };
   const saveLab = async () => {
-    if (!draft.proaRecordId) return;
     setLabSaving(true);
     try {
-      const records = await fetchProaRecords();
-      const record = records.find(item => item.id === draft.proaRecordId);
-      const latest = getLatestProaForm(record) || {};
       const rows = labRows.filter(row => Object.entries(row).some(([key, value]) => key !== 'fecha' && value));
-      const latestRow = rows.slice().sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)))[0] || rows[0];
-      await saveProaRecord({
-        ...latest, fecha: latestRow.fecha, hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'laboratorio_vista_general',
-        parametros_inflamatorios: [...rows, ...(latest.parametros_inflamatorios || [])],
-        creatinina: latestRow.crea || latest.creatinina || '', fecha_creatinina: latestRow.crea ? latestRow.fecha : latest.fecha_creatinina || '',
-      });
-      const summary = [latestRow.fecha, latestRow.pcr && `PCR ${latestRow.pcr}`, latestRow.pct && `PCT ${latestRow.pct}`, latestRow.blancos && `Leu ${latestRow.blancos}`, latestRow.crea && `Crea ${latestRow.crea}`, latestRow.vhs && `VHS ${latestRow.vhs}`].filter(Boolean).join(' · ');
-      const nextDraft = { ...draft, ultimoLaboratorio: summary, updatedAt: new Date().toISOString() };
+      const allRows = mergeLaboratoryRows([], rows);
+      const cultures = deduplicateCultures(labCultures);
+      const latestRow = allRows[0];
+      const populated = HOSPITAL_LAB_FIELDS.filter(([key]) => latestRow?.[key] !== '' && latestRow?.[key] != null).slice(0, 6);
+      const summary = latestRow ? [latestRow.fecha, ...populated.map(([key, label]) => `${label} ${latestRow[key]}`)].join(' · ') : '';
+      const pathogen = cultures.filter(item => item.patogeno && item.sensibilidad !== 'Sin desarrollo').map(item => `${item.tipo_muestra}: ${item.patogeno}`).join('\n');
+      const nextDraft = { ...draft, laboratorios: allRows, cultivos: cultures, ultimoLaboratorio: summary, patogenoAislado: pathogen, updatedAt: new Date().toISOString() };
       const nextRegistry = { ...registry, [selectedCode]: nextDraft };
       setDraft(nextDraft);
       setRegistry(nextRegistry);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRegistry));
-      setLabOpen(false);
-      setLabRows([emptyLabRow()]);
+      if (draft.proaRecordId) {
+        const records = await fetchProaRecords();
+        const record = records.find(item => item.id === draft.proaRecordId);
+        const latest = getLatestProaForm(record) || {};
+        await saveProaRecord({
+          ...latest, fecha: latestRow?.fecha || new Date().toISOString().slice(0, 10), hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'laboratorio_microbiologia_vista_general',
+          parametros_inflamatorios: allRows, estudios_micro: cultures, diagnostico_microbiologico: pathogen,
+          creatinina: latestRow?.crea || '', fecha_creatinina: latestRow?.crea ? latestRow.fecha : '',
+        });
+      }
+      setLabPasteText('');
+      setLabParseMessage(draft.proaRecordId ? 'Guardado en la ficha hospitalaria y sincronizado con PROA. Puedes procesar otro informe.' : 'Guardado en la ficha hospitalaria. Puedes procesar otro informe.');
     } finally { setLabSaving(false); }
   };
   const saveStats = async () => {
@@ -871,7 +921,7 @@ function VistaHospitalizados() {
   };
   const openStudiesChecked = () => requestFirstClinicalUse(openStudies);
   const openProaChecked = () => requestFirstClinicalUse(openProaPopup);
-  const openLabChecked = () => requestFirstClinicalUse(() => { setLabWorkspaceTab('registro'); setLabPasteText(''); setLabParseMessage(''); setLabOpen(true); });
+  const openLabChecked = () => requestFirstClinicalUse(() => { setLabWorkspaceTab('registro'); setLabRows(Array.isArray(draft.laboratorios) && draft.laboratorios.length ? mergeLaboratoryRows([], draft.laboratorios) : [emptyLabRow()]); setLabCultures(Array.isArray(draft.cultivos) ? draft.cultivos : []); setLabPasteText(''); setLabParseMessage(''); setLabOpen(true); });
   const saveProaQuick = async () => {
     setProaSaving(true);
     try {
@@ -1034,8 +1084,8 @@ function VistaHospitalizados() {
           <div className="flex items-center gap-3"><div className="flex rounded-xl bg-slate-100 p-1"><button type="button" onClick={() => setLabWorkspaceTab('registro')} className={`rounded-lg px-4 py-2 text-xs font-bold transition ${labWorkspaceTab === 'registro' ? 'bg-white text-blue-800 shadow-sm' : 'text-slate-500'}`}><FlaskConical className="mr-1 inline h-4 w-4" />Registrar exámenes</button><button type="button" onClick={openLabCurve} className={`rounded-lg px-4 py-2 text-xs font-bold transition ${labWorkspaceTab === 'curva' ? 'bg-white text-cyan-800 shadow-sm' : 'text-slate-500'}`}><Activity className="mr-1 inline h-4 w-4" />Curva de exámenes</button></div><Button variant="outline" size="sm" onClick={() => setLabOpen(false)}>Cerrar</Button></div>
         </div>
         {labWorkspaceTab === 'curva' ? <HospitalLabCurvePreview embedded open rows={labCurveRows} patient={draft} bed={selectedBed} loading={labCurveLoading} onClose={() => setLabOpen(false)} /> : <>
-          {draft.proaRecordId ? <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5"><section className="rounded-xl border border-blue-200 bg-blue-50/70 p-4"><div className="mb-2"><h3 className="text-sm font-black text-blue-950">Carga automática desde informe</h3><p className="text-xs text-blue-700">Pega el texto del laboratorio. El parser reutiliza las reglas de Curva de exámenes y elimina identificadores directos del texto procesado.</p></div><textarea className={`${textarea} min-h-32 bg-white font-mono text-xs`} value={labPasteText} onChange={e => { setLabPasteText(e.target.value); setLabParseMessage(''); }} placeholder="Pega aquí el informe: PCR, PCT, leucocitos, creatinina, VHS, temperatura…" /><div className="mt-2 flex flex-wrap items-center justify-between gap-2">{labParseMessage ? <p className={`text-xs font-semibold ${labParseMessage.startsWith('No se') ? 'text-amber-700' : 'text-emerald-700'}`}>{labParseMessage}</p> : <span />}<Button type="button" size="sm" onClick={parsePastedLabs} disabled={!labPasteText.trim()} className="bg-blue-700 hover:bg-blue-800"><FlaskConical className="mr-1 h-4 w-4" />Procesar y cargar</Button></div></section>{labRows.map((row, index) => <div key={index} className="rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="mb-2 flex items-center justify-between"><strong className="text-xs text-slate-700">Control {index + 1}</strong>{labRows.length > 1 && <Button type="button" variant="ghost" size="sm" onClick={() => setLabRows(rows => rows.filter((_, rowIndex) => rowIndex !== index))} className="text-red-600">Quitar</Button>}</div><div className="grid gap-3 sm:grid-cols-4"><Field label="Fecha"><input type="date" className={input} value={row.fecha} onChange={e => setLabRows(rows => rows.map((item, rowIndex) => rowIndex === index ? { ...item, fecha: e.target.value } : item))} /></Field>{[['pcr','PCR'],['pct','PCT'],['blancos','Leucocitos'],['crea','Creatinina'],['vhs','VHS'],['temp','Temperatura']].map(([key, label]) => <Field key={key} label={label}><input className={input} value={row[key]} onChange={e => setLabRows(rows => rows.map((item, rowIndex) => rowIndex === index ? { ...item, [key]: e.target.value } : item))} /></Field>)}</div></div>)}<Button type="button" variant="outline" onClick={() => setLabRows(rows => [...rows, emptyLabRow()])} className="w-full border-dashed border-blue-300 text-blue-700"><Plus className="mr-1 h-4 w-4" />Agregar otra fecha</Button></div> : <p className="m-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">Este paciente aún no tiene registro PROA asociado. Créalo primero desde “Evolución PROA”.</p>}
-          <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-3"><Button onClick={saveLab} disabled={!draft.proaRecordId || labSaving || !labRows.some(row => Object.entries(row).some(([key, value]) => key !== 'fecha' && value))} className="bg-blue-700 hover:bg-blue-800">{labSaving ? 'Guardando…' : `Guardar ${labRows.filter(row => Object.entries(row).some(([key, value]) => key !== 'fecha' && value)).length} control(es)`}</Button></div>
+          <HospitalLabEntry rows={labRows} setRows={setLabRows} cultures={labCultures} setCultures={setLabCultures} pasteText={labPasteText} setPasteText={setLabPasteText} parseMessage={labParseMessage} setParseMessage={setLabParseMessage} onParse={parsePastedLabs} />
+          <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-3"><p className="text-xs text-slate-500">{draft.proaRecordId ? 'Guardado hospitalario + sincronización PROA' : 'Guardado en ficha hospitalaria'}</p><Button onClick={saveLab} disabled={labSaving || (!labRows.some(row => Object.entries(row).some(([key, value]) => key !== 'fecha' && value)) && !labCultures.some(item => item.fecha || item.tipo_muestra || item.patogeno) && !(draft.laboratorios?.length || draft.cultivos?.length))} className="bg-blue-700 hover:bg-blue-800">{labSaving ? 'Guardando…' : 'Guardar cambios de laboratorio'}</Button></div>
         </>}
       </div>
     </div>}

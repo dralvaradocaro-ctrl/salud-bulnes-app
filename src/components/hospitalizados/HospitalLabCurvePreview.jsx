@@ -2,11 +2,9 @@ import { useMemo } from 'react';
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Printer, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { HOSPITAL_LAB_FIELDS } from './hospitalLabCatalog';
 
-const DEFINITIONS = [
-  ['pcr', 'PCR', 'mg/L'], ['pct', 'Procalcitonina', 'ng/mL'], ['blancos', 'Leucocitos', '/mm³'],
-  ['crea', 'Creatinina', 'mg/dL'], ['vhs', 'VHS', 'mm/h'], ['temp', 'Temperatura', '°C'],
-];
+const DEFINITIONS = HOSPITAL_LAB_FIELDS;
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
 const formatDate = value => {
   const match = String(value || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);

@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord } from '@/lib/proaRegistry';
 import { supabase } from '@/lib/supabase';
+import { HOSPITAL_LAB_FIELDS } from '@/components/hospitalizados/hospitalLabCatalog';
 
 const STORAGE_KEY = 'hospital_lab_tracker_v1';
 const TEST_EPISODE_ID = 'curva-examenes-test-patient';
@@ -127,6 +128,8 @@ const EXAMS = [
   { key: 'hcm', name: 'HCM', category: 'Hemograma', unit: 'pg', aliases: ['HCM', 'MCH'] },
   { key: 'chcm', name: 'CHCM', category: 'Hemograma', unit: 'g/dL', aliases: ['CHCM', 'MCHC'] },
   { key: 'leu', name: 'Leucocitos', category: 'Hemograma', unit: '/µL', aliases: ['RCTO. DE LEUCOCITOS', 'RCTO DE LEUCOCITOS', 'LEUCOCITOS', 'LEU', 'GB', 'WBC'] },
+  { key: 'neutrofilos', name: 'Neutrófilos', category: 'Hemograma', unit: '%', aliases: ['NEUTROFILOS', 'NEUT', 'NEU'] },
+  { key: 'linfocitos', name: 'Linfocitos', category: 'Hemograma', unit: '%', aliases: ['LINFOCITOS', 'LINF'] },
   { key: 'plaq', name: 'Plaquetas', category: 'Hemograma', unit: '/µL', aliases: ['RCTO. DE PLAQUETAS', 'RCTO DE PLAQUETAS', 'PLAQUETAS', 'PLAQ', 'PLQ', 'PLT'] },
   { key: 'vhs', name: 'VHS', category: 'Inflamatorios', unit: 'mm/h', aliases: ['VHS', 'VELOCIDAD DE ERITROSEDIMENTACION'] },
   { key: 'pcr', name: 'Proteína C reactiva', category: 'Inflamatorios', unit: 'mg/L', aliases: ['PROTEINA C REACTIVA', 'PCR', 'CRP'] },
@@ -135,11 +138,14 @@ const EXAMS = [
   { key: 'crea', name: 'Creatinina', category: 'Función renal', unit: 'mg/dL', aliases: ['CREATININA EN SANGRE', 'CREATININA', 'CREA', 'CREAT', 'CR'] },
   { key: 'urea', name: 'Uremia', category: 'Función renal', unit: 'mg/dL', aliases: ['UREMIA', 'UREA'] },
   { key: 'bun', name: 'Nitrógeno ureico (BUN)', category: 'Función renal', unit: 'mg/dL', aliases: ['NITROGENO UREICO', 'BUN', 'NU'] },
+  { key: 'vfg', name: 'VFG estimada', category: 'Función renal', unit: 'mL/min/1,73 m²', aliases: ['VFG ESTIMADA', 'VELOCIDAD DE FILTRACION GLOMERULAR', 'VFG', 'EGFR'] },
   { key: 'na', name: 'Sodio', category: 'Electrolitos', unit: 'mEq/L', aliases: ['SODIO', 'NA'] },
   { key: 'k', name: 'Potasio', category: 'Electrolitos', unit: 'mEq/L', aliases: ['POTASIO', 'K'] },
   { key: 'cl', name: 'Cloro', category: 'Electrolitos', unit: 'mEq/L', aliases: ['CLORO', 'CL'] },
   { key: 'calcio', name: 'Calcio', category: 'Electrolitos', unit: 'mg/dL', aliases: ['CALCIO EN SANGRE', 'CALCIO', 'CA'] },
   { key: 'fosforo', name: 'Fósforo', category: 'Electrolitos', unit: 'mg/dL', aliases: ['FOSFORO EN SANGRE', 'FOSFORO', 'P'] },
+  { key: 'magnesio', name: 'Magnesio', category: 'Electrolitos', unit: 'mg/dL', aliases: ['MAGNESIO', 'MG'] },
+  { key: 'glucosa', name: 'Glucosa', category: 'Metabolismo', unit: 'mg/dL', aliases: ['GLUCOSA EN SANGRE', 'GLUCEMIA', 'GLUCOSA', 'GLU'] },
   { key: 'hco3', name: 'Bicarbonato', category: 'Gases y ácido-base', unit: 'mEq/L', aliases: ['HCO3', 'BIC'] },
   { key: 'ph', name: 'pH', category: 'Gases y ácido-base', unit: '', aliases: ['PH'] },
   { key: 'pco2', name: 'pCO₂', category: 'Gases y ácido-base', unit: 'mmHg', aliases: ['P CO2', 'PCO2'] },
@@ -149,11 +155,20 @@ const EXAMS = [
   { key: 'sato2', name: 'Saturación O₂', category: 'Gases y ácido-base', unit: '%', aliases: ['SATURACION DE O2', 'SATO2'] },
   { key: 'lactato', name: 'Lactato', category: 'Gases y ácido-base', unit: 'mmol/L', aliases: ['LACTATO', 'LAC'] },
   { key: 'alb', name: 'Albúmina', category: 'Perfil hepático', unit: 'g/dL', aliases: ['ALB', 'ALBUMINA'] },
-  { key: 'bt', name: 'Bilirrubina total', category: 'Perfil hepático', unit: 'mg/dL', aliases: ['BT'] },
-  { key: 'bd', name: 'Bilirrubina directa', category: 'Perfil hepático', unit: 'mg/dL', aliases: ['BD'] },
+  { key: 'bt', name: 'Bilirrubina total', category: 'Perfil hepático', unit: 'mg/dL', aliases: ['BILIRRUBINA TOTAL', 'BILI TOTAL', 'BT'] },
+  { key: 'bd', name: 'Bilirrubina directa', category: 'Perfil hepático', unit: 'mg/dL', aliases: ['BILIRRUBINA DIRECTA', 'BILI DIRECTA', 'BD'] },
   { key: 'ast', name: 'AST/GOT', category: 'Perfil hepático', unit: 'U/L', aliases: ['AST', 'GOT'] },
   { key: 'alt', name: 'ALT/GPT', category: 'Perfil hepático', unit: 'U/L', aliases: ['ALT', 'GPT'] },
+  { key: 'fa', name: 'Fosfatasa alcalina', category: 'Perfil hepático', unit: 'U/L', aliases: ['FOSFATASA ALCALINA', 'ALKALINE PHOSPHATASE', 'FA', 'ALP'] },
+  { key: 'ggt', name: 'GGT', category: 'Perfil hepático', unit: 'U/L', aliases: ['GAMMA GLUTAMIL TRANSFERASA', 'GAMMA GT', 'GGT'] },
+  { key: 'proteinas', name: 'Proteínas totales', category: 'Perfil hepático', unit: 'g/dL', aliases: ['PROTEINAS TOTALES', 'PROT TOTALES'] },
+  { key: 'tp', name: 'Tiempo de protrombina', category: 'Coagulación', unit: 's', aliases: ['TIEMPO DE PROTROMBINA', 'TP'] },
   { key: 'inr', name: 'INR', category: 'Coagulación', unit: '', aliases: ['INR'] },
+  { key: 'ttpa', name: 'TTPa', category: 'Coagulación', unit: 's', aliases: ['TIEMPO DE TROMBOPLASTINA PARCIAL ACTIVADA', 'TTPA', 'TTPK', 'APTT'] },
+  { key: 'col_total', name: 'Colesterol total', category: 'Perfil lipídico', unit: 'mg/dL', aliases: ['COLESTEROL TOTAL', 'COL TOTAL'] },
+  { key: 'ldl', name: 'Colesterol LDL', category: 'Perfil lipídico', unit: 'mg/dL', aliases: ['COLESTEROL LDL', 'LDL'] },
+  { key: 'hdl', name: 'Colesterol HDL', category: 'Perfil lipídico', unit: 'mg/dL', aliases: ['COLESTEROL HDL', 'HDL'] },
+  { key: 'trigliceridos', name: 'Triglicéridos', category: 'Perfil lipídico', unit: 'mg/dL', aliases: ['TRIGLICERIDOS', 'TRIGLYCERIDES', 'TG'] },
 ];
 
 const normalizeReportText = (text) => String(text || '')
@@ -235,7 +250,7 @@ const parseUrineAndMicrobiology = (normalized, safeSource, block, sourceHadIdent
   const urine = urineStart >= 0 ? normalized.slice(urineStart, microStart > urineStart ? microStart : undefined) : '';
   const urineAt = urineStart >= 0 ? detectCollectedAtNear(normalized, urineStart, block) : detectCollectedAt(safeSource, block);
   const add = (examKey, name, value, unit = '', status = 'confirmed') => results.push({
-    id: makeId(), examKey, name, category: examKey.startsWith('urocultivo') ? 'Microbiología' : 'Orina',
+    id: makeId(), examKey, name, category: examKey.startsWith('urocultivo') || examKey.startsWith('micro_') ? 'Microbiología' : 'Orina',
     value: null, valueText: value, unit, originalUnit: unit, collectedAt: examKey.startsWith('urocultivo') && microStart >= 0 ? detectCollectedAtNear(normalized, microStart, block) : urineAt,
     originalText: safeSource, sourceHadIdentifiers, status, confidence: 'alta',
   });
@@ -278,6 +293,20 @@ const parseUrineAndMicrobiology = (normalized, safeSource, block, sourceHadIdent
     const culture = micro.match(/RESULTADO UROCULTIVO\s+(.+?)(?=VALIDADO POR|$)/);
     if (culture) add('urocultivo_resultado', 'Urocultivo', culture[1].trim(), '', /NEGATIVO|POSITIVO/i.test(culture[1]) ? 'confirmed' : 'review');
   }
+  const genericMicroRules = [
+    ['micro_hemocultivo', 'Hemocultivo', /HEMOCULTIVO(?:S)?(?:\s+PERIFERICO|\s+CENTRAL)?\s*(?:RESULTADO)?\s*[:=]?\s*(.+?)(?=VALIDADO POR|ANTIBIOGRAMA|UROCULTIVO|CULTIVO DE|PANEL RESPIRATORIO|$)/],
+    ['micro_urocultivo', 'Urocultivo', /UROCULTIVO\s*(?:RESULTADO)?\s*[:=]?\s*(.+?)(?=VALIDADO POR|ANTIBIOGRAMA|HEMOCULTIVO|CULTIVO DE|PANEL RESPIRATORIO|$)/],
+    ['micro_esputo', 'Cultivo de esputo', /CULTIVO DE (?:ESPUTO|SECRECION RESPIRATORIA)\s*(?:RESULTADO)?\s*[:=]?\s*(.+?)(?=VALIDADO POR|ANTIBIOGRAMA|HEMOCULTIVO|UROCULTIVO|PANEL RESPIRATORIO|$)/],
+    ['micro_coprocultivo', 'Coprocultivo', /COPROCULTIVO\s*(?:RESULTADO)?\s*[:=]?\s*(.+?)(?=VALIDADO POR|ANTIBIOGRAMA|HEMOCULTIVO|UROCULTIVO|PANEL RESPIRATORIO|$)/],
+    ['micro_panel_respiratorio', 'Panel respiratorio', /PANEL RESPIRATORIO(?:\s+MOLECULAR)?\s*(?:RESULTADO)?\s*[:=]?\s*(.+?)(?=VALIDADO POR|HEMOCULTIVO|UROCULTIVO|CULTIVO DE|$)/],
+    ['micro_cultivo', 'Cultivo microbiológico', /CULTIVO MICROBIOLOGICO\s*(?:RESULTADO)?\s*[:=]?\s*(.+?)(?=VALIDADO POR|ANTIBIOGRAMA|$)/],
+  ];
+  genericMicroRules.forEach(([key, name, regex]) => {
+    const match = normalized.match(regex);
+    if (!match) return;
+    const value = match[1].replace(/\s+/g, ' ').trim();
+    if (value.length >= 3 && !results.some(item => item.category === 'Microbiología' && item.valueText === value)) add(key, name, value, '', /PENDIENTE|EN PROCESO/.test(value) ? 'review' : 'confirmed');
+  });
   return results;
 };
 
@@ -343,17 +372,14 @@ const catalogToProaBed = (bed) => {
 
 const PROA_TO_CATALOG_BED = new Map(ALL_BEDS.map((bed) => [catalogToProaBed(bed), bed.code]).filter(([proaBed]) => proaBed));
 
-const PROA_LAB_DEFINITIONS = [
-  ['pcr', 'PCR', 'mg/L'], ['pct', 'Procalcitonina', 'ng/mL'], ['blancos', 'Leucocitos', '/mm³'],
-  ['crea', 'Creatinina', 'mg/dL'], ['vhs', 'VHS', 'mm/h'], ['temp', 'Temperatura', '°C'],
-];
+const PROA_LAB_DEFINITIONS = HOSPITAL_LAB_FIELDS;
 const proaLabResults = (record) => {
   const form = getLatestProaForm(record) || {};
   return (form.parametros_inflamatorios || []).flatMap((row) => PROA_LAB_DEFINITIONS.flatMap(([key, name, unit]) => {
     const raw = row?.[key] ?? (key === 'blancos' ? row?.leucocitos : '');
     if (raw === '' || raw == null) return [];
     const collectedAt = `${row.fecha || form.fecha || new Date().toISOString().slice(0, 10)}T12:00:00`;
-    return [{ id: `proa-${record.id}-${key}-${collectedAt}`, examKey: key === 'blancos' ? 'wbc' : key, name, category: 'Sangre', value: Number(String(raw).replace(',', '.')), unit, originalUnit: unit, collectedAt, originalText: '', sourceHadIdentifiers: false, status: 'confirmed', confidence: 'alta', source: 'proa' }];
+    return [{ id: `proa-${record.id}-${key}-${collectedAt}`, examKey: key === 'blancos' ? 'leu' : key, name, category: 'Sangre', value: Number(String(raw).replace(',', '.')), unit, originalUnit: unit, collectedAt, originalText: '', sourceHadIdentifiers: false, status: 'confirmed', confidence: 'alta', source: 'proa' }];
   }));
 };
 
