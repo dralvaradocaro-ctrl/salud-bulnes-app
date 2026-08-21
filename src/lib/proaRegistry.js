@@ -224,6 +224,12 @@ export async function saveProaPreAdmission(preAdmission) {
     rut: preAdmission.rut || '',
     edad: preAdmission.edad || '',
     sexo: preAdmission.sexo || '',
+    fecha_nacimiento: preAdmission.fecha_nacimiento || '',
+    direccion: preAdmission.direccion || '',
+    comuna: preAdmission.comuna || '',
+    telefono: preAdmission.telefono || '',
+    prevision: preAdmission.prevision || '',
+    antecedentes: preAdmission.antecedentes || '',
     creatinina: preAdmission.creatinina || '',
     fecha_creatinina: preAdmission.fecha_creatinina || '',
     creatininas: preAdmission.creatinina ? [{ fecha: preAdmission.fecha_creatinina || new Date().toISOString().slice(0, 10), valor: preAdmission.creatinina }] : [],
@@ -237,17 +243,24 @@ export async function saveProaPreAdmission(preAdmission) {
     antibioterapia_preingreso: antibioticSummary,
     antibioticos: antibioticItems,
     parametros_inflamatorios: Array.isArray(preAdmission.examenes_sangre)
-      ? preAdmission.examenes_sangre.filter((item) => item?.fecha || item?.pcr || item?.pct || item?.leucocitos)
+      ? preAdmission.examenes_sangre.filter((item) => item && Object.entries(item).some(([key, value]) => key !== 'fecha' && String(value ?? '').trim()))
       : [],
     estudios_micro: Array.isArray(preAdmission.cultivos)
       ? preAdmission.cultivos.filter((item) => item?.tipo_muestra || item?.patogeno)
       : [],
     diagnostico_microbiologico: '',
-    estudios_imagen: '',
-    recomendaciones: [],
-    plan_duracion: '',
+    estudios_imagen: preAdmission.estudios_imagen || '',
+    recomendaciones: Array.isArray(preAdmission.recomendaciones) ? preAdmission.recomendaciones : [],
+    plan_duracion: preAdmission.plan_duracion || '',
     proxima_revision: '',
-    evolucion: '',
+    evolucion: preAdmission.evolucion || '',
+    resumen_caso: preAdmission.resumen_caso || '',
+    aislamiento: preAdmission.aislamiento || '',
+    medico_tratante: preAdmission.medico_tratante || '',
+    vista_ultima_evolucion: preAdmission.vista_ultima_evolucion || '',
+    vista_planes_pendientes: preAdmission.vista_planes_pendientes || '',
+    vista_plan_alta: preAdmission.vista_plan_alta || '',
+    vista_estudios_complementarios: preAdmission.vista_estudios_complementarios || '',
   };
 
   return saveProaRecord(form, { replaceExisting: true });

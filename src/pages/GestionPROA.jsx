@@ -596,6 +596,7 @@ function GestionPROA() {
   const [dischargeDate, setDischargeDate] = useState(new Date().toISOString().slice(0, 10));
   const [dischargeDetails, setDischargeDetails] = useState({ motivo: '', destinoServicio: '', destinoCama: '', antibioticStops: {}, antibioticoAlta: '', antibioticoAltaIndicacion: '' });
   const [occupiedRecordForPreAdmission, setOccupiedRecordForPreAdmission] = useState(null);
+  const [hospitalAdmissionPrompt, setHospitalAdmissionPrompt] = useState(null);
   const [replacementDischargeDate, setReplacementDischargeDate] = useState(new Date().toISOString().slice(0, 10));
   const [resolvingOccupiedBed, setResolvingOccupiedBed] = useState(false);
   const [tableCopied, setTableCopied] = useState(false);
@@ -633,6 +634,13 @@ function GestionPROA() {
 
   const recordsByBed = useMemo(() => (
     records.filter((record) => !isHistoricalProaRecord(record) && isProaEnrolledRecord(record)).reduce((acc, record) => {
+      acc[record.bedCode] = record;
+      return acc;
+    }, {})
+  ), [records]);
+
+  const hospitalRecordsByBed = useMemo(() => (
+    records.filter((record) => !isHistoricalProaRecord(record) && !isProaEnrolledRecord(record)).reduce((acc, record) => {
       acc[record.bedCode] = record;
       return acc;
     }, {})
@@ -916,12 +924,57 @@ function GestionPROA() {
 
   const createFromBed = () => {
     if (!selectedBed) return;
+    const hospitalRecord = hospitalRecordsByBed[selectedBed];
+    if (hospitalRecord) {
+      setHospitalAdmissionPrompt({ record: hospitalRecord, action: 'evolve' });
+      return;
+    }
     setPendingProaForm({
       cama: selectedBed,
       servicio: findServiceForBed(selectedBed),
       __proaRegistryMode: selectedRecord ? 'new_patient' : '',
     });
     navigate(createPageUrl('VisitaPROA'));
+  };
+
+  const preAdmissionFromHospitalRecord = (record) => {
+    const form = getLatestProaForm(record) || {};
+    const diagnoses = (Array.isArray(form.diagnosticos_actuales) ? form.diagnosticos_actuales : [])
+      .concat([form.diagnostico_principal, form.diagnostico_desglose, form.diagnostico_actual])
+      .flatMap((value) => String(value || '').split(/\n|;/))
+      .map((value) => value.trim())
+      .filter((value, index, items) => value && items.indexOf(value) === index);
+    return {
+      servicio: findServiceForBed(record.bedCode) || form.servicio || '', cama: record.bedCode,
+      paciente: form.paciente || '', rut: form.rut || '', edad: form.edad || '', sexo: form.sexo || '',
+      fecha_nacimiento: form.fecha_nacimiento || '', direccion: form.direccion || '', comuna: form.comuna || '',
+      telefono: form.telefono || '', prevision: form.prevision || '', antecedentes: form.antecedentes || '',
+      creatinina: form.creatinina || '', fecha_creatinina: form.fecha_creatinina || localTodayIso(),
+      fecha_ingreso: form.fecha_ingreso || localTodayIso(),
+      antibioticos: Array.isArray(form.antibioticos) && form.antibioticos.some((item) => item?.nombre) ? form.antibioticos : [{ ...EMPTY_PRE_ANTIBIOTIC }],
+      cultivos: Array.isArray(form.estudios_micro) && form.estudios_micro.length ? form.estudios_micro : [{ ...EMPTY_PRE_CULTURE }],
+      diagnostico: diagnoses[0] || '', diagnosticos: diagnoses.length ? diagnoses : [''],
+      examenes_sangre: Array.isArray(form.parametros_inflamatorios) && form.parametros_inflamatorios.length ? form.parametros_inflamatorios : [{ ...EMPTY_PRE_BLOOD_TEST }],
+      estudios_imagen: form.estudios_imagen || '', recomendaciones: form.recomendaciones || [], plan_duracion: form.plan_duracion || '',
+      evolucion: form.evolucion || '', resumen_caso: form.resumen_caso || '', aislamiento: form.aislamiento || '',
+      medico_tratante: form.medico_tratante || form.medico || '', vista_ultima_evolucion: form.vista_ultima_evolucion || '',
+      vista_planes_pendientes: form.vista_planes_pendientes || '', vista_plan_alta: form.vista_plan_alta || '',
+      vista_estudios_complementarios: form.vista_estudios_complementarios || '',
+    };
+  };
+
+  const confirmHospitalAdmission = () => {
+    if (!hospitalAdmissionPrompt?.record) return;
+    const hydrated = preAdmissionFromHospitalRecord(hospitalAdmissionPrompt.record);
+    if (hospitalAdmissionPrompt.action === 'evolve') {
+      setPendingProaForm({ ...hydrated, proa_enrolled: true, proa_entry_type: 'incorporacion_desde_hospitalizados' });
+      setHospitalAdmissionPrompt(null);
+      navigate(createPageUrl('VisitaPROA'));
+      return;
+    }
+    setPreAdmission(hydrated);
+    setPreAdmissionError('');
+    setHospitalAdmissionPrompt(null);
   };
 
   const movePatientToSelectedBed = async () => {
@@ -936,6 +989,7 @@ function GestionPROA() {
   };
 
   const openPreAdmission = (bed = '', { archiveOnly = false } = {}) => {
+    const hospitalRecord = hospitalRecordsByBed[bed];
     setPreAdmission({
       servicio: findServiceForBed(bed),
       cama: bed,
@@ -955,6 +1009,7 @@ function GestionPROA() {
     setPreAdmissionArchiveOnly(archiveOnly);
     setPreAdmissionError('');
     setShowPreAdmission(true);
+    if (hospitalRecord) setHospitalAdmissionPrompt({ record: hospitalRecord, action: 'admit' });
   };
 
   const persistPreAdmission = async () => {
@@ -1447,8 +1502,9 @@ function GestionPROA() {
                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
                               {group.beds.map((bed) => {
                                 const record = recordsByBed[bed];
+                                const hospitalRecord = hospitalRecordsByBed[bed];
                                 const selected = selectedBed === bed;
-                                const tip = record ? bedTooltip(getLatestProaForm(record)) : '';
+                                const tip = record || hospitalRecord ? bedTooltip(getLatestProaForm(record || hospitalRecord)) : '';
                                 return (
                                   <div key={bed} className="group relative">
                                     <button
@@ -1462,6 +1518,8 @@ function GestionPROA() {
                                           ? 'border-teal-500 bg-teal-50 ring-2 ring-teal-200'
                                           : record
                                             ? 'border-emerald-200 bg-emerald-50 hover:border-emerald-300'
+                                            : hospitalRecord
+                                              ? 'border-sky-200 bg-sky-50 hover:border-sky-300'
                                             : 'border-slate-200 bg-white hover:border-teal-200 hover:bg-teal-50/40'
                                       }`}
                                     >
@@ -1470,16 +1528,19 @@ function GestionPROA() {
                                         {record && (
                                           <span className="rounded-full bg-emerald-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">Ocupada</span>
                                         )}
+                                        {!record && hospitalRecord && (
+                                          <span className="rounded-full bg-sky-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">Hospitalizado</span>
+                                        )}
                                       </div>
-                                      {record ? (
+                                      {record || hospitalRecord ? (
                                         <>
-                                          <span className="mt-0.5 block truncate text-xs font-semibold text-emerald-800">
-                                            {getLatestProaForm(record)?.paciente || record.code}
+                                          <span className={`mt-0.5 block truncate text-xs font-semibold ${record ? 'text-emerald-800' : 'text-sky-800'}`}>
+                                            {getLatestProaForm(record || hospitalRecord)?.paciente || (record || hospitalRecord).code}
                                           </span>
-                                          {getLatestProaForm(record)?.paciente && (
-                                            <span className="block truncate text-[9px] text-slate-500">{record.code}</span>
+                                          {getLatestProaForm(record || hospitalRecord)?.paciente && (
+                                            <span className="block truncate text-[9px] text-slate-500">{(record || hospitalRecord).code}</span>
                                           )}
-                                          <span className="mt-0.5 block text-[10px] text-slate-500">{formatUpdatedAt(record.updatedAt)}</span>
+                                          <span className="mt-0.5 block text-[10px] text-slate-500">{record ? formatUpdatedAt(record.updatedAt) : 'Aún no incorporado a PROA'}</span>
                                         </>
                                       ) : (
                                         <span className="mt-1 block text-xs text-slate-400">Libre</span>
@@ -1527,7 +1588,7 @@ function GestionPROA() {
               {selectedBed && !selectedRecord && (
                 <div className="mt-3 space-y-3">
                   <Badge className="border-slate-200 bg-white text-slate-700">Cama {displayBedCode(selectedBed)}</Badge>
-                  <p className="text-sm text-slate-500">No hay registro PROA asociado a esta cama.</p>
+                  {hospitalRecordsByBed[selectedBed] ? <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-950"><p className="font-bold">Cama ocupada en Hospitalizados</p><p className="mt-1">{getLatestProaForm(hospitalRecordsByBed[selectedBed])?.paciente || hospitalRecordsByBed[selectedBed].code}</p><p className="mt-1 text-xs text-sky-700">La ficha clínica está disponible, pero el paciente aún no pertenece a PROA.</p></div> : <p className="text-sm text-slate-500">No hay registro PROA asociado a esta cama.</p>}
                   <Button onClick={createFromBed} className="w-full bg-teal-600 hover:bg-teal-700">
                     Agregar y evolucionar paciente
                   </Button>
@@ -2111,8 +2172,10 @@ function GestionPROA() {
                 value={preAdmission.cama}
                 disabled={!preAdmission.servicio}
                 onChange={(event) => {
-                  setPreAdmission((current) => ({ ...current, cama: event.target.value }));
+                  const bed = event.target.value;
+                  setPreAdmission((current) => ({ ...current, cama: bed }));
                   setPreAdmissionError('');
+                  if (hospitalRecordsByBed[bed]) setHospitalAdmissionPrompt({ record: hospitalRecordsByBed[bed], action: 'admit' });
                 }}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
@@ -2524,6 +2587,36 @@ function GestionPROA() {
                 {resolvingOccupiedBed ? 'Procesando…' : 'Egresar y conservar'}
               </Button>
             </div>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!hospitalAdmissionPrompt} onOpenChange={() => {}}>
+        <AlertDialogContent onEscapeKeyDown={(event) => event.preventDefault()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cama {displayBedCode(hospitalAdmissionPrompt?.record?.bedCode)} ocupada con paciente hospitalizado</AlertDialogTitle>
+            <AlertDialogDescription>
+              La plataforma ya dispone de información de esta hospitalización. Debes decidir si deseas incorporar este paciente al registro PROA.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {hospitalAdmissionPrompt?.record && (() => {
+            const form = getLatestProaForm(hospitalAdmissionPrompt.record) || {};
+            const labs = Array.isArray(form.parametros_inflamatorios) ? form.parametros_inflamatorios.length : 0;
+            const cultures = Array.isArray(form.estudios_micro) ? form.estudios_micro.length : 0;
+            return <div className="space-y-2 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950">
+              <p className="text-base font-black">{form.paciente || hospitalAdmissionPrompt.record.code}</p>
+              <p><strong>RUT:</strong> {form.rut || 'No registrado'} · <strong>Edad:</strong> {form.edad ? `${form.edad} años` : 'No registrada'}</p>
+              <p><strong>Ingreso:</strong> {form.fecha_ingreso || 'Sin fecha'} · <strong>Servicio/cama:</strong> {findServiceForBed(hospitalAdmissionPrompt.record.bedCode)} · {displayBedCode(hospitalAdmissionPrompt.record.bedCode)}</p>
+              <p><strong>Diagnóstico:</strong> {form.diagnostico_principal || form.diagnostico_actual || 'No registrado'}</p>
+              <p className="text-xs text-sky-700">Se cargarán los antecedentes disponibles, incluidos datos demográficos, diagnósticos, {labs} control{labs === 1 ? '' : 'es'} de laboratorio y {cultures} cultivo{cultures === 1 ? '' : 's'}.</p>
+            </div>;
+          })()}
+          <AlertDialogFooter>
+            <Button type="button" variant="outline" onClick={() => {
+              if (hospitalAdmissionPrompt?.action === 'admit') setPreAdmission((current) => ({ ...current, cama: '' }));
+              setHospitalAdmissionPrompt(null);
+            }}>No, no agregar</Button>
+            <Button type="button" onClick={confirmHospitalAdmission} className="bg-teal-700 text-white hover:bg-teal-800">Sí, agregar paciente a PROA</Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
