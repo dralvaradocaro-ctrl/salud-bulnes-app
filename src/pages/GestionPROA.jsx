@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
-import { conPuertaAcceso } from '@/components/PuertaAcceso';
+import { conAccesoMedispense } from '@/components/MedispenseAccess';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -2577,7 +2577,4 @@ function MovePatientControl({ records, selectedBed, sourceBedToMove, setSourceBe
   );
 }
 
-export default conPuertaAcceso(GestionPROA, {
-  storageKey: 'acceso_medico',
-  descripcion: 'Ingresa el código de acceso para usar Gestión PROA.',
-});
+export default conAccesoMedispense(GestionPROA);

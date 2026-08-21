@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Activity, Apple, BedDouble, Calculator, ChevronDown, ChevronLeft, ChevronUp, ClipboardList, FileText, FlaskConical, HeartHandshake, Image, LogOut, Microscope, Pill, Plus, Printer, Save, Search, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { conPuertaAcceso } from '@/components/PuertaAcceso';
+import { conAccesoMedispense } from '@/components/MedispenseAccess';
 import { ALL_BEDS } from '@/components/agenda-diaria/bedCatalog';
 import { setMultiPrefill } from '@/lib/multiTemplatePrefill';
 import { archiveProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, isProaEnrolledRecord, saveProaPreAdmission, saveProaRecord } from '@/lib/proaRegistry';
@@ -724,8 +724,8 @@ function VistaHospitalizados() {
 
   const prefill = () => {
     const data = {
-      patient_name: draft.nombre, patient_rut: draft.rut, patient_fecha_nac: draft.fechaNacimiento,
-      patient_direccion: draft.direccion, patient_comuna: draft.comuna, patient_telefono: draft.telefono,
+      patient_name: draft.nombre, patient_rut: draft.rut, patient_fecha_nac: draft.fechaNacimiento, patient_edad: draft.edad,
+      patient_direccion: draft.direccion, direccion: draft.direccion, domicilio: draft.direccion, patient_comuna: draft.comuna, comuna: draft.comuna, patient_telefono: draft.telefono,
       prevision: draft.prevision, diagnostico: draft.diagnosticoPrincipal || draft.diagnostico, diagnostico_principal: draft.diagnosticoPrincipal, diagnostico_desglose: draft.diagnostico, n_ficha: draft.nFicha,
       aislamiento: draft.aislamiento, clinical_text: [draft.resumenCaso, draft.antecedentes].filter(Boolean).join('\n'),
       edad: draft.edad, sexo: draft.sexo, fecha_ingreso: draft.fechaIngreso, proa_antibioticos: draft.antibioticos || [], proa_examenes: draft.laboratorios || [], ultimo_laboratorio: draft.ultimoLaboratorio || '',
@@ -1019,6 +1019,7 @@ function VistaHospitalizados() {
             <div className="mb-4 flex flex-wrap gap-2">
               <Button type="button" size="sm" variant="outline" onClick={openGeneral} className="border-sky-300 bg-sky-50 text-sky-800 shadow-[0_0_0_3px_rgba(125,211,252,0.18)] hover:bg-sky-100"><ClipboardList className="mr-1 h-3.5 w-3.5" />Actualización clínica</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setMedicalReportsOpen(true)} className="border-emerald-300 bg-emerald-50 font-bold text-emerald-800 shadow-[0_0_0_3px_rgba(110,231,183,0.2)] hover:bg-emerald-100"><FileText className="mr-1 h-3.5 w-3.5" />Informes médicos</Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => openAction('CertificadoMedico')} className="border-blue-300 bg-blue-50 font-bold text-blue-800 shadow-[0_0_0_3px_rgba(147,197,253,0.2)] hover:bg-blue-100"><FileText className="mr-1 h-3.5 w-3.5" />Certificado médico</Button>
               <Button type="button" size="sm" variant="outline" onClick={openGeneral} className="border-amber-300 bg-amber-50 text-amber-800 shadow-[0_0_0_3px_rgba(252,211,77,0.18)] hover:bg-amber-100"><FileText className="mr-1 h-3.5 w-3.5" />Planes</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => openAction('NotaEvolucion')} className="border-slate-300 bg-slate-50 font-bold text-slate-800 shadow-[0_0_0_3px_rgba(203,213,225,0.24)] hover:bg-slate-100"><ClipboardList className="mr-1 h-3.5 w-3.5" />Nota de evolución</Button>
               <Button type="button" size="sm" variant="outline" onClick={() => setCareDocumentOpen(true)} className="border-amber-300 bg-amber-50 font-bold text-amber-900 shadow-[0_0_0_3px_rgba(252,211,77,0.22)] hover:bg-amber-100"><HeartHandshake className="mr-1 h-3.5 w-3.5" />Adecuación / límites</Button>
@@ -1139,8 +1140,4 @@ function VistaHospitalizados() {
   </div>;
 }
 
-export default conPuertaAcceso(VistaHospitalizados, {
-  storageKey: 'acceso_vista_hospitalizados',
-  titulo: 'Acceso restringido',
-  descripcion: 'Ingresa tu código para acceder a la información reservada.',
-});
+export default conAccesoMedispense(VistaHospitalizados);

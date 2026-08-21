@@ -40,6 +40,15 @@ function getNow() {
   return `${y}-${m}-${d}T${h}:${min}`;
 }
 
+function ageFromBirthDate(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return '';
+  const today = new Date();
+  let age = today.getFullYear() - Number(match[1]);
+  if (today.getMonth() + 1 < Number(match[2]) || (today.getMonth() + 1 === Number(match[2]) && today.getDate() < Number(match[3]))) age -= 1;
+  return age >= 0 && age <= 130 ? String(age) : '';
+}
+
 function F({ label, value, onChange, w, type, placeholder }) {
   return (
     <>
@@ -139,8 +148,10 @@ export default function GesFormulario() {
       nombreLegal:        p.patient_name      || prev.nombreLegal,
       nombreSocial:       p.patient_name      || prev.nombreSocial,
       pacienteRun:        p.patient_rut       ? formatRut(p.patient_rut) : prev.pacienteRun,
-      pacienteDireccion:  p.patient_direccion || prev.pacienteDireccion,
-      pacienteComuna:     p.patient_comuna    || prev.pacienteComuna,
+      edad:                p.patient_edad || p.edad || ageFromBirthDate(p.patient_fecha_nac) || prev.edad,
+      pacienteDireccion:  p.patient_direccion || p.direccion || p.domicilio || prev.pacienteDireccion,
+      pacienteComuna:     p.patient_comuna || p.comuna || prev.pacienteComuna,
+      pacienteRegion:     p.patient_region || p.region || prev.pacienteRegion,
       pacienteTelefono:   p.patient_telefono  || prev.pacienteTelefono,
       pacienteCorreo:     p.patient_correo    || prev.pacienteCorreo,
     }));

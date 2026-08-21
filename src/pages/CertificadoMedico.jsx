@@ -1,6 +1,6 @@
 // PÁGINA OCULTA — no está enlazada desde ninguna navegación.
 // Sólo se accede por link directo: /CertificadoMedico
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
 import { ChevronLeft, Download, Eye, RotateCcw, ShieldCheck } from 'lucide-react';
@@ -18,6 +18,7 @@ import {
 import { generarCodigo, encodePayload, registrarCertificado } from '@/lib/certificadoCodigo';
 import { guardarCertificadoRemoto } from '@/lib/certificadosStore';
 import { toast } from 'sonner';
+import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 
 const hoyIso = () => {
   const d = new Date();
@@ -53,6 +54,21 @@ function CertificadoMedico() {
   const [texto, setTexto] = useState('');
   const [code, setCode] = useState(() => generarCodigo(hoyIso()));
   const [generando, setGenerando] = useState(false);
+
+  useEffect(() => {
+    const prefill = getMultiPrefill();
+    if (!prefill) return;
+    setPaciente(prefill.patient_name || '');
+    setRut(prefill.patient_rut ? formatRut(prefill.patient_rut) : '');
+    const location = prefill.ubicacion || prefill.sala_cama || [prefill.servicio, prefill.cama && `Cama ${prefill.cama}`].filter(Boolean).join(' · ');
+    const clinical = [
+      `Se certifica que el/la paciente individualizado/a se encuentra hospitalizado/a en el Hospital Comunitario de Salud Familiar de Bulnes${prefill.fecha_ingreso ? ` desde el ${fechaLarga(prefill.fecha_ingreso)}` : ''}${location ? `, actualmente en ${location}` : ''}.`,
+      prefill.diagnostico_principal || prefill.diagnostico ? `Diagnóstico(s): ${[prefill.diagnostico_principal, prefill.diagnostico_desglose].filter(Boolean).join('; ') || prefill.diagnostico}` : '',
+      prefill.clinical_text ? `Antecedentes clínicos actuales: ${prefill.clinical_text}` : '',
+      'Se extiende el presente certificado a solicitud del interesado/a para los fines que estime pertinentes.',
+    ].filter(Boolean).join('\n\n');
+    if (clinical) setTexto(clinical);
+  }, []);
 
   const centro = getInstitucion(institucionId);
   const rutValido = rut.length > 0 && validateRut(rut);

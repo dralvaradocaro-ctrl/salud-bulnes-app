@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { conPuertaAcceso } from '@/components/PuertaAcceso';
+import { conAccesoMedispense } from '@/components/MedispenseAccess';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { invokeLLM } from '@/lib/gemini';
@@ -2238,7 +2238,4 @@ const cellHead  = { border: '0.5pt solid #555', padding: '3pt 5pt', textAlign: '
 const cell      = { border: '0.5pt solid #555', padding: '3pt 5pt', fontSize: '9.5pt' };
 const box       = { border: '0.75pt solid #000', padding: '4pt 6pt', minHeight: '40pt', whiteSpace: 'pre-wrap' };
 
-export default conPuertaAcceso(VisitaPROA, {
-  storageKey: 'acceso_medico',
-  descripcion: 'Ingresa el código de acceso para registrar una Evolución PROA.',
-});
+export default conAccesoMedispense(VisitaPROA);
