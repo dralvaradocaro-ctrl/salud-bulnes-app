@@ -840,12 +840,13 @@ function VistaHospitalizados() {
     const resultCount = rows.reduce((total, row) => total + Object.entries(row).filter(([key, value]) => key !== 'fecha' && value !== '').length, 0);
     setLabParseMessage(`Se cargaron ${rows.length} fecha(s), ${resultCount} resultado(s) y ${parsedCultures.length} estudio(s) microbiológico(s). Revísalos antes de guardar.`);
   };
-  const saveLab = async () => {
+  const saveLab = async (rowsOverride, culturesOverride) => {
     setLabSaving(true);
     try {
-      const rows = labRows.filter(row => Object.entries(row).some(([key, value]) => key !== 'fecha' && value));
+      const sourceRows = Array.isArray(rowsOverride) ? rowsOverride : labRows;
+      const rows = sourceRows.filter(row => Object.entries(row).some(([key, value]) => key !== 'fecha' && value));
       const allRows = mergeLaboratoryRows([], rows);
-      const cultures = deduplicateCultures(labCultures);
+      const cultures = deduplicateCultures(Array.isArray(culturesOverride) ? culturesOverride : labCultures);
       const latestRow = allRows[0];
       const populated = HOSPITAL_LAB_FIELDS.filter(([key]) => latestRow?.[key] !== '' && latestRow?.[key] != null).slice(0, 6);
       const summary = latestRow ? [latestRow.fecha, ...populated.map(([key, label]) => `${label} ${latestRow[key]}`)].join(' · ') : '';
@@ -854,6 +855,9 @@ function VistaHospitalizados() {
       const nextRegistry = { ...registry, [selectedCode]: nextDraft };
       setDraft(nextDraft);
       setRegistry(nextRegistry);
+      setLabRows(allRows);
+      setLabCultures(cultures);
+      setLabCurveRows(allRows);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRegistry));
       if (draft.proaRecordId) {
         const records = await fetchProaRecords();
@@ -868,6 +872,17 @@ function VistaHospitalizados() {
       setLabPasteText('');
       setLabParseMessage(draft.proaRecordId ? 'Guardado en la ficha hospitalaria y sincronizado con PROA. Puedes procesar otro informe.' : 'Guardado en la ficha hospitalaria. Puedes procesar otro informe.');
     } finally { setLabSaving(false); }
+  };
+  const deleteLabDate = async (date) => {
+    if (!window.confirm(`¿Eliminar todos los exámenes registrados el ${displayClinicalDate(date)}? Esta acción se aplicará también en PROA.`)) return;
+    await saveLab(labCurveRows.filter(row => String(row.fecha).slice(0, 10) !== String(date).slice(0, 10)), draft.cultivos || []);
+  };
+  const deleteLabResult = async (date, key) => {
+    const definition = HOSPITAL_LAB_FIELDS.find(([field]) => field === key);
+    if (!window.confirm(`¿Eliminar ${definition?.[1] || key} del ${displayClinicalDate(date)}?`)) return;
+    const rows = labCurveRows.map(row => String(row.fecha).slice(0, 10) === String(date).slice(0, 10) ? { ...row, [key]: '' } : row)
+      .filter(row => HOSPITAL_LAB_FIELDS.some(([field]) => row[field] !== '' && row[field] != null));
+    await saveLab(rows, draft.cultivos || []);
   };
   const saveStats = async () => {
     const nextDraft = { ...draft, updatedAt: new Date().toISOString() };
@@ -1083,9 +1098,9 @@ function VistaHospitalizados() {
           <div><h2 className="text-lg font-black text-slate-900">Laboratorio — Cama {selectedBed?.cell}</h2><p className="text-xs text-slate-500">Registro y seguimiento longitudinal en una sola ventana.</p></div>
           <div className="flex items-center gap-3"><div className="flex rounded-xl bg-slate-100 p-1"><button type="button" onClick={() => setLabWorkspaceTab('registro')} className={`rounded-lg px-4 py-2 text-xs font-bold transition ${labWorkspaceTab === 'registro' ? 'bg-white text-blue-800 shadow-sm' : 'text-slate-500'}`}><FlaskConical className="mr-1 inline h-4 w-4" />Registrar exámenes</button><button type="button" onClick={openLabCurve} className={`rounded-lg px-4 py-2 text-xs font-bold transition ${labWorkspaceTab === 'curva' ? 'bg-white text-cyan-800 shadow-sm' : 'text-slate-500'}`}><Activity className="mr-1 inline h-4 w-4" />Curva de exámenes</button></div><Button variant="outline" size="sm" onClick={() => setLabOpen(false)}>Cerrar</Button></div>
         </div>
-        {labWorkspaceTab === 'curva' ? <HospitalLabCurvePreview embedded open rows={labCurveRows} patient={draft} bed={selectedBed} loading={labCurveLoading} onClose={() => setLabOpen(false)} /> : <>
+        {labWorkspaceTab === 'curva' ? <HospitalLabCurvePreview embedded open rows={labCurveRows} patient={draft} bed={selectedBed} loading={labCurveLoading || labSaving} onDeleteDate={deleteLabDate} onDeleteResult={deleteLabResult} onClose={() => setLabOpen(false)} /> : <>
           <HospitalLabEntry rows={labRows} setRows={setLabRows} cultures={labCultures} setCultures={setLabCultures} pasteText={labPasteText} setPasteText={setLabPasteText} parseMessage={labParseMessage} setParseMessage={setLabParseMessage} onParse={parsePastedLabs} />
-          <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-3"><p className="text-xs text-slate-500">{draft.proaRecordId ? 'Guardado hospitalario + sincronización PROA' : 'Guardado en ficha hospitalaria'}</p><Button onClick={saveLab} disabled={labSaving || (!labRows.some(row => Object.entries(row).some(([key, value]) => key !== 'fecha' && value)) && !labCultures.some(item => item.fecha || item.tipo_muestra || item.patogeno) && !(draft.laboratorios?.length || draft.cultivos?.length))} className="bg-blue-700 hover:bg-blue-800">{labSaving ? 'Guardando…' : 'Guardar cambios de laboratorio'}</Button></div>
+          <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-3"><p className="text-xs text-slate-500">{draft.proaRecordId ? 'Guardado hospitalario + sincronización PROA' : 'Guardado en ficha hospitalaria'}</p><Button onClick={() => saveLab()} disabled={labSaving || (!labRows.some(row => Object.entries(row).some(([key, value]) => key !== 'fecha' && value)) && !labCultures.some(item => item.fecha || item.tipo_muestra || item.patogeno) && !(draft.laboratorios?.length || draft.cultivos?.length))} className="bg-blue-700 hover:bg-blue-800">{labSaving ? 'Guardando…' : 'Guardar cambios de laboratorio'}</Button></div>
         </>}
       </div>
     </div>}
