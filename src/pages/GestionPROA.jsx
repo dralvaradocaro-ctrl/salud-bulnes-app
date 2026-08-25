@@ -471,9 +471,10 @@ function getChronologicalAntimicrobials(record) {
     const aIsSuspended = a.__isCurrent === false || Boolean(a.termino && a.termino <= localTodayIso());
     const bIsSuspended = b.__isCurrent === false || Boolean(b.termino && b.termino <= localTodayIso());
     if (aIsSuspended !== bIsSuspended) return aIsSuspended ? 1 : -1;
-    if (a.inicio && b.inicio && a.inicio !== b.inicio) return a.inicio.localeCompare(b.inicio);
+    if (a.inicio && b.inicio && a.inicio !== b.inicio) return b.inicio.localeCompare(a.inicio);
     if (a.inicio && !b.inicio) return -1;
     if (!a.inicio && b.inicio) return 1;
+    if (a.termino && b.termino && a.termino !== b.termino) return b.termino.localeCompare(a.termino);
     return String(a.nombre).localeCompare(String(b.nombre), 'es');
   });
 }
