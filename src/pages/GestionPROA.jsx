@@ -415,7 +415,7 @@ function recordOccupiesDateRange(record, dateFrom, dateTo) {
 function isPositiveCulture(culture) {
   const pathogen = String(culture?.patogeno || '').trim();
   if (!pathogen) return false;
-  return !/^(pendiente|sin desarrollo|negativo|sin crecimiento|no desarrollo)$/i.test(pathogen);
+  return !/(^|\b)(pendiente|sin desarrollo|sin crecimiento|no desarrollo|negativ[oa]|no detectado|est[ée]ril)(\b|$)/i.test(pathogen);
 }
 
 function formatCultureDiagnosis(culture) {
@@ -584,6 +584,7 @@ function GestionPROA() {
   const [activeService, setActiveService] = useState(PROA_BED_MAP[0]?.servicio || '');
   const [sourceBedToMove, setSourceBedToMove] = useState('');
   const [showPreAdmission, setShowPreAdmission] = useState(false);
+  const [showEvolutionPreview, setShowEvolutionPreview] = useState(false);
   const [preAdmissionArchiveOnly, setPreAdmissionArchiveOnly] = useState(false);
   const [recordToView, setRecordToView] = useState(null);
   const [savingPreAdmission, setSavingPreAdmission] = useState(false);
@@ -626,6 +627,9 @@ function GestionPROA() {
     diagnostico: '',
     diagnosticos: [''],
     examenes_sangre: [{ ...EMPTY_PRE_BLOOD_TEST }],
+    resumen_caso: '',
+    estudios_imagen: '',
+    plan_duracion: '',
   });
   const [quickUpdateOpen, setQuickUpdateOpen] = useState(false);
   const [quickUpdateSaving, setQuickUpdateSaving] = useState(false);
@@ -857,16 +861,16 @@ function GestionPROA() {
         antibioticos: shared.proa_antibioticos?.length ? shared.proa_antibioticos : [{ ...EMPTY_PRE_ANTIBIOTIC }], cultivos: [{ ...EMPTY_PRE_CULTURE }],
         diagnostico: diagnoses[0] || '', diagnosticos: diagnoses.length ? diagnoses : [''],
         examenes_sangre: shared.proa_examenes?.length ? shared.proa_examenes : [{ ...EMPTY_PRE_BLOOD_TEST }],
+        resumen_caso: shared.resumen_caso || '', estudios_imagen: shared.estudios_complementarios || '', plan_duracion: shared.planes_pendientes || '',
       });
       setShowPreAdmission(true);
     }
     deepLinkHandled.current = true;
     if (deepLink.action === 'evolve' && record) {
-      const latest = getLatestProaForm(record);
-      if (latest) {
-        setPendingProaForm(latest);
-        navigate(createPageUrl('VisitaPROA'));
-      }
+      setPreAdmission(preAdmissionFromHospitalRecord(record));
+      setPreAdmissionError('');
+      setShowEvolutionPreview(false);
+      setShowPreAdmission(true);
     }
   }, [deepLink, navigate, records]);
   useEffect(() => {
@@ -907,9 +911,11 @@ function GestionPROA() {
   };
 
   const editFromLatest = () => {
-    if (!selectedLatest) return;
-    setPendingProaForm(selectedLatest);
-    navigate(createPageUrl('VisitaPROA'));
+    if (!selectedRecord) return;
+    setPreAdmission(preAdmissionFromHospitalRecord(selectedRecord));
+    setPreAdmissionError('');
+    setShowEvolutionPreview(false);
+    setShowPreAdmission(true);
   };
 
   const editExistingLatestEvolution = () => {
@@ -924,17 +930,7 @@ function GestionPROA() {
 
   const createFromBed = () => {
     if (!selectedBed) return;
-    const hospitalRecord = hospitalRecordsByBed[selectedBed];
-    if (hospitalRecord) {
-      setHospitalAdmissionPrompt({ record: hospitalRecord, action: 'evolve' });
-      return;
-    }
-    setPendingProaForm({
-      cama: selectedBed,
-      servicio: findServiceForBed(selectedBed),
-      __proaRegistryMode: selectedRecord ? 'new_patient' : '',
-    });
-    navigate(createPageUrl('VisitaPROA'));
+    openPreAdmission(selectedBed);
   };
 
   const preAdmissionFromHospitalRecord = (record) => {
@@ -1005,9 +1001,13 @@ function GestionPROA() {
       diagnostico: '',
       diagnosticos: [''],
       examenes_sangre: [{ ...EMPTY_PRE_BLOOD_TEST }],
+      resumen_caso: '',
+      estudios_imagen: '',
+      plan_duracion: '',
     });
     setPreAdmissionArchiveOnly(archiveOnly);
     setPreAdmissionError('');
+    setShowEvolutionPreview(false);
     setShowPreAdmission(true);
     if (hospitalRecord) setHospitalAdmissionPrompt({ record: hospitalRecord, action: 'admit' });
   };
@@ -1054,6 +1054,14 @@ function GestionPROA() {
     }
     const occupiedRecord = recordsByBed[preAdmission.cama];
     if (occupiedRecord) {
+      const occupiedForm = getLatestProaForm(occupiedRecord) || {};
+      const sameRut = String(occupiedForm.rut || '').replace(/[^0-9k]/gi, '').toUpperCase()
+        && String(occupiedForm.rut || '').replace(/[^0-9k]/gi, '').toUpperCase() === String(preAdmission.rut || '').replace(/[^0-9k]/gi, '').toUpperCase();
+      const sameName = normalizeMedicationName(occupiedForm.paciente) && normalizeMedicationName(occupiedForm.paciente) === normalizeMedicationName(preAdmission.paciente);
+      if (sameRut || sameName) {
+        await persistPreAdmission();
+        return;
+      }
       setOccupiedRecordForPreAdmission(occupiedRecord);
       setReplacementDischargeDate(new Date().toISOString().slice(0, 10));
       return;
@@ -1435,10 +1443,10 @@ function GestionPROA() {
                 <p className="text-sm text-slate-500">Seguimiento clínico e identificación exclusiva del módulo PROA</p>
               </div>
             </div>
-            <Button onClick={() => openPreAdmission(selectedBed)} className="gap-2 bg-teal-600 hover:bg-teal-700">
+            <Button onClick={() => selectedRecord ? editFromLatest() : openPreAdmission(selectedBed)} className="gap-2 bg-teal-600 hover:bg-teal-700">
               <UserPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">Agregar paciente PROA</span>
-              <span className="sm:hidden">Agregar</span>
+              <span className="hidden sm:inline">Nueva evolución PROA</span>
+              <span className="sm:hidden">Evolución</span>
             </Button>
           </div>
         </div>
@@ -1634,12 +1642,9 @@ function GestionPROA() {
                       Ver última evolución
                     </Button>
                     <Button onClick={editFromLatest} className="w-full bg-teal-600 hover:bg-teal-700">
-                      Actualizar evolución
+                      Nueva evolución PROA
                     </Button>
-                    <Button type="button" onClick={openQuickUpdate} variant="outline" className="w-full border-violet-300 bg-white font-semibold text-violet-800 hover:bg-violet-50">
-                      Actualizar antibióticos/exámenes
-                    </Button>
-                    <p className="text-[11px] leading-tight text-teal-800">Carga la evolución previa y actualiza días de hospitalización, días de antibiótico y la curva inflamatoria.</p>
+                    <p className="text-[11px] leading-tight text-teal-800">Un único formulario reúne evolución, exámenes, microbiología, antimicrobianos, estudios y plan.</p>
                     <Button
                       type="button"
                       variant="outline"
@@ -2154,7 +2159,7 @@ function GestionPROA() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="h-5 w-5 text-teal-700" />
-              Agregar paciente PROA
+              Evolución PROA · ingreso y seguimiento
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-x-4 gap-y-3 md:grid-cols-12">
@@ -2263,6 +2268,9 @@ function GestionPROA() {
               </datalist>
               <p className="text-[11px] text-slate-500">Incluye el catálogo de Evolución PROA y los diagnósticos previamente guardados.</p>
             </div>
+            <div className="space-y-1.5 md:col-span-12"><Label>Resumen clínico</Label><textarea value={preAdmission.resumen_caso || ''} onChange={(event) => setPreAdmission((current) => ({ ...current, resumen_caso: event.target.value }))} className="min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Síntesis del cuadro, evolución y estado clínico actual" /></div>
+            <div className="space-y-1.5 md:col-span-12"><Label>Estudios complementarios</Label><textarea value={preAdmission.estudios_imagen || ''} onChange={(event) => setPreAdmission((current) => ({ ...current, estudios_imagen: event.target.value }))} className="min-h-20 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Imagenología, procedimientos y otros estudios relevantes" /></div>
+            <div className="space-y-1.5 md:col-span-12"><Label>Plan sugerido</Label><textarea value={preAdmission.plan_duracion || ''} onChange={(event) => setPreAdmission((current) => ({ ...current, plan_duracion: event.target.value }))} className="min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Conducta antimicrobiana, duración, controles y próxima revisión" /></div>
             <div className="space-y-1.5 md:col-span-12">
               <div className="flex items-center justify-between">
                 <Label>Antibioterapia vigente</Label>
@@ -2457,13 +2465,17 @@ function GestionPROA() {
               <datalist id="proa-pre-pathogens">{PATOGENOS.map((pathogen) => <option key={pathogen} value={pathogen} />)}</datalist>
             </div>
           </div>
+          {showEvolutionPreview && <div className="proa-evolution-print rounded-xl border border-slate-300 bg-white p-6 font-[Arial] text-slate-950 shadow-sm"><div className="mb-4 border-b-2 border-slate-900 pb-3"><h1 className="text-xl font-black">Evolución clínica PROA</h1><p className="text-sm">Hospital Comunitario de Salud Familiar de Bulnes</p></div><div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm"><p><strong>Paciente:</strong> {preAdmission.paciente || '—'}</p><p><strong>RUT:</strong> {preAdmission.rut || '—'}</p><p><strong>Servicio / cama:</strong> {preAdmission.servicio || '—'} · {displayBedCode(preAdmission.cama) || '—'}</p><p><strong>Fecha de ingreso:</strong> {preAdmission.fecha_ingreso || '—'}</p></div><section className="mt-4"><h2 className="border-b font-bold">Diagnósticos</h2><p className="mt-1 whitespace-pre-wrap text-sm">{(preAdmission.diagnosticos || []).filter(Boolean).join('\n') || '—'}</p></section><section className="mt-4"><h2 className="border-b font-bold">Resumen clínico</h2><p className="mt-1 whitespace-pre-wrap text-sm">{preAdmission.resumen_caso || '—'}</p></section><section className="mt-4"><h2 className="border-b font-bold">Estudios complementarios</h2><p className="mt-1 whitespace-pre-wrap text-sm">{preAdmission.estudios_imagen || '—'}</p></section><section className="mt-4"><h2 className="border-b font-bold">Microbiología</h2><p className="mt-1 whitespace-pre-wrap text-sm">{(preAdmission.cultivos || []).filter(item => item.tipo_muestra || item.patogeno).map(item => [item.fecha, item.tipo_muestra, item.patogeno].filter(Boolean).join(' · ')).join('\n') || '—'}</p></section><section className="mt-4"><h2 className="border-b font-bold">Plan sugerido</h2><p className="mt-1 whitespace-pre-wrap text-sm">{preAdmission.plan_duracion || '—'}</p></section></div>}
           {preAdmissionError && <p className="text-sm font-medium text-red-600">{preAdmissionError}</p>}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setShowPreAdmission(false)}>Cancelar</Button>
+            <Button type="button" variant="outline" onClick={() => setShowEvolutionPreview((current) => !current)}><Printer className="mr-1 h-4 w-4" />{showEvolutionPreview ? 'Ocultar vista previa' : 'Vista previa'}</Button>
+            {showEvolutionPreview && <Button type="button" variant="outline" onClick={() => window.print()}><Printer className="mr-1 h-4 w-4" />Imprimir / PDF</Button>}
             <Button type="button" onClick={savePreAdmission} disabled={savingPreAdmission} className="bg-teal-600 hover:bg-teal-700">
-              {savingPreAdmission ? 'Guardando…' : 'Guardar preingreso'}
+              {savingPreAdmission ? 'Guardando…' : 'Guardar evolución PROA'}
             </Button>
           </div>
+          <style>{`@media print{body *{visibility:hidden!important}.proa-evolution-print,.proa-evolution-print *{visibility:visible!important}.proa-evolution-print{position:absolute!important;inset:0!important;width:100%!important;border:0!important;box-shadow:none!important}}`}</style>
         </DialogContent>
       </Dialog>
 

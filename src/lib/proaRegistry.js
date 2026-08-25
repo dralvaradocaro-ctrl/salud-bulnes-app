@@ -263,7 +263,9 @@ export async function saveProaPreAdmission(preAdmission) {
     vista_estudios_complementarios: preAdmission.vista_estudios_complementarios || '',
   };
 
-  return saveProaRecord(form, { replaceExisting: true });
+  // La primera evolución también constituye el ingreso PROA. Las siguientes
+  // se agregan al historial del mismo paciente sin reemplazar la ficha previa.
+  return saveProaRecord(form);
 }
 
 export function isHistoricalProaRecord(record) {

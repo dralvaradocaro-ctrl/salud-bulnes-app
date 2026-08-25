@@ -174,6 +174,9 @@ export const TIPOS_MUESTRA = [
 export const PATOGENOS = [
   'Pendiente',
   'Sin desarrollo',
+  'Negativo',
+  'Urocultivo negativo',
+  'Hemocultivo negativo',
   'Escherichia coli',
   'Escherichia coli BLEE',
   'Klebsiella pneumoniae',
@@ -255,6 +258,46 @@ export const DIAGNOSTICOS_INFECTO = [
   'Candidemia / candidiasis invasora',
   'Aspergilosis invasora',
   'Otro',
+  'J18.9 · Neumonía, no especificada',
+  'J15.9 · Neumonía bacteriana, no especificada',
+  'J44.1 · EPOC con exacerbación aguda',
+  'J45.9 · Asma, no especificada',
+  'J96.0 · Insuficiencia respiratoria aguda',
+  'N30.0 · Cistitis aguda',
+  'N10 · Pielonefritis aguda',
+  'A41.9 · Sepsis, no especificada',
+  'R57.2 · Shock séptico',
+  'I33.0 · Endocarditis infecciosa aguda y subaguda',
+  'L03.9 · Celulitis, no especificada',
+  'K83.0 · Colangitis',
+  'K81.0 · Colecistitis aguda',
+  'G00.9 · Meningitis bacteriana, no especificada',
+  'D70 · Neutropenia / agranulocitosis',
+  'U07.1 · COVID-19, virus identificado',
+  'F32.9 · Episodio depresivo, no especificado',
+  'F41.1 · Trastorno de ansiedad generalizada',
+  'F05 · Delirium debido a condición fisiológica conocida',
+  'I10 · Hipertensión esencial',
+  'I21.9 · Infarto agudo de miocardio, no especificado',
+  'I50.9 · Insuficiencia cardíaca, no especificada',
+  'I48.9 · Fibrilación auricular y flutter, no especificados',
+  'I26.9 · Embolia pulmonar sin cor pulmonale agudo',
+  'I63.9 · Infarto cerebral, no especificado',
+  'K52.9 · Gastroenteritis y colitis no infecciosa, no especificada',
+  'K92.2 · Hemorragia gastrointestinal, no especificada',
+  'K85.9 · Pancreatitis aguda, no especificada',
+  'K74.6 · Cirrosis hepática, no especificada',
+  'D64.9 · Anemia, no especificada',
+  'D69.6 · Trombocitopenia, no especificada',
+  'C34.9 · Neoplasia maligna de bronquio o pulmón, no especificada',
+  'C18.9 · Neoplasia maligna de colon, no especificada',
+  'C50.9 · Neoplasia maligna de mama, no especificada',
+  'C61 · Neoplasia maligna de próstata',
+  'N73.9 · Enfermedad inflamatoria pélvica femenina, no especificada',
+  'N93.9 · Hemorragia uterina o vaginal anormal, no especificada',
+  'O14.9 · Preeclampsia, no especificada',
+  'O24.4 · Diabetes mellitus gestacional',
+  'O42.9 · Ruptura prematura de membranas, no especificada',
 ];
 
 // Parámetros inflamatorios que se rellenan en la planilla curva.
@@ -700,7 +743,7 @@ function diasHospitalizacion(fechaIngresoIso, fechaVisitaIso) {
 // (ej: "Urocultivo + S. aureus (MSSA); Hemocultivo + E. coli BLEE").
 function buildDiagMicro(estudios) {
   const partes = (estudios || [])
-    .filter(c => c.patogeno && c.patogeno !== 'Pendiente' && c.patogeno !== 'Sin desarrollo')
+    .filter(c => c.patogeno && !/pendiente|sin desarrollo|sin crecimiento|no desarrollo|negativ|no detectado|est[ée]ril/i.test(c.patogeno))
     .map(c => {
       const muestra = c.tipo_muestra || 'Cultivo';
       return `${muestra} + ${c.patogeno}`;

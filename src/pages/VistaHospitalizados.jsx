@@ -124,6 +124,7 @@ function splitDiagnosisAndHistory(value) {
 }
 
 const cultureKey = item => [item?.fecha, item?.tipo_muestra, item?.patogeno].map(value => String(value || '').trim().toLocaleLowerCase('es-CL')).join('|');
+const isNegativeMicroResult = value => /pendiente|sin desarrollo|sin crecimiento|no desarrollo|negativ|no detectado|est[ée]ril/i.test(String(value || ''));
 function deduplicateCultures(items) {
   const seen = new Set();
   return (items || []).filter(item => item?.fecha || item?.tipo_muestra || item?.patogeno).filter(item => {
@@ -210,8 +211,8 @@ function antibioticVisitItems(record) {
 }
 
 function pathogenSummary(form) {
-  if (form.diagnostico_microbiologico) return form.diagnostico_microbiologico;
-  return (form.estudios_micro || []).filter(item => item?.patogeno).map(item => [item.patogeno, item.tipo_muestra].filter(Boolean).join(' · ')).join('\n');
+  if (form.diagnostico_microbiologico && !/pendiente|sin desarrollo|sin crecimiento|no desarrollo|negativ|no detectado|est[ée]ril/i.test(form.diagnostico_microbiologico)) return form.diagnostico_microbiologico;
+  return (form.estudios_micro || []).filter(item => item?.patogeno && !/pendiente|sin desarrollo|sin crecimiento|no desarrollo|negativ|no detectado|est[ée]ril/i.test(item.patogeno)).map(item => [item.patogeno, item.tipo_muestra].filter(Boolean).join(' · ')).join('\n');
 }
 
 function latestLabSummary(form) {
@@ -344,14 +345,16 @@ function StatisticsDashboard({ statistics }) {
 }
 
 function ProaQuickModal({ bed, hasRecord, value, setValue, saving, onClose, onFull, onSave }) {
+  const [preview, setPreview] = useState(false);
   const updateAtb = (index, key, nextValue) => setValue(old => ({ ...old, antibioticos: old.antibioticos.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: nextValue } : item) }));
   const selectAtb = (index, name) => setValue(old => ({ ...old, antibioticos: old.antibioticos.map((item, itemIndex) => itemIndex === index ? { ...item, nombre: name, ...(DEFAULT_DOSIS_ATB[name] || {}) } : item) }));
   const updateCulture = (index, key, nextValue) => setValue(old => ({ ...old, cultivos: old.cultivos.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: nextValue } : item) }));
   return <div className="fixed inset-0 z-[86] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"><div className="flex max-h-[92vh] w-full max-w-6xl flex-col rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-5 shadow-2xl">
-    <div className="mb-4 rounded-xl bg-emerald-100/80 p-3"><h2 className="text-lg font-black text-teal-950">{hasRecord ? 'PROA' : 'Agregar paciente PROA'} — Cama {bed?.cell}</h2><p className="text-xs text-emerald-800">{hasRecord ? 'Consulta y actualización rápida de aislamiento, antimicrobianos y cultivos.' : 'Ingreso rápido con los datos ya disponibles en Vista general.'}</p></div>
+    <div className="mb-4 rounded-xl bg-emerald-100/80 p-3"><h2 className="text-lg font-black text-teal-950">Evolución PROA — Cama {bed?.cell}</h2><p className="text-xs text-emerald-800">La primera evolución constituye el ingreso PROA; las siguientes quedan en el mismo historial.</p></div>
     <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
       {!hasRecord && <section className="rounded-xl border border-emerald-200 bg-white/80 p-4"><div className="mb-3 flex items-center justify-between gap-2"><div><h3 className="text-sm font-black text-emerald-950">Datos precargados del paciente</h3><p className="text-xs text-emerald-700">Puedes corregirlos antes de crear el registro PROA.</p></div><span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-800">NUEVO PROA</span></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Nombre completo" wide><input className={input} value={value.paciente || ''} onChange={e => setValue(old => ({ ...old, paciente: e.target.value }))} /></Field><Field label="RUT"><input className={input} value={value.rut || ''} onChange={e => setValue(old => ({ ...old, rut: formatRut(e.target.value) }))} /></Field><Field label="Edad"><input type="number" min="0" max="130" className={input} value={value.edad || ''} onChange={e => setValue(old => ({ ...old, edad: e.target.value }))} /></Field><Field label="Sexo"><select className={input} value={value.sexo || ''} onChange={e => setValue(old => ({ ...old, sexo: e.target.value }))}><option value="">No consignado</option><option value="F">Femenino</option><option value="M">Masculino</option><option value="Otro">Otro</option></select></Field><Field label="Fecha de ingreso"><input type="date" className={input} value={value.fecha_ingreso || ''} onChange={e => setValue(old => ({ ...old, fecha_ingreso: e.target.value }))} /></Field><Field label="Diagnóstico principal" wide><textarea className={textarea} value={value.diagnostico || ''} onChange={e => setValue(old => ({ ...old, diagnostico: e.target.value }))} /></Field></div></section>}
       <Field label="Aislamiento / precauciones"><input className={input} value={value.aislamiento} onChange={e => setValue(old => ({ ...old, aislamiento: e.target.value }))} placeholder="Contacto, gotitas, aéreo…" /></Field>
+      <div className="grid gap-3 sm:grid-cols-3"><Field label="Resumen clínico"><textarea className={textarea} value={value.resumen_caso || ''} onChange={e => setValue(old => ({ ...old, resumen_caso: e.target.value }))} /></Field><Field label="Estudios complementarios"><textarea className={textarea} value={value.estudios_imagen || ''} onChange={e => setValue(old => ({ ...old, estudios_imagen: e.target.value }))} /></Field><Field label="Plan sugerido"><textarea className={textarea} value={value.plan_duracion || ''} onChange={e => setValue(old => ({ ...old, plan_duracion: e.target.value }))} /></Field></div>
       <section><div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-black text-slate-900">Antibioterapia actual</h3><Button type="button" size="sm" variant="outline" onClick={() => setValue(old => ({ ...old, antibioticos: [...old.antibioticos, { ...EMPTY_QUICK_ATB }] }))}><Plus className="mr-1 h-3.5 w-3.5" />Agregar ATB</Button></div>
         <div className="space-y-2">{value.antibioticos.map((atb, index) => <div key={index} className="grid gap-2 rounded-xl border bg-slate-50 p-3 sm:grid-cols-12">
           <div className="sm:col-span-3"><Field label="Antibiótico"><input list="vista-proa-antibioticos" className={input} value={atb.nombre || ''} onChange={e => selectAtb(index, e.target.value)} /></Field></div>
@@ -367,10 +370,11 @@ function ProaQuickModal({ bed, hasRecord, value, setValue, saving, onClose, onFu
         <datalist id="vista-proa-antibioticos">{ANTIBIOTICOS.map(name => <option key={name} value={name} />)}</datalist>
       </section>
       <section><div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-black text-slate-900">Cultivos</h3><Button type="button" size="sm" variant="outline" onClick={() => setValue(old => ({ ...old, cultivos: [...old.cultivos, { fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }] }))}><Plus className="mr-1 h-3.5 w-3.5" />Agregar cultivo</Button></div>
-        <div className="space-y-2">{value.cultivos.map((culture, index) => <div key={index} className="grid gap-2 rounded-xl border bg-slate-50 p-3 sm:grid-cols-[140px_1fr_1fr_150px_auto]"><input type="date" className={input} value={culture.fecha || ''} onChange={e => updateCulture(index, 'fecha', e.target.value)} /><input className={input} value={culture.tipo_muestra || ''} onChange={e => updateCulture(index, 'tipo_muestra', e.target.value)} placeholder="Muestra" /><input className={input} value={culture.patogeno || ''} onChange={e => updateCulture(index, 'patogeno', e.target.value)} placeholder="Patógeno" /><select className={input} value={culture.sensibilidad || 'Pendiente'} onChange={e => updateCulture(index, 'sensibilidad', e.target.value)}><option>Pendiente</option><option>Sensible</option><option>Resistente</option><option>Sin desarrollo</option></select><Button type="button" variant="ghost" size="sm" onClick={() => setValue(old => ({ ...old, cultivos: old.cultivos.length === 1 ? [{ fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }] : old.cultivos.filter((_, itemIndex) => itemIndex !== index) }))} className="text-red-600">Quitar</Button></div>)}</div>
+        <div className="space-y-2">{value.cultivos.map((culture, index) => <div key={index} className="grid gap-2 rounded-xl border bg-slate-50 p-3 sm:grid-cols-[140px_1fr_1fr_150px_auto]"><input type="date" className={input} value={culture.fecha || ''} onChange={e => updateCulture(index, 'fecha', e.target.value)} /><input className={input} value={culture.tipo_muestra || ''} onChange={e => updateCulture(index, 'tipo_muestra', e.target.value)} placeholder="Muestra" /><input className={input} value={culture.patogeno || ''} onChange={e => updateCulture(index, 'patogeno', e.target.value)} placeholder="Resultado / patógeno (ej.: HC negativo)" /><select className={input} value={culture.sensibilidad || 'Pendiente'} onChange={e => updateCulture(index, 'sensibilidad', e.target.value)}><option>Pendiente</option><option>Sensible</option><option>Resistente</option><option>Sin desarrollo</option><option>Negativo</option></select><Button type="button" variant="ghost" size="sm" onClick={() => setValue(old => ({ ...old, cultivos: old.cultivos.length === 1 ? [{ fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }] : old.cultivos.filter((_, itemIndex) => itemIndex !== index) }))} className="text-red-600">Quitar</Button></div>)}</div>
       </section>
+      {preview && <div className="proa-quick-print rounded-xl border border-slate-300 bg-white p-6 font-[Arial] text-sm text-slate-950"><h1 className="border-b-2 border-slate-900 pb-2 text-xl font-black">Evolución clínica PROA</h1><p className="mt-3"><strong>Paciente:</strong> {value.paciente || '—'} · <strong>RUT:</strong> {value.rut || '—'} · <strong>Cama:</strong> {bed?.cell || '—'}</p><p className="mt-3"><strong>Diagnóstico:</strong> {value.diagnostico || '—'}</p><p className="mt-3 whitespace-pre-wrap"><strong>Resumen clínico:</strong><br />{value.resumen_caso || '—'}</p><p className="mt-3 whitespace-pre-wrap"><strong>Estudios complementarios:</strong><br />{value.estudios_imagen || '—'}</p><p className="mt-3 whitespace-pre-wrap"><strong>Microbiología:</strong><br />{value.cultivos.filter(item => item.tipo_muestra || item.patogeno).map(item => [item.fecha, item.tipo_muestra, item.patogeno].filter(Boolean).join(' · ')).join('\n') || '—'}</p><p className="mt-3 whitespace-pre-wrap"><strong>Plan sugerido:</strong><br />{value.plan_duracion || '—'}</p></div>}
     </div>
-    <div className="mt-5 flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={onClose}>Cerrar</Button><Button variant="outline" onClick={onFull} className="border-teal-300 text-teal-800">{hasRecord ? 'Abrir y evolucionar paciente PROA' : 'Abrir ingreso y evolución PROA'}</Button><Button onClick={onSave} disabled={saving || (!hasRecord && (!value.paciente || !value.rut))} className="bg-teal-700 hover:bg-teal-800">{saving ? 'Guardando…' : hasRecord ? 'Guardar actualización PROA' : 'Agregar paciente PROA'}</Button></div>
+    <div className="mt-5 flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={onClose}>Cerrar</Button><Button variant="outline" onClick={() => setPreview(current => !current)}><Printer className="mr-1 h-4 w-4" />Vista previa</Button>{preview && <Button variant="outline" onClick={() => window.print()}><Printer className="mr-1 h-4 w-4" />Imprimir / PDF</Button>}<Button variant="outline" onClick={onFull} className="border-teal-300 text-teal-800">Abrir formulario ampliado</Button><Button onClick={onSave} disabled={saving || (!hasRecord && (!value.paciente || !value.rut))} className="bg-teal-700 hover:bg-teal-800">{saving ? 'Guardando…' : 'Guardar evolución PROA'}</Button></div><style>{`@media print{body *{visibility:hidden!important}.proa-quick-print,.proa-quick-print *{visibility:visible!important}.proa-quick-print{position:absolute!important;inset:0!important;width:100%!important}}`}</style>
   </div></div>;
 }
 
@@ -442,7 +446,7 @@ function VistaHospitalizados() {
   const [dischargeOpen, setDischargeOpen] = useState(false);
   const [discharging, setDischarging] = useState(false);
   const [dischargeDraft, setDischargeDraft] = useState({ fecha: new Date().toISOString().slice(0, 10), motivo: '', destinoServicio: '', destinoCama: '', antibioticActions: {}, antibioticStopDates: {}, antibioticoAltaIndicacion: '' });
-  const [proaQuick, setProaQuick] = useState({ paciente: '', rut: '', edad: '', sexo: '', fecha_ingreso: '', diagnostico: '', aislamiento: '', antibioticos: [{ ...EMPTY_QUICK_ATB }], cultivos: [{ fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }] });
+  const [proaQuick, setProaQuick] = useState({ paciente: '', rut: '', edad: '', sexo: '', fecha_ingreso: '', diagnostico: '', aislamiento: '', resumen_caso: '', estudios_imagen: '', plan_duracion: '', antibioticos: [{ ...EMPTY_QUICK_ATB }], cultivos: [{ fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }] });
   const [labSaving, setLabSaving] = useState(false);
   const [labCultures, setLabCultures] = useState([]);
   const [labPasteText, setLabPasteText] = useState('');
@@ -867,7 +871,7 @@ function VistaHospitalizados() {
       const latestRow = allRows[0];
       const populated = HOSPITAL_LAB_FIELDS.filter(([key]) => latestRow?.[key] !== '' && latestRow?.[key] != null).slice(0, 6);
       const summary = latestRow ? [latestRow.fecha, ...populated.map(([key, label]) => `${label} ${latestRow[key]}`)].join(' · ') : '';
-      const pathogen = cultures.filter(item => item.patogeno && item.sensibilidad !== 'Sin desarrollo').map(item => `${item.tipo_muestra}: ${item.patogeno}`).join('\n');
+      const pathogen = cultures.filter(item => item.patogeno && !isNegativeMicroResult(item.patogeno) && !isNegativeMicroResult(item.sensibilidad)).map(item => `${item.tipo_muestra}: ${item.patogeno}`).join('\n');
       const nextDraft = { ...draft, laboratorios: allRows, cultivos: cultures, ultimoLaboratorio: summary, patogenoAislado: pathogen, updatedAt: new Date().toISOString() };
       const nextRegistry = { ...registry, [selectedCode]: nextDraft };
       setDraft(nextDraft);
@@ -946,6 +950,7 @@ function VistaHospitalizados() {
       paciente: latest.paciente || draft.nombre || '', rut: latest.rut || draft.rut || '', edad: latest.edad || draft.edad || '', sexo: latest.sexo || draft.sexo || '',
       fecha_ingreso: latest.fecha_ingreso || draft.fechaIngreso || '', diagnostico: latest.diagnostico_principal || latest.diagnostico_actual || draft.diagnosticoPrincipal || draft.diagnostico || '',
       aislamiento: latest.aislamiento || draft.aislamiento || '',
+      resumen_caso: latest.resumen_caso || draft.resumenCaso || '', estudios_imagen: latest.estudios_imagen || draft.estudiosComplementarios || '', plan_duracion: latest.plan_duracion || draft.planesPendientes || '',
       antibioticos: storedAntibiotics.length ? storedAntibiotics : [{ ...EMPTY_QUICK_ATB, nombre: antibioticSummary(latest) || draft.antibioterapia || '' }],
       cultivos: (latest.estudios_micro || []).length ? latest.estudios_micro : [{ fecha: '', tipo_muestra: '', patogeno: '', sensibilidad: 'Pendiente' }],
     });
@@ -965,11 +970,12 @@ function VistaHospitalizados() {
           fecha_ingreso: proaQuick.fecha_ingreso, diagnostico: proaQuick.diagnostico,
           diagnosticos: [proaQuick.diagnostico].filter(Boolean), servicio: selectedBed?.serviceShort || '', proa_is_test: selectedBed?.code === TEST_BED.code,
           cama: catalogToProaBed(selectedBed) || selectedBed?.code || '', antibioticos: antibiotics, cultivos: cultures,
+          resumen_caso: proaQuick.resumen_caso, estudios_imagen: proaQuick.estudios_imagen, plan_duracion: proaQuick.plan_duracion,
         });
         const latestCreated = getLatestProaForm(created) || {};
         if (proaQuick.aislamiento) await saveProaRecord({ ...latestCreated, aislamiento: proaQuick.aislamiento, fecha: new Date().toISOString().slice(0, 10), hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'ingreso_rapido_vista_general' });
         const antibioticText = structuredAntibioticSummary(antibiotics);
-        const nextDraft = { ...draft, nombre: proaQuick.paciente, rut: formatRut(proaQuick.rut), edad: proaQuick.edad, sexo: proaQuick.sexo, fechaIngreso: proaQuick.fecha_ingreso, diagnosticoPrincipal: proaQuick.diagnostico, aislamiento: proaQuick.aislamiento, antibioterapia: antibioticText, antibioticos: antibiotics, patogenoAislado: cultures.map(item => item.patogeno).filter(Boolean).join(', '), proaRecordId: created.id, proaBedCode: created.bedCode, proaUpdatedAt: created.updatedAt, updatedAt: new Date().toISOString() };
+        const nextDraft = { ...draft, nombre: proaQuick.paciente, rut: formatRut(proaQuick.rut), edad: proaQuick.edad, sexo: proaQuick.sexo, fechaIngreso: proaQuick.fecha_ingreso, diagnosticoPrincipal: proaQuick.diagnostico, aislamiento: proaQuick.aislamiento, resumenCaso: proaQuick.resumen_caso, estudiosComplementarios: proaQuick.estudios_imagen, planesPendientes: proaQuick.plan_duracion, antibioterapia: antibioticText, antibioticos: antibiotics, patogenoAislado: cultures.map(item => item.patogeno).filter(value => !isNegativeMicroResult(value)).join(', '), proaRecordId: created.id, proaBedCode: created.bedCode, proaUpdatedAt: created.updatedAt, updatedAt: new Date().toISOString() };
         const nextRegistry = { ...registry, [selectedCode]: nextDraft };
         setDraft(nextDraft); setRegistry(nextRegistry); localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRegistry)); setProaOpen(false); setSaved(true);
         return;
@@ -981,12 +987,12 @@ function VistaHospitalizados() {
       const antibiotics = proaQuick.antibioticos.filter(item => item.nombre);
       const antibioticText = structuredAntibioticSummary(antibiotics);
       await saveProaRecord({
-        ...latest, aislamiento: proaQuick.aislamiento, antibioticos: antibiotics, antibioterapia_preingreso: antibioticText,
-        estudios_micro: cultures, diagnostico_microbiologico: cultures.map(item => item.patogeno).filter(Boolean).join(', '),
+        ...latest, aislamiento: proaQuick.aislamiento, resumen_caso: proaQuick.resumen_caso, estudios_imagen: proaQuick.estudios_imagen, plan_duracion: proaQuick.plan_duracion, antibioticos: antibiotics, antibioterapia_preingreso: antibioticText,
+        estudios_micro: cultures, diagnostico_microbiologico: cultures.map(item => item.patogeno).filter(value => value && !isNegativeMicroResult(value)).join(', '),
         fecha: new Date().toISOString().slice(0, 10), hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'actualizacion_vista_general',
       });
-      const pathogen = cultures.map(item => item.patogeno).filter(Boolean).join(', ');
-      const nextDraft = { ...draft, aislamiento: proaQuick.aislamiento, antibioterapia: antibioticText, antibioticos: antibiotics, patogenoAislado: pathogen, updatedAt: new Date().toISOString() };
+      const pathogen = cultures.map(item => item.patogeno).filter(value => value && !isNegativeMicroResult(value)).join(', ');
+      const nextDraft = { ...draft, aislamiento: proaQuick.aislamiento, resumenCaso: proaQuick.resumen_caso, estudiosComplementarios: proaQuick.estudios_imagen, planesPendientes: proaQuick.plan_duracion, antibioterapia: antibioticText, antibioticos: antibiotics, patogenoAislado: pathogen, updatedAt: new Date().toISOString() };
       const nextRegistry = { ...registry, [selectedCode]: nextDraft };
       setDraft(nextDraft); setRegistry(nextRegistry); localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRegistry));
       setProaOpen(false); setSaved(true);
