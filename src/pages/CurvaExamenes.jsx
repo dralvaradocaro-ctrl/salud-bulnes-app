@@ -376,7 +376,9 @@ const PROA_LAB_DEFINITIONS = HOSPITAL_LAB_FIELDS;
 const proaLabResults = (record) => {
   const form = getLatestProaForm(record) || {};
   return (form.parametros_inflamatorios || []).flatMap((row) => PROA_LAB_DEFINITIONS.flatMap(([key, name, unit]) => {
-    const raw = row?.[key] ?? (key === 'blancos' ? row?.leucocitos : '');
+    const raw = key === 'blancos'
+      ? (row?.blancos || row?.leucocitos || row?.gb || row?.GB || row?.leu || row?.wbc || '')
+      : row?.[key];
     if (raw === '' || raw == null) return [];
     const collectedAt = `${row.fecha || form.fecha || new Date().toISOString().slice(0, 10)}T12:00:00`;
     return [{ id: `proa-${record.id}-${key}-${collectedAt}`, examKey: key === 'blancos' ? 'leu' : key, name, category: 'Sangre', value: Number(String(raw).replace(',', '.')), unit, originalUnit: unit, collectedAt, originalText: '', sourceHadIdentifiers: false, status: 'confirmed', confidence: 'alta', source: 'proa' }];

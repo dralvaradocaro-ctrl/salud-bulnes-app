@@ -25,7 +25,7 @@ export const HOSPITAL_LAB_GROUPS = [
 export const HOSPITAL_LAB_FIELDS = HOSPITAL_LAB_GROUPS.flatMap(group => group.fields);
 
 export const LAB_FIELD_BY_EXAM = {
-  leu: 'blancos', wbc: 'blancos', neut: 'neutrofilos', linf: 'linfocitos',
+  leu: 'blancos', leucocitos: 'blancos', blancos: 'blancos', gb: 'blancos', wbc: 'blancos', neut: 'neutrofilos', linf: 'linfocitos',
   egfr: 'vfg', prot_total: 'proteinas', colesterol_total: 'col_total', tg: 'trigliceridos',
   ...Object.fromEntries(HOSPITAL_LAB_FIELDS.map(([key]) => [key, key])),
 };

@@ -242,11 +242,15 @@ export async function saveProaPreAdmission(preAdmission) {
     funcion_renal: renalFunction,
     antibioterapia_preingreso: antibioticSummary,
     antibioticos: antibioticItems,
+    antibioticos_eliminados: Array.isArray(preAdmission.antibioticos_eliminados) ? preAdmission.antibioticos_eliminados : [],
     parametros_inflamatorios: Array.isArray(preAdmission.examenes_sangre)
       ? preAdmission.examenes_sangre.filter((item) => item && Object.entries(item).some(([key, value]) => key !== 'fecha' && String(value ?? '').trim()))
       : [],
     estudios_micro: Array.isArray(preAdmission.cultivos)
-      ? preAdmission.cultivos.filter((item) => item?.tipo_muestra || item?.patogeno)
+      ? preAdmission.cultivos.filter((item) => item?.tipo_muestra || item?.fecha || item?.patogeno)
+      : [],
+    examenes_complementarios: Array.isArray(preAdmission.examenes_complementarios)
+      ? preAdmission.examenes_complementarios.filter((item) => item?.fecha || item?.nombre || item?.resultado)
       : [],
     diagnostico_microbiologico: '',
     estudios_imagen: preAdmission.estudios_imagen || '',
@@ -367,6 +371,44 @@ export async function deleteProaRecord(bedCode) {
     .eq('bed_code', bedCode);
   if (error) throw error;
   writeProaRegistry(readProaRegistry().filter((record) => record.bedCode !== bedCode));
+}
+
+export async function updateProaEvolution(record, evolutionIndex, form) {
+  if (!record?.id || !Array.isArray(record.evolutions) || !record.evolutions[evolutionIndex]) throw new Error('Evolución PROA no encontrada.');
+  const now = new Date().toISOString();
+  const evolutions = record.evolutions.map((evolution, index) => index === evolutionIndex
+    ? { ...evolution, editedAt: now, form: sanitizeProaRecord({ ...(evolution.form || {}), ...form }) }
+    : evolution);
+  const { error } = await supabase.from('proa_records').update({ evolutions, updated_at: now }).eq('id', record.id);
+  if (error) throw error;
+  const updated = { ...record, evolutions, updatedAt: now };
+  writeProaRegistry([updated, ...readProaRegistry().filter((item) => item.id !== record.id)]);
+  return updated;
+}
+
+export async function deleteProaEvolution(record, evolutionIndex) {
+  if (!record?.id || !Array.isArray(record.evolutions) || !record.evolutions[evolutionIndex]) throw new Error('Evolución PROA no encontrada.');
+  if (record.evolutions.length <= 1) throw new Error('No se puede borrar la única evolución del paciente.');
+  const now = new Date().toISOString();
+  const evolutions = record.evolutions.filter((_, index) => index !== evolutionIndex);
+  const { error } = await supabase.from('proa_records').update({ evolutions, updated_at: now }).eq('id', record.id);
+  if (error) throw error;
+  const updated = { ...record, evolutions, updatedAt: now };
+  writeProaRegistry([updated, ...readProaRegistry().filter((item) => item.id !== record.id)]);
+  return updated;
+}
+
+export async function dischargeFromProa(record) {
+  const latest = getLatestProaForm(record);
+  if (!record?.id || !latest) throw new Error('Paciente PROA no encontrado.');
+  return saveProaRecord({
+    ...latest,
+    proa_enrolled: false,
+    proa_entry_type: 'egreso_proa',
+    fecha_egreso_proa: new Date().toISOString().slice(0, 10),
+    proa_change_summary: 'Egreso de seguimiento PROA; paciente continúa hospitalizado.',
+    evolucion: 'Paciente egresado de seguimiento PROA. Continúa hospitalizado en su cama actual.',
+  });
 }
 
 export function getLatestProaForm(record) {
