@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bed, ChevronLeft, Eye, Printer, RotateCcw } from 'lucide-react';
+import { Bed, ChevronLeft, Eye, Printer, RotateCcw, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,7 +11,7 @@ import { createPageUrl } from '@/utils';
 import { formatRut } from '@/lib/rut-ges';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 import { PROA_BED_MAP } from '@/lib/hospitalSuggestions';
-import { fetchProaRecords, readProaRegistry } from '@/lib/proaRegistry';
+import { fetchProaRecords, getLatestProaForm, readProaRegistry, saveProaRecord } from '@/lib/proaRegistry';
 import FirmaDigital from '@/components/ges/FirmaDigital';
 
 function nowForInput() {
@@ -41,6 +41,7 @@ const emptyForm = () => ({
   firma: '',
   servicio: '',
   cama: '',
+  esVisitaProa: false,
 });
 
 const SECTIONS = [
@@ -56,6 +57,8 @@ export default function NotaEvolucion() {
   const [showPreview, setShowPreview] = useState(false);
   const [selectedService, setSelectedService] = useState(PROA_BED_MAP[0]?.servicio || '');
   const [bedRecords, setBedRecords] = useState(() => readProaRegistry());
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
   const update = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
 
   useEffect(() => {
@@ -78,13 +81,23 @@ export default function NotaEvolucion() {
     fetchProaRecords().then(setBedRecords);
   }, []);
 
+  useEffect(() => {
+    if (!form.cama) return;
+    const current = bedRecords.find(item => item.bedCode === form.cama);
+    const patient = getLatestProaForm(current);
+    if (!patient) return;
+    setForm(prev => ({ ...prev, pacienteNombre: prev.pacienteNombre || patient.paciente || '', pacienteRut: prev.pacienteRut || formatRut(patient.rut || ''), esVisitaProa: patient.proa_enrolled !== false }));
+  }, [bedRecords, form.cama]);
+
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
     else navigate(createPageUrl('Home'));
   };
 
   const chooseBed = (servicio, cama) => {
-    setForm(prev => ({ ...prev, servicio, cama }));
+    const record = bedRecords.find(item => item.bedCode === cama);
+    const patient = getLatestProaForm(record) || {};
+    setForm(prev => ({ ...prev, servicio, cama, pacienteNombre: patient.paciente || prev.pacienteNombre, pacienteRut: patient.rut ? formatRut(patient.rut) : prev.pacienteRut, esVisitaProa: patient.proa_enrolled !== false }));
     setShowBedSelector(false);
   };
 
@@ -95,6 +108,32 @@ export default function NotaEvolucion() {
   };
 
   const occupiedBeds = new Set(bedRecords.map(record => record.bedCode));
+
+  const saveEvolution = async () => {
+    const record = bedRecords.find(item => item.bedCode === form.cama);
+    if (!record) { setSaveMessage('No se encontró un paciente hospitalizado en esta cama.'); return; }
+    if (![form.anamnesis, form.examenFisico, form.indicaciones].some(value => value.trim())) { setSaveMessage('Completa al menos una sección clínica antes de guardar.'); return; }
+    const latest = getLatestProaForm(record) || {};
+    const narrative = [form.anamnesis && `ANAMNESIS:\n${form.anamnesis.trim()}`, form.examenFisico && `EXAMEN FÍSICO:\n${form.examenFisico.trim()}`, form.indicaciones && `INDICACIONES:\n${form.indicaciones.trim()}`].filter(Boolean).join('\n\n');
+    setSaving(true); setSaveMessage('');
+    try {
+      await saveProaRecord({
+        ...latest,
+        paciente: form.pacienteNombre || latest.paciente || '', rut: form.pacienteRut || latest.rut || '', servicio: form.servicio, cama: form.cama,
+        fecha: String(form.fechaHora || '').slice(0, 10), hora: String(form.fechaHora || '').slice(11, 16),
+        proa_enrolled: form.esVisitaProa ? true : latest.proa_enrolled !== false,
+        proa_entry_type: form.esVisitaProa ? 'visita_proa' : 'nota_evolucion_hospitalaria',
+        evolucion: narrative, vista_ultima_evolucion: narrative,
+        nota_evolucion: { anamnesis: form.anamnesis, examen_fisico: form.examenFisico, indicaciones: form.indicaciones, medico: form.medico, fecha_hora: form.fechaHora, visita_proa: form.esVisitaProa },
+      });
+      const refreshed = await fetchProaRecords();
+      setBedRecords(refreshed);
+      setSaveMessage(form.esVisitaProa ? 'Visita PROA guardada en el historial.' : 'Nota de evolución guardada en el historial hospitalario.');
+    } catch (error) {
+      console.error('Error guardando nota de evolución:', error);
+      setSaveMessage('No fue posible guardar la nota. Intenta nuevamente.');
+    } finally { setSaving(false); }
+  };
 
   return (
     <div className="min-h-screen bg-slate-100 print:min-h-0 print:bg-white">
@@ -186,7 +225,7 @@ export default function NotaEvolucion() {
           <div className="evolution-live-preview mx-auto w-full max-w-[210mm] bg-white shadow-xl">
             <div className="evolution-preview-heading">
               <img src="/logo-hospital.png" alt="Hospital de Bulnes" />
-              <h1>NOTA DE EVOLUCIÓN</h1>
+              <h1>NOTA DE EVOLUCIÓN{form.esVisitaProa ? ' · VISITA PROA' : ''}</h1>
             </div>
             <div className="evolution-preview-grid">
               <label className="col-span-2"><strong>Nombre:</strong><input value={form.pacienteNombre} onChange={e => update('pacienteNombre', e.target.value)} /></label>
@@ -213,6 +252,7 @@ export default function NotaEvolucion() {
           </div>
           <div className="flex justify-end gap-2 rounded-xl bg-white p-3">
             <Button variant="outline" onClick={() => setShowPreview(false)}>Seguir editando</Button>
+            <Button variant="outline" onClick={saveEvolution} disabled={saving}><Save className="mr-2 h-4 w-4" />{saving ? 'Guardando…' : 'Guardar nota'}</Button>
             <Button onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Imprimir</Button>
           </div>
         </DialogContent>
@@ -236,6 +276,9 @@ export default function NotaEvolucion() {
             <Button variant="outline" onClick={() => setShowPreview(true)} disabled={!form.cama}>
               <Eye className="mr-2 h-4 w-4" /> Vista previa
             </Button>
+            <Button onClick={saveEvolution} disabled={saving || !form.cama} className="bg-teal-700 hover:bg-teal-800">
+              <Save className="mr-2 h-4 w-4" /> {saving ? 'Guardando…' : 'Guardar'}
+            </Button>
             <Button onClick={() => window.print()}>
               <Printer className="mr-2 h-4 w-4" /> Imprimir
             </Button>
@@ -252,6 +295,14 @@ export default function NotaEvolucion() {
           <Button variant="secondary" onClick={() => { setSelectedService(form.servicio); setShowBedSelector(true); }}>
             <Bed className="mr-2 h-4 w-4" /> Cambiar cama
           </Button>
+        </section>
+
+        <section className={`rounded-2xl border p-4 shadow-sm ${form.esVisitaProa ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-white'}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><p className="font-bold text-slate-900">Registrar como visita PROA</p><p className="text-xs text-slate-500">Al activarlo, esta nota queda como evolución PROA y el paciente se incorpora al seguimiento si aún no estaba ingresado.</p></div>
+            <button type="button" role="switch" aria-checked={form.esVisitaProa} onClick={() => update('esVisitaProa', !form.esVisitaProa)} className={`relative h-8 w-14 rounded-full transition ${form.esVisitaProa ? 'bg-teal-600' : 'bg-slate-300'}`}><span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${form.esVisitaProa ? 'left-7' : 'left-1'}`} /></button>
+          </div>
+          {saveMessage && <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${saveMessage.startsWith('No ') || saveMessage.startsWith('Completa') ? 'bg-red-50 text-red-700' : 'bg-emerald-100 text-emerald-800'}`}>{saveMessage}</p>}
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -312,7 +363,7 @@ export default function NotaEvolucion() {
       <article className="evolution-print-sheet">
         <div className="evolution-print-heading">
           <img src="/logo-hospital.png" alt="Hospital de Bulnes" />
-          <h1>NOTA DE EVOLUCIÓN</h1>
+          <h1>NOTA DE EVOLUCIÓN{form.esVisitaProa ? ' · VISITA PROA' : ''}</h1>
         </div>
         <div className="evolution-patient-grid">
           <p><strong>Nombre:</strong> {form.pacienteNombre}</p>

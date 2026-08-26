@@ -302,6 +302,8 @@ function Field({ label, children, wide = false }) {
   return <label className={wide ? 'block sm:col-span-2' : 'block'}><span className="mb-1 block text-xs font-semibold text-slate-600">{label}</span>{children}</label>;
 }
 
+const formatDatesInClinicalText = value => String(value || '').replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, '$3/$2/$1');
+
 function studyVisitSummary(record) {
   const scale = record.escalas?.[0];
   const nutrition = record.evaluacionesNutricionales?.[0];
@@ -319,17 +321,17 @@ function nutritionVisitSummary(record) {
 function VisitTable({ rows, service }) {
   return <>
     <div className="hospital-print-header"><div><h1>Visita médica — Hospitalizados</h1><p>{service} · {new Date().toLocaleDateString('es-CL')}</p></div><p>{rows.length} paciente{rows.length === 1 ? '' : 's'}</p></div>
-    <table><thead><tr><th>Cama / paciente</th><th>Día / diagnósticos / antecedentes</th><th>Resumen clínico</th><th>Última evolución</th><th>Estudios</th><th>ATB / patógeno</th><th>Últ. lab.</th><th>LET/IOT/RCP</th><th>Planes / alta</th></tr></thead><tbody>
+    <table><thead><tr><th>Cama / paciente / edad</th><th>Día / diagnósticos / antecedentes</th><th>Resumen clínico</th><th>Última evolución</th><th>Estudios</th><th>ATB / patógeno</th><th>Últ. lab.</th><th>Planes / alta / adecuación</th><th>Notas</th></tr></thead><tbody>
       {rows.map(({ bed, record }) => <tr key={bed.code}>
-        <td><strong>{bed.serviceShort} · {bed.cell}</strong><br />{record.nombre || 'Sin nombre'}<br /><span>{record.rut || ''}</span></td>
+        <td><strong>{bed.serviceShort} · {bed.cell}</strong><br />{record.nombre || 'Sin nombre'}<br /><span>{record.rut || ''}</span>{record.edad !== '' && record.edad != null && <><br /><strong>{record.edad} años</strong></>}</td>
         <td><strong>Día {hospitalDays(record.fechaIngreso)}</strong><br /><strong>{record.diagnosticoPrincipal || record.diagnostico || '—'}{record.pacienteSocial ? ' (caso sociosanitario)' : ''}</strong>{record.diagnosticoPrincipal && record.diagnostico && <><br />{record.diagnostico}</>}{record.antecedentes && <div className="mt-1 border-t border-slate-300 pt-1"><strong>Antecedentes:</strong><br />{record.antecedentes}</div>}</td>
         <td>{record.resumenCaso || (!nutritionVisitSummary(record) ? '—' : '')}{nutritionVisitSummary(record) && <div className="mt-1 text-[0.92em] font-semibold text-lime-800">{nutritionVisitSummary(record)}</div>}</td>
         <td>{record.ultimaEvolucion || '—'}</td>
-        <td>{studyVisitSummary(record) || '—'}</td>
+        <td>{formatDatesInClinicalText(studyVisitSummary(record)) || '—'}</td>
         <td>{record.antibioterapia || record.antibioticos?.length ? (() => { const groups = antibioticVisitItems(record); return <><strong>ATB actual:</strong>{groups.current.length ? groups.current.map((item, index) => <div key={`current-${index}`} className="font-bold text-slate-950">{item}</div>) : <div className="text-slate-500">Sin ATB activo</div>}{groups.suspended.length > 0 && <div className="mt-1 border-t border-slate-300 pt-1 text-slate-400 opacity-70"><span className="font-semibold">Suspendido:</span>{groups.suspended.map((item, index) => <div key={`suspended-${index}`}>{item}</div>)}</div>}</>; })() : 'Sin ATB'}{record.patogenoAislado && <><br /><strong>Patógeno:</strong> {record.patogenoAislado}</>}</td>
-        <td>{record.ultimoLaboratorio || '—'}</td>
-        <td><strong>LET:</strong> {record.letIndicacion || 'NC'}<br /><strong>IOT:</strong> {record.iotIndicacion || 'NC'}<br /><strong>RCP:</strong> {record.rcpIndicacion || 'NC'}</td>
-        <td>{record.planesPendientes || (!record.planAlta ? '—' : '')}{record.planAlta && <div className="mt-1 border-t border-slate-300 pt-1"><strong>Plan de alta:</strong><br />{record.planAlta}</div>}</td>
+        <td>{formatDatesInClinicalText(record.ultimoLaboratorio) || '—'}</td>
+        <td>{record.planesPendientes || (!record.planAlta ? '—' : '')}{record.planAlta && <div className="mt-1 border-t border-slate-300 pt-1"><strong>Plan de alta:</strong><br />{record.planAlta}</div>}<div className="mt-1 border-t border-slate-400 pt-1 text-[0.92em]"><strong>Adecuación:</strong><br />LET {record.letIndicacion || 'NC'} · IOT {record.iotIndicacion || 'NC'} · RCP {record.rcpIndicacion || 'NC'}</div></td>
+        <td className="visit-notes-cell" aria-label="Notas para completar durante la visita">&nbsp;</td>
       </tr>)}
     </tbody></table>
   </>;
@@ -1160,7 +1162,7 @@ function VistaHospitalizados() {
       .hospital-preview-dialog{display:flex;height:100%;flex-direction:column;overflow:hidden;border-radius:16px;background:#fff;box-shadow:0 24px 80px rgba(15,23,42,.35)}
       .hospital-preview-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #e2e8f0;padding:14px 18px}.hospital-preview-toolbar h2{font-size:16px;font-weight:800;color:#0f172a}.hospital-preview-toolbar p{font-size:11px;color:#64748b}
       .hospital-preview-canvas{flex:1;overflow:auto;background:#cbd5e1;padding:22px}.hospital-preview-page{box-sizing:border-box;width:1120px;min-height:792px;margin:0 auto;background:#fff;padding:28px;box-shadow:0 5px 24px rgba(15,23,42,.25);color:#000;font-family:Arial,sans-serif}
-      .hospital-preview-page .hospital-print-header{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid #0f172a;padding-bottom:6px;margin-bottom:10px}.hospital-preview-page .hospital-print-header h1{font-size:18px;font-weight:800}.hospital-preview-page .hospital-print-header p{font-size:10px;margin-top:2px}.hospital-preview-page table{width:100%;height:auto!important;border-collapse:collapse;table-layout:fixed;font-size:9px;line-height:1.2}.hospital-preview-page thead,.hospital-preview-page thead tr,.hospital-preview-page th{height:auto!important;min-height:0!important}.hospital-preview-page th,.hospital-preview-page td{border:1px solid #64748b;padding:4px;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}.hospital-preview-page th{background:#e2e8f0;font-size:7.5px;line-height:1.1;text-transform:uppercase;text-align:left}.hospital-preview-page th:nth-child(1){width:10%}.hospital-preview-page th:nth-child(2){width:11%}.hospital-preview-page th:nth-child(3){width:15%}.hospital-preview-page th:nth-child(4){width:15%}.hospital-preview-page th:nth-child(5){width:8%}.hospital-preview-page th:nth-child(6){width:12%}.hospital-preview-page th:nth-child(7){width:7%}.hospital-preview-page th:nth-child(8){width:6%}.hospital-preview-page th:nth-child(9){width:16%}
+      .hospital-preview-page .hospital-print-header{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid #0f172a;padding-bottom:6px;margin-bottom:10px}.hospital-preview-page .hospital-print-header h1{font-size:18px;font-weight:800}.hospital-preview-page .hospital-print-header p{font-size:10px;margin-top:2px}.hospital-preview-page table{width:100%;height:auto!important;border-collapse:collapse;table-layout:fixed;font-size:9px;line-height:1.2}.hospital-preview-page thead,.hospital-preview-page thead tr,.hospital-preview-page th{height:auto!important;min-height:0!important}.hospital-preview-page th,.hospital-preview-page td{border:1px solid #64748b;padding:4px;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}.hospital-preview-page th{background:#e2e8f0;font-size:7.5px;line-height:1.1;text-transform:uppercase;text-align:left}.hospital-preview-page th:nth-child(1){width:10%}.hospital-preview-page th:nth-child(2){width:15%}.hospital-preview-page th:nth-child(3){width:11%}.hospital-preview-page th:nth-child(4){width:12%}.hospital-preview-page th:nth-child(5){width:8%}.hospital-preview-page th:nth-child(6){width:13%}.hospital-preview-page th:nth-child(7){width:9%}.hospital-preview-page th:nth-child(8){width:14%}.hospital-preview-page th:nth-child(9){width:8%}.hospital-preview-page .visit-notes-cell{min-height:72px;background:repeating-linear-gradient(to bottom,transparent 0,transparent 17px,#cbd5e1 18px)}
       @media print{
         @page{size:A4 landscape;margin:7mm}
         html,body,#root{background:#fff!important}
@@ -1173,7 +1175,7 @@ function VistaHospitalizados() {
         .hospital-print-sheet thead,.hospital-print-sheet thead tr,.hospital-print-sheet th{height:auto!important;min-height:0!important}
         .hospital-print-sheet th,.hospital-print-sheet td{border:1px solid #64748b;padding:3px;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}
         .hospital-print-sheet th{background:#e2e8f0;font-size:6.5px;line-height:1.05;text-transform:uppercase;text-align:left}
-        .hospital-print-sheet th:nth-child(1){width:10%}.hospital-print-sheet th:nth-child(2){width:11%}.hospital-print-sheet th:nth-child(3){width:15%}.hospital-print-sheet th:nth-child(4){width:15%}.hospital-print-sheet th:nth-child(5){width:8%}.hospital-print-sheet th:nth-child(6){width:12%}.hospital-print-sheet th:nth-child(7){width:7%}.hospital-print-sheet th:nth-child(8){width:6%}.hospital-print-sheet th:nth-child(9){width:16%}
+        .hospital-print-sheet th:nth-child(1){width:10%}.hospital-print-sheet th:nth-child(2){width:15%}.hospital-print-sheet th:nth-child(3){width:11%}.hospital-print-sheet th:nth-child(4){width:12%}.hospital-print-sheet th:nth-child(5){width:8%}.hospital-print-sheet th:nth-child(6){width:13%}.hospital-print-sheet th:nth-child(7){width:9%}.hospital-print-sheet th:nth-child(8){width:14%}.hospital-print-sheet th:nth-child(9){width:8%}.hospital-print-sheet .visit-notes-cell{min-height:60px;background:repeating-linear-gradient(to bottom,transparent 0,transparent 14px,#cbd5e1 15px)}
         .hospital-print-sheet tr{break-inside:avoid}
       }
     `}</style>
