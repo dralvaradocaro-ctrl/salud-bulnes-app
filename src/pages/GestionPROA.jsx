@@ -314,6 +314,24 @@ function latestCreatinine(form) {
   return dated.sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')))[0] || null;
 }
 
+function latestCreatinineForRecord(record, extraRows = []) {
+  const candidates = (record?.evolutions || []).flatMap((evolution) => {
+    const item = latestCreatinine(evolution?.form || {});
+    return item ? [item] : [];
+  });
+  (extraRows || []).forEach((row) => {
+    const value = row?.crea || row?.creatinina;
+    if (value !== '' && value != null) candidates.push({ fecha: row.fecha || row.collectedAt || '', valor: value });
+  });
+  return candidates.sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')))[0] || null;
+}
+
+function renalFunctionForRecord(record) {
+  const form = getLatestProaForm(record) || {};
+  const latest = latestCreatinineForRecord(record);
+  return latest ? buildRenalFunctionText({ ...form, creatinina: latest.valor }) : '—';
+}
+
 function formatPreAntibiotic(item) {
   const dose = item.dosis_unidad === 'ampolla'
     ? `${item.dosis_cantidad || ''} ${Number(item.dosis_cantidad) === 1 ? 'ampolla' : 'ampollas'}`
@@ -590,7 +608,7 @@ function buildProaTableRows(records) {
       form.fecha_ingreso || 'Sin fecha',
       hospitalStayDays(form) ?? '—',
       form.diagnostico_actual || '—',
-      form.funcion_renal || '—',
+      renalFunctionForRecord(record),
       formatMicrobiologicalDiagnosis(form),
       formatMicroStudies(form),
       getLastInflammatoryRowsForRecord(record).map(formatInflammatoryRow).join('\n') || '—',
@@ -632,7 +650,7 @@ function buildProaPrintRows(records) {
     return [
       `${findServiceForBed(form.cama || record.bedCode) || 'Sin servicio'}\nCama ${displayBedCode(form.cama || record.bedCode)}`,
       `${identity}\n${stay || '—'}`,
-      `${form.diagnostico_actual || '—'}\n\nFunción renal: ${form.funcion_renal || '—'}`,
+      `${form.diagnostico_actual || '—'}\n\nFunción renal: ${renalFunctionForRecord(record)}`,
       antibioticText,
       microbiology,
       getLastInflammatoryRowsForRecord(record).map(formatInflammatoryRow).join('\n') || '—',
@@ -1062,6 +1080,7 @@ function GestionPROA() {
 
   const preAdmissionFromHospitalRecord = (record, evolutionIndex = 0) => {
     const form = record?.evolutions?.[evolutionIndex]?.form || getLatestProaForm(record) || {};
+    const systemLatestCreatinine = latestCreatinineForRecord(record);
     const diagnoses = (Array.isArray(form.diagnosticos_actuales) ? form.diagnosticos_actuales : [])
       .concat([form.diagnostico_principal, form.diagnostico_desglose, form.diagnostico_actual])
       .flatMap((value) => String(value || '').split(/\n|;/))
@@ -1072,7 +1091,7 @@ function GestionPROA() {
       paciente: form.paciente || '', rut: form.rut || '', edad: form.edad || '', sexo: form.sexo || '',
       fecha_nacimiento: form.fecha_nacimiento || '', direccion: form.direccion || '', comuna: form.comuna || '',
       telefono: form.telefono || '', prevision: form.prevision || '', antecedentes: form.antecedentes || '',
-      creatinina: form.creatinina || '', fecha_creatinina: form.fecha_creatinina || localTodayIso(),
+      creatinina: systemLatestCreatinine?.valor || form.creatinina || '', fecha_creatinina: systemLatestCreatinine?.fecha || form.fecha_creatinina || localTodayIso(),
       fecha_ingreso: form.fecha_ingreso || localTodayIso(),
       antibioticos: Array.isArray(form.antibioticos) && form.antibioticos.some((item) => item?.nombre) ? form.antibioticos : [{ ...EMPTY_PRE_ANTIBIOTIC }],
       antibioticos_eliminados: Array.isArray(form.antibioticos_eliminados) ? form.antibioticos_eliminados : [],
@@ -1313,10 +1332,24 @@ function GestionPROA() {
     ...current,
     diagnosticos: current.diagnosticos.length === 1 ? [''] : current.diagnosticos.filter((_, itemIndex) => itemIndex !== index),
   }));
-  const updatePreBloodTest = (index, key, value) => setPreAdmission((current) => ({
-    ...current,
-    examenes_sangre: current.examenes_sangre.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item),
-  }));
+  const updatePreBloodTest = (index, key, value) => setPreAdmission((current) => {
+    const examenes_sangre = current.examenes_sangre.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item);
+    if (key !== 'crea' && key !== 'fecha') return { ...current, examenes_sangre };
+    const sourceRecord = editingEvolution?.record || recordsByBed[current.cama];
+    const latest = mergeProaEvolutionLabRows(sourceRecord, examenes_sangre).filter((row) => row.crea !== '' && row.crea != null).at(-1);
+    return { ...current, examenes_sangre, creatinina: latest?.crea || '', fecha_creatinina: latest?.fecha || current.fecha_creatinina };
+  });
+  const updateTopCreatinine = (key, value) => setPreAdmission((current) => {
+    const creatinina = key === 'creatinina' ? normalizeCreatinine(value) : current.creatinina;
+    const fecha_creatinina = key === 'fecha_creatinina' ? value : current.fecha_creatinina;
+    let examenes_sangre = current.examenes_sangre.map((row) => key === 'fecha_creatinina' && row.fecha === current.fecha_creatinina && current.fecha_creatinina !== fecha_creatinina ? { ...row, crea: '' } : row);
+    if (fecha_creatinina) {
+      const rowIndex = examenes_sangre.findIndex((row) => row.fecha === fecha_creatinina);
+      if (rowIndex >= 0) examenes_sangre = examenes_sangre.map((row, index) => index === rowIndex ? { ...row, crea: creatinina } : row);
+      else if (creatinina) examenes_sangre = [...examenes_sangre.filter((row) => Object.values(row).some(Boolean)), { ...EMPTY_PRE_BLOOD_TEST, fecha: fecha_creatinina, crea: creatinina }];
+    }
+    return { ...current, creatinina, fecha_creatinina, examenes_sangre };
+  });
   const addPreBloodTest = () => setPreAdmission((current) => ({ ...current, examenes_sangre: [...current.examenes_sangre, { ...EMPTY_PRE_BLOOD_TEST }] }));
   const removePreBloodTest = (index) => setPreAdmission((current) => ({
     ...current,
@@ -2040,7 +2073,7 @@ function GestionPROA() {
                       const antimicrobials = getChronologicalAntimicrobials(record);
                       const formattedAntimicrobials = antimicrobials.map((item) => formatAntimicrobial(item));
                       const piRows = getLastInflammatoryRowsForRecord(record);
-                      const latestCrea = latestCreatinine(form);
+                      const latestCrea = latestCreatinineForRecord(record);
                       const plan = [
                         ...(form.recomendaciones || []),
                         form.recomendaciones_otra,
@@ -2334,11 +2367,11 @@ function GestionPROA() {
                 type="text"
                 inputMode="decimal"
                 value={preAdmission.creatinina}
-                onChange={(event) => setPreAdmission((current) => ({ ...current, creatinina: normalizeCreatinine(event.target.value) }))}
+                onChange={(event) => updateTopCreatinine('creatinina', event.target.value)}
                 placeholder="Ej.: 1,20 o 1.20"
               />
             </div>
-            <div className="space-y-1.5 md:col-span-3"><Label htmlFor="proa-pre-creatinine-date">Fecha de creatinina</Label><Input id="proa-pre-creatinine-date" type="date" value={preAdmission.fecha_creatinina || ''} onChange={(event) => setPreAdmission((current) => ({ ...current, fecha_creatinina: event.target.value }))} /></div>
+            <div className="space-y-1.5 md:col-span-3"><Label htmlFor="proa-pre-creatinine-date">Fecha de creatinina</Label><Input id="proa-pre-creatinine-date" type="date" value={preAdmission.fecha_creatinina || ''} onChange={(event) => updateTopCreatinine('fecha_creatinina', event.target.value)} /><p className="text-[10px] text-slate-500">Se sincroniza automáticamente con la curva de exámenes.</p></div>
             <div className="flex items-end md:col-span-3">
               <div className="w-full rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
                 {preAdmission.creatinina

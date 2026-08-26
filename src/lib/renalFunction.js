@@ -10,7 +10,10 @@ export function normalizeCreatinine(value) {
 export function calculateEgfrCkdEpi2021({ creatinine, creatinina, age, edad, sex, sexo }) {
   const scr = Number(normalizeCreatinine(creatinine ?? creatinina));
   const years = Number(age ?? edad);
-  const normalizedSex = String(sex || sexo || '').toLowerCase();
+  const rawSex = String(sex || sexo || '').trim().toLowerCase();
+  const normalizedSex = ['f', 'female', 'mujer'].includes(rawSex) ? 'femenino'
+    : ['m', 'male', 'hombre'].includes(rawSex) ? 'masculino'
+      : rawSex;
   if (!Number.isFinite(scr) || scr <= 0 || !Number.isFinite(years) || years < 18) return null;
   if (!['femenino', 'masculino'].includes(normalizedSex)) return null;
 

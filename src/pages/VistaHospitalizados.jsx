@@ -6,6 +6,7 @@ import { conAccesoMedispense } from '@/components/MedispenseAccess';
 import { ALL_BEDS } from '@/components/agenda-diaria/bedCatalog';
 import { setMultiPrefill } from '@/lib/multiTemplatePrefill';
 import { archiveProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, isProaEnrolledRecord, saveProaPreAdmission, saveProaRecord } from '@/lib/proaRegistry';
+import { buildRenalFunctionText } from '@/lib/renalFunction';
 import { createPageUrl } from '@/utils';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, PRESENTACIONES_ATB } from '@/pages/VisitaPROA';
 import { allCalculators, calculatorReferences } from '@/components/calculators/catalog';
@@ -227,7 +228,7 @@ function pathogenSummary(form) {
 function latestLabSummary(form) {
   const rows = Array.isArray(form.parametros_inflamatorios) ? form.parametros_inflamatorios : [];
   const latest = rows.slice().sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')))[0];
-  const renal = form.funcion_renal || [form.creatinina && `Creatinina ${form.creatinina} mg/dL`, form.vfg_estimada && `VFG estimada ${form.vfg_estimada} mL/min/1,73 m²`].filter(Boolean).join(' · ');
+  const renal = form.creatinina ? buildRenalFunctionText(form) : form.funcion_renal || '';
   if (!latest) return [form.fecha_creatinina, renal].filter(Boolean).join(' · ');
   const values = HOSPITAL_LAB_FIELDS.filter(([key]) => latest[key] !== '' && latest[key] != null).slice(0, 6).map(([key, label, unit]) => `${label} ${latest[key]}${unit ? ` ${unit}` : ''}`);
   return [latest.fecha, ...values, !values.length ? renal : ''].filter(Boolean).join(' · ');
@@ -247,8 +248,11 @@ function latestStructuredAntibiotics(record) {
 
 function proaToPatient(record) {
   const form = getLatestProaForm(record) || {};
+  const laboratoryRows = collectProaLaboratoryRows(record);
+  const latestCreatinineRow = laboratoryRows.find(row => row.crea !== '' && row.crea != null);
+  const clinicalForm = { ...form, parametros_inflamatorios: laboratoryRows, creatinina: latestCreatinineRow?.crea || form.creatinina || '', fecha_creatinina: latestCreatinineRow?.fecha || form.fecha_creatinina || '' };
   const structuredAntibiotics = latestStructuredAntibiotics(record);
-  const formWithAntibiotics = { ...form, antibioticos: structuredAntibiotics };
+  const formWithAntibiotics = { ...clinicalForm, antibioticos: structuredAntibiotics };
   return {
     nombre: normalizeName(form.paciente), rut: formatRut(form.rut), fechaNacimiento: form.fecha_nacimiento || '', edad: form.edad || '', sexo: form.sexo || '',
     nFicha: form.n_ficha || '', prevision: form.prevision || '', telefono: form.telefono || '',
@@ -264,7 +268,7 @@ function proaToPatient(record) {
     planAlta: form.vista_plan_alta || '',
     estudiosComplementarios: form.vista_estudios_complementarios || [form.estudios_imagen, form.diagnostico_microbiologico].filter(Boolean).join(' · '),
     estudiosDetalle: Array.isArray(form.vista_estudios_detalle) ? form.vista_estudios_detalle : [],
-    patogenoAislado: pathogenSummary(form), ultimoLaboratorio: latestLabSummary(form), laboratorios: Array.isArray(form.parametros_inflamatorios) ? form.parametros_inflamatorios : [],
+    patogenoAislado: pathogenSummary(form), ultimoLaboratorio: latestLabSummary(clinicalForm), laboratorios: laboratoryRows,
     cultivos: Array.isArray(form.estudios_micro) ? form.estudios_micro : [],
     letIndicacion: form.let_indicacion || form.let || '', iotIndicacion: form.iot_indicacion || form.iot || '', rcpIndicacion: form.rcp_indicacion || form.rcp || '', pacienteSocial: Boolean(form.paciente_social),
     escalas: Array.isArray(form.vista_escalas) ? form.vista_escalas : [], evaluacionesNutricionales: Array.isArray(form.vista_evaluaciones_nutricionales) ? form.vista_evaluaciones_nutricionales : [],
