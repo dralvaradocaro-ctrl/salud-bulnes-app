@@ -34,6 +34,7 @@ const emptyForm = () => ({
   pacienteNombre: '',
   pacienteRut: '',
   fechaHora: nowForInput(),
+  diagnostico: '',
   anamnesis: '',
   examenFisico: '',
   indicaciones: '',
@@ -41,7 +42,7 @@ const emptyForm = () => ({
   firma: '',
   servicio: '',
   cama: '',
-  esVisitaProa: false,
+  esVisitaServicio: false,
 });
 
 const SECTIONS = [
@@ -68,6 +69,7 @@ export default function NotaEvolucion() {
       ...prev,
       pacienteNombre: prefill.patient_name || prev.pacienteNombre,
       pacienteRut: prefill.patient_rut ? formatRut(prefill.patient_rut) : prev.pacienteRut,
+      diagnostico: prefill.diagnostico_principal || prefill.diagnostico || prev.diagnostico,
       servicio: prefill.servicio || prev.servicio,
       cama: prefill.cama || prev.cama,
     }));
@@ -86,7 +88,7 @@ export default function NotaEvolucion() {
     const current = bedRecords.find(item => item.bedCode === form.cama);
     const patient = getLatestProaForm(current);
     if (!patient) return;
-    setForm(prev => ({ ...prev, pacienteNombre: prev.pacienteNombre || patient.paciente || '', pacienteRut: prev.pacienteRut || formatRut(patient.rut || ''), esVisitaProa: patient.proa_enrolled !== false }));
+    setForm(prev => ({ ...prev, pacienteNombre: prev.pacienteNombre || patient.paciente || '', pacienteRut: prev.pacienteRut || formatRut(patient.rut || ''), diagnostico: prev.diagnostico || patient.diagnostico_principal || patient.diagnostico_actual || '' }));
   }, [bedRecords, form.cama]);
 
   const goBack = () => {
@@ -97,7 +99,7 @@ export default function NotaEvolucion() {
   const chooseBed = (servicio, cama) => {
     const record = bedRecords.find(item => item.bedCode === cama);
     const patient = getLatestProaForm(record) || {};
-    setForm(prev => ({ ...prev, servicio, cama, pacienteNombre: patient.paciente || prev.pacienteNombre, pacienteRut: patient.rut ? formatRut(patient.rut) : prev.pacienteRut, esVisitaProa: patient.proa_enrolled !== false }));
+    setForm(prev => ({ ...prev, servicio, cama, pacienteNombre: patient.paciente || prev.pacienteNombre, pacienteRut: patient.rut ? formatRut(patient.rut) : prev.pacienteRut, diagnostico: patient.diagnostico_principal || patient.diagnostico_actual || prev.diagnostico }));
     setShowBedSelector(false);
   };
 
@@ -114,21 +116,21 @@ export default function NotaEvolucion() {
     if (!record) { setSaveMessage('No se encontró un paciente hospitalizado en esta cama.'); return; }
     if (![form.anamnesis, form.examenFisico, form.indicaciones].some(value => value.trim())) { setSaveMessage('Completa al menos una sección clínica antes de guardar.'); return; }
     const latest = getLatestProaForm(record) || {};
-    const narrative = [form.anamnesis && `ANAMNESIS:\n${form.anamnesis.trim()}`, form.examenFisico && `EXAMEN FÍSICO:\n${form.examenFisico.trim()}`, form.indicaciones && `INDICACIONES:\n${form.indicaciones.trim()}`].filter(Boolean).join('\n\n');
+    const narrative = [form.diagnostico && `DIAGNÓSTICO(S):\n${form.diagnostico.trim()}`, form.anamnesis && `ANAMNESIS:\n${form.anamnesis.trim()}`, form.examenFisico && `EXAMEN FÍSICO:\n${form.examenFisico.trim()}`, form.indicaciones && `INDICACIONES:\n${form.indicaciones.trim()}`].filter(Boolean).join('\n\n');
     setSaving(true); setSaveMessage('');
     try {
       await saveProaRecord({
         ...latest,
         paciente: form.pacienteNombre || latest.paciente || '', rut: form.pacienteRut || latest.rut || '', servicio: form.servicio, cama: form.cama,
         fecha: String(form.fechaHora || '').slice(0, 10), hora: String(form.fechaHora || '').slice(11, 16),
-        proa_enrolled: form.esVisitaProa ? true : latest.proa_enrolled !== false,
-        proa_entry_type: form.esVisitaProa ? 'visita_proa' : 'nota_evolucion_hospitalaria',
+        proa_enrolled: latest.proa_enrolled !== false,
+        proa_entry_type: form.esVisitaServicio ? 'visita_servicio' : 'nota_evolucion_hospitalaria',
         evolucion: narrative, vista_ultima_evolucion: narrative,
-        nota_evolucion: { anamnesis: form.anamnesis, examen_fisico: form.examenFisico, indicaciones: form.indicaciones, medico: form.medico, fecha_hora: form.fechaHora, visita_proa: form.esVisitaProa },
+        nota_evolucion: { diagnostico: form.diagnostico, anamnesis: form.anamnesis, examen_fisico: form.examenFisico, indicaciones: form.indicaciones, medico: form.medico, fecha_hora: form.fechaHora, visita_servicio: form.esVisitaServicio, titulo: form.esVisitaServicio ? 'Visita servicio Dr. Rubilar' : 'Nota de evolución' },
       });
       const refreshed = await fetchProaRecords();
       setBedRecords(refreshed);
-      setSaveMessage(form.esVisitaProa ? 'Visita PROA guardada en el historial.' : 'Nota de evolución guardada en el historial hospitalario.');
+      setSaveMessage(form.esVisitaServicio ? 'Visita servicio Dr. Rubilar guardada en el historial.' : 'Nota de evolución guardada en el historial hospitalario.');
     } catch (error) {
       console.error('Error guardando nota de evolución:', error);
       setSaveMessage('No fue posible guardar la nota. Intenta nuevamente.');
@@ -225,7 +227,7 @@ export default function NotaEvolucion() {
           <div className="evolution-live-preview mx-auto w-full max-w-[210mm] bg-white shadow-xl">
             <div className="evolution-preview-heading">
               <img src="/logo-hospital.png" alt="Hospital de Bulnes" />
-              <h1>NOTA DE EVOLUCIÓN{form.esVisitaProa ? ' · VISITA PROA' : ''}</h1>
+              <h1>{form.esVisitaServicio ? 'VISITA SERVICIO DR. RUBILAR' : 'NOTA DE EVOLUCIÓN'}</h1>
             </div>
             <div className="evolution-preview-grid">
               <label className="col-span-2"><strong>Nombre:</strong><input value={form.pacienteNombre} onChange={e => update('pacienteNombre', e.target.value)} /></label>
@@ -234,6 +236,10 @@ export default function NotaEvolucion() {
               <label><strong>Servicio:</strong><input value={form.servicio} readOnly /></label>
               <label><strong>Cama:</strong><input value={form.cama} readOnly /></label>
             </div>
+            <section className="evolution-preview-section">
+              <h2>Diagnóstico(s)</h2>
+              <textarea value={form.diagnostico} onChange={e => update('diagnostico', e.target.value)} placeholder="Diagnósticos del paciente" />
+            </section>
             {SECTIONS.map(section => (
               <section key={section.key} className="evolution-preview-section">
                 <h2>{section.label}</h2>
@@ -297,10 +303,10 @@ export default function NotaEvolucion() {
           </Button>
         </section>
 
-        <section className={`rounded-2xl border p-4 shadow-sm ${form.esVisitaProa ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-white'}`}>
+        <section className={`rounded-2xl border p-4 shadow-sm ${form.esVisitaServicio ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-white'}`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div><p className="font-bold text-slate-900">Registrar como visita PROA</p><p className="text-xs text-slate-500">Al activarlo, esta nota queda como evolución PROA y el paciente se incorpora al seguimiento si aún no estaba ingresado.</p></div>
-            <button type="button" role="switch" aria-checked={form.esVisitaProa} onClick={() => update('esVisitaProa', !form.esVisitaProa)} className={`relative h-8 w-14 rounded-full transition ${form.esVisitaProa ? 'bg-teal-600' : 'bg-slate-300'}`}><span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${form.esVisitaProa ? 'left-7' : 'left-1'}`} /></button>
+            <div><p className="font-bold text-slate-900">Visita servicio Dr. Rubilar</p><p className="text-xs text-slate-500">Al activarlo, la nota se guarda y se imprime con este título como visita de servicio.</p></div>
+            <button type="button" role="switch" aria-checked={form.esVisitaServicio} onClick={() => update('esVisitaServicio', !form.esVisitaServicio)} className={`relative h-8 w-14 rounded-full transition ${form.esVisitaServicio ? 'bg-teal-600' : 'bg-slate-300'}`}><span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${form.esVisitaServicio ? 'left-7' : 'left-1'}`} /></button>
           </div>
           {saveMessage && <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${saveMessage.startsWith('No ') || saveMessage.startsWith('Completa') ? 'bg-red-50 text-red-700' : 'bg-emerald-100 text-emerald-800'}`}>{saveMessage}</p>}
         </section>
@@ -333,6 +339,13 @@ export default function NotaEvolucion() {
           </div>
         </section>
 
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <label className="space-y-1.5 text-sm font-medium text-slate-700">
+            Diagnóstico(s)
+            <Textarea value={form.diagnostico} onChange={e => update('diagnostico', e.target.value)} placeholder="Diagnósticos del paciente" className="min-h-24" />
+          </label>
+        </section>
+
         {SECTIONS.map(section => (
           <section key={section.key} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <label className="space-y-2 text-sm font-semibold text-slate-800">
@@ -363,7 +376,7 @@ export default function NotaEvolucion() {
       <article className="evolution-print-sheet">
         <div className="evolution-print-heading">
           <img src="/logo-hospital.png" alt="Hospital de Bulnes" />
-          <h1>NOTA DE EVOLUCIÓN{form.esVisitaProa ? ' · VISITA PROA' : ''}</h1>
+          <h1>{form.esVisitaServicio ? 'VISITA SERVICIO DR. RUBILAR' : 'NOTA DE EVOLUCIÓN'}</h1>
         </div>
         <div className="evolution-patient-grid">
           <p><strong>Nombre:</strong> {form.pacienteNombre}</p>
@@ -372,6 +385,8 @@ export default function NotaEvolucion() {
           <p><strong>Servicio:</strong> {form.servicio}</p>
           <p><strong>Cama:</strong> {form.cama}</p>
         </div>
+
+        {form.diagnostico.trim() && <section className="evolution-print-section"><h2>Diagnóstico(s)</h2><div className="evolution-ruled-text">{form.diagnostico.trim()}</div></section>}
 
         {SECTIONS.filter(section => form[section.key].trim()).map(section => (
           <section key={section.key} className="evolution-print-section">

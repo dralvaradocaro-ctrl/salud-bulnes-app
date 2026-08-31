@@ -18,10 +18,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { invokeLLM } from '@/lib/gemini';
 import InflammatoryCurve from '@/components/visita-proa/InflammatoryCurve';
+import ProaEvolutionDocument from '@/components/visita-proa/ProaEvolutionDocument';
 import DateInputDdmm from '@/components/sdm/DateInputDdmm';
 import { PROA_BED_MAP as BASE_PROA_BED_MAP } from '@/lib/hospitalSuggestions';
 import { archiveProaRecord, saveProaRecord, takePendingProaForm } from '@/lib/proaRegistry';
 import { buildRenalFunctionText, calculateEgfrCkdEpi2021 } from '@/lib/renalFunction';
+import { parseLabReportText } from '@/pages/CurvaExamenes';
 import { getRenalAntimicrobialAlert, getRenalAntimicrobialAlerts } from '@/lib/renalAntimicrobialAlerts';
 import { supabase } from '@/lib/supabase';
 
@@ -708,6 +710,7 @@ const EMPTY = {
   alergias: '',
   comorbilidades: '',
   funcion_renal: '',
+  resultados_examenes_parser: [],
   parametros_inflamatorios: [{ ...EMPTY_PARAM_ROW }], // ahora es una planilla curva
   diagnostico_actual: '',
   diagnosticos_actuales: [''],
@@ -815,6 +818,16 @@ function HospitalLogo({ height = 46 }) {
   );
 }
 
+function printProaDocument() {
+  const documentElement = document.querySelector('.proa-evolution-document');
+  if (!documentElement) return;
+  const popup = window.open('', '_blank', 'width=900,height=1100');
+  if (!popup) return;
+  const styles = [...document.querySelectorAll('link[rel="stylesheet"], style')].map(node => node.outerHTML).join('');
+  popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Evolución clínica PROA</title>${styles}<style>@page{size:A4 portrait;margin:10mm}html,body{margin:0!important;padding:0!important;background:#fff!important;width:100%!important}.proa-evolution-document{width:100%!important;min-height:0!important;margin:0!important;padding:0!important;box-shadow:none!important}@media print{html,body{width:100%!important}}</style></head><body>${documentElement.outerHTML}<script>window.addEventListener('load',()=>setTimeout(()=>window.print(),800));<\/script></body></html>`);
+  popup.document.close();
+}
+
 function VisitaPROA() {
   const navigate = useNavigate();
   const exitPage = () => {
@@ -856,6 +869,9 @@ function VisitaPROA() {
   const [antibiogramSearch, setAntibiogramSearch] = useState('');
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [registryMessage, setRegistryMessage] = useState('');
+  const [parserText, setParserText] = useState('');
+  const [parserDate, setParserDate] = useState(todayIso());
+  const [parserMessage, setParserMessage] = useState('');
   const [activeArsenal, setActiveArsenal] = useState([]);
   const [arsenalStatus, setArsenalStatus] = useState('loading');
   const hasUnsavedChanges = JSON.stringify(f) !== initialSnapshotRef.current;
@@ -1099,6 +1115,36 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
     parametros_inflamatorios: prev.parametros_inflamatorios.length > 1 ? prev.parametros_inflamatorios.filter((_, i) => i !== idx) : prev.parametros_inflamatorios,
   }));
 
+  const parseQuickLabs = () => {
+    const results = parseLabReportText(parserText, parserDate);
+    if (!results.length) {
+      setParserMessage('No se reconocieron resultados. Revisa el texto o la fecha.');
+      return;
+    }
+    const proaKeys = { pcr: 'pcr', leu: 'blancos', leucocitos: 'blancos', gb: 'blancos', crea: 'crea', creatinina: 'crea', vhs: 'vhs', pct: 'pct', temp: 'temp', temperatura: 'temp' };
+    const quickRow = { ...EMPTY_PARAM_ROW, fecha: parserDate };
+    results.forEach(result => {
+      const target = proaKeys[String(result.examKey || '').toLocaleLowerCase('es')];
+      if (target && result.value != null && result.value !== '') {
+        const normalizedValue = target === 'pcr' && /mg\s*\/\s*l/i.test(String(result.unit || '')) ? Number(result.value) / 10 : result.value;
+        quickRow[target] = String(normalizedValue);
+      }
+    });
+    const importedCount = Object.entries(quickRow).filter(([key, value]) => key !== 'fecha' && value !== '').length;
+    setF(prev => {
+      const existingRows = Array.isArray(prev.parametros_inflamatorios) ? prev.parametros_inflamatorios : [];
+      const sameDate = existingRows.findIndex(row => row.fecha === parserDate);
+      const parametros = sameDate >= 0
+        ? existingRows.map((row, index) => index === sameDate ? { ...row, ...Object.fromEntries(Object.entries(quickRow).filter(([, value]) => value !== '')) } : row)
+        : [...existingRows.filter(row => Object.values(row).some(Boolean)), quickRow];
+      const previousResults = Array.isArray(prev.resultados_examenes_parser) ? prev.resultados_examenes_parser : [];
+      const completeResults = [...previousResults, ...results].filter((item, index, items) => items.findIndex(candidate => candidate.id === item.id) === index);
+      return { ...prev, parametros_inflamatorios: parametros, resultados_examenes_parser: completeResults };
+    });
+    setParserMessage(`${results.length} resultados almacenados; ${importedCount} parámetros relevantes agregados a la curva PROA.`);
+    setParserText('');
+  };
+
   // Estudios microbiológicos
   const updateCult = (idx, key, value) => {
     setF(prev => ({
@@ -1185,7 +1231,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
           {showPreview && (
             <>
               <Button variant="outline" size="sm" onClick={() => setShowPreview(false)}>Volver a datos</Button>
-              <Button size="sm" onClick={() => window.print()} className="gap-1.5 bg-teal-600 hover:bg-teal-700">
+              <Button size="sm" onClick={printProaDocument} className="gap-1.5 bg-teal-600 hover:bg-teal-700">
                 <Printer className="h-4 w-4" /> Imprimir / PDF
               </Button>
             </>
@@ -1420,6 +1466,14 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
             <Section title="Parámetros inflamatorios (curva por día)" right={
               <Button size="sm" variant="outline" onClick={addParamRow} className="gap-1 text-xs h-7"><Plus className="h-3 w-3" /> Agregar día</Button>
             }>
+              <details className="mb-3 rounded-lg border border-cyan-200 bg-cyan-50/60">
+                <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-cyan-900">Carga rápida desde informe de laboratorio</summary>
+                <div className="space-y-2 border-t border-cyan-200 p-3">
+                  <p className="text-[11px] text-cyan-800">Pega el informe completo. Se conservarán todos los resultados y la curva PROA extraerá solamente PCR, leucocitos/GB, creatinina, VHS, PCT y temperatura.</p>
+                  <div className="grid gap-2 sm:grid-cols-[150px_1fr_auto]"><DateInputDdmm value={parserDate} onChange={setParserDate} className="h-10" /><Textarea value={parserText} onChange={event => setParserText(event.target.value)} className="min-h-20 bg-white" placeholder="Pegar aquí el informe completo…" /><Button type="button" onClick={parseQuickLabs} disabled={!parserText.trim()} className="self-end bg-cyan-700 hover:bg-cyan-800">Procesar informe</Button></div>
+                  {parserMessage && <p className="rounded-md bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-700">{parserMessage}</p>}
+                </div>
+              </details>
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-xs">
                   <thead>
@@ -1492,6 +1546,14 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                           : 'bg-rose-50/40 border-rose-200'
                       }`}
                     >
+                      <div className="col-span-12 flex flex-wrap items-center justify-between gap-2">
+                        <p className={`text-[11px] font-black uppercase tracking-wide ${vigente ? 'text-emerald-900' : 'text-red-800'}`}>Antimicrobiano {i + 1}</p>
+                        <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${vigente ? 'bg-emerald-600 text-white' : 'bg-red-100 text-red-800'}`}>
+                          {vigente
+                            ? `Vigente${dia != null ? ` · Día ${dia}` : ''}`
+                            : `Suspendido${dia != null ? ` · ${dia} ${dia === 1 ? 'día total' : 'días totales'}` : ''}`}
+                        </span>
+                      </div>
                       <div className="col-span-12 md:col-span-3">
                         <label className="block text-[11px] text-slate-600 mb-0.5">Antibiótico</label>
                         <input
@@ -1955,8 +2017,10 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
         <div className="proa-pdf-viewer">
           <div
             className="proa-print-page"
-            style={{ padding: '12mm', fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '10pt', color: '#000' }}
+            style={{ padding: 0, fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '10pt', color: '#000' }}
           >
+            <ProaEvolutionDocument form={f} professional={f.medico_firma} />
+            <div style={{ display: 'none' }} aria-hidden="true">
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12pt', marginBottom: '6pt' }}>
               <HospitalLogo />
               <div style={{ flex: 1, fontSize: '9pt', lineHeight: 1.3 }}>
@@ -2162,6 +2226,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
                 </div>
               </div>
             </PrintBlock>
+            </div>
           </div>
         </div>
       )}

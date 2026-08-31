@@ -25,6 +25,7 @@ import { buildRenalFunctionText, normalizeCreatinine } from '@/lib/renalFunction
 import { supabase } from '@/lib/supabase';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 import { HOSPITAL_LAB_FIELDS } from '@/components/hospitalizados/hospitalLabCatalog';
+import ProaEvolutionDocument from '@/components/visita-proa/ProaEvolutionDocument';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, DIAGNOSTICOS_INFECTO, PATOGENOS, PRESENTACIONES_ATB, TIPOS_MUESTRA } from '@/pages/VisitaPROA';
 import {
   Bar,
@@ -49,6 +50,7 @@ import {
   Clock3,
   FileSpreadsheet,
   Copy,
+  Pencil,
   Plus,
   Printer,
   RotateCw,
@@ -200,6 +202,22 @@ function describeEvolutionChanges(form, previousForm) {
   return changes.length ? changes : ['Registro clínico guardado sin cambios estructurales'];
 }
 
+function summarizeEvolutionEntry(form = {}, previousForm = {}) {
+  const hasContent = row => row && Object.entries(row).some(([key, value]) => key !== 'fecha' && String(value ?? '').trim());
+  const bloodRows = (form.examenes_sangre || []).length ? form.examenes_sangre : (form.parametros_inflamatorios || []);
+  const bloodTests = bloodRows.filter(hasContent).length;
+  const complementary = (form.examenes_complementarios || []).filter(hasContent).length + (String(form.estudios_imagen || '').trim() ? 1 : 0);
+  const cultures = (form.cultivos || form.estudios_micro || []).filter(item => item?.tipo_muestra || item?.patogeno).length;
+  const previousNames = new Set((previousForm.antibioticos || []).map(item => String(item?.nombre || '').trim().toLocaleLowerCase('es')).filter(Boolean));
+  const antibiotics = (form.antibioticos || []).filter(item => item?.nombre).map(item => {
+    const suspended = /suspend|finaliz|terminad/i.test(`${item.estado || ''} ${item.status || ''}`) || Boolean(item.termino && item.termino_manual !== false);
+    const maintained = previousNames.has(String(item.nombre).trim().toLocaleLowerCase('es'));
+    return { name: canonicalAntibioticName(item.nombre), action: suspended ? 'suspendido' : maintained ? 'mantenido' : 'indicado' };
+  });
+  const recommendation = String(form.plan_duracion || form.recomendaciones_otra || (form.recomendaciones || []).join(' · ') || '').trim();
+  return { bloodTests, complementary, cultures, antibiotics, recommendation };
+}
+
 function EvolutionLabCurve({ rows }) {
   const normalized = (rows || []).map((row) => ({
     ...row,
@@ -275,6 +293,17 @@ function bedTooltip(form) {
   return lines.join('\n');
 }
 
+function latestEvolutionHover(record) {
+  const evolution = (record?.evolutions || []).find(item => String(item?.form?.evolucion || item?.form?.vista_ultima_evolucion || '').trim());
+  if (!evolution) return { text: '', isToday: false };
+  const text = String(evolution.form.evolucion || evolution.form.vista_ultima_evolucion).trim();
+  const savedDate = String(evolution.savedAt || evolution.form.fecha || record.updatedAt || '').slice(0, 10);
+  return {
+    text: `Evolución actual${savedDate ? ` (${formatClinicalDate(savedDate)})` : ''}: ${text}`,
+    isToday: savedDate === localTodayIso(),
+  };
+}
+
 function findServiceForBed(bedCode) {
   return PROA_BED_MAP.find((service) => (
     service.groups.some((group) => group.beds.includes(bedCode))
@@ -303,7 +332,19 @@ const EMPTY_PRE_ANTIBIOTIC = {
 };
 const EMPTY_PRE_CULTURE = { tipo_muestra: '', fecha: '', estado_resultado: 'pendiente', patogeno: '', sensibilidad: 'Pendiente', resistente: [], sensible: [], intermedio: [], antibiograma_nota: '', antibiograma: '' };
 const EMPTY_PRE_BLOOD_TEST = { fecha: '', pcr: '', pct: '', leucocitos: '', crea: '' };
+const ISOLATION_TYPES = ['Sin aislamiento', 'Contacto', 'Gotitas', 'Aéreo', 'Contacto + gotitas', 'Contacto + aéreo', 'Protector / neutropénico', 'Otro'];
+const COMPLEMENTARY_STUDIES = ['Radiografía de tórax', 'Radiografía de abdomen', 'TAC de cerebro', 'TAC de tórax', 'TAC de abdomen y pelvis', 'AngioTAC de tórax', 'Ecografía abdominal', 'Ecografía renal y vesical', 'Ecografía Doppler venosa', 'Ecocardiograma transtorácico', 'Endoscopía digestiva alta', 'Colonoscopía', 'Resonancia magnética', 'Punción lumbar', 'Biopsia / anatomía patológica', 'Otro'];
 const DISCHARGE_REASONS = ['Alta médica', 'Fallecimiento', 'Traslado a otro servicio', 'Traslado a otro establecimiento', 'Otro'];
+
+function printProaEvolutionPreview() {
+  const element = document.querySelector('.proa-evolution-print');
+  if (!element) return;
+  const popup = window.open('', '_blank', 'width=900,height=1000');
+  if (!popup) return;
+  const styles = [...document.querySelectorAll('link[rel="stylesheet"], style')].map(node => node.outerHTML).join('');
+  popup.document.write(`<!doctype html><html><head><title>Evolución clínica PROA</title><meta charset="utf-8">${styles}<style>body{margin:0;padding:0;font-family:Arial,sans-serif;color:#0f172a}@page{size:A4 portrait;margin:10mm}@media print{body{padding:0}}</style></head><body>${element.outerHTML}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+  popup.document.close();
+}
 
 function latestCreatinine(form) {
   const dated = [
@@ -666,6 +707,18 @@ function escapeHtml(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function openStoredNotePreview(form, record) {
+  const note = form?.nota_evolucion;
+  if (!note) return false;
+  const title = note.titulo || (note.visita_servicio ? 'Visita servicio Dr. Rubilar' : 'Nota de evolución');
+  const sections = [['Diagnóstico(s)', note.diagnostico], ['Anamnesis', note.anamnesis], ['Examen físico', note.examen_fisico], ['Indicaciones', note.indicaciones]].filter(([, value]) => String(value || '').trim());
+  const popup = window.open('', '_blank', 'width=900,height=1000');
+  if (!popup) return true;
+  popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>@page{size:A4 portrait;margin:14mm}*{box-sizing:border-box}body{margin:0;background:#cbd5e1;font-family:Arial,sans-serif;color:#111827}.toolbar{position:sticky;top:0;display:flex;justify-content:flex-end;gap:8px;padding:10px 18px;background:#fff;border-bottom:1px solid #cbd5e1}.toolbar button{border:0;border-radius:7px;background:#0f766e;color:#fff;padding:9px 14px;font-weight:700}.sheet{width:210mm;min-height:297mm;margin:18px auto;background:#fff;padding:16mm;box-shadow:0 4px 18px #33415555}.head{display:flex;align-items:center;gap:14px;border-bottom:2px solid #0f172a;padding-bottom:9px}.head img{width:74px;height:55px;object-fit:contain}.head h1{font-size:18px;text-transform:uppercase}.patient{display:grid;grid-template-columns:1fr 1fr;gap:7px 24px;margin:18px 0;border:1px solid #94a3b8;padding:10px}.section{margin-top:17px}.section h2{font-size:13px;border-bottom:1px solid #94a3b8;padding-bottom:4px}.section p{white-space:pre-wrap;line-height:1.5;font-size:12px}.signature{width:72mm;margin:48px 0 0 auto;text-align:center;border-top:1px solid #111;padding-top:5px;font-size:12px}@media print{body{background:#fff}.toolbar{display:none}.sheet{margin:0;box-shadow:none;width:auto;min-height:0;padding:0}}</style></head><body><div class="toolbar"><button onclick="window.print()">Imprimir / guardar PDF</button></div><article class="sheet"><header class="head"><img src="/logo-hospital.png"><div><h1>${escapeHtml(title)}</h1><p>Hospital Comunitario de Salud Familiar de Bulnes</p></div></header><div class="patient"><p><b>Paciente:</b> ${escapeHtml(form.paciente || '')}</p><p><b>RUT:</b> ${escapeHtml(form.rut || '')}</p><p><b>Servicio / cama:</b> ${escapeHtml(form.servicio || '')} · ${escapeHtml(displayBedCode(form.cama || record?.bedCode))}</p><p><b>Fecha y hora:</b> ${escapeHtml(note.fecha_hora || [form.fecha, form.hora].filter(Boolean).join(' '))}</p></div>${sections.map(([label, value]) => `<section class="section"><h2>${escapeHtml(label)}</h2><p>${escapeHtml(value)}</p></section>`).join('')}<div class="signature"><b>${escapeHtml(note.medico || 'Médico que firma')}</b><br>Firma y timbre</div></article></body></html>`);
+  popup.document.close();
+  return true;
 }
 
 function GestionPROA() {
@@ -1046,6 +1099,16 @@ function GestionPROA() {
   };
 
   const editExistingEvolution = (index = 0) => openEvolutionEditor(recordToView, index);
+  const previewExistingEvolution = (index = 0) => {
+    if (!recordToView?.evolutions?.[index]) return;
+    if (openStoredNotePreview(recordToView.evolutions[index].form || {}, recordToView)) return;
+    setPreAdmission(preAdmissionFromHospitalRecord(recordToView, index));
+    setEditingEvolution({ record: recordToView, index });
+    setShowEvolutionPreview(true);
+    setPreAdmissionError('');
+    setRecordToView(null);
+    setShowPreAdmission(true);
+  };
 
   const removeExistingEvolution = async (index) => {
     if (!recordToView?.evolutions?.[index]) return;
@@ -1143,6 +1206,8 @@ function GestionPROA() {
       diagnostico: '',
       diagnosticos: [''],
       examenes_sangre: [{ ...EMPTY_PRE_BLOOD_TEST }],
+      aislamiento: '',
+      evolucion: '',
       resumen_caso: '',
       estudios_imagen: '',
       plan_duracion: '',
@@ -1156,7 +1221,7 @@ function GestionPROA() {
     if (hospitalRecord) setHospitalAdmissionPrompt({ record: hospitalRecord, action: 'admit' });
   };
 
-  const persistPreAdmission = async () => {
+  const persistPreAdmission = async ({ keepOpen = false, previewAfter = false } = {}) => {
     setSavingPreAdmission(true);
     setPreAdmissionError('');
     try {
@@ -1167,14 +1232,18 @@ function GestionPROA() {
           paciente: preAdmission.paciente, rut: preAdmission.rut, edad: preAdmission.edad, sexo: preAdmission.sexo,
           servicio, cama: preAdmission.cama, fecha_ingreso: preAdmission.fecha_ingreso,
           diagnostico_principal: diagnoses[0] || '', diagnostico_desglose: diagnoses.slice(1).join('\n'), diagnosticos_actuales: diagnoses, diagnostico_actual: diagnoses.join('; '),
+          aislamiento: preAdmission.aislamiento || '', evolucion: preAdmission.evolucion || '', vista_ultima_evolucion: preAdmission.evolucion || '',
           resumen_caso: preAdmission.resumen_caso || '', estudios_imagen: preAdmission.estudios_imagen || '', plan_duracion: preAdmission.plan_duracion || '',
           antibioticos: preAdmission.antibioticos.filter((item) => item.nombre), antibioticos_eliminados: preAdmission.antibioticos_eliminados || [], estudios_micro: preAdmission.cultivos.filter((item) => item.tipo_muestra || item.fecha || item.patogeno),
           parametros_inflamatorios: preAdmission.examenes_sangre.filter((item) => item && Object.entries(item).some(([key, value]) => key !== 'fecha' && String(value ?? '').trim())),
           examenes_complementarios: (preAdmission.examenes_complementarios || []).filter((item) => item.fecha || item.nombre || item.resultado),
         });
       } else await saveProaPreAdmission({ ...preAdmission, servicio });
-      setShowPreAdmission(false);
-      setEditingEvolution(null);
+      if (!keepOpen) {
+        setShowPreAdmission(false);
+        setEditingEvolution(null);
+      }
+      if (previewAfter) setShowEvolutionPreview(true);
       setSelectedBed(preAdmission.cama);
       setActiveService(servicio || activeService);
       await refreshRecords();
@@ -1186,7 +1255,7 @@ function GestionPROA() {
     }
   };
 
-  const savePreAdmission = async () => {
+  const savePreAdmission = async (options = {}) => {
     if (!preAdmission.cama || !preAdmission.edad || !preAdmission.fecha_ingreso || !(preAdmission.diagnosticos || [preAdmission.diagnostico]).some((item) => item.trim())) {
       setPreAdmissionError('Completa cama, edad, fecha de ingreso y diagnóstico.');
       return;
@@ -1212,14 +1281,14 @@ function GestionPROA() {
         && String(occupiedForm.rut || '').replace(/[^0-9k]/gi, '').toUpperCase() === String(preAdmission.rut || '').replace(/[^0-9k]/gi, '').toUpperCase();
       const sameName = normalizeMedicationName(occupiedForm.paciente) && normalizeMedicationName(occupiedForm.paciente) === normalizeMedicationName(preAdmission.paciente);
       if (sameRut || sameName) {
-        await persistPreAdmission();
+        await persistPreAdmission(options);
         return;
       }
       setOccupiedRecordForPreAdmission(occupiedRecord);
       setReplacementDischargeDate(new Date().toISOString().slice(0, 10));
       return;
     }
-    await persistPreAdmission();
+    await persistPreAdmission(options);
   };
 
   const resolveOccupiedBedAndSave = async (action) => {
@@ -1308,6 +1377,15 @@ function GestionPROA() {
       ...item,
       [key]: value,
       ...(key === 'estado_resultado' && value !== 'positivo' ? { patogeno: '', sensibilidad: value === 'negativo' ? 'No aplica' : 'Pendiente', resistente: [], sensible: [], intermedio: [] } : {}),
+    } : item),
+  }));
+  const togglePreCultureResistance = (index, antibiotic) => setPreAdmission((current) => ({
+    ...current,
+    cultivos: current.cultivos.map((item, itemIndex) => itemIndex === index ? {
+      ...item,
+      resistente: (item.resistente || []).includes(antibiotic)
+        ? item.resistente.filter(value => value !== antibiotic)
+        : [...(item.resistente || []), antibiotic],
     } : item),
   }));
 
@@ -1641,7 +1719,10 @@ function GestionPROA() {
                                 const record = recordsByBed[bed];
                                 const hospitalRecord = hospitalRecordsByBed[bed];
                                 const selected = selectedBed === bed;
-                                const tip = record || hospitalRecord ? bedTooltip(getLatestProaForm(record || hospitalRecord)) : '';
+                                const sourceRecord = record || hospitalRecord;
+                                const evolutionHover = latestEvolutionHover(sourceRecord);
+                                const baseTip = sourceRecord ? bedTooltip(getLatestProaForm(sourceRecord)) : '';
+                                const tip = [baseTip, evolutionHover.text].filter(Boolean).join('\n');
                                 return (
                                   <div key={bed} className="group relative">
                                     <button
@@ -1684,21 +1765,21 @@ function GestionPROA() {
                                       )}
                                     </button>
                                     {tip && (
-                                      <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-64 max-w-[80vw] -translate-x-1/2 group-hover:block">
-                                        <div className="rounded-lg bg-slate-900/95 px-3 py-2 text-left text-[11px] leading-snug text-white shadow-xl ring-1 ring-black/10">
+                                      <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-72 max-w-[85vw] -translate-x-1/2 group-hover:block group-focus-within:block">
+                                        <div className={`rounded-lg px-3 py-2 text-left text-[11px] leading-snug text-white shadow-xl ring-1 ring-black/10 ${evolutionHover.isToday ? 'bg-emerald-700' : 'bg-slate-900/95'}`}>
                                           {tip.split('\n').map((line, li) => {
                                             const idx = line.indexOf(':');
                                             const label = idx > -1 ? line.slice(0, idx) : '';
                                             const value = idx > -1 ? line.slice(idx + 1).trim() : line;
                                             return (
                                               <p key={li} className={li > 0 ? 'mt-1' : ''}>
-                                                {label && <span className="font-bold text-emerald-300">{label}: </span>}
+                                                {label && <span className={`font-bold ${evolutionHover.isToday ? 'text-emerald-100' : 'text-emerald-300'}`}>{label}: </span>}
                                                 {value}
                                               </p>
                                             );
                                           })}
                                         </div>
-                                        <div className="mx-auto -mt-1 h-2 w-2 rotate-45 bg-slate-900/95" />
+                                        <div className={`mx-auto -mt-1 h-2 w-2 rotate-45 ${evolutionHover.isToday ? 'bg-emerald-700' : 'bg-slate-900/95'}`} />
                                       </div>
                                     )}
                                   </div>
@@ -1767,8 +1848,8 @@ function GestionPROA() {
 
                   <div className="space-y-2 rounded-lg border border-teal-200 bg-teal-50 p-3">
                     <p className="text-xs font-bold uppercase tracking-wide text-teal-900">¿Qué quieres hacer con esta cama?</p>
-                    <Button type="button" onClick={() => setRecordToView(selectedRecord)} variant="outline" className="w-full border-sky-300 bg-white text-sky-800 hover:bg-sky-50">
-                      Ver / editar evoluciones
+                    <Button type="button" onClick={() => setRecordToView(selectedRecord)} variant="outline" className="w-full gap-2 border-sky-300 bg-white text-sky-800 hover:bg-sky-50">
+                      <Printer className="h-4 w-4" /> Historia de evoluciones
                     </Button>
                     <Button onClick={editFromLatest} className="w-full bg-teal-600 hover:bg-teal-700">
                       Nueva evolución PROA
@@ -2143,6 +2224,15 @@ function GestionPROA() {
                       <td className="max-w-[240px] border-b border-slate-200 px-3 py-3">{plan || '—'}</td>
                       <td className="sticky right-0 border-b border-l border-slate-200 bg-white px-2 py-3" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                         <div className="space-y-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setRecordToView(record)}
+                            className="h-auto min-h-8 w-full gap-1 whitespace-normal border-sky-300 px-2 py-1.5 text-sky-800 hover:bg-sky-50"
+                          >
+                            <Printer className="h-3.5 w-3.5 shrink-0" /> Historia de evoluciones
+                          </Button>
                           {!isHistoricalProaRecord(record) && (
                             <Button type="button" variant="outline" size="sm" onClick={() => openDischargeDialog(record)} className="h-8 w-full px-2 text-slate-700">
                               Egresar
@@ -2182,11 +2272,11 @@ function GestionPROA() {
       </main>
 
       <Dialog open={!!recordToView} onOpenChange={(open) => { if (!open) setRecordToView(null); }}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-4xl overflow-x-hidden overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Historial de evoluciones PROA</DialogTitle>
+            <DialogTitle>Historia de evoluciones PROA</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="hidden">
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
               <p className="text-xs font-bold uppercase text-slate-500">Paciente</p>
               <p className="mt-1 font-bold text-slate-900">{viewedLatest?.paciente || recordToView?.code}</p>
@@ -2214,18 +2304,18 @@ function GestionPROA() {
               {viewedLatest?.plan_duracion && <p className="mt-2 text-sm font-medium text-slate-800">{viewedLatest.plan_duracion}</p>}
             </div>
           </div>
-          {(recordToView?.evolutions || []).length > 0 && <div className="rounded-lg border border-teal-200 bg-teal-50/50 p-3"><p className="mb-2 text-xs font-black uppercase tracking-wide text-teal-900">Selecciona una evolución</p><div className="space-y-2">{recordToView.evolutions.map((evolution, index) => { const evolutionForm = evolution.form || {}; const changes = describeEvolutionChanges(evolutionForm, recordToView.evolutions[index + 1]?.form); return <details key={`${evolution.savedAt}-${index}`} className="group rounded-md border border-teal-100 bg-white" open={index === 0}><summary className="cursor-pointer list-none p-3"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-xs font-bold text-slate-800">{index === 0 ? 'Evolución actual' : `Evolución previa ${index}`} · {formatUpdatedAt(evolution.savedAt)}</p><p className="truncate text-xs text-slate-500">{evolutionForm.resumen_caso || evolutionForm.evolucion || evolutionForm.diagnostico_actual || 'Sin resumen narrativo'}</p><div className="mt-1 flex flex-wrap gap-1">{changes.slice(0, 3).map(change => <span key={change} className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-800">{change}</span>)}</div>{evolution.editedAt && <p className="text-[10px] text-amber-700">Editada: {formatUpdatedAt(evolution.editedAt)}</p>}</div><ChevronDown className="h-4 w-4 shrink-0 text-teal-700 transition-transform group-open:rotate-180" /></div></summary><div className="border-t border-teal-100 p-3"><div className="mb-3 rounded-md border border-sky-100 bg-sky-50 p-2"><p className="text-[10px] font-black uppercase text-sky-900">Cambios de este registro</p><ul className="mt-1 list-disc pl-4 text-xs text-sky-900">{changes.map(change => <li key={change}>{change}</li>)}</ul></div><p className="mb-3 line-clamp-4 whitespace-pre-wrap text-xs text-slate-600">{evolutionForm.resumen_caso || evolutionForm.evolucion || evolutionForm.diagnostico_actual || 'Sin contenido narrativo.'}</p><div className="flex justify-end gap-2"><Button type="button" size="sm" variant="outline" onClick={() => removeExistingEvolution(index)} disabled={recordToView.evolutions.length <= 1} className="gap-1 border-red-200 text-red-700 hover:bg-red-50"><Trash2 className="h-3.5 w-3.5" />Borrar</Button><Button type="button" size="sm" onClick={() => editExistingEvolution(index)} className="bg-teal-700 hover:bg-teal-800">Editar evolución</Button></div>{recordToView.evolutions.length <= 1 && <p className="mt-2 text-right text-[10px] text-slate-500">La única evolución no puede borrarse; para ello elimina el paciente.</p>}</div></details>; })}</div></div>}
+          <section className="min-w-0 rounded-xl border border-teal-200 bg-teal-50/50 p-3 sm:p-4"><div className="mb-3 min-w-0"><p className="text-xs font-black uppercase tracking-wide text-teal-900">{viewedLatest?.paciente || recordToView?.code}</p><p className="break-words text-sm text-slate-600">Cama {displayBedCode(viewedLatest?.cama || recordToView?.bedCode)} · {(recordToView?.evolutions || []).length} evolución{recordToView?.evolutions?.length === 1 ? '' : 'es'} almacenada{recordToView?.evolutions?.length === 1 ? '' : 's'}</p></div><div className="min-w-0 space-y-2">{(recordToView?.evolutions || []).map((evolution, index) => { const evolutionForm = evolution.form || {}; const previousForm = recordToView.evolutions[index + 1]?.form || {}; const changes = describeEvolutionChanges(evolutionForm, previousForm); const activity = summarizeEvolutionEntry(evolutionForm, previousForm); return <div key={`${evolution.savedAt}-${index}`} className="relative min-w-0 rounded-lg border border-teal-100 bg-white"><Button type="button" size="icon" variant="ghost" title="Borrar evolución" aria-label={`Borrar evolución del ${formatUpdatedAt(evolution.savedAt)}`} onClick={() => removeExistingEvolution(index)} disabled={recordToView.evolutions.length <= 1} className="absolute right-[6.75rem] top-2 z-10 h-8 w-8 text-red-600 hover:bg-red-50 disabled:opacity-30"><Trash2 className="h-4 w-4" /></Button><Button type="button" size="icon" variant="ghost" title="Editar evolución" aria-label={`Editar evolución del ${formatUpdatedAt(evolution.savedAt)}`} onClick={() => editExistingEvolution(index)} className="absolute right-[4.5rem] top-2 z-10 h-8 w-8 text-teal-700 hover:bg-teal-50"><Pencil className="h-4 w-4" /></Button><Button type="button" size="icon" variant="ghost" title="Vista previa / imprimir" aria-label={`Imprimir evolución del ${formatUpdatedAt(evolution.savedAt)}`} onClick={() => previewExistingEvolution(index)} className="absolute right-9 top-2 z-10 h-8 w-8 text-sky-700 hover:bg-sky-50"><Printer className="h-4 w-4" /></Button><details className="group min-w-0" open={index === 0}><summary className="cursor-pointer list-none p-3 pr-36"><div className="min-w-0"><p className="break-words text-sm font-black text-slate-900">{formatUpdatedAt(evolution.savedAt)}</p><p className="mt-0.5 break-words text-xs font-semibold text-teal-700">{index === 0 ? 'Evolución más reciente' : `Evolución anterior ${index}`}</p><div className="mt-2 flex flex-wrap gap-1">{activity.bloodTests > 0 && <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-800">Exámenes: {activity.bloodTests}</span>}{activity.complementary > 0 && <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-bold text-violet-800">Estudios: {activity.complementary}</span>}{activity.cultures > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800">Cultivos: {activity.cultures}</span>}{activity.antibiotics.map(item => <span key={`${item.name}-${item.action}`} className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${item.action === 'suspendido' ? 'bg-red-50 text-red-800' : item.action === 'indicado' ? 'bg-emerald-100 text-emerald-800' : 'bg-teal-50 text-teal-800'}`}>{item.name}: {item.action}</span>)}</div></div><ChevronDown className="absolute right-3 top-4 h-4 w-4 text-teal-700 transition-transform group-open:rotate-180" /></summary><div className="min-w-0 border-t border-teal-100 p-3"><p className="line-clamp-3 whitespace-pre-wrap break-words text-xs text-slate-600">{evolutionForm.evolucion || evolutionForm.resumen_caso || evolutionForm.diagnostico_actual || 'Sin narrativa clínica.'}</p>{activity.recommendation && <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2"><p className="text-[10px] font-black uppercase tracking-wide text-emerald-800">Recomendación final</p><p className="mt-0.5 line-clamp-3 whitespace-pre-wrap break-words text-xs font-medium text-emerald-950">{activity.recommendation}</p></div>}<div className="mt-2 flex flex-wrap gap-1">{changes.filter(change => !/sin cambios estructurales/i.test(change)).map(change => <span key={change} className="max-w-full break-words rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-800">{change}</span>)}</div></div></details></div>; })}{!(recordToView?.evolutions || []).length && <p className="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">No hay evoluciones almacenadas.</p>}</div></section>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setRecordToView(null)}>Cerrar</Button>
             <Button onClick={() => editExistingEvolution(0)} className="bg-teal-700 hover:bg-teal-800">
-              Editar esta evolución
+              Editar evolución más reciente
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showPrintPreview} onOpenChange={setShowPrintPreview}>
-        <DialogContent className="flex max-h-[94vh] w-[calc(100vw-2rem)] max-w-[96vw] flex-col gap-3 p-4 sm:p-5">
+        <DialogContent className="flex max-h-[94vh] min-w-0 w-[calc(100vw-1rem)] max-w-[96vw] flex-col gap-3 overflow-x-hidden p-4 sm:p-5">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Printer className="h-5 w-5 text-teal-700" />
@@ -2281,7 +2371,7 @@ function GestionPROA() {
 
       <Dialog open={showPreAdmission} onOpenChange={(open) => { setShowPreAdmission(open); if (!open) setEditingEvolution(null); }}>
         <DialogContent
-          className="max-h-[92vh] w-[calc(100vw-2rem)] max-w-5xl overflow-y-auto p-4 sm:p-6"
+          className="max-h-[92vh] min-w-0 w-[calc(100vw-1rem)] max-w-5xl overflow-x-hidden overflow-y-auto p-4 sm:p-6"
           onInteractOutside={(event) => event.preventDefault()}
         >
           <DialogHeader>
@@ -2402,7 +2492,9 @@ function GestionPROA() {
               </datalist>
               <p className="text-[11px] text-slate-500">Incluye el catálogo de Evolución PROA y los diagnósticos previamente guardados.</p>
             </div>
-            <div className="space-y-1.5 md:col-span-12"><Label>Resumen clínico</Label><textarea value={preAdmission.resumen_caso || ''} onChange={(event) => setPreAdmission((current) => ({ ...current, resumen_caso: event.target.value }))} className="min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Síntesis del cuadro, evolución y estado clínico actual" /></div>
+            <div className="space-y-1.5 md:col-span-12"><Label>Aislamiento / precauciones</Label><Input list="proa-isolation-types" value={preAdmission.aislamiento || ''} onChange={(event) => setPreAdmission((current) => ({ ...current, aislamiento: event.target.value }))} placeholder="Seleccionar o escribir…" /><datalist id="proa-isolation-types">{ISOLATION_TYPES.map(item => <option key={item} value={item} />)}</datalist></div>
+            <div className="space-y-1.5 md:col-span-12"><Label>Evolución actual</Label><textarea value={preAdmission.evolucion || ''} onChange={(event) => setPreAdmission((current) => ({ ...current, evolucion: event.target.value }))} className="min-h-28 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Cambios clínicos y estado actual observados en esta evaluación" /></div>
+            <div className="space-y-1.5 md:col-span-12"><Label>Resumen clínico</Label><textarea value={preAdmission.resumen_caso || ''} onChange={(event) => setPreAdmission((current) => ({ ...current, resumen_caso: event.target.value }))} className="min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Síntesis general vigente del cuadro clínico" /></div>
             <div className="space-y-1.5 md:col-span-12"><Label>Estudios complementarios</Label><textarea value={preAdmission.estudios_imagen || ''} onChange={(event) => setPreAdmission((current) => ({ ...current, estudios_imagen: event.target.value }))} className="min-h-20 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Imagenología, procedimientos y otros estudios relevantes" /></div>
             <div className="space-y-1.5 md:col-span-12"><Label>Plan sugerido</Label><textarea value={preAdmission.plan_duracion || ''} onChange={(event) => setPreAdmission((current) => ({ ...current, plan_duracion: event.target.value }))} className="min-h-24 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Conducta antimicrobiana, duración, controles y próxima revisión" /></div>
             <div className="space-y-1.5 md:col-span-12">
@@ -2575,7 +2667,7 @@ function GestionPROA() {
               <div className="space-y-2">{preAdmission.examenes_sangre.map((exam, index) => <div key={index} className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 sm:grid-cols-[150px_repeat(4,minmax(90px,1fr))_36px]"><Input type="date" value={exam.fecha} onChange={(event) => updatePreBloodTest(index, 'fecha', event.target.value)} /><Input value={exam.pcr} onChange={(event) => updatePreBloodTest(index, 'pcr', event.target.value)} placeholder="PCR" /><Input value={exam.pct} onChange={(event) => updatePreBloodTest(index, 'pct', event.target.value)} placeholder="PCT" /><Input value={exam.leucocitos} onChange={(event) => updatePreBloodTest(index, 'leucocitos', event.target.value)} placeholder="Leucocitos" /><Input value={exam.crea} onChange={(event) => updatePreBloodTest(index, 'crea', event.target.value)} placeholder="Creatinina" /><Button type="button" variant="ghost" size="icon" onClick={() => removePreBloodTest(index)} className="text-red-600"><Trash2 className="h-4 w-4" /></Button></div>)}</div>
             </div>
 
-            <div className="space-y-1.5 md:col-span-12"><div className="flex items-center justify-between"><div><Label>Exámenes complementarios</Label><p className="text-[11px] text-slate-500">Imagenología, procedimientos, anatomía patológica u otros resultados.</p></div><Button type="button" variant="outline" size="sm" onClick={addComplementaryExam} className="h-8 gap-1"><Plus className="h-3.5 w-3.5" /> Agregar examen</Button></div><div className="space-y-2">{preAdmission.examenes_complementarios.map((exam, index) => <div key={index} className="grid gap-2 rounded-lg border border-sky-200 bg-sky-50/50 p-2 sm:grid-cols-[140px_minmax(180px,1fr)_2fr_36px]"><Input type="date" value={exam.fecha} onChange={(event) => updateComplementaryExam(index, 'fecha', event.target.value)} /><Input value={exam.nombre} onChange={(event) => updateComplementaryExam(index, 'nombre', event.target.value)} placeholder="Examen / estudio" /><Input value={exam.resultado} onChange={(event) => updateComplementaryExam(index, 'resultado', event.target.value)} placeholder="Resultado, hallazgo o estado" /><Button type="button" variant="ghost" size="icon" onClick={() => removeComplementaryExam(index)} className="text-red-600"><Trash2 className="h-4 w-4" /></Button></div>)}</div></div>
+            <div className="space-y-1.5 md:col-span-12"><div className="flex items-center justify-between"><div><Label>Exámenes complementarios</Label><p className="text-[11px] text-slate-500">TAC, ecografías, radiografías, procedimientos y otros resultados.</p></div><Button type="button" variant="outline" size="sm" onClick={addComplementaryExam} className="h-8 gap-1"><Plus className="h-3.5 w-3.5" /> Agregar examen</Button></div><div className="space-y-2">{preAdmission.examenes_complementarios.map((exam, index) => <div key={index} className="grid gap-2 rounded-lg border border-sky-200 bg-sky-50/50 p-2 sm:grid-cols-[140px_minmax(180px,1fr)_2fr_36px]"><Input type="date" value={exam.fecha} onChange={(event) => updateComplementaryExam(index, 'fecha', event.target.value)} /><Input list="proa-complementary-studies" value={exam.nombre} onChange={(event) => updateComplementaryExam(index, 'nombre', event.target.value)} placeholder="Seleccionar o escribir estudio" /><Input value={exam.resultado} onChange={(event) => updateComplementaryExam(index, 'resultado', event.target.value)} placeholder="Resultado, hallazgo o estado" /><Button type="button" variant="ghost" size="icon" onClick={() => removeComplementaryExam(index)} className="text-red-600"><Trash2 className="h-4 w-4" /></Button></div>)}</div><datalist id="proa-complementary-studies">{COMPLEMENTARY_STUDIES.map(study => <option key={study} value={study} />)}</datalist></div>
 
             <div className="space-y-1.5 md:col-span-12">
               <div className="flex items-center justify-between">
@@ -2590,6 +2682,7 @@ function GestionPROA() {
                     <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_140px_auto]"><Input list="proa-pre-samples" value={culture.tipo_muestra} onChange={(event) => updatePreCulture(index, 'tipo_muestra', event.target.value)} placeholder="Tipo de muestra" /><Input type="date" value={culture.fecha} onChange={(event) => updatePreCulture(index, 'fecha', event.target.value)} /><Button type="button" variant="ghost" size="icon" onClick={() => removePreCulture(index)} className="h-10 w-9 text-red-600"><Trash2 className="h-4 w-4" /></Button></div>
                     <div><Label className="mb-1 block text-[11px]">Resultado microbiológico</Label><div className="flex flex-wrap gap-2">{[['pendiente','Pendiente'],['negativo','Negativo'],['positivo','Positivo / microorganismo']].map(([status,label]) => <button key={status} type="button" onClick={() => updatePreCulture(index, 'estado_resultado', status)} className={`rounded-lg border px-3 py-2 text-xs font-bold ${culture.estado_resultado === status ? status === 'positivo' ? 'border-rose-400 bg-rose-100 text-rose-900' : status === 'negativo' ? 'border-emerald-400 bg-emerald-100 text-emerald-900' : 'border-amber-400 bg-amber-100 text-amber-900' : 'border-slate-200 bg-white text-slate-600'}`}>{label}</button>)}</div></div>
                     {culture.estado_resultado === 'positivo' && <Input list="proa-pre-pathogens" value={culture.patogeno} onChange={(event) => updatePreCulture(index, 'patogeno', event.target.value)} placeholder="Microorganismo aislado" />}
+                    {culture.estado_resultado === 'positivo' && culture.patogeno && <details className="rounded-md border border-rose-200 bg-white"><summary className="cursor-pointer px-3 py-2 text-xs font-bold text-rose-800">Resistente a{(culture.resistente || []).length ? ` (${culture.resistente.length})` : ''}</summary><div className="grid max-h-52 gap-1 overflow-y-auto border-t border-rose-100 p-3 sm:grid-cols-2 lg:grid-cols-3">{ANTIBIOTICOS.map(antibiotic => <label key={antibiotic} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-xs text-slate-700 hover:bg-rose-50"><input type="checkbox" checked={(culture.resistente || []).includes(antibiotic)} onChange={() => togglePreCultureResistance(index, antibiotic)} className="accent-rose-700" />{antibiotic}</label>)}</div></details>}
                     {culture.estado_resultado === 'negativo' && <p className="rounded-md bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">Resultado negativo / sin desarrollo. Se registra, pero no se contabiliza como patógeno.</p>}
                     {culture.estado_resultado === 'pendiente' && <p className="rounded-md bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">Cultivo pendiente de resultado.</p>}
                   </div>
@@ -2599,12 +2692,13 @@ function GestionPROA() {
               <datalist id="proa-pre-pathogens">{PATOGENOS.map((pathogen) => <option key={pathogen} value={pathogen} />)}</datalist>
             </div>
           </div>
-          {showEvolutionPreview && <div className="proa-evolution-print rounded-xl border border-slate-300 bg-white p-6 font-[Arial] text-slate-950 shadow-sm"><div className="mb-4 border-b-2 border-slate-900 pb-3"><h1 className="text-xl font-black">Evolución clínica PROA</h1><p className="text-sm">Hospital Comunitario de Salud Familiar de Bulnes</p></div><div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm"><p><strong>Paciente:</strong> {preAdmission.paciente || '—'}</p><p><strong>RUT:</strong> {preAdmission.rut || '—'}</p><p><strong>Servicio / cama:</strong> {preAdmission.servicio || '—'} · {displayBedCode(preAdmission.cama) || '—'}</p><p><strong>Fecha de ingreso:</strong> {preAdmission.fecha_ingreso || '—'}</p></div><section className="mt-4"><h2 className="border-b font-bold">Diagnósticos</h2><p className="mt-1 whitespace-pre-wrap text-sm">{(preAdmission.diagnosticos || []).filter(Boolean).join('\n') || '—'}</p></section><section className="mt-4"><h2 className="border-b font-bold">Resumen clínico</h2><p className="mt-1 whitespace-pre-wrap text-sm">{preAdmission.resumen_caso || '—'}</p></section><section className="mt-4"><h2 className="border-b font-bold">Estudios complementarios</h2><p className="mt-1 whitespace-pre-wrap text-sm">{[preAdmission.estudios_imagen, ...(preAdmission.examenes_complementarios || []).filter(item => item.fecha || item.nombre || item.resultado).map(item => [item.fecha, item.nombre, item.resultado].filter(Boolean).join(' · '))].filter(Boolean).join('\n') || '—'}</p></section><EvolutionLabCurve rows={mergeProaEvolutionLabRows(editingEvolution?.record || recordsByBed[preAdmission.cama], preAdmission.examenes_sangre)} /><section className="mt-4"><h2 className="border-b font-bold">Microbiología</h2><p className="mt-1 whitespace-pre-wrap text-sm">{(preAdmission.cultivos || []).filter(item => item.tipo_muestra || item.patogeno).map(item => [item.fecha, item.tipo_muestra, item.estado_resultado === 'positivo' ? item.patogeno : item.estado_resultado === 'negativo' ? 'Negativo / sin desarrollo' : 'Pendiente'].filter(Boolean).join(' · ')).join('\n') || '—'}</p></section><section className="mt-4"><h2 className="border-b font-bold">Plan sugerido</h2><p className="mt-1 whitespace-pre-wrap text-sm">{preAdmission.plan_duracion || '—'}</p></section></div>}
+          {showEvolutionPreview && <div className="proa-evolution-print mx-auto w-full max-w-[210mm] overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm"><ProaEvolutionDocument form={{ ...preAdmission, diagnostico_actual: (preAdmission.diagnosticos || []).filter(Boolean).join('\n'), examenes_sangre: mergeProaEvolutionLabRows(editingEvolution?.record || recordsByBed[preAdmission.cama], preAdmission.examenes_sangre) }} /></div>}
           {preAdmissionError && <p className="text-sm font-medium text-red-600">{preAdmissionError}</p>}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => { setShowPreAdmission(false); setEditingEvolution(null); }}>Cancelar</Button>
-            {showEvolutionPreview && <Button type="button" variant="outline" onClick={() => window.print()}><Printer className="mr-1 h-4 w-4" />Imprimir / PDF</Button>}
-            <Button type="button" onClick={savePreAdmission} disabled={savingPreAdmission} className="bg-teal-600 hover:bg-teal-700">
+            {showEvolutionPreview && <Button type="button" variant="outline" onClick={printProaEvolutionPreview}><Printer className="mr-1 h-4 w-4" />Imprimir / PDF</Button>}
+            <Button type="button" variant="outline" onClick={() => savePreAdmission({ keepOpen: true, previewAfter: true })} disabled={savingPreAdmission} className="border-teal-300 bg-teal-50 text-teal-800 hover:bg-teal-100">Guardar y vista previa</Button>
+            <Button type="button" onClick={() => savePreAdmission()} disabled={savingPreAdmission} className="bg-teal-600 hover:bg-teal-700">
               {savingPreAdmission ? 'Guardando…' : editingEvolution ? 'Guardar cambios' : 'Guardar evolución PROA'}
             </Button>
           </div>

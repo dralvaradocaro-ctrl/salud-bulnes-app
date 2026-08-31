@@ -7,7 +7,7 @@ import {
   LinkIcon, Calculator,
   Eye, Stethoscope, FlaskConical, Scissors,
   AlertTriangle, ChevronDown, Check, FileText, Calendar, Building2, MapPin,
-  GitBranch, ClipboardList, BookOpen, Phone, ArrowRight, Info,
+  GitBranch, ClipboardList, BookOpen, Phone, ArrowRight, Info, ExternalLink,
 } from 'lucide-react';
 import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils/hiddenContent';
 import MermaidDiagram from './MermaidDiagram';
