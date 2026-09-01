@@ -26,6 +26,7 @@ import { supabase } from '@/lib/supabase';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 import { HOSPITAL_LAB_FIELDS } from '@/components/hospitalizados/hospitalLabCatalog';
 import ProaEvolutionDocument from '@/components/visita-proa/ProaEvolutionDocument';
+import RenalAntibioticReview from '@/components/visita-proa/RenalAntibioticReview';
 import { ANTIBIOTICOS, DEFAULT_DOSIS_ATB, DIAGNOSTICOS_INFECTO, PATOGENOS, PRESENTACIONES_ATB, TIPOS_MUESTRA } from '@/pages/VisitaPROA';
 import {
   Bar,
@@ -49,6 +50,7 @@ import {
   ClipboardList,
   Clock3,
   FileSpreadsheet,
+  Droplets,
   Copy,
   Pencil,
   Plus,
@@ -758,6 +760,7 @@ function GestionPROA() {
   const [resolvingOccupiedBed, setResolvingOccupiedBed] = useState(false);
   const [tableCopied, setTableCopied] = useState(false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const [renalReviewOpen, setRenalReviewOpen] = useState(false);
   const [printServices, setPrintServices] = useState([]);
   const [tableScope, setTableScope] = useState('actuales');
   const [tableAntibioticFilter, setTableAntibioticFilter] = useState('');
@@ -1565,12 +1568,12 @@ function GestionPROA() {
       onClick: scrollToBedMap,
     },
     {
-      title: 'Tablas de seguimiento',
-      description: 'Listado clínico consolidado de pacientes PROA, diagnósticos, PI, microbiología, antimicrobianos y plan.',
-      icon: FileSpreadsheet,
-      color: 'slate',
-      status: `${clinicalRecords.length} pacientes`,
-      onClick: () => tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      title: 'Antibióticos y función renal',
+      description: 'Calcula VFG/CrCl y revisa ajustes, precauciones y situaciones especiales para uno o varios antimicrobianos.',
+      icon: Droplets,
+      color: 'teal',
+      status: 'Calculadora clínica',
+      onClick: () => setRenalReviewOpen(true),
     },
   ];
 
@@ -1635,6 +1638,7 @@ function GestionPROA() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50">
+      <RenalAntibioticReview open={renalReviewOpen} onClose={() => setRenalReviewOpen(false)} records={clinicalRecords} />
       <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/85 backdrop-blur-xl">
         <div className="mx-auto max-w-6xl px-4 py-4">
           <div className="flex items-center justify-between gap-4">
