@@ -66,7 +66,7 @@ export default function InflammatoryCurve({ parametros = [], antibioticos = [] }
 
   if (data.length === 0 && markers.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-center text-xs text-slate-500">
+      <div style={{ borderRadius: 8, border: '1px dashed #cbd5e1', background: '#f8fafc', padding: 16, textAlign: 'center', fontSize: 11, color: '#64748b' }}>
         Cargá fechas + PCR en la planilla y/o el inicio de algún antibiótico para ver la curva.
       </div>
     );
@@ -82,15 +82,15 @@ export default function InflammatoryCurve({ parametros = [], antibioticos = [] }
   const domain = [minTs - pad, maxTs + pad];
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-3">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-xs font-semibold text-slate-600">Curva de PCR, glóbulos blancos e inicio/término de antibióticos</p>
-        <div className="flex items-center gap-3 text-[11px] text-slate-500">
-          <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-sky-500" /> PCR</span>
-          <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-violet-500" /> GB</span>
-          <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 bg-emerald-500" /> ATB vigente</span>
-          <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 bg-rose-300" /> Inicio ATB terminado</span>
-          <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 bg-red-500" /> Término ATB</span>
+    <div style={{ background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0', padding: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px 12px', marginBottom: 4 }}>
+        <p style={{ fontSize: 11, fontWeight: 600, color: '#475569', margin: 0 }}>Curva de PCR, glóbulos blancos e inicio/término de antibióticos</p>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 10px', fontSize: 10, color: '#64748b' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: '#0ea5e9' }} /> PCR</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: '#8b5cf6' }} /> GB</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ display: 'inline-block', width: 9, height: 9, background: '#059669' }} /> ATB vigente</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ display: 'inline-block', width: 9, height: 9, background: '#fca5a5' }} /> Inicio ATB terminado</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ display: 'inline-block', width: 9, height: 9, background: '#ef4444' }} /> Término ATB</span>
         </div>
       </div>
       <ResponsiveContainer width="100%" height={320}>
@@ -158,7 +158,7 @@ export default function InflammatoryCurve({ parametros = [], antibioticos = [] }
         </LineChart>
       </ResponsiveContainer>
       {data.length === 0 && (
-        <p className="text-[11px] text-slate-400 text-center mt-1">
+        <p style={{ fontSize: 10, color: '#94a3b8', textAlign: 'center', margin: '4px 0 0' }}>
           Sin valores de PCR ni glóbulos blancos aún — se muestran solo los eventos de antibióticos.
         </p>
       )}

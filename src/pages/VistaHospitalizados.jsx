@@ -295,13 +295,20 @@ const PROA_TO_CATALOG = new Map([...ALL_BEDS, TEST_BED].map(bed => [catalogToPro
 
 function antibioticSummary(form) {
   if (form.antibioterapia_preingreso) return form.antibioterapia_preingreso;
-  return (form.antibioticos || []).filter(item => item?.nombre).map(item => [
-    item.nombre,
-    item.dosis || [item.dosis_cantidad, item.dosis_unidad].filter(Boolean).join(' '),
-    item.intervalo_horas && `c/${item.intervalo_horas} h`,
-    item.via,
-    item.inicio && `desde ${item.inicio}`,
-  ].filter(Boolean).join(' ')).join('\n');
+  const today = new Date().toISOString().slice(0, 10);
+  return (form.antibioticos || []).filter(item => item?.nombre).map(item => {
+    const suspended = Boolean(item.termino && item.termino < today);
+    const days = treatmentDays(item.inicio, suspended ? item.termino : '');
+    const status = item.inicio ? `${suspended ? 'suspendido' : 'vigente'}${days ? ` · día ${days}` : ''}` : '';
+    return [
+      item.nombre,
+      item.dosis || [item.dosis_cantidad, item.dosis_unidad].filter(Boolean).join(' '),
+      item.intervalo_horas && `c/${item.intervalo_horas} h`,
+      item.via,
+      item.inicio && `desde ${item.inicio}`,
+      status && `(${status})`,
+    ].filter(Boolean).join(' ');
+  }).join('\n');
 }
 
 function structuredAntibioticSummary(items) {
