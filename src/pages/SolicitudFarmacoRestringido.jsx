@@ -181,7 +181,7 @@ export default function SolicitudFarmacoRestringido() {
       ...prev,
       paciente:  p.patient_name      || prev.paciente,
       rut:       p.patient_rut       ? formatRut(p.patient_rut) : prev.rut,
-      edad:      p.patient_fecha_nac ? calcAge(p.patient_fecha_nac) : prev.edad,
+      edad:      p.patient_fecha_nac ? calcAge(p.patient_fecha_nac) : (p.patient_edad || prev.edad),
       prevision: p.prevision         || prev.prevision,
       comuna:    p.patient_comuna    || prev.comuna,
       n_ficha:   p.n_ficha           || prev.n_ficha,

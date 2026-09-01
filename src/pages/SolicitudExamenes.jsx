@@ -297,7 +297,7 @@ export default function SolicitudExamenes() {
       nombre:           p.patient_name      || prev.nombre,
       rut:              p.patient_rut       ? formatRut(p.patient_rut) : prev.rut,
       fecha_nacimiento: p.patient_fecha_nac || prev.fecha_nacimiento,
-      edad:             p.patient_fecha_nac ? calcularEdad(p.patient_fecha_nac) : prev.edad,
+      edad:             p.patient_fecha_nac ? calcularEdad(p.patient_fecha_nac) : (p.patient_edad || prev.edad),
       n_ficha:          p.n_ficha           || prev.n_ficha,
       prevision:        p.prevision         || prev.prevision,
       diagnostico:      p.diagnostico       || prev.diagnostico,

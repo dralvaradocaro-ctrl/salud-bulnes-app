@@ -161,13 +161,28 @@ export default function FormulariosHODOM() {
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: pageSize, compress: true });
       let outputPage = 0;
       for (const sheet of sheets) {
-        const canvas = await html2canvas(sheet, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false, windowHeight: sheet.scrollHeight });
-        const image = canvas.toDataURL('image/jpeg', 0.96);
-        const renderedHeight = canvas.height * pageSize[0] / canvas.width;
-        const pageCount = Math.max(1, Math.ceil(renderedHeight / pageSize[1]));
+        // Se fija el tamaño de captura al tamaño real de la hoja (sin adivinar el ancho de
+        // ventana) para que la proporción del PDF coincida exactamente con el diseño A4/Carta.
+        const width = sheet.offsetWidth;
+        const height = sheet.offsetHeight;
+        const canvas = await html2canvas(sheet, {
+          scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
+          width, height, windowWidth: width, windowHeight: height,
+        });
+        const mmPerPx = pageSize[0] / canvas.width;
+        const pxPerPage = Math.round(pageSize[1] / mmPerPx);
+        const pageCount = Math.max(1, Math.ceil(canvas.height / pxPerPage));
         for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+          // Cada página recorta su propio tramo del canvas (no se vuelve a dibujar la imagen
+          // completa desplazada), evitando que el contenido se repita entre páginas.
+          const sliceHeightPx = Math.min(pxPerPage, canvas.height - pageIndex * pxPerPage);
+          const slice = document.createElement('canvas');
+          slice.width = canvas.width;
+          slice.height = sliceHeightPx;
+          slice.getContext('2d').drawImage(canvas, 0, -(pageIndex * pxPerPage));
+          const image = slice.toDataURL('image/jpeg', 0.96);
           if (outputPage > 0) pdf.addPage(pageSize, 'portrait');
-          pdf.addImage(image, 'JPEG', 0, -(pageIndex * pageSize[1]), pageSize[0], renderedHeight, undefined, 'FAST');
+          pdf.addImage(image, 'JPEG', 0, 0, pageSize[0], sliceHeightPx * mmPerPx, undefined, 'FAST');
           outputPage += 1;
         }
       }
