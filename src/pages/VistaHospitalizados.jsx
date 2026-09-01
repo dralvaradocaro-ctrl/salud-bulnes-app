@@ -68,14 +68,21 @@ function printGenericHospitalSnapshot(snapshot, patient, bed) {
 }
 
 function printStoredEvolution(snapshot, patient, bed) {
-  const isProaDocument = snapshot?.fuente === 'PROA' || /PROA/i.test(String(snapshot?.titulo || '')) || /^\[PROA\]/i.test(String(snapshot?.ultimaEvolucion || '')) || Boolean(snapshot?.documentoOriginal?.proa_entry_type);
-  if (isProaDocument && snapshot.documentoOriginal) {
+  const isProaDocument = snapshot?.fuente === 'PROA' || snapshot?.tipoDocumento === 'proa' || /PROA/i.test(String(snapshot?.titulo || '')) || /^\[PROA\]/i.test(String(snapshot?.ultimaEvolucion || '')) || Boolean(snapshot?.documentoOriginal?.proa_entry_type);
+  if (isProaDocument) {
     const popup = window.open('', '_blank', 'width=900,height=1100');
     if (!popup) return;
     const styles = [...document.querySelectorAll('link[rel="stylesheet"], style')].map(node => node.outerHTML).join('');
     popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Evolución PROA</title>${styles}<style>html,body{margin:0;background:#fff}@page{size:A4 portrait;margin:10mm}@media print{body{margin:0}.proa-evolution-document{box-shadow:none!important}}</style></head><body><div id="proa-print-root"></div></body></html>`);
     popup.document.close();
-    createRoot(popup.document.getElementById('proa-print-root')).render(<ProaEvolutionDocument form={snapshot.documentoOriginal} bed={bed} />);
+    const proaForm = snapshot.documentoOriginal || {
+      paciente: patient?.nombre || '', rut: patient?.rut || '', edad: patient?.edad || '', fecha_ingreso: patient?.fechaIngreso || '',
+      diagnostico_actual: snapshot.diagnosticoPrincipal || snapshot.diagnostico || '', antecedentes: snapshot.antecedentes || '', resumen_caso: snapshot.resumenCaso || '',
+      evolucion: String(snapshot.ultimaEvolucion || '').replace(/^\[PROA\]\s*/i, ''), plan_duracion: String(snapshot.planesPendientes || '').replace(/^\[PLAN PROA\]\s*/i, ''),
+      estudios_imagen: snapshot.estudiosComplementarios || '', antibioterapia_preingreso: snapshot.antibioterapia || '', diagnostico_microbiologico: snapshot.patogenoAislado || '',
+      fecha: snapshot.fecha || '', proa_entry_type: 'evolucion_proa_historica',
+    };
+    createRoot(popup.document.getElementById('proa-print-root')).render(<ProaEvolutionDocument form={proaForm} bed={bed} />);
     setTimeout(() => popup.print(), 1200);
     return;
   }
@@ -160,8 +167,16 @@ function withHistorySnapshot(record, metadata = {}) {
   const previous = history[0] ? clinicalSnapshot(history[0]) : null;
   if (previous && JSON.stringify(previous) === JSON.stringify(snapshot)) return record;
   const now = new Date();
-  const storedSnapshot = metadata.fuente === 'Estado clínico actual' && snapshot.ultimaEvolucion ? { ...snapshot, ultimaEvolucion: `[ESTADO CLÍNICO ACTUAL] ${snapshot.ultimaEvolucion}` } : snapshot;
+  const storedSnapshot = metadata.fuente === 'Estado clínico actual' && snapshot.ultimaEvolucion ? { ...snapshot, tipoDocumento: 'estado_clinico_actual', resumenClinicoImpresion: snapshot.resumenCaso, ultimaEvolucion: `[ESTADO CLÍNICO ACTUAL] ${snapshot.ultimaEvolucion}` } : snapshot;
   return { ...record, historialActualizaciones: [{ ...storedSnapshot, ...metadata, fecha: now.toISOString().slice(0, 10), guardadoEn: now.toISOString() }, ...history].slice(0, 60) };
+}
+
+function withProaHistorySnapshot(record, proaForm) {
+  return withHistorySnapshot(record, {
+    fuente: 'PROA', tipoDocumento: 'proa', titulo: 'Evolución clínica PROA', documentoOriginal: proaForm,
+    ultimaEvolucion: `[PROA] ${proaForm?.evolucion || proaForm?.vista_ultima_evolucion || record.ultimaEvolucion || ''}`.trim(),
+    planesPendientes: proaForm?.plan_duracion ? `[PLAN PROA] ${proaForm.plan_duracion}` : record.planesPendientes,
+  });
 }
 
 function latestFieldMetadata(history, field, currentValue) {
@@ -172,6 +187,13 @@ function latestFieldMetadata(history, field, currentValue) {
     || entries.find(entry => String(entry?.[field] || '').trim());
   if (!matching) return null;
   return { date: matching.guardadoEn || matching.createdAt || matching.updatedAt || matching.fecha || '', isProa: matching.fuente === 'PROA' || /^\[(?:PROA|PLAN PROA)\]/i.test(String(matching[field] || '')) };
+}
+
+function historyDocumentLabel(snapshot) {
+  if (snapshot?.fuente === 'PROA' || snapshot?.tipoDocumento === 'proa' || /PROA/i.test(String(snapshot?.titulo || ''))) return 'PROA';
+  if (snapshot?.fuente === 'Nota de evolución' || snapshot?.tipoDocumento === 'nota_evolucion') return 'Nota de evolución';
+  if (snapshot?.fuente === 'Estado clínico actual' || snapshot?.tipoDocumento === 'estado_clinico_actual') return 'Estado clínico actual';
+  return snapshot?.titulo || 'Actualización clínica';
 }
 
 function combinedDiagnosisAndHistory(record) {
@@ -347,9 +369,9 @@ function proaToPatient(record) {
     reingresoMenor30: form.reingreso_menor_30 === true,
     reingresoFechaEgresoPrevia: form.reingreso_fecha_egreso_previa || '',
     reingresoEvaluadoEn: form.reingreso_evaluado_en || '',
-    historialActualizaciones: (record.evolutions || []).map(evolution => { const evolutionForm = evolution.form || {}; const note = evolutionForm.nota_evolucion || {}; const isNote = Object.keys(note).length > 0; return {
+    historialActualizaciones: (record.evolutions || []).map(evolution => { const evolutionForm = evolution.form || {}; const note = evolutionForm.nota_evolucion || {}; const isNote = Object.values(note).some(value => Array.isArray(value) ? value.length > 0 : String(value || '').trim()); return {
       id: evolution.savedAt, fecha: String(evolution.savedAt || record.updatedAt || '').slice(0, 10), guardadoEn: evolution.savedAt || record.updatedAt,
-      titulo: isNote ? (note.visita_servicio ? 'Visita de servicio · Nota de evolución' : 'Nota de evolución') : 'Evolución PROA', fuente: isNote ? 'Nota de evolución' : 'PROA', documentoOriginal: evolutionForm,
+      titulo: isNote ? (note.visita_servicio ? 'Visita de servicio · Nota de evolución' : 'Nota de evolución') : 'Evolución PROA', fuente: isNote ? 'Nota de evolución' : 'PROA', tipoDocumento: isNote ? 'nota_evolucion' : 'proa', documentoOriginal: evolutionForm,
       diagnostico: evolutionForm.diagnostico_actual || note.diagnostico || '', resumenCaso: evolutionForm.resumen_caso || note.anamnesis || '', ultimaEvolucion: `${isNote ? '[NOTA DE EVOLUCIÓN]' : '[PROA]'} ${evolutionForm.evolucion || note.examen_fisico || evolutionForm.resumen_caso || note.anamnesis || ''}`.trim(),
       planesPendientes: `${isNote ? '' : '[PLAN PROA] '}${evolutionForm.plan_duracion || note.indicaciones || ''}`.trim(), estudiosComplementarios: evolutionForm.estudios_imagen || '', antibioterapia: antibioticSummary(evolutionForm),
       patogenoAislado: pathogenSummary(evolutionForm), ultimoLaboratorio: latestLabSummary(evolutionForm), observaciones: '',
@@ -373,7 +395,14 @@ function mergePatient(base, local) {
   if (proaIsNewer) ['nombre', 'rut', 'fechaNacimiento', 'edad', 'sexo', 'direccion', 'comuna', 'fechaIngreso', 'proaRecordId', 'proaBedCode', 'proaEnrolled', 'pacienteSocial', 'diagnosticoPrincipal', 'diagnostico', 'antibioterapia', 'antibioticos', 'aislamiento', 'patogenoAislado', 'ultimoLaboratorio', 'laboratorios', 'cultivos', 'planAlta', 'informesMedicos'].forEach(key => {
     if (base[key] !== '' && base[key] !== undefined) merged[key] = base[key];
   });
-  merged.historialActualizaciones = [...(base.historialActualizaciones || []), ...(local?.historialActualizaciones || [])].filter((item, index, items) => items.findIndex(candidate => String(candidate.id || candidate.guardadoEn || candidate.fecha) === String(item.id || item.guardadoEn || item.fecha)) === index).sort((a, b) => String(b.guardadoEn || b.fecha || '').localeCompare(String(a.guardadoEn || a.fecha || ''))).slice(0, 100);
+  const baseHistory = base.historialActualizaciones || [];
+  const comparableText = value => String(value || '').replace(/^\[(?:PROA|PLAN PROA|ESTADO CLÍNICO ACTUAL|NOTA DE EVOLUCIÓN)\]\s*/i, '').trim().toLocaleLowerCase('es-CL');
+  const repairedLocalHistory = (local?.historialActualizaciones || []).map(item => {
+    if (item.fuente || item.tipoDocumento) return item;
+    const matchingProa = baseHistory.find(candidate => candidate.fuente === 'PROA' && comparableText(candidate.ultimaEvolucion) && comparableText(candidate.ultimaEvolucion) === comparableText(item.ultimaEvolucion));
+    return matchingProa ? { ...item, fuente: 'PROA', tipoDocumento: 'proa', titulo: 'Evolución clínica PROA', documentoOriginal: matchingProa.documentoOriginal, ultimaEvolucion: matchingProa.ultimaEvolucion, planesPendientes: matchingProa.planesPendientes || item.planesPendientes } : item;
+  });
+  merged.historialActualizaciones = [...baseHistory, ...repairedLocalHistory].filter((item, index, items) => items.findIndex(candidate => String(candidate.id || candidate.guardadoEn || candidate.fecha) === String(item.id || item.guardadoEn || item.fecha)) === index).sort((a, b) => String(b.guardadoEn || b.fecha || '').localeCompare(String(a.guardadoEn || a.fecha || ''))).slice(0, 100);
   return merged;
 }
 
@@ -1130,7 +1159,8 @@ function VistaHospitalizados() {
         const latestCreated = getLatestProaForm(created) || {};
         if (proaQuick.aislamiento) await saveProaRecord({ ...latestCreated, aislamiento: proaQuick.aislamiento, fecha: new Date().toISOString().slice(0, 10), hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'ingreso_rapido_vista_general' });
         const antibioticText = structuredAntibioticSummary(antibiotics);
-        const nextDraft = { ...draft, nombre: proaQuick.paciente, rut: formatRut(proaQuick.rut), edad: proaQuick.edad, sexo: proaQuick.sexo, fechaIngreso: proaQuick.fecha_ingreso, diagnosticoPrincipal: proaQuick.diagnostico, aislamiento: proaQuick.aislamiento, ultimaEvolucion: proaQuick.evolucion, resumenCaso: proaQuick.resumen_caso, estudiosComplementarios: proaQuick.estudios_imagen, planesPendientes: proaQuick.plan_duracion, antibioterapia: antibioticText, antibioticos: antibiotics, patogenoAislado: cultures.map(item => item.patogeno).filter(value => !isNegativeMicroResult(value)).join(', '), proaRecordId: created.id, proaBedCode: created.bedCode, proaUpdatedAt: created.updatedAt, updatedAt: new Date().toISOString() };
+        const storedProaForm = { ...latestCreated, paciente: proaQuick.paciente, rut: proaQuick.rut, edad: proaQuick.edad, sexo: proaQuick.sexo, fecha_ingreso: proaQuick.fecha_ingreso, diagnostico_actual: proaQuick.diagnostico, aislamiento: proaQuick.aislamiento, evolucion: proaQuick.evolucion, resumen_caso: proaQuick.resumen_caso, estudios_imagen: proaQuick.estudios_imagen, plan_duracion: proaQuick.plan_duracion, antibioticos: antibiotics, estudios_micro: cultures, fecha: new Date().toISOString().slice(0, 10), proa_entry_type: 'ingreso_rapido_vista_general' };
+        const nextDraft = withProaHistorySnapshot({ ...draft, nombre: proaQuick.paciente, rut: formatRut(proaQuick.rut), edad: proaQuick.edad, sexo: proaQuick.sexo, fechaIngreso: proaQuick.fecha_ingreso, diagnosticoPrincipal: proaQuick.diagnostico, aislamiento: proaQuick.aislamiento, ultimaEvolucion: proaQuick.evolucion, resumenCaso: proaQuick.resumen_caso, estudiosComplementarios: proaQuick.estudios_imagen, planesPendientes: proaQuick.plan_duracion, antibioterapia: antibioticText, antibioticos: antibiotics, patogenoAislado: cultures.map(item => item.patogeno).filter(value => !isNegativeMicroResult(value)).join(', '), proaRecordId: created.id, proaBedCode: created.bedCode, proaUpdatedAt: created.updatedAt, updatedAt: new Date().toISOString() }, storedProaForm);
         const nextRegistry = { ...registry, [selectedCode]: nextDraft };
         setDraft(nextDraft); setRegistry(nextRegistry); localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRegistry)); if (!keepOpen) setProaOpen(false); if (previewAfter) setPreview?.(true); setSaved(true);
         return;
@@ -1141,13 +1171,14 @@ function VistaHospitalizados() {
       const cultures = proaQuick.cultivos.filter(item => item.fecha || item.tipo_muestra || item.patogeno);
       const antibiotics = proaQuick.antibioticos.filter(item => item.nombre);
       const antibioticText = structuredAntibioticSummary(antibiotics);
-      await saveProaRecord({
+      const storedProaForm = {
         ...latest, aislamiento: proaQuick.aislamiento, evolucion: proaQuick.evolucion, vista_ultima_evolucion: proaQuick.evolucion, resumen_caso: proaQuick.resumen_caso, estudios_imagen: proaQuick.estudios_imagen, plan_duracion: proaQuick.plan_duracion, parametros_inflamatorios: proaQuick.examenes_sangre.filter(item => Object.entries(item).some(([key,value]) => key !== 'fecha' && value)), examenes_complementarios: proaQuick.examenes_complementarios.filter(item => item.fecha || item.nombre || item.resultado), antibioticos: antibiotics, antibioticos_eliminados: proaQuick.antibioticos_eliminados || [], antibioterapia_preingreso: antibioticText,
         estudios_micro: cultures, diagnostico_microbiologico: cultures.map(item => item.patogeno).filter(value => value && !isNegativeMicroResult(value)).join(', '),
         fecha: new Date().toISOString().slice(0, 10), hora: new Date().toTimeString().slice(0, 5), proa_entry_type: 'actualizacion_vista_general',
-      });
+      };
+      await saveProaRecord(storedProaForm);
       const pathogen = cultures.map(item => item.patogeno).filter(value => value && !isNegativeMicroResult(value)).join(', ');
-      const nextDraft = { ...draft, aislamiento: proaQuick.aislamiento, ultimaEvolucion: proaQuick.evolucion, resumenCaso: proaQuick.resumen_caso, estudiosComplementarios: proaQuick.estudios_imagen, planesPendientes: proaQuick.plan_duracion, antibioterapia: antibioticText, antibioticos: antibiotics, patogenoAislado: pathogen, updatedAt: new Date().toISOString() };
+      const nextDraft = withProaHistorySnapshot({ ...draft, aislamiento: proaQuick.aislamiento, ultimaEvolucion: proaQuick.evolucion, resumenCaso: proaQuick.resumen_caso, estudiosComplementarios: proaQuick.estudios_imagen, planesPendientes: proaQuick.plan_duracion, antibioterapia: antibioticText, antibioticos: antibiotics, patogenoAislado: pathogen, updatedAt: new Date().toISOString() }, storedProaForm);
       const nextRegistry = { ...registry, [selectedCode]: nextDraft };
       setDraft(nextDraft); setRegistry(nextRegistry); localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRegistry));
       if (!keepOpen) setProaOpen(false); if (previewAfter) setPreview?.(true); setSaved(true);
@@ -1250,7 +1281,7 @@ function VistaHospitalizados() {
             <section className={`${patientViewTab === 'proa' ? 'block' : 'hidden'} rounded-xl border border-emerald-200 bg-emerald-50/60 p-4`}><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-black text-emerald-950">Información PROA</h3><p className="text-xs text-emerald-700">Antibioterapia, aislamiento, cultivos y planes del equipo PROA.</p></div><Button type="button" variant="outline" onClick={openProaChecked} className="gap-2 border-emerald-300 bg-white text-emerald-800"><ShieldCheck className="h-4 w-4" />Editar en PROA</Button></div><div className="grid gap-3 md:grid-cols-2"><div className="rounded-lg border border-emerald-100 bg-white p-3 md:col-span-2"><p className="text-xs font-black uppercase text-emerald-800">Antibioterapia</p><p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{draft.antibioterapia || 'Sin antibioterapia registrada'}</p></div><div className="rounded-lg border border-emerald-100 bg-white p-3"><p className="text-xs font-black uppercase text-emerald-800">Aislamiento / precauciones</p><p className="mt-1 text-sm text-slate-700">{draft.aislamiento || 'No consignado'}</p></div><div className="rounded-lg border border-emerald-100 bg-white p-3"><p className="text-xs font-black uppercase text-emerald-800">Patógenos / cultivos</p><p className="mt-1 text-sm text-slate-700">{draft.patogenoAislado || 'Sin aislamiento microbiológico'}</p></div><div className="rounded-lg border border-teal-200 bg-teal-50 p-3 md:col-span-2"><p className="text-xs font-black uppercase text-teal-800">Plan PROA</p><p className="mt-1 whitespace-pre-wrap text-sm font-medium text-teal-950">{draft.planesPendientes || 'Sin plan PROA registrado'}</p></div></div></section>
             <div className={`${patientViewTab === 'evolutions' ? 'block' : 'hidden'} mt-5 rounded-xl border border-teal-200 bg-teal-50/60 p-4`}>
               <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-sm font-black text-teal-950">Historia de evoluciones</h3><p className="text-xs text-teal-700">Registros clínicos fechados, disponibles para consulta e impresión.</p></div><Button type="button" variant="outline" size="sm" onClick={() => setDocumentArchiveOpen(true)} className="gap-1 border-teal-300 bg-white text-teal-800 hover:bg-teal-50"><Printer className="h-3.5 w-3.5" />Abrir historia ({(draft.historialActualizaciones || []).length})</Button></div>
-              <div className="mt-3 space-y-2">{(draft.historialActualizaciones || []).map((snapshot, index) => { const savedAt = snapshot.guardadoEn || snapshot.createdAt || snapshot.updatedAt || snapshot.fecha; return <div key={snapshot.id || `${savedAt}-${index}`} className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-teal-100 bg-white p-3"><div className="min-w-0 flex-1"><p className="font-black text-slate-900">{savedAt ? new Date(savedAt).toLocaleString('es-CL') : 'Fecha no consignada'}</p><p className="line-clamp-2 break-words text-xs text-slate-500">{snapshot.ultimaEvolucion || snapshot.resumenCaso || snapshot.diagnostico || 'Evolución clínica'}</p></div><div className="flex shrink-0 gap-1"><Button type="button" size="icon" variant="ghost" title="Editar" onClick={() => editHospitalHistory(index)} className="text-teal-700"><Pencil className="h-4 w-4" /></Button><Button type="button" size="icon" variant="ghost" title="Imprimir" onClick={() => printHospitalSnapshot(snapshot, draft, selectedBed)} className="text-indigo-700"><Printer className="h-4 w-4" /></Button><Button type="button" size="icon" variant="ghost" title="Borrar" onClick={() => deleteHospitalHistory(index)} className="text-red-600"><Trash2 className="h-4 w-4" /></Button></div></div>; })}{!(draft.historialActualizaciones || []).length && <p className="rounded-lg border border-dashed border-teal-200 bg-white p-4 text-sm text-slate-500">Sin evoluciones almacenadas.</p>}</div>
+              <div className="mt-3 space-y-2">{(draft.historialActualizaciones || []).map((snapshot, index) => { const savedAt = snapshot.guardadoEn || snapshot.createdAt || snapshot.updatedAt || snapshot.fecha; const documentLabel = historyDocumentLabel(snapshot); return <div key={snapshot.id || `${savedAt}-${index}`} className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-lg border border-teal-100 bg-white p-3"><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><p className="font-black text-slate-900">{savedAt ? new Date(savedAt).toLocaleString('es-CL') : 'Fecha no consignada'}</p><span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${documentLabel === 'PROA' ? 'bg-emerald-100 text-emerald-800' : documentLabel === 'Estado clínico actual' ? 'bg-cyan-100 text-cyan-800' : 'bg-indigo-100 text-indigo-800'}`}>{documentLabel}</span></div><p className="line-clamp-2 break-words text-xs text-slate-500">{snapshot.ultimaEvolucion || snapshot.resumenCaso || snapshot.diagnostico || 'Evolución clínica'}</p></div><div className="flex shrink-0 gap-1"><Button type="button" size="icon" variant="ghost" title="Editar" onClick={() => editHospitalHistory(index)} className="text-teal-700"><Pencil className="h-4 w-4" /></Button><Button type="button" size="icon" variant="ghost" title={`Imprimir ${documentLabel}`} onClick={() => printHospitalSnapshot(snapshot, draft, selectedBed)} className="text-indigo-700"><Printer className="h-4 w-4" /></Button><Button type="button" size="icon" variant="ghost" title="Borrar" onClick={() => deleteHospitalHistory(index)} className="text-red-600"><Trash2 className="h-4 w-4" /></Button></div></div>; })}{!(draft.historialActualizaciones || []).length && <p className="rounded-lg border border-dashed border-teal-200 bg-white p-4 text-sm text-slate-500">Sin evoluciones almacenadas.</p>}</div>
             </div>
             </>}
           </section>
