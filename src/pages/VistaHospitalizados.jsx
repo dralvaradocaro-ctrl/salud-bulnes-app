@@ -47,13 +47,17 @@ const DISCHARGE_REASONS = ['Alta médica', 'Fallecimiento', 'Traslado a otro ser
 const ISOLATION_TYPES = ['Sin aislamiento', 'Contacto', 'Gotitas', 'Aéreo', 'Contacto + gotitas', 'Contacto + aéreo', 'Protector / neutropénico', 'Otro'];
 
 function printPreviewElement(selector, title) {
-  const element = document.querySelector(selector);
-  if (!element) return;
-  const curve = document.querySelector('.proa-quick-curve');
-  const popup = window.open('', '_blank', 'width=1000,height=800');
+  const container = document.querySelector(selector);
+  if (!container) return;
+  // Se toma solo el documento en sí, no el contenedor de la vista previa en pantalla
+  // (que trae borde, sombra y recorte propios del modal y distorsionaban la impresión).
+  const documentElement = container.querySelector('.proa-evolution-document') || container;
+  const popup = window.open('', '_blank', 'width=900,height=1100');
   if (!popup) return;
-  const styles = [...document.querySelectorAll('link[rel="stylesheet"], style')].map(node => node.outerHTML).join('');
-  popup.document.write(`<!doctype html><html><head><title>${title}</title><meta charset="utf-8">${styles}<style>body{margin:0;padding:16mm;font-family:Arial,sans-serif;color:#0f172a}@page{size:A4 portrait;margin:14mm}.proa-signature{margin:32px 0 0 auto;width:72mm;text-align:center}.proa-signature div{height:22mm;border-bottom:1px solid #111}.proa-signature p{margin:5px 0;font-size:12px}@media print{body{padding:0}}</style></head><body>${element.outerHTML}${curve?.outerHTML || ''}<footer class="proa-signature"><div></div><p><strong>Firma y timbre del profesional</strong></p></footer><script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+  popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${title}</title><style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#e2e8f0}.proa-preview-toolbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 18px;background:#fff;border-bottom:1px solid #cbd5e1;font-family:Arial,sans-serif}.proa-preview-toolbar p{margin:0;color:#475569;font-size:13px}.proa-preview-toolbar button{border:0;border-radius:8px;background:#0f766e;color:#fff;padding:10px 16px;font-weight:800;cursor:pointer}.proa-evolution-document{width:190mm!important;max-width:calc(100vw - 32px)!important;min-height:0!important;margin:18px auto!important;background:#fff!important;box-shadow:0 6px 24px #33415555!important}.proa-document-table{table-layout:fixed!important}.proa-document-table th,.proa-document-table td{overflow-wrap:anywhere!important}.proa-chart,.proa-chart>div,.recharts-responsive-container{width:100%!important;max-width:100%!important}.recharts-wrapper,.recharts-surface{max-width:100%!important}.proa-signature{margin:6mm 0 0 auto;width:72mm;text-align:center}.proa-signature div{height:22mm;border-bottom:1px solid #111}.proa-signature p{margin:5px 0;font-size:12px}
+    @page{size:A4 portrait;margin:10mm}@media print{html,body{background:#fff!important;width:auto!important}.proa-preview-toolbar{display:none!important}.proa-evolution-document{width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;box-shadow:none!important}.proa-document-block,.proa-chart{break-inside:avoid;page-break-inside:avoid}}
+  </style></head><body><div class="proa-preview-toolbar"><p>Vista previa de la evolución PROA. Revise el contenido antes de imprimir.</p><button type="button" onclick="window.print()">Imprimir / guardar PDF</button></div>${documentElement.outerHTML}<footer class="proa-signature"><div></div><p><strong>Firma y timbre del profesional</strong></p></footer></body></html>`);
   popup.document.close();
 }
 
@@ -67,23 +71,41 @@ function printGenericHospitalSnapshot(snapshot, patient, bed) {
   popup.document.close();
 }
 
+function printProaEvolutionSnapshot(snapshot, patient, bed) {
+  const proaForm = snapshot.documentoOriginal || {
+    paciente: patient?.nombre || '', rut: patient?.rut || '', edad: patient?.edad || '', fecha_ingreso: patient?.fechaIngreso || '',
+    diagnostico_actual: snapshot.diagnosticoPrincipal || snapshot.diagnostico || '', antecedentes: snapshot.antecedentes || '', resumen_caso: snapshot.resumenCaso || '',
+    evolucion: String(snapshot.ultimaEvolucion || '').replace(/^\[PROA\]\s*/i, ''), plan_duracion: String(snapshot.planesPendientes || '').replace(/^\[PLAN PROA\]\s*/i, ''),
+    estudios_imagen: snapshot.estudiosComplementarios || '', antibioterapia_preingreso: snapshot.antibioterapia || '', diagnostico_microbiologico: snapshot.patogenoAislado || '',
+    fecha: snapshot.fecha || '', proa_entry_type: 'evolucion_proa_historica',
+  };
+  // Se renderiza el documento fuera de pantalla, en la ventana actual (con layout y estilos reales),
+  // para poder tomar su markup ya resuelto (incluyendo gráficos) y recién ahí abrir la ventana de impresión.
+  const offscreen = document.createElement('div');
+  offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;pointer-events:none;';
+  document.body.appendChild(offscreen);
+  const root = createRoot(offscreen);
+  root.render(<ProaEvolutionDocument form={proaForm} bed={bed} />);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const documentElement = offscreen.querySelector('.proa-evolution-document');
+    const markup = documentElement?.outerHTML || '';
+    root.unmount();
+    offscreen.remove();
+    if (!markup) return;
+    const popup = window.open('', '_blank', 'width=900,height=1100');
+    if (!popup) return;
+    popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Evolución PROA</title><style>
+      *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#e2e8f0}.proa-preview-toolbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 18px;background:#fff;border-bottom:1px solid #cbd5e1;font-family:Arial,sans-serif}.proa-preview-toolbar p{margin:0;color:#475569;font-size:13px}.proa-preview-toolbar button{border:0;border-radius:8px;background:#0f766e;color:#fff;padding:10px 16px;font-weight:800;cursor:pointer}.proa-evolution-document{width:190mm!important;max-width:calc(100vw - 32px)!important;min-height:0!important;margin:18px auto!important;background:#fff!important;box-shadow:0 6px 24px #33415555!important}.proa-document-table{table-layout:fixed!important}.proa-document-table th,.proa-document-table td{overflow-wrap:anywhere!important}.proa-chart,.proa-chart>div,.recharts-responsive-container{width:100%!important;max-width:100%!important}.recharts-wrapper,.recharts-surface{max-width:100%!important}
+      @page{size:A4 portrait;margin:10mm}@media print{html,body{background:#fff!important;width:auto!important}.proa-preview-toolbar{display:none!important}.proa-evolution-document{width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;box-shadow:none!important}.proa-document-block,.proa-chart{break-inside:avoid;page-break-inside:avoid}}
+    </style></head><body><div class="proa-preview-toolbar"><p>Vista previa de la evolución PROA. Revise el contenido antes de imprimir.</p><button type="button" onclick="window.print()">Imprimir / guardar PDF</button></div>${markup}</body></html>`);
+    popup.document.close();
+  }));
+}
+
 function printStoredEvolution(snapshot, patient, bed) {
   const isProaDocument = snapshot?.fuente === 'PROA' || snapshot?.tipoDocumento === 'proa' || /PROA/i.test(String(snapshot?.titulo || '')) || /^\[PROA\]/i.test(String(snapshot?.ultimaEvolucion || '')) || Boolean(snapshot?.documentoOriginal?.proa_entry_type);
   if (isProaDocument) {
-    const popup = window.open('', '_blank', 'width=900,height=1100');
-    if (!popup) return;
-    const styles = [...document.querySelectorAll('link[rel="stylesheet"], style')].map(node => node.outerHTML).join('');
-    popup.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Evolución PROA</title>${styles}<style>html,body{margin:0;background:#fff}@page{size:A4 portrait;margin:10mm}@media print{body{margin:0}.proa-evolution-document{box-shadow:none!important}}</style></head><body><div id="proa-print-root"></div></body></html>`);
-    popup.document.close();
-    const proaForm = snapshot.documentoOriginal || {
-      paciente: patient?.nombre || '', rut: patient?.rut || '', edad: patient?.edad || '', fecha_ingreso: patient?.fechaIngreso || '',
-      diagnostico_actual: snapshot.diagnosticoPrincipal || snapshot.diagnostico || '', antecedentes: snapshot.antecedentes || '', resumen_caso: snapshot.resumenCaso || '',
-      evolucion: String(snapshot.ultimaEvolucion || '').replace(/^\[PROA\]\s*/i, ''), plan_duracion: String(snapshot.planesPendientes || '').replace(/^\[PLAN PROA\]\s*/i, ''),
-      estudios_imagen: snapshot.estudiosComplementarios || '', antibioterapia_preingreso: snapshot.antibioterapia || '', diagnostico_microbiologico: snapshot.patogenoAislado || '',
-      fecha: snapshot.fecha || '', proa_entry_type: 'evolucion_proa_historica',
-    };
-    createRoot(popup.document.getElementById('proa-print-root')).render(<ProaEvolutionDocument form={proaForm} bed={bed} />);
-    setTimeout(() => popup.print(), 1200);
+    printProaEvolutionSnapshot(snapshot, patient, bed);
     return;
   }
   if (snapshot?.fuente === 'Nota de evolución') {
