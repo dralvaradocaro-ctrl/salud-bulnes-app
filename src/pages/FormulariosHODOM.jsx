@@ -38,10 +38,10 @@ function Rule({ value = '', className = '' }) {
   return <span className={`hodom-inline-rule ${className}`}>{value || '\u00a0'}</span>;
 }
 
-function RuledText({ value, lines }) {
-  const text = String(value || '');
-  return <div className="hodom-ruled-text" style={{ minHeight: `${lines * 6}mm` }}>
-    <div className="hodom-rule-content" lang="es">{text || '\u00a0'}</div>
+function RuledText({ value }) {
+  const text = String(value || '').replace(/\r\n?/g, '\n').trim();
+  return <div className={`hodom-ruled-text${text ? '' : ' is-empty'}`}>
+    <div className="hodom-rule-content" lang="es">{text || '—'}</div>
   </div>;
 }
 
@@ -96,6 +96,116 @@ function ConsentimientoDocument({ f }) {
       <div className="authorization"><p>AUTORIZACIÓN (Como resultado de la información recibida)</p><p>ACEPTO <Rule value={f.acepta === 'si' ? 'X' : ''} className="choice" /> <span className="choice-gap">NO ACEPTO <Rule value={f.acepta === 'no' ? 'X' : ''} className="choice" /></span></p><p>La hospitalización, las condiciones y objetivos propuestos para el estudio y tratamiento así como los riesgos que conlleva la hospitalización.</p><p>Yo (si/ no) <Rule value={f.autorizaInvestigacion === 'si' ? 'Sí' : f.autorizaInvestigacion === 'no' ? 'No' : ''} className="choice" /> AUTORIZO que los datos de la historia clínica sean utilizados en investigaciones de carácter científico en las condiciones que me fueron explicadas</p><div className="signatures"><div><Rule className="sign" /><br />Firma Paciente, Familiar<br />o Cuidador</div><div><Rule className="sign" /><br />Firma y timbre Médico</div></div></div>
     </section>
   </div>;
+}
+
+function loadImageDataUrl(src) {
+  return new Promise(resolve => {
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      canvas.getContext('2d').drawImage(image, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    image.onerror = () => resolve(null);
+    image.src = src;
+  });
+}
+
+async function createDerivacionPdf(jsPDF, f) {
+  const pageSize = [216, 279];
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: pageSize, compress: true });
+  const left = 18;
+  const right = 198;
+  const top = 12;
+  const bottom = 263;
+  const width = right - left;
+  let y = top;
+
+  const addPage = () => {
+    pdf.addPage(pageSize, 'portrait');
+    y = top;
+  };
+  const ensureSpace = height => {
+    if (y + height > bottom) addPage();
+  };
+  const drawLines = (lines, { size = 11, leading = 5.1, font = 'normal', indent = 0 } = {}) => {
+    pdf.setFont('times', font);
+    pdf.setFontSize(size);
+    lines.forEach(line => {
+      ensureSpace(leading);
+      pdf.text(line || ' ', left + indent, y);
+      y += leading;
+    });
+  };
+  const drawText = (value, options = {}) => {
+    const size = options.size || 11;
+    const textWidth = width - (options.indent || 0);
+    const paragraphs = String(value || '—').replace(/\r\n?/g, '\n').split('\n');
+    paragraphs.forEach((paragraph, index) => {
+      const wrapped = pdf.splitTextToSize(paragraph || ' ', textWidth);
+      drawLines(wrapped, { ...options, size });
+      if (index < paragraphs.length - 1) y += 1.2;
+    });
+  };
+  const drawHeading = title => {
+    ensureSpace(18);
+    if (y > top + 1) y += 2.5;
+    pdf.setDrawColor(20, 20, 20);
+    pdf.setLineWidth(0.35);
+    pdf.line(left, y, right, y);
+    y += 4.8;
+    pdf.setFont('times', 'bold');
+    pdf.setFontSize(11.5);
+    pdf.text(title, left, y);
+    y += 2.2;
+    pdf.setLineWidth(0.2);
+    pdf.line(left, y, right, y);
+    y += 5;
+  };
+  const drawSection = (title, value) => {
+    drawHeading(title);
+    drawText(value, { size: 11, leading: 5.15 });
+  };
+  const drawMeta = (label, value) => {
+    ensureSpace(6);
+    pdf.setFont('times', 'bold');
+    pdf.setFontSize(10.5);
+    pdf.text(`${label}:`, left, y);
+    const labelWidth = pdf.getTextWidth(`${label}: `);
+    const wrapped = pdf.splitTextToSize(String(value || ' '), width - labelWidth);
+    pdf.setFont('times', 'normal');
+    pdf.text(wrapped[0] || ' ', left + labelWidth, y);
+    y += 5;
+    if (wrapped.length > 1) drawLines(wrapped.slice(1), { size: 10.5, leading: 4.8, indent: labelWidth });
+  };
+
+  const logo = await loadImageDataUrl('/logo-hospital.png');
+  if (logo) pdf.addImage(logo, 'PNG', left, top, 26, 24, undefined, 'FAST');
+  pdf.setFont('times', 'bold');
+  pdf.setFontSize(14);
+  pdf.text(['DERIVACIÓN', 'HODOM – HCSF BULNES'], 108, top + 8, { align: 'center', lineHeightFactor: 1.25 });
+  y = top + 30;
+  drawMeta('NOMBRE', f.nombre);
+  drawMeta('RUT', f.rut);
+  drawMeta('EDAD', f.edad);
+  drawMeta('TELÉFONO', f.telefono);
+  drawMeta('DOMICILIO', f.domicilio);
+  drawMeta('CUIDADOR PRINCIPAL', f.cuidador);
+  drawMeta('TELÉFONO CUIDADOR PRINCIPAL', f.telefonoCuidador);
+  drawSection('ANTECEDENTES MÓRBIDOS RELEVANTES', f.antecedentes);
+  drawSection('DIAGNÓSTICOS ACTUALES', f.diagnosticos);
+  drawSection('ANAMNESIS Y EVOLUCIÓN CLÍNICA HOSPITALARIA', f.anamnesis);
+  drawSection('MOTIVO DE DERIVACIÓN A HODOM', f.motivo);
+  drawSection('PLANES Y OBJETIVOS A CUMPLIR EN HODOM', f.planes);
+  drawSection('INDICACIONES MÉDICAS', f.indicaciones);
+  ensureSpace(26);
+  y += 7;
+  drawMeta('FECHA', formatDate(f.fechaDerivacion));
+  drawMeta('MÉDICO DERIVADOR', f.medicoDerivador);
+  drawMeta('FIRMA Y TIMBRE', '');
+  return pdf;
 }
 
 export default function FormulariosHODOM() {
@@ -155,10 +265,18 @@ export default function FormulariosHODOM() {
     exportRef.current.classList.add('hodom-exporting');
     try {
       await document.fonts?.ready;
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import('html2canvas'), import('jspdf')]);
+      const { jsPDF } = await import('jspdf');
+      const patient = (f.nombre || 'paciente').trim().replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ_-]+/g, '_');
+      if (active === 'derivacion') {
+        const pdf = await createDerivacionPdf(jsPDF, f);
+        pdf.save(`Derivacion_HODOM_${patient}.pdf`);
+        await prepareRegistryPrompt();
+        return;
+      }
+      const { default: html2canvas } = await import('html2canvas');
       const sheets = [...exportRef.current.querySelectorAll('.hodom-sheet')];
-      const pageSize = active === 'derivacion' ? [216, 279] : [210, 297];
-      const pageMargins = active === 'derivacion' ? { top: 12, right: 18, bottom: 16, left: 18 } : { top: 0, right: 0, bottom: 0, left: 0 };
+      const pageSize = [210, 297];
+      const pageMargins = { top: 0, right: 0, bottom: 0, left: 0 };
       const contentWidthMm = pageSize[0] - pageMargins.left - pageMargins.right;
       const contentHeightMm = pageSize[1] - pageMargins.top - pageMargins.bottom;
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: pageSize, compress: true });
@@ -189,8 +307,7 @@ export default function FormulariosHODOM() {
           outputPage += 1;
         }
       }
-      const patient = (f.nombre || 'paciente').trim().replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ_-]+/g, '_');
-      pdf.save(`${active === 'derivacion' ? 'Derivacion_HODOM' : 'Consentimiento_HODOM'}_${patient}.pdf`);
+      pdf.save(`Consentimiento_HODOM_${patient}.pdf`);
       await prepareRegistryPrompt();
     } finally {
       exportRef.current?.classList.remove('hodom-exporting');
@@ -203,17 +320,17 @@ export default function FormulariosHODOM() {
   return <>
     <style>{`
       @page { size: ${active === 'derivacion' ? 'Letter' : 'A4'}; margin: ${active === 'derivacion' ? '12mm 18mm 16mm' : '0'}; }
-      .hodom-doc{color:#000;background:#e2e8f0;font-family:Arial,sans-serif}.hodom-sheet{position:relative;margin:0 auto 18px;background:#fff;box-sizing:border-box;overflow:visible}.letter-sheet{width:216mm;min-height:279mm}.a4-sheet{width:210mm;min-height:297mm}.hodom-logo{width:26mm;height:24mm;object-fit:contain}.derivacion-sheet{padding:12mm 18mm 16mm;font-family:'Times New Roman',serif;font-size:12pt;line-height:1.2}.derivacion-sheet h1{text-align:center;font-size:14pt;line-height:1.25;margin:-2mm 0 5mm}.derivacion-sheet h2{font-size:12pt;margin:5mm 0 3mm}.derivacion-sheet .patient-lines p{display:flex;align-items:baseline;margin:0 0 4mm;gap:2mm}.derivacion-sheet .three{justify-content:space-between}.derivacion-sheet .three>span{white-space:nowrap}.derivacion-sheet .grow{flex:1}.hodom-inline-rule{display:inline-block;box-sizing:border-box;min-width:10mm;height:6.2mm;padding:0 1mm 1.35mm;border-bottom:.45pt solid #111;line-height:4.2mm;vertical-align:baseline;color:#000!important;text-decoration:none!important;background:#fff!important}.hodom-ruled-text{position:relative;display:block;box-sizing:border-box;width:100%;max-width:100%;min-width:0;overflow:visible;background:#fff!important;color:#000!important;break-inside:auto}.hodom-rule-content{box-sizing:border-box;width:100%;padding:0 1.5mm;font-size:12pt;line-height:6mm;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;text-align:left;color:#000!important;background-image:linear-gradient(to bottom,transparent calc(6mm - .35pt),#c3cbd4 calc(6mm - .35pt),#c3cbd4 6mm);background-size:100% 6mm;background-repeat:repeat-y;background-position:0 0}.derivacion-sheet.second{padding-top:15mm}.derivacion-sheet.second h2:first-child{margin-top:0}.signature-lines{margin-top:10mm}.signature-lines p{margin:0 0 4mm}.signature-rule{width:82mm}
+      .hodom-doc{color:#000;background:#e2e8f0;font-family:Arial,sans-serif}.hodom-sheet{position:relative;margin:0 auto 18px;background:#fff;box-sizing:border-box;overflow:visible}.letter-sheet{width:216mm;min-height:279mm}.a4-sheet{width:210mm;min-height:297mm}.hodom-logo{width:26mm;height:24mm;object-fit:contain}.derivacion-sheet{padding:12mm 18mm 16mm;font-family:'Times New Roman',serif;font-size:11pt;line-height:1.38}.derivacion-sheet h1{text-align:center;font-size:14pt;line-height:1.25;margin:-2mm 0 6mm}.derivacion-sheet h2{border-top:.8pt solid #111;border-bottom:.45pt solid #111;padding:1.8mm 0 1.4mm;font-size:11.5pt;font-weight:700;line-height:1.2;margin:5mm 0 2.5mm}.derivacion-sheet .patient-lines{margin-bottom:1mm}.derivacion-sheet .patient-lines p{display:flex;align-items:baseline;margin:0 0 2.5mm;gap:2mm;line-height:1.3}.derivacion-sheet .three{justify-content:space-between}.derivacion-sheet .three>span{white-space:nowrap}.derivacion-sheet .grow{flex:1}.hodom-inline-rule{display:inline-block;box-sizing:border-box;min-width:10mm;height:auto;min-height:5mm;padding:0 .6mm;border-bottom:.45pt solid #111;line-height:1.3;vertical-align:baseline;color:#000!important;text-decoration:none!important;background:#fff!important}.derivacion-sheet .hodom-inline-rule{border-bottom:0;padding:0}.hodom-ruled-text{position:relative;display:block;box-sizing:border-box;width:100%;max-width:100%;min-width:0;overflow:visible;background:#fff!important;color:#000!important;break-inside:auto;page-break-inside:auto}.hodom-ruled-text.is-empty{min-height:5mm}.hodom-rule-content{box-sizing:border-box;width:100%;padding:0;font-size:11pt;line-height:1.38;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;text-align:left;color:#000!important;background:none!important;orphans:3;widows:3}.signature-lines{margin-top:8mm}.signature-lines p{margin:0 0 3mm}.signature-rule{width:82mm}
       .consentimiento-sheet{padding:17mm 18mm 14mm;font-family:Arial,sans-serif;font-size:9pt;line-height:1.42;text-align:justify}.consent-header{display:flex;align-items:center;gap:2mm;margin-bottom:-1mm}.consent-header h1{font-size:13pt;white-space:nowrap}.consentimiento-sheet p{margin:0 0 2.1mm}.consentimiento-sheet .date-line{text-align:right;font-size:11pt;margin-bottom:1mm}.consentimiento-sheet .long{width:118mm}.consentimiento-sheet .medium{width:75mm}.representative{width:93mm}.quality{width:39mm}.patient-inline{width:82mm}.doctor-inline{width:64mm}.diagnosis{display:block;width:100%;height:5mm}.consentimiento-sheet ol{display:block;list-style-type:decimal;list-style-position:outside;margin:0 0 5mm 10mm;padding-left:4mm}.consentimiento-sheet li{display:list-item;padding-left:3mm}.authorization{border:1pt solid #000;padding:2mm;font-size:9.5pt;text-align:left}.choice{width:15mm;text-align:center}.choice-gap{margin-left:27mm}.signatures{display:flex;justify-content:space-between;text-align:center;margin:12mm 2mm 0}.sign{width:51mm}
-      .derivacion-sheet h2{break-after:avoid-page;page-break-after:avoid}.derivacion-sheet .patient-lines{break-inside:avoid;page-break-inside:avoid}.hodom-rule-content{overflow-wrap:anywhere}.hodom-continuation{margin-top:5mm}.signature-lines{break-inside:avoid;page-break-inside:avoid}
+      .derivacion-sheet h2{break-after:avoid-page;page-break-after:avoid}.derivacion-sheet .patient-lines{break-inside:avoid;page-break-inside:avoid}.hodom-rule-content{overflow-wrap:anywhere}.hodom-continuation{margin-top:0}.signature-lines{break-inside:avoid;page-break-inside:avoid}
       @media screen{.hodom-preview-wrap{overflow:auto;border-radius:12px;background:#cbd5e1;padding:18px}.hodom-doc{width:max-content}.hodom-sheet{box-shadow:0 2px 12px #64748b66}}
-      @media print{html,body,#root{margin:0!important;padding:0!important;background:#fff!important;color:#000!important}.hodom-screen{display:none!important}.hodom-print{display:block!important}.hodom-doc,.hodom-sheet,.hodom-ruled-text{background:#fff!important}.hodom-rule-content{-webkit-print-color-adjust:exact;print-color-adjust:exact}.hodom-sheet{height:auto!important;margin:0!important;box-shadow:none!important;overflow:visible!important}.derivacion-doc,.derivacion-doc .hodom-sheet{width:auto!important;min-height:0!important}.derivacion-doc .derivacion-sheet{padding:0!important}.consentimiento-doc .hodom-sheet{break-after:auto}}
+      @media print{html,body,#root{margin:0!important;padding:0!important;background:#fff!important;color:#000!important}.hodom-screen{display:none!important}.hodom-print{display:block!important}.hodom-doc,.hodom-sheet,.hodom-ruled-text{background:#fff!important}.hodom-sheet{height:auto!important;margin:0!important;box-shadow:none!important;overflow:visible!important}.derivacion-doc,.derivacion-doc .hodom-sheet{width:auto!important;min-height:0!important}.derivacion-doc .derivacion-sheet{padding:0!important}.derivacion-sheet h2{break-after:avoid-page!important;page-break-after:avoid!important}.hodom-ruled-text,.hodom-rule-content{overflow:visible!important;break-inside:auto!important;page-break-inside:auto!important}.consentimiento-doc .hodom-sheet{break-after:auto}}
       .hodom-print{display:none}.hodom-print.hodom-exporting{display:block!important;position:fixed;left:-10000px;top:0;z-index:-1;width:max-content;background:#fff}.hodom-print.hodom-exporting .derivacion-sheet{width:180mm!important;min-height:0!important;padding:0!important;margin:0!important;box-shadow:none!important}
     `}</style>
     <div className="hodom-screen min-h-screen bg-slate-100">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur"><div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3"><Button variant="ghost" size="icon" onClick={() => window.history.back()}><ChevronLeft className="h-5 w-5" /></Button><div className="min-w-0 flex-1"><h1 className="truncate font-bold text-slate-900">Hospitalización Domiciliaria (HODOM)</h1><p className="text-xs text-slate-500">Formularios oficiales editables · HCSF Bulnes</p></div><Button variant="outline" size="sm" onClick={reset}><RotateCcw className="mr-1 h-4 w-4" />Limpiar</Button><Button variant="outline" size="sm" onClick={downloadPdf} disabled={exportingPdf}><Download className="mr-1 h-4 w-4" />{exportingPdf ? 'Generando…' : 'Descargar PDF'}</Button><Button variant="outline" size="sm" onClick={prepareRegistryPrompt} disabled={!f.nombre.trim() || !normalizedRut(f.rut)} className="border-indigo-300 bg-indigo-50 text-indigo-800">Trasladar a HODOM</Button><Button size="sm" onClick={printDocument}><Printer className="mr-1 h-4 w-4" />Imprimir</Button></div></header>
       <main className="mx-auto max-w-5xl p-4"><div className="mb-3 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-950"><p className="font-bold">Documentos sugeridos para la derivación</p><p className="text-xs text-indigo-700">Se recomienda completar la derivación HODOM y el consentimiento informado. Esto es opcional y no impide trasladar al paciente al registro HODOM.</p></div><div className="mb-4 grid grid-cols-2 rounded-xl border bg-white p-1"><button onClick={() => setActive('derivacion')} className={`rounded-lg px-3 py-2 text-sm font-semibold ${active === 'derivacion' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>Derivación HODOM</button><button onClick={() => setActive('consentimiento')} className={`rounded-lg px-3 py-2 text-sm font-semibold ${active === 'consentimiento' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>Consentimiento informado</button></div>
-        <div className="mb-4 flex items-center justify-between"><p className="text-sm text-slate-600">{active === 'derivacion' ? 'Original en tamaño Carta, 2 páginas.' : 'Original en tamaño A4, 1 página.'}</p><Button variant="outline" size="sm" onClick={() => setPreview(v => !v)}><Eye className="mr-1 h-4 w-4" />{preview ? 'Ocultar vista previa' : 'Vista previa'}</Button></div>
+        <div className="mb-4 flex items-center justify-between"><p className="text-sm text-slate-600">{active === 'derivacion' ? 'Tamaño Carta con paginación automática según el contenido.' : 'Original en tamaño A4, 1 página.'}</p><Button variant="outline" size="sm" onClick={() => setPreview(v => !v)}><Eye className="mr-1 h-4 w-4" />{preview ? 'Ocultar vista previa' : 'Vista previa'}</Button></div>
         {!preview && <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="mb-5 flex items-center gap-2"><FileSignature className="h-5 w-5 text-blue-600" /><h2 className="font-semibold">Campos editables</h2></div><div className="grid gap-4 sm:grid-cols-2">
           {active === 'derivacion' ? <><Field label="Nombre" wide><input className={input} value={f.nombre} onChange={e => update('nombre', e.target.value)} /></Field><Field label="RUT"><input className={input} value={f.rut} onChange={e => update('rut', formatRut(e.target.value))} /></Field><Field label="Edad"><input className={input} value={f.edad} onChange={e => update('edad', e.target.value)} /></Field><Field label="Teléfono"><input className={input} value={f.telefono} onChange={e => update('telefono', e.target.value)} /></Field><Field label="Domicilio"><input className={input} value={f.domicilio} onChange={e => update('domicilio', e.target.value)} /></Field><Field label="Cuidador principal"><input className={input} value={f.cuidador} onChange={e => update('cuidador', e.target.value)} /></Field><Field label="Teléfono cuidador"><input className={input} value={f.telefonoCuidador} onChange={e => update('telefonoCuidador', e.target.value)} /></Field>{longField('antecedentes','Antecedentes mórbidos relevantes')}{longField('diagnosticos','Diagnósticos actuales')}{longField('anamnesis','Anamnesis y evolución clínica hospitalaria',8)}{longField('motivo','Motivo de derivación a HODOM')}{longField('planes','Planes y objetivos a cumplir en HODOM')}{longField('indicaciones','Indicaciones médicas',8)}<Field label="Fecha"><input type="date" className={input} value={f.fechaDerivacion} onChange={e => update('fechaDerivacion', e.target.value)} /></Field><Field label="Médico derivador"><input className={input} value={f.medicoDerivador} onChange={e => update('medicoDerivador', e.target.value)} /></Field></> : <><Field label="Fecha"><input type="date" className={input} value={f.fechaConsentimiento} onChange={e => update('fechaConsentimiento', e.target.value)} /></Field><Field label="Nombre del paciente"><input className={input} value={f.nombre} onChange={e => update('nombre', e.target.value)} /></Field><Field label="RUT"><input className={input} value={f.rut} onChange={e => update('rut', formatRut(e.target.value))} /></Field><Field label="Nombre de quien consiente"><input className={input} value={f.representante} onChange={e => update('representante', e.target.value)} /></Field><Field label="Calidad / parentesco"><input className={input} value={f.calidad} onChange={e => update('calidad', e.target.value)} /></Field><Field label="Médico que informa"><input className={input} value={f.medicoDerivador} onChange={e => update('medicoDerivador', e.target.value)} /></Field><Field label="Diagnóstico" wide><input className={input} value={f.diagnosticoConsentimiento} onChange={e => update('diagnosticoConsentimiento', e.target.value)} /></Field><Field label="Decisión"><select className={input} value={f.acepta} onChange={e => update('acepta', e.target.value)}><option value="">Sin marcar</option><option value="si">Acepto</option><option value="no">No acepto</option></select></Field><Field label="Uso científico de datos"><select className={input} value={f.autorizaInvestigacion} onChange={e => update('autorizaInvestigacion', e.target.value)}><option value="">Sin marcar</option><option value="si">Sí autorizo</option><option value="no">No autorizo</option></select></Field></>}
         </div></div>}
