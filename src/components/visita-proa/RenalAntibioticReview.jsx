@@ -7,7 +7,7 @@ import { calculateEgfrCkdEpi2021 } from '@/lib/renalFunction';
 import { getLatestProaForm } from '@/lib/proaRegistry';
 import { antimicrobialUsualDose, calculateCockcroftGault, getRenalAntimicrobialScenarios, renalDoseRecommendation, RENAL_ANTIMICROBIALS, RENAL_DOSING_SOURCES } from '@/lib/renalAntimicrobialDosing';
 
-const emptyPatient = { patientKey: '', nombre: '', edad: '', sexo: '', peso: '', talla: '', creatinina: '', fechaCreatinina: '', dialysis: false, aki: false };
+const emptyPatient = { patientKey: '', nombre: '', edad: '', sexo: '', peso: '', talla: '', creatinina: '', fechaCreatinina: '', renalReplacement: 'none', aki: false };
 const emptyAntibiotic = () => ({ name: '', scenario: 'general' });
 const antibioticWithDefaultScenario = name => ({ name, scenario: getRenalAntimicrobialScenarios(name)[0]?.id || 'general' });
 const numberValue = value => Number(String(value ?? '').replace(',', '.'));
@@ -63,7 +63,7 @@ export default function RenalAntibioticReview({ open, onClose, records = [] }) {
     if (!selected) return;
     const { form } = selected;
     const creatinine = latestCreatinine(form);
-    setPatient({ patientKey: key, nombre: form.paciente || '', edad: form.edad || '', sexo: form.sexo || '', peso: form.peso || '', talla: form.talla || '', creatinina: creatinine?.valor || '', fechaCreatinina: creatinine?.fecha || '', dialysis: false, aki: false });
+    setPatient({ patientKey: key, nombre: form.paciente || '', edad: form.edad || '', sexo: form.sexo || '', peso: form.peso || '', talla: form.talla || '', creatinina: creatinine?.valor || '', fechaCreatinina: creatinine?.fecha || '', renalReplacement: 'none', aki: false });
     setPatientSearch(selected.name);
     setPatientPickerOpen(false);
     const current = (form.antibioticos || []).filter(isCurrentAntibiotic).map(item => item.nombre);
@@ -80,15 +80,16 @@ export default function RenalAntibioticReview({ open, onClose, records = [] }) {
       ...item,
       index,
       scenarioLabel: scenarios.find(option => option.id === item.scenario)?.label || scenarios[0]?.label || 'Indicación habitual',
-      usualDose: antimicrobialUsualDose(item.name, item.scenario),
-      ...renalDoseRecommendation(item.name, renalValue, item.scenario),
+      usualDose: antimicrobialUsualDose(item.name, item.scenario, patient.peso),
+      ...renalDoseRecommendation(item.name, renalValue, item.scenario, { weight: patient.peso, aki: patient.aki, renalReplacement: patient.renalReplacement }),
     };
   });
-  const statusStyle = status => status.startsWith('Sin ajuste') ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : status.startsWith('Evitar') ? 'border-red-200 bg-red-50 text-red-900' : status.startsWith('Individualizar') ? 'border-amber-200 bg-amber-50 text-amber-950' : 'border-orange-200 bg-orange-50 text-orange-950';
+  const renalContextLabel = patient.renalReplacement === 'ihd' ? 'hemodiálisis intermitente' : patient.renalReplacement === 'crrt' ? 'TRRC' : patient.renalReplacement === 'pd' ? 'diálisis peritoneal' : renalValue ? `CrCl/VFG ${renalValue} mL/min` : 'función renal pendiente';
+  const statusStyle = status => status.startsWith('Sin ajuste') ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : status.startsWith('Evitar') ? 'border-red-200 bg-red-50 text-red-900' : status.startsWith('Individualizar') ? 'border-amber-200 bg-amber-50 text-amber-950' : /Hemodiálisis|TRRC|Diálisis peritoneal/.test(status) ? 'border-indigo-200 bg-indigo-50 text-indigo-950' : 'border-orange-200 bg-orange-50 text-orange-950';
 
   return <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/65 p-2 backdrop-blur-sm sm:p-4" role="dialog" aria-modal="true" aria-label="Antibióticos y función renal">
     <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-teal-200 bg-white shadow-2xl">
-      <header className="flex items-start justify-between gap-4 border-b border-teal-100 bg-gradient-to-r from-teal-50 to-cyan-50 px-4 py-4 sm:px-6"><div><div className="flex items-center gap-2"><Droplets className="h-6 w-6 text-teal-700" /><h2 className="text-xl font-black text-teal-950">Antibióticos y función renal</h2></div><p className="mt-1 text-sm text-teal-800">Revisión orientativa de dosis en adultos sin reemplazo renal, basada en función renal y antimicrobianos seleccionados.</p></div><Button type="button" variant="outline" size="sm" onClick={onClose}>Cerrar</Button></header>
+      <header className="flex items-start justify-between gap-4 border-b border-teal-100 bg-gradient-to-r from-teal-50 to-cyan-50 px-4 py-4 sm:px-6"><div><div className="flex items-center gap-2"><Droplets className="h-6 w-6 text-teal-700" /><h2 className="text-xl font-black text-teal-950">Antibióticos y función renal</h2></div><p className="mt-1 text-sm text-teal-800">Dosis de referencia y ajuste para función renal conservada, falla renal, hemodiálisis, TRRC y diálisis peritoneal.</p></div><Button type="button" variant="outline" size="sm" onClick={onClose}>Cerrar</Button></header>
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
         <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -209,12 +210,20 @@ export default function RenalAntibioticReview({ open, onClose, records = [] }) {
           {patient.fechaCreatinina && <p className="mt-2 text-xs text-slate-500">Creatinina precargada del {patient.fechaCreatinina}.</p>}
           <div className="mt-3 flex flex-wrap gap-4">
             <label className="flex items-center gap-2 text-sm font-semibold text-slate-700"><input type="checkbox" checked={patient.aki} onChange={event => updatePatient('aki', event.target.checked)} />Función renal inestable / lesión renal aguda</label>
-            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700"><input type="checkbox" checked={patient.dialysis} onChange={event => updatePatient('dialysis', event.target.checked)} />Hemodiálisis, diálisis peritoneal o TRRC</label>
+            <label className="flex min-w-[280px] items-center gap-2 text-sm font-semibold text-slate-700">
+              Terapia de reemplazo renal
+              <select className="h-9 min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 text-sm" value={patient.renalReplacement} onChange={event => updatePatient('renalReplacement', event.target.value)}>
+                <option value="none">No</option>
+                <option value="ihd">Hemodiálisis intermitente</option>
+                <option value="crrt">TRRC / terapia continua</option>
+                <option value="pd">Diálisis peritoneal</option>
+              </select>
+            </label>
           </div>
         </section>
 
         <section className="grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4"><p className="text-xs font-black uppercase tracking-wide text-cyan-800">VFG CKD‑EPI 2021</p><p className="mt-1 text-2xl font-black text-cyan-950">{egfr ? `${egfr} mL/min/1,73 m²` : 'Pendiente'}</p><p className="mt-1 text-xs text-cyan-800">Útil para estimar función renal; se calcula aun sin peso.</p></div><div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4"><p className="text-xs font-black uppercase tracking-wide text-indigo-800">CrCl Cockcroft–Gault</p><p className="mt-1 text-2xl font-black text-indigo-950">{crcl ? `${crcl} mL/min` : 'Falta peso u otro dato'}</p><p className="mt-1 text-xs text-indigo-800">Se prioriza para las tablas de este módulo cuando está disponible.</p></div></section>
-        {(patient.aki || patient.dialysis || nearThreshold || (!crcl && egfr)) && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><div className="space-y-1">{patient.aki && <p><strong>Función renal inestable:</strong> las ecuaciones basadas en creatinina pueden ser engañosas; use tendencia, diuresis y evaluación clínica.</p>}{patient.dialysis && <p><strong>Reemplazo renal:</strong> no aplicar las pautas mostradas. Se requiere tabla específica según modalidad, sesión y función residual.</p>}{nearThreshold && <p><strong>Valor cercano a un punto de corte:</strong> confirme creatinina, tendencia y método antes de cambiar la pauta.</p>}{!crcl && egfr && <p><strong>Sin peso:</strong> la orientación usa CKD‑EPI como aproximación; complete peso para CrCl Cockcroft–Gault.</p>}</div></div></div>}
+        {(patient.aki || patient.renalReplacement !== 'none' || nearThreshold || (!crcl && egfr)) && <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"><div className="flex items-start gap-2"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><div className="space-y-1">{patient.aki && <p><strong>Función renal inestable:</strong> las ecuaciones basadas en creatinina pueden ser engañosas; se muestran pautas de carga/por nivel cuando el protocolo las define.</p>}{patient.renalReplacement !== 'none' && <p><strong>Reemplazo renal:</strong> las dosis se calculan para la modalidad seleccionada; confirmar horario de sesión, tasa de efluente y función renal residual.</p>}{nearThreshold && patient.renalReplacement === 'none' && <p><strong>Valor cercano a un punto de corte:</strong> confirme creatinina, tendencia y método antes de cambiar la pauta.</p>}{!crcl && egfr && patient.renalReplacement === 'none' && <p><strong>Sin peso:</strong> la orientación usa CKD‑EPI como aproximación; complete peso para CrCl Cockcroft–Gault.</p>}</div></div></div>}
 
         <section className="rounded-xl border border-teal-200 p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -262,16 +271,16 @@ export default function RenalAntibioticReview({ open, onClose, records = [] }) {
               <div><h4 className="text-base font-black">{result.name}</h4><p className="mt-0.5 text-xs font-semibold opacity-80">{result.scenarioLabel}</p></div>
               <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide">{result.status}</span>
             </div>
-            {patient.dialysis ? <div className="mt-3 rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-900">Paciente en terapia de reemplazo renal: no aplicar automáticamente estas pautas. Seleccionar modalidad y validar con protocolo específico/Farmacia.</div> : <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
               <div className="rounded-lg border border-white/70 bg-white/65 p-3">
                 <p className="text-[10px] font-black uppercase tracking-wide opacity-70">Pauta de referencia · función renal conservada</p>
                 <p className="mt-1 text-sm font-bold">{result.usualDose}</p>
               </div>
               <div className="rounded-lg border border-white bg-white p-3 shadow-sm">
-                <p className="text-[10px] font-black uppercase tracking-wide opacity-70">Dosis sugerida · {renalValue ? `CrCl/VFG ${renalValue} mL/min` : 'función renal pendiente'}</p>
+                <p className="text-[10px] font-black uppercase tracking-wide opacity-70">Dosis sugerida · {renalContextLabel}</p>
                 <p className="mt-1 whitespace-pre-wrap text-sm font-black">{result.recommendation}</p>
               </div>
-            </div>}
+            </div>
             {result.notes && <div className="mt-3 flex items-start gap-2 rounded-lg bg-white/55 p-2.5 text-xs"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><p><strong>Escenarios especiales / precauciones:</strong> {result.notes}</p></div>}
           </article>) : <div className="rounded-xl border border-dashed border-slate-300 p-5 text-center text-sm text-slate-500">Seleccione al menos un antimicrobiano.</div>}
         </section>
