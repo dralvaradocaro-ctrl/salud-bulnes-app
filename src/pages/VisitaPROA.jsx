@@ -721,6 +721,7 @@ const EMPTY = {
   antibioticos: [{ ...EMPTY_ATB }],
   resumen_caso: '',
   evolucion: '',
+  publicar_estado_clinico_general: false,
   recomendaciones: [],
   recomendaciones_otra: '',
   sugerencias_ia: '',
@@ -840,6 +841,7 @@ function VisitaPROA() {
       ...EMPTY,
       ...(pending || {}),
       proa_entry_type: 'evolucion',
+      publicar_estado_clinico_general: pending?.__proaEditLatest ? Boolean(pending?.publicar_estado_clinico_general) : false,
       fecha: todayIso(),
       hora: currentTime(),
       n_ficha: '',
@@ -964,6 +966,11 @@ function VisitaPROA() {
       setRegistryMessage('La fecha de egreso no puede ser anterior a la fecha de ingreso.');
       return false;
     }
+    const clinicalStateTimestamp = (() => {
+      const parsed = new Date(`${f.fecha || todayIso()}T${f.hora || currentTime()}`);
+      return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+    })();
+    const publishedClinicalState = String(f.evolucion || '').trim();
     const formToSave = {
       ...f,
       diagnostico_actual: (f.diagnosticos_actuales || []).filter(Boolean).join('; ') || f.diagnostico_actual,
@@ -972,6 +979,10 @@ function VisitaPROA() {
         : (f.creatininas || []),
       proa_discharge_requested: dischargePatient,
       fecha_egreso: dischargeDate,
+      ...(f.publicar_estado_clinico_general && publishedClinicalState ? {
+        vista_ultima_evolucion: publishedClinicalState,
+        vista_ultima_evolucion_actualizada_en: clinicalStateTimestamp,
+      } : {}),
     };
     setSaving(true);
     setRegistryMessage('Guardando…');
@@ -992,7 +1003,7 @@ function VisitaPROA() {
       setF(savedForm);
       setRegistryMessage(editingExistingEvolution
           ? `✅ Evolución existente de ${record.code} editada y sincronizada. No se creó una evolución nueva.`
-          : `✅ Registro ${record.code} guardado en cama ${record.bedCode} y sincronizado. En PROA se conservaron nombre, RUT y edad; la ficha clínica no fue almacenada.`);
+          : `✅ Registro ${record.code} guardado en cama ${record.bedCode} y sincronizado.${formToSave.publicar_estado_clinico_general && publishedClinicalState ? ' El estado clínico actual y la tabla de visita fueron actualizados.' : ''} En PROA se conservaron nombre, RUT y edad; la ficha clínica no fue almacenada.`);
       return true;
     } catch (e) {
       setRegistryMessage(`❌ No se pudo guardar en el servidor (${e?.message || e}). Revisa tu conexión e inténtalo de nuevo.`);
@@ -1694,8 +1705,14 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
             </Section>
 
             {/* Evolución clínica */}
-            <Section title="Evolución clínica">
+            <Section title="Evolución clínica" right={
+              <div className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] font-bold transition ${f.publicar_estado_clinico_general ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-600'}`} title="Publica esta evolución en Estado clínico actual y en la tabla de visita general.">
+                <span>Actualizar estado general</span>
+                <button type="button" role="switch" aria-checked={f.publicar_estado_clinico_general} onClick={() => u('publicar_estado_clinico_general', !f.publicar_estado_clinico_general)} className={`relative h-6 w-10 shrink-0 rounded-full transition ${f.publicar_estado_clinico_general ? 'bg-emerald-600' : 'bg-slate-300'}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all ${f.publicar_estado_clinico_general ? 'left-5' : 'left-1'}`} /></button>
+              </div>
+            }>
               <Textarea value={f.evolucion} onChange={e => u('evolucion', e.target.value)} className="min-h-[80px]" placeholder="Tendencia, respuesta al tratamiento, eventos de las últimas 24-48 h." />
+              <p className={`mt-2 rounded-lg px-3 py-2 text-[11px] ${f.publicar_estado_clinico_general ? 'border border-emerald-200 bg-emerald-50 font-semibold text-emerald-800' : 'bg-slate-50 text-slate-500'}`}>{f.publicar_estado_clinico_general ? 'Al guardar, este texto renovará el Estado clínico actual y se mostrará en la tabla de visita general.' : 'Esta evolución permanecerá solo en PROA. Activa el interruptor si también representa el estado clínico general vigente.'}</p>
             </Section>
 
             {/* Recomendaciones PROA */}

@@ -113,6 +113,8 @@ export async function saveProaRecord(form, options = {}) {
   const now = new Date().toISOString();
   const editLatestEvolution = Boolean(options.editLatestEvolution || form?.__proaEditLatest);
   const safeForm = sanitizeProaRecord(form);
+  const isEvolutionNote = ['nota_evolucion_hospitalaria', 'visita_servicio'].includes(safeForm.proa_entry_type);
+  if (!isEvolutionNote) delete safeForm.nota_evolucion;
   const bedCode = safeForm.cama || 'SIN-CAMA';
   const replaceExisting = options.replaceExisting || form?.__proaRegistryMode === 'new_patient';
 
