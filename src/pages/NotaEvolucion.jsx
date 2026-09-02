@@ -42,7 +42,9 @@ const emptyForm = () => ({
   firma: '',
   servicio: '',
   cama: '',
+  recordBedCode: '',
   esVisitaServicio: false,
+  actualizaEstadoClinico: false,
 });
 
 const SECTIONS = [
@@ -72,6 +74,7 @@ export default function NotaEvolucion() {
       diagnostico: prefill.diagnostico_principal || prefill.diagnostico || prev.diagnostico,
       servicio: prefill.servicio || prev.servicio,
       cama: prefill.cama || prev.cama,
+      recordBedCode: prefill.source_bed || prefill.cama || prev.recordBedCode,
     }));
     if (prefill.servicio && prefill.cama) {
       setSelectedService(prefill.servicio);
@@ -85,11 +88,11 @@ export default function NotaEvolucion() {
 
   useEffect(() => {
     if (!form.cama) return;
-    const current = bedRecords.find(item => item.bedCode === form.cama);
+    const current = bedRecords.find(item => item.bedCode === (form.recordBedCode || form.cama));
     const patient = getLatestProaForm(current);
     if (!patient) return;
     setForm(prev => ({ ...prev, pacienteNombre: prev.pacienteNombre || patient.paciente || '', pacienteRut: prev.pacienteRut || formatRut(patient.rut || ''), diagnostico: prev.diagnostico || patient.diagnostico_principal || patient.diagnostico_actual || '' }));
-  }, [bedRecords, form.cama]);
+  }, [bedRecords, form.cama, form.recordBedCode]);
 
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -99,7 +102,7 @@ export default function NotaEvolucion() {
   const chooseBed = (servicio, cama) => {
     const record = bedRecords.find(item => item.bedCode === cama);
     const patient = getLatestProaForm(record) || {};
-    setForm(prev => ({ ...prev, servicio, cama, pacienteNombre: patient.paciente || prev.pacienteNombre, pacienteRut: patient.rut ? formatRut(patient.rut) : prev.pacienteRut, diagnostico: patient.diagnostico_principal || patient.diagnostico_actual || prev.diagnostico }));
+    setForm(prev => ({ ...prev, servicio, cama, recordBedCode: cama, pacienteNombre: patient.paciente || prev.pacienteNombre, pacienteRut: patient.rut ? formatRut(patient.rut) : prev.pacienteRut, diagnostico: patient.diagnostico_principal || patient.diagnostico_actual || prev.diagnostico }));
     setShowBedSelector(false);
   };
 
@@ -112,11 +115,17 @@ export default function NotaEvolucion() {
   const occupiedBeds = new Set(bedRecords.map(record => record.bedCode));
 
   const saveEvolution = async () => {
-    const record = bedRecords.find(item => item.bedCode === form.cama);
+    const record = bedRecords.find(item => item.bedCode === (form.recordBedCode || form.cama));
     if (!record) { setSaveMessage('No se encontró un paciente hospitalizado en esta cama.'); return; }
     if (![form.anamnesis, form.examenFisico, form.indicaciones].some(value => value.trim())) { setSaveMessage('Completa al menos una sección clínica antes de guardar.'); return; }
     const latest = getLatestProaForm(record) || {};
     const narrative = [form.diagnostico && `DIAGNÓSTICO(S):\n${form.diagnostico.trim()}`, form.anamnesis && `ANAMNESIS:\n${form.anamnesis.trim()}`, form.examenFisico && `EXAMEN FÍSICO:\n${form.examenFisico.trim()}`, form.indicaciones && `INDICACIONES:\n${form.indicaciones.trim()}`].filter(Boolean).join('\n\n');
+    const currentState = [form.anamnesis && `Anamnesis / evolución: ${form.anamnesis.trim()}`, form.examenFisico && `Examen físico: ${form.examenFisico.trim()}`].filter(Boolean).join('\n');
+    const existingPlans = String(latest.vista_planes_pendientes || '').trim();
+    const proaPlan = latest.plan_duracion ? `(PROA): ${String(latest.plan_duracion).trim()}` : '';
+    const notePlanDate = String(form.fechaHora || '').slice(0, 10).split('-').reverse().join('/');
+    const currentPlans = [existingPlans || proaPlan, form.indicaciones && `Nota de evolución${notePlanDate ? ` (${notePlanDate})` : ''}: ${form.indicaciones.trim()}`].filter(Boolean).join('\n');
+    const stateTimestamp = (() => { const parsed = new Date(form.fechaHora); return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString(); })();
     setSaving(true); setSaveMessage('');
     try {
       await saveProaRecord({
@@ -125,12 +134,13 @@ export default function NotaEvolucion() {
         fecha: String(form.fechaHora || '').slice(0, 10), hora: String(form.fechaHora || '').slice(11, 16),
         proa_enrolled: latest.proa_enrolled !== false,
         proa_entry_type: form.esVisitaServicio ? 'visita_servicio' : 'nota_evolucion_hospitalaria',
-        evolucion: narrative, vista_ultima_evolucion: narrative,
-        nota_evolucion: { diagnostico: form.diagnostico, anamnesis: form.anamnesis, examen_fisico: form.examenFisico, indicaciones: form.indicaciones, medico: form.medico, fecha_hora: form.fechaHora, visita_servicio: form.esVisitaServicio, titulo: form.esVisitaServicio ? 'Visita servicio Dr. Rubilar' : 'Nota de evolución' },
+        evolucion: narrative,
+        ...(form.actualizaEstadoClinico ? { vista_ultima_evolucion: currentState || narrative, vista_ultima_evolucion_actualizada_en: stateTimestamp, vista_planes_pendientes: currentPlans || latest.vista_planes_pendientes || '' } : {}),
+        nota_evolucion: { diagnostico: form.diagnostico, anamnesis: form.anamnesis, examen_fisico: form.examenFisico, indicaciones: form.indicaciones, medico: form.medico, fecha_hora: form.fechaHora, visita_servicio: form.esVisitaServicio, actualiza_estado_clinico: form.actualizaEstadoClinico, titulo: form.esVisitaServicio ? 'Visita servicio Dr. Rubilar' : 'Nota de evolución' },
       });
       const refreshed = await fetchProaRecords();
       setBedRecords(refreshed);
-      setSaveMessage(form.esVisitaServicio ? 'Visita servicio Dr. Rubilar guardada en el historial.' : 'Nota de evolución guardada en el historial hospitalario.');
+      setSaveMessage(`${form.esVisitaServicio ? 'Visita servicio Dr. Rubilar' : 'Nota de evolución'} guardada en el historial${form.actualizaEstadoClinico ? '; estado clínico y planes actualizados.' : '; la tabla clínica no fue modificada.'}`);
     } catch (error) {
       console.error('Error guardando nota de evolución:', error);
       setSaveMessage('No fue posible guardar la nota. Intenta nuevamente.');
@@ -309,6 +319,14 @@ export default function NotaEvolucion() {
             <button type="button" role="switch" aria-checked={form.esVisitaServicio} onClick={() => update('esVisitaServicio', !form.esVisitaServicio)} className={`relative h-8 w-14 rounded-full transition ${form.esVisitaServicio ? 'bg-teal-600' : 'bg-slate-300'}`}><span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${form.esVisitaServicio ? 'left-7' : 'left-1'}`} /></button>
           </div>
           {saveMessage && <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${saveMessage.startsWith('No ') || saveMessage.startsWith('Completa') ? 'bg-red-50 text-red-700' : 'bg-emerald-100 text-emerald-800'}`}>{saveMessage}</p>}
+        </section>
+
+        <section className={`rounded-2xl border p-4 shadow-sm ${form.actualizaEstadoClinico ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="max-w-2xl"><p className="font-bold text-slate-900">Actualizar el estado clínico desde esta nota</p><p className="mt-1 text-xs text-slate-500">Desactivado por defecto: la nota solo queda en la historia y no modifica la tabla. Al activarlo, anamnesis y examen físico actualizarán “Estado clínico actual”; las indicaciones actualizarán “Planes”.</p></div>
+            <button type="button" role="switch" aria-checked={form.actualizaEstadoClinico} onClick={() => update('actualizaEstadoClinico', !form.actualizaEstadoClinico)} className={`relative h-8 w-14 shrink-0 rounded-full transition ${form.actualizaEstadoClinico ? 'bg-emerald-600' : 'bg-slate-300'}`}><span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${form.actualizaEstadoClinico ? 'left-7' : 'left-1'}`} /></button>
+          </div>
+          {form.actualizaEstadoClinico && <p className="mt-3 rounded-lg border border-emerald-200 bg-white/70 px-3 py-2 text-xs font-semibold text-emerald-800">Esta nota sí renovará la vigencia del estado clínico y actualizará los planes visibles en la tabla.</p>}
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
