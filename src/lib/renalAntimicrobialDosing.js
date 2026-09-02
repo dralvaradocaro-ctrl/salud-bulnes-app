@@ -10,7 +10,7 @@ const noChange = (usual, notes = '') => ({ status: 'Sin ajuste renal habitual', 
 const adjust = (recommendation, notes = '') => ({ status: 'Requiere ajuste', recommendation, notes });
 const specialist = (recommendation, notes = '') => ({ status: 'Individualizar / monitorizar', recommendation, notes });
 const avoid = (recommendation, notes = '') => ({ status: 'Evitar / contraindicación relativa', recommendation, notes });
-const replacement = (modality, recommendation, notes = '') => ({ status: modality, recommendation, notes });
+const replacement = (modality, recommendation, notes = '', steps = []) => ({ status: modality, recommendation, notes, steps });
 
 export const RENAL_ANTIMICROBIALS = [
   'Aciclovir', 'Amikacina', 'Amoxicilina', 'Amoxicilina + ácido clavulánico', 'Ampicilina', 'Ampicilina + sulbactam',
@@ -150,12 +150,8 @@ const vancomycinLoadingDose = (weight, modified = false) => {
     ? 'Carga 20–25 mg/kg EV una vez (máximo 2 g en IHD/TRRC; redondear a 250 mg).'
     : 'Carga 20–35 mg/kg EV una vez según gravedad (habitualmente ~25 mg/kg; máximo 3 g; redondear a 250 mg).';
   if (modified) {
-    if (kg <= 45) return 'Carga 750 mg EV una vez.';
-    if (kg <= 55) return 'Carga 1.000 mg EV una vez.';
-    if (kg <= 65) return 'Carga 1.250 mg EV una vez.';
-    if (kg <= 75) return 'Carga 1.500 mg EV una vez.';
-    if (kg <= 120) return 'Carga 1.750 mg EV una vez.';
-    return 'Carga 2.000 mg EV una vez.';
+    const dose = Math.min(2000, Math.max(250, Math.round((kg * 25) / 250) * 250));
+    return `Carga ${dose.toLocaleString('es-CL')} mg EV una vez (25 mg/kg para ${kg} kg; máximo 2 g).`;
   }
   if (kg <= 45) return 'Carga 1.000 mg EV una vez.';
   if (kg <= 55) return 'Carga 1.250 mg EV una vez.';
@@ -222,7 +218,19 @@ function renalReplacementDose(name, scenario, modality, context = {}) {
       return replacement(label, scenario === 'intermittent-general' ? '3,375 g EV cada 6 h, infusión de 30 min.' : '3,375–4,5 g EV cada 8 h, infusión extendida de 4 h.', 'Confirmar tasa de efluente y gravedad.');
     case 'Vancomicina':
       if (scenario === 'po-cdi' || scenario === 'po-cdi-fulminant') return replacement(label, antimicrobialUsualDose(name, scenario, context.weight), 'La vía oral tiene absorción sistémica pobre; no requiere ajuste renal habitual.');
-      if (modality === 'ihd') return replacement(label, `${vancomycinLoadingDose(context.weight, true)} Luego redosificar post-HD según nivel pre-HD: <10, 10–15 mg/kg; 10–15, 7,5–10 mg/kg; 15–20, 5 mg/kg; 20–25, 2,5 mg/kg o mantener; >25, suspender hasta volver a rango.`, 'Objetivo pre-HD 15–20 mg/L. Máximo de carga 2 g; controlar nivel antes de la siguiente sesión.');
+      if (modality === 'ihd') {
+        const loading = vancomycinLoadingDose(context.weight, true);
+        return replacement(
+          label,
+          `${loading} Controlar nivel pre-HD antes de la siguiente sesión y redosificar después de HD según resultado.`,
+          'Meta pre-HD 15–20 mg/L. La redosis no es fija: depende del nivel obtenido.',
+          [
+            { label: 'Dosis de carga', value: loading },
+            { label: 'Control', value: 'Nivel pre-HD antes de la siguiente sesión (o con los exámenes matinales del día de HD).' },
+            { label: 'Mantenimiento', value: 'Redosificar después de HD según nivel pre-HD.' },
+          ],
+        );
+      }
       if (modality === 'crrt') return replacement(label, `${vancomycinLoadingDose(context.weight, true)} Luego 10–15 mg/kg EV cada 24 h.`, 'Carga máxima 2 g. Obtener pico 1 h después de la 2.ª/3.ª dosis y valle antes de la 3.ª/4.ª; ajustar por niveles y efluente.');
       return replacement(label, `${weightBasedDose('10-15', context.weight, 'dosis EV única')} Luego redosificar por nivel.`, 'Diálisis peritoneal: controlar nivel 24 h después de la dosis y consultar PROA/Farmacia; la dosis intraperitoneal requiere protocolo específico.');
     default: return specialist(`No existe una pauta ${label} estructurada para este antimicrobiano.`, 'Consultar ficha técnica, guía específica y Farmacia/PROA.');
