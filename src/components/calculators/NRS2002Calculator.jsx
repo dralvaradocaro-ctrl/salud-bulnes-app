@@ -22,7 +22,7 @@ const MEDICAL_HIGH_RISK_REASONS = [
   'Otra indicación médica explícita del clínico tratante',
 ];
 
-export default function NRS2002Calculator() {
+export default function NRS2002Calculator({ onApplyResult }) {
   // Paso 0: muy alto riesgo por indicación médica (corta el protocolo si aplica).
   const [medicalHighRisk, setMedicalHighRisk] = useState(null); // null | true | false
   const [medicalReasons, setMedicalReasons] = useState([]);
@@ -932,6 +932,16 @@ export default function NRS2002Calculator() {
           <Button variant="outline" onClick={resetCalculator} className="w-full">
             Reiniciar Evaluación
           </Button>
+        )}
+
+        {/* Integración con formularios externos (p. ej. evaluación nutricional de Vista Hospitalizados) */}
+        {onApplyResult && resultData && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-emerald-300 bg-emerald-50 p-3">
+            <p className="text-sm font-bold text-emerald-900">Resultado: {resultData.score} · {resultData.label}</p>
+            <Button type="button" onClick={() => onApplyResult(resultData)} className="bg-emerald-700 hover:bg-emerald-800">
+              Usar este resultado
+            </Button>
+          </div>
         )}
       </div>
     </CalculatorWrapper>

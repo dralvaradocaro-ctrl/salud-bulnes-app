@@ -11,7 +11,12 @@ if (!sourcePath) throw new Error('Uso: node scripts/import-hospital-census-xls.m
 const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.VITE_SUPABASE_ANON_KEY);
 const clean = (value = '') => String(value).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&#(d+);/g, (_, code) => String.fromCharCode(Number(code))).replace(/\s+/g, ' ').trim();
 const repairEncoding = (value) => /Ã|Â/.test(value) ? Buffer.from(value, 'latin1').toString('utf8') : value;
-const normalizeName = (value) => String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es-CL').replace(/(^|[\s-])([a-záéíóúüñ])/giu, (_, prefix, letter) => `${prefix}${letter.toLocaleUpperCase('es-CL')}`);
+const normalizeName = (value) => String(value || '')
+  .replace(/\bZU\?IGA\b/giu, 'ZUÑIGA')
+  .replace(/^[\s:;,.]+|[\s:;,.]+$/g, '')
+  .replace(/\s+/g, ' ')
+  .toLocaleLowerCase('es-CL')
+  .replace(/(^|[\s-])([a-záéíóúüñ])/giu, (_, prefix, letter) => `${prefix}${letter.toLocaleUpperCase('es-CL')}`);
 const clinicalAcronyms = new Set(['EPOC', 'VIH', 'ITU', 'AVE', 'NAC', 'TAC', 'ECG', 'PCR', 'RCP', 'IOT', 'LET', 'HTA', 'DM', 'ERC', 'IRA', 'VRS']);
 const normalizeClinicalText = (value) => String(value || '').trim().replace(/[ \t]+/g, ' ').split('\n').map((line) => line.toLocaleLowerCase('es-CL').replace(/(^|[.!?]\s+)([a-záéíóúüñ])/giu, (_, prefix, letter) => `${prefix}${letter.toLocaleUpperCase('es-CL')}`).replace(/\b[A-Za-zÁÉÍÓÚÜÑ]{2,4}\b/g, (word) => clinicalAcronyms.has(word.toLocaleUpperCase('es-CL')) ? word.toLocaleUpperCase('es-CL') : word)).join('\n');
 const rutKey = (value) => String(value || '').replace(/[^0-9kK]/g, '').toUpperCase();
@@ -142,14 +147,18 @@ const persist = async (candidate, existing = null, enrolled = false) => {
   const now = new Date().toISOString();
   const previousForm = existing?.evolutions?.[0]?.form || {};
   const previousDiagnosis = previousForm.diagnostico_actual || previousForm.diagnostico_principal || '';
+  const hasExistingPatient = Boolean(existing);
   const form = {
     ...previousForm,
     ...candidate.form,
     proa_enrolled: enrolled,
-    ...(enrolled ? {
+    ...(hasExistingPatient ? {
       antibioticos: previousForm.antibioticos || [],
+      antibioticos_eliminados: previousForm.antibioticos_eliminados || [],
       antibioterapia_preingreso: previousForm.antibioterapia_preingreso || '',
       parametros_inflamatorios: previousForm.parametros_inflamatorios || [],
+      resultados_examenes_parser: previousForm.resultados_examenes_parser || [],
+      examenes_complementarios: previousForm.examenes_complementarios || [],
       estudios_micro: previousForm.estudios_micro || [],
       estudios_imagen: previousForm.estudios_imagen || '',
       aislamiento: previousForm.aislamiento || '',
@@ -157,18 +166,21 @@ const persist = async (candidate, existing = null, enrolled = false) => {
       fecha_creatinina: previousForm.fecha_creatinina || '',
       funcion_renal: previousForm.funcion_renal || '',
       vfg_estimada: previousForm.vfg_estimada || '',
+      recomendaciones: previousForm.recomendaciones || [],
+      recomendaciones_otra: previousForm.recomendaciones_otra || '',
     } : {}),
     diagnostico_desglose: enrolled && previousDiagnosis !== candidate.form.diagnostico_principal ? previousDiagnosis : previousForm.diagnostico_desglose || '',
     diagnostico_actual: enrolled && previousDiagnosis ? previousDiagnosis : candidate.form.diagnostico_principal,
     diagnosticos_actuales: enrolled && previousDiagnosis && previousDiagnosis !== candidate.form.diagnostico_principal ? [candidate.form.diagnostico_principal, previousDiagnosis] : [candidate.form.diagnostico_principal],
   };
+  delete form.nota_evolucion;
   const row = {
     id: existing?.id || crypto.randomUUID(),
     code: existing?.code || `CENSO-${rutKey(form.rut)}`,
     bed_code: candidate.bed,
     servicio: candidate.service,
     updated_at: now,
-    evolutions: [{ savedAt: now, form }, ...(existing?.evolutions || [])].slice(0, 12),
+    evolutions: [{ savedAt: now, form }, ...(existing?.evolutions || [])].slice(0, 60),
   };
   const { error } = await supabase.from('proa_records').upsert(row, { onConflict: 'bed_code' });
   if (error) throw error;

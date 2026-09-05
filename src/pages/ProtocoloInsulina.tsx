@@ -47,19 +47,36 @@ const ProtocoloInsulina = () => {
     const prefill = getMultiPrefill();
     if (!prefill || prefill.source !== 'vista_general') return;
     const exams = Array.isArray(prefill.proa_examenes) ? prefill.proa_examenes : [];
-    const latestExam = exams.slice().sort((a, b) => String(b?.fecha || '').localeCompare(String(a?.fecha || '')))[0] || {};
-    const summaryCreatinine = String(prefill.ultimo_laboratorio || '').match(/(?:creatinina|crea)\s*([\d,.]+)/i)?.[1] || '';
-    const rawCreatinine = latestExam.crea ?? latestExam.creatinina ?? summaryCreatinine;
-    const creatinine = Number(String(rawCreatinine).replace(',', '.'));
+    const sortedExams = exams.slice().sort((a, b) => String(b?.fecha || '').localeCompare(String(a?.fecha || '')));
+    // Toma el valor más reciente disponible del campo, aunque no esté en la última fila.
+    const latestValue = (...keys: string[]): number => {
+      for (const row of sortedExams) {
+        for (const key of keys) {
+          const raw = (row as Record<string, unknown>)?.[key];
+          if (String(raw ?? '').trim()) return Number(String(raw).replace(',', '.'));
+        }
+      }
+      return NaN;
+    };
+    const summaryCreatinine = String(prefill.ultimo_laboratorio || '').match(/(?:creatinina|crea)[.:\s]*([\d,.]+)/i)?.[1] || '';
+    const rowCreatinine = latestValue('crea', 'creatinina');
+    const creatinine = Number.isFinite(rowCreatinine) ? rowCreatinine : Number(String(summaryCreatinine).replace(',', '.'));
     const age = Number(prefill.edad);
     const clinicalSex = String(prefill.sexo || '').toUpperCase() === 'M'
       ? 'masculino'
       : String(prefill.sexo || '').toUpperCase() === 'F' ? 'femenino' : '';
+    const usable = (value: number) => Number.isFinite(value) && value > 0;
+    const vfg = latestValue('vfg');
+    const glycemia = latestValue('glucosa', 'glicemia');
+    const triglycerides = latestValue('trigliceridos');
     setPatientData((current) => ({
       ...current,
-      edad: Number.isFinite(age) && age > 0 ? age : current.edad,
+      edad: usable(age) ? age : current.edad,
       sexo: clinicalSex || current.sexo,
-      creatinina: Number.isFinite(creatinine) && creatinine > 0 ? creatinine : current.creatinina,
+      creatinina: usable(creatinine) ? creatinine : current.creatinina,
+      vfg: usable(vfg) ? vfg : current.vfg,
+      glicemiaIngreso: usable(glycemia) ? glycemia : current.glicemiaIngreso,
+      trigliceridos: usable(triglycerides) ? triglycerides : current.trigliceridos,
     }));
   }, []);
 

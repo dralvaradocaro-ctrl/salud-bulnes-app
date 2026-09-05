@@ -171,12 +171,15 @@ export async function buildCertificadoPdf(cert) {
     });
   };
 
-  const BODY_BOTTOM = LINE_Y - ESPACIO_FIRMA - 24;
+  // En las hojas intermedias el texto puede llegar hasta justo sobre el pie;
+  // la zona de firmas solo se reserva en la hoja final.
+  const BODY_BOTTOM = PAGE_FOOTER_Y - 30;
+  const SIGNATURE_LIMIT = LINE_Y - ESPACIO_FIRMA - 24;
   parrafos.forEach((p) => {
     const lines = doc.splitTextToSize(p.trim() || ' ', CW);
     lines.forEach((line, i) => {
-      // El texto nunca se reduce para hacerlo caber. Si alcanza la zona
-      // reservada para las firmas, continúa naturalmente en otra hoja.
+      // El texto nunca se reduce para hacerlo caber. Si alcanza el pie de la
+      // hoja, continúa naturalmente en otra.
       if (y > BODY_BOTTOM) { doc.addPage('a4'); y = M; }
       // Justificar manualmente: al enviar cada línea por separado, jsPDF la
       // considera una última línea y no aplica correctamente align: justify.
@@ -187,6 +190,10 @@ export async function buildCertificadoPdf(cert) {
     });
     y += 8;
   });
+
+  // Si el texto invadió la zona reservada para las firmas, estas pasan a una
+  // hoja nueva; si cabe, se dibujan en la misma hoja del texto.
+  if (y > SIGNATURE_LIMIT) { doc.addPage('a4'); y = M; }
 
   // ── Recuadro de firma electrónica ────────────────────────────────────
   doc.setDrawColor(190, 198, 210);
