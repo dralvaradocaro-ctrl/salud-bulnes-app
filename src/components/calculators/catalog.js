@@ -49,6 +49,7 @@ import PaduaCalculator from '@/components/calculators/PaduaCalculator';
 import ClinicalFrailtyScaleCalculator from '@/components/calculators/ClinicalFrailtyScaleCalculator';
 import MaintenanceFluidsCalculator from '@/components/calculators/MaintenanceFluidsCalculator';
 import PediatricNutritionCalculator from '@/components/calculators/PediatricNutritionCalculator';
+import ScorePulmonarCalculator from '@/components/calculators/ScorePulmonarCalculator';
 
 export const calculatorsByCategory = {
   'Urgencias': [
@@ -88,6 +89,7 @@ export const calculatorsByCategory = {
     { id: 'pediatric-dose', name: 'Dosis Pediátricas por Peso', component: PediatricDoseCalculator, icon: Baby },
     { id: 'pecarn', name: 'PECARN — TEC pediátrico (TC sí/no)', component: PECARNCalculator, icon: Baby },
     { id: 'tal', name: 'Tal modificado — Obstrucción bronquial', component: TalCalculator, icon: Wind },
+    { id: 'score-pulmonar', name: 'Score Pulmonar — Obstrucción bronquial sobre 3 años', component: ScorePulmonarCalculator, icon: Wind },
     { id: 'westley', name: 'Westley — Crup / laringitis obstructiva', component: WestleyCalculator, icon: Wind },
     { id: 'maintenance-fluids', name: 'Fluidos de mantención — Holliday-Segar y 4-2-1', component: MaintenanceFluidsCalculator, icon: Droplet },
     { id: 'pediatric-nutrition', name: 'Alimentación del lactante — volumen y calorías', component: PediatricNutritionCalculator, icon: Baby }

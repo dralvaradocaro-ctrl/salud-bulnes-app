@@ -1,20 +1,19 @@
 import { useState } from 'react';
 import OrdinalScore from './OrdinalScore';
 
-// Score de Tal modificado (ST) del Manual de supervivencia HLCM, en la versión
-// que usa saturación en vez de cianosis. Menores de 3 años.
-const FR_MENOR_6M = [
-  { value: 0, label: '≤ 40 por minuto' },
-  { value: 1, label: '41 – 55 por minuto' },
-  { value: 2, label: '56 – 70 por minuto' },
-  { value: 3, label: '≥ 71 por minuto' },
-];
-
-const FR_MAYOR_6M = [
+// Score Pulmonar (SP) del Manual de supervivencia HLCM, para mayores de 3 años.
+const FR_MENOR_6A = [
   { value: 0, label: '≤ 30 por minuto' },
   { value: 1, label: '31 – 45 por minuto' },
   { value: 2, label: '46 – 60 por minuto' },
   { value: 3, label: '≥ 61 por minuto' },
+];
+
+const FR_MAYOR_6A = [
+  { value: 0, label: '≤ 20 por minuto' },
+  { value: 1, label: '21 – 35 por minuto' },
+  { value: 2, label: '36 – 49 por minuto' },
+  { value: 3, label: '≥ 50 por minuto' },
 ];
 
 const RESTO = [
@@ -23,20 +22,9 @@ const RESTO = [
     label: 'Sibilancias o crépitos',
     options: [
       { value: 0, label: 'No' },
-      { value: 1, label: 'Sólo en espiración' },
-      { value: 2, label: 'Espiración e inspiración, audibles sólo con fonendoscopio' },
-      { value: 3, label: 'Espiración e inspiración, audibles sin fonendoscopio' },
-    ],
-  },
-  {
-    id: 'saturacion',
-    label: 'Saturación',
-    detail: 'Medida en aire ambiental',
-    options: [
-      { value: 0, label: '≥ 95%' },
-      { value: 1, label: '92 – 94%' },
-      { value: 2, label: '90 – 91%' },
-      { value: 3, label: '≤ 89%' },
+      { value: 1, label: 'Al final de la espiración' },
+      { value: 2, label: 'Durante toda la espiración, audibles con fonendoscopio' },
+      { value: 3, label: 'Espiración e inspiración sin fonendoscopio, o murmullo pulmonar abolido' },
     ],
   },
   {
@@ -51,30 +39,28 @@ const RESTO = [
   },
 ];
 
-export function getTalResult(score) {
-  if (score <= 5) return {
+export function getScorePulmonarResult(score) {
+  if (score <= 3) return {
     nivel: 'Obstrucción leve',
     bg: 'bg-emerald-50 border-emerald-200',
     badge: 'bg-emerald-100 text-emerald-800',
     text: 'text-emerald-900',
     conducta: 'Manejo ambulatorio con broncodilatador y control.',
     recs: [
-      'Salbutamol 2 puff con aerocámara cada 4–6 h según evolución.',
-      'Educar signos de alarma y controlar en 24 h o antes si empeora.',
-      'Kinesioterapia respiratoria si hay hipersecreción.',
+      'Salbutamol con aerocámara y control según evolución.',
+      'Educar signos de alarma antes del alta.',
     ],
   };
-  if (score <= 10) return {
+  if (score <= 6) return {
     nivel: 'Obstrucción moderada',
     bg: 'bg-amber-50 border-amber-200',
     badge: 'bg-amber-100 text-amber-800',
     text: 'text-amber-900',
     conducta: 'Hospitalización abreviada y reevaluación con el mismo puntaje.',
     recs: [
-      'Salbutamol 2 puff cada 10 minutos por 5 veces, con aerocámara.',
-      'Reevaluar con Tal al terminar la serie.',
-      'Si baja a leve, alta con indicaciones. Si se mantiene, repetir la serie y agregar corticoide sistémico.',
-      'Si sube a grave o no responde tras la segunda serie, hospitalizar.',
+      'Serie de salbutamol con aerocámara y corticoide sistémico según respuesta.',
+      'Reevaluar con Score Pulmonar al terminar la serie.',
+      'Si no mejora, hospitalizar.',
     ],
   };
   return {
@@ -85,42 +71,42 @@ export function getTalResult(score) {
     conducta: 'Oxígeno, corticoide sistémico y hospitalización.',
     recs: [
       'Oxígeno para saturación ≥ 93% y monitorización continua.',
-      'Salbutamol en serie y corticoide sistémico precoz.',
+      'Broncodilatador en serie y corticoide sistémico precoz.',
       'Evaluar cánula nasal de alto flujo según protocolo.',
-      'Si persiste sobre 11 puntos pese al manejo, presentar a unidad de paciente crítico.',
+      'Si persiste sobre 6 puntos pese al manejo, presentar a unidad de paciente crítico.',
     ],
   };
 }
 
-export default function TalCalculator() {
+export default function ScorePulmonarCalculator() {
   const [tramo, setTramo] = useState('');
 
   const items = [
     {
       id: 'frecuencia',
       label: 'Frecuencia respiratoria',
-      detail: tramo === '' ? 'Elige primero el tramo de edad.' : tramo === 'menor' ? 'Tramo menor de 6 meses' : 'Tramo 6 meses o más',
-      options: tramo === 'menor' ? FR_MENOR_6M : FR_MAYOR_6M,
+      detail: tramo === '' ? 'Elige primero el tramo de edad.' : tramo === 'menor' ? 'Tramo menor de 6 años' : 'Tramo 6 años o más',
+      options: tramo === 'menor' ? FR_MENOR_6A : FR_MAYOR_6A,
     },
     ...RESTO,
   ];
 
   return (
     <OrdinalScore
-      title="Score de Tal modificado — Obstrucción bronquial"
-      subtitle="Gravedad del síndrome bronquial obstructivo en el menor de 3 años."
-      gradient="from-sky-700 to-cyan-700"
+      title="Score Pulmonar — Obstrucción bronquial sobre 3 años"
+      subtitle="Equivalente del Tal para el preescolar mayor, el escolar y el adolescente."
+      gradient="from-indigo-700 to-sky-700"
       accent="sky"
       items={items}
-      maxScore={12}
-      interpret={getTalResult}
+      maxScore={9}
+      interpret={getScorePulmonarResult}
       ready={tramo !== ''}
       readyHint="Selecciona el tramo de edad para puntuar la frecuencia respiratoria."
       extra={
         <div>
           <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Tramo de edad</p>
           <div className="grid gap-2 sm:grid-cols-2">
-            {[['menor', 'Menor de 6 meses'], ['mayor', '6 meses o más']].map(([value, label]) => (
+            {[['menor', 'Menor de 6 años'], ['mayor', '6 años o más']].map(([value, label]) => (
               <button
                 key={value}
                 type="button"
@@ -138,9 +124,9 @@ export default function TalCalculator() {
       }
       references={[
         { label: 'Manual de supervivencia — Residencia Pediátrica HLCM', url: '' },
-        { label: 'Pediatric Pulmonology 2018;1–6', url: '' },
+        { label: 'J Pediatr 2018;194:204-210.e3', url: '' },
       ]}
-      footnote="Cortes del manual: leve ≤5, moderado 6–10, grave ≥11. En el protocolo de cánula de alto flujo, una caída de 3 o más puntos a los 60 minutos se considera respuesta favorable; si persiste sobre 11, se presenta a cuidados intensivos."
+      footnote="Cortes del manual: leve ≤3, moderado 4–6, grave >6. En el protocolo de cánula de alto flujo, una caída de 2 o más puntos a los 60 minutos se considera respuesta favorable; si persiste sobre 6, se presenta a cuidados intensivos. El manual imprime el tramo de 6 años o más como 36–50 y ≥50: aquí se corrigió el traslape a 36–49 y ≥50."
     />
   );
 }
