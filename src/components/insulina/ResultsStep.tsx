@@ -99,33 +99,33 @@ export function ResultsStep({ data, grupo, onBack, onReset, usoCondicionado, onI
 
       {/* Vista de impresión compacta */}
       <div className="hidden print:block print-section">
-        <div className="text-center mb-6">
-          <h1 className="text-xl font-bold mb-1">Hospital Comunitario de Salud Familiar de Bulnes</h1>
-          <h2 className="text-lg font-semibold">Protocolo de Corrección Insulínica</h2>
+        <div className="text-center mb-3">
+          <h1 className="text-base font-bold">Hospital Comunitario de Salud Familiar de Bulnes</h1>
+          <h2 className="text-sm font-semibold">Protocolo de Corrección Insulínica</h2>
         </div>
 
-        <div className="space-y-4 text-sm">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
+        <div className="space-y-2 text-xs">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-0.5">
               <p><strong>Nombre paciente:</strong> {recordContext?.name || '___________________________'}</p>
               <p><strong>RUT:</strong> {recordContext?.rut || '___________________________'}</p>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               <p><strong>N° cama / Servicio:</strong> {recordContext ? [recordContext.cama, recordContext.servicio].filter(Boolean).join(' · ') : '___________________________'}</p>
               <p><strong>Fecha de emisión:</strong> {fechaEmision} - {horaEmision} h</p>
             </div>
           </div>
 
-          <div className="border-2 border-gray-800 p-3 rounded">
-            <p className="text-center font-bold text-base mb-2">
+          <div className="border-2 border-gray-800 p-2 rounded">
+            <p className="text-center font-bold text-sm mb-1">
               Clasificación: {info.title}
               {mostrarAlertaCorticoide && corticoideOverride === 'resistente' && (
-                <span className="block text-xs font-normal mt-0.5">
+                <span className="block text-[10px] font-normal">
                   (Escala ajustada por uso de corticoides sistémicos)
                 </span>
               )}
             </p>
-            <div className="grid grid-cols-3 gap-2 text-xs">
+            <div className="grid grid-cols-3 gap-2 text-[11px]">
               <p><strong>Peso:</strong> {data.peso} kg</p>
               <p><strong>Glicemia:</strong> {data.glicemiaIngreso} mg/dL</p>
               <p><strong>HbA1c:</strong> {data.hba1c}%</p>
@@ -133,29 +133,29 @@ export function ResultsStep({ data, grupo, onBack, onReset, usoCondicionado, onI
           </div>
 
           <div>
-            <h3 className="font-bold mb-2 text-base">Esquema de Corrección con Insulina Cristalina</h3>
-            <table className="w-full border-collapse border border-gray-800 text-xs">
+            <h3 className="font-bold mb-1 text-sm">Esquema de Corrección con Insulina Cristalina</h3>
+            <table className="w-full border-collapse border border-gray-800 text-[11px] leading-tight">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="border border-gray-800 p-2 text-left">Glicemia (mg/dL)</th>
+                  <th className="border border-gray-800 px-1.5 py-1 text-left">Glicemia (mg/dL)</th>
                   {(grupo === 'intermedio' || grupo === 'resistente') && (
-                    <th className="border border-gray-800 p-2 text-left">U/kg</th>
+                    <th className="border border-gray-800 px-1.5 py-1 text-left">U/kg</th>
                   )}
-                  <th className="border border-gray-800 p-2 text-left">Dosis (U)</th>
-                  <th className="border border-gray-800 p-2 text-left">Observación</th>
+                  <th className="border border-gray-800 px-1.5 py-1 text-left">Dosis (U)</th>
+                  <th className="border border-gray-800 px-1.5 py-1 text-left">Observación</th>
                 </tr>
               </thead>
               <tbody>
                 {recommendations.map((rec, index) => (
                   <tr key={index}>
-                    <td className="border border-gray-800 p-2">{rec.glucoseRange}</td>
+                    <td className="border border-gray-800 px-1.5 py-1">{rec.glucoseRange}</td>
                     {(grupo === 'intermedio' || grupo === 'resistente') && (
-                      <td className="border border-gray-800 p-2">{rec.ukgRange}</td>
+                      <td className="border border-gray-800 px-1.5 py-1">{rec.ukgRange}</td>
                     )}
-                    <td className="border border-gray-800 p-2 font-bold">
+                    <td className="border border-gray-800 px-1.5 py-1 font-bold">
                       {rec.dose === 0 ? 'No corregir' : `${rec.dose} UI`}
                     </td>
-                    <td className="border border-gray-800 p-2 text-xs">{rec.comment}</td>
+                    <td className="border border-gray-800 px-1.5 py-1">{rec.comment}</td>
                   </tr>
                 ))}
               </tbody>
@@ -163,13 +163,13 @@ export function ResultsStep({ data, grupo, onBack, onReset, usoCondicionado, onI
           </div>
 
           {/* Recordatorios: versión condensada, para que el protocolo quepa en una hoja. */}
-          <div className="border border-gray-400 p-3 bg-gray-50 text-xs">
-            <p className="font-semibold mb-1">⚠️ IMPORTANTE:</p>
-            <p className="mb-2">
+          <div className="border border-gray-400 p-2 bg-gray-50 text-[11px] leading-snug">
+            <p className="font-semibold">⚠️ IMPORTANTE:</p>
+            <p className="mb-1">
               Esta es una herramienta de apoyo digital. El esquema debe ser validado y ajustado
               según criterio médico considerando la condición clínica específica del paciente.
             </p>
-            <ul className="list-disc list-inside space-y-0.5 text-xs">
+            <ul className="list-disc list-inside">
               <li>Comunicar si glicemia persistente &gt; 350 mg/dL</li>
               <li>Comunicar si correcciones &gt; 0.2 U/kg</li>
               <li>Vigilar hipoglicemias sintomáticas</li>
@@ -179,38 +179,36 @@ export function ResultsStep({ data, grupo, onBack, onReset, usoCondicionado, onI
             </ul>
           </div>
 
-
-          <div className="mt-6 pt-4 border-t-2 border-gray-400">
+          <div className="mt-3 pt-2 border-t-2 border-gray-400">
             <div className="grid grid-cols-2 gap-8">
               <div>
-                <p className="text-xs mb-1"><strong>Médico Tratante:</strong></p>
-                <p className="text-xs">Nombre: ___________________________</p>
-                <div className="mt-8 border-t border-gray-800 pt-1">
-                  <p className="text-xs text-center">Firma y Timbre</p>
+                <p className="text-[11px]"><strong>Médico Tratante:</strong> ___________________________</p>
+                <div className="mt-6 border-t border-gray-800 pt-0.5">
+                  <p className="text-[11px] text-center">Firma y Timbre</p>
                 </div>
               </div>
               <div>
-                <p className="text-xs mb-1"><strong>Fecha de indicación:</strong></p>
-                <p className="text-xs">___/___/______  Hora: ___:___</p>
+                <p className="text-[11px]"><strong>Fecha de indicación:</strong></p>
+                <p className="text-[11px]">___/___/______  Hora: ___:___</p>
               </div>
             </div>
           </div>
 
           {usoCondicionado && (
-            <div className="mt-4 p-2 border border-gray-400 rounded text-center">
-              <p className="text-xs font-semibold">⚠ Uso condicionado</p>
-              <p className="text-[10px] text-gray-600">El paciente presenta criterios de exclusión. El uso de este protocolo queda bajo criterio médico del tratante.</p>
+            <div className="mt-2 px-2 py-1 border border-gray-400 rounded text-center">
+              <p className="text-[11px] font-semibold">⚠ Uso condicionado</p>
+              <p className="text-[10px] leading-snug text-gray-600">El paciente presenta criterios de exclusión. El uso de este protocolo queda bajo criterio médico del tratante.</p>
             </div>
           )}
 
           {data.glicemiaIngreso > 350 && (
-            <div className="mt-4 p-2 border border-gray-800 rounded">
-              <p className="text-xs font-semibold">⚠ Hiperglicemia significativa (&gt;350 mg/dL)</p>
-              <p className="text-[10px] text-gray-600">En caso de hiperglicemia persistente, reevaluar criterios de exclusión y/o considerar inicio de esquema basal o basal-bolo según cuadro clínico.</p>
+            <div className="mt-2 px-2 py-1 border border-gray-800 rounded">
+              <p className="text-[11px] font-semibold">⚠ Hiperglicemia significativa (&gt;350 mg/dL)</p>
+              <p className="text-[10px] leading-snug text-gray-600">En caso de hiperglicemia persistente, reevaluar criterios de exclusión y/o considerar inicio de esquema basal o basal-bolo según cuadro clínico.</p>
             </div>
           )}
 
-          <div className="text-center text-xs text-gray-600 mt-4 space-y-0.5">
+          <div className="text-center text-[10px] text-gray-600 mt-2">
             <p>Protocolo desarrollado por Dr. Fernando Alvarado Caro - Servicio de Medicina</p>
             <p className="text-gray-400">Colaborador técnico-digital: Daniel Vargas Quinteros, Ingeniero en Informática (estudiante)</p>
           </div>
