@@ -169,6 +169,8 @@ export interface BasalGuidance {
   estado: 'sin_basal' | 'con_basal' | 'sobrebasalizado';
   titulo: string;
   resumen: string;
+  /** Versión condensada para el impreso, que debe caber en una sola hoja. */
+  impresion: string[];
   basalActualUkg: number;
   basalActualU: number | null;
   sugeridaUkg: number | null;
@@ -206,10 +208,21 @@ export function getBasalGuidance(data: PatientData, grupo: PatientGroup): BasalG
   if (data.corticoidesSistemicos) alertas.push('Corticoides sistémicos: la hiperglicemia es vespertina. Cargar la NPH en la mañana y bajarla cuando se reduzca el corticoide.');
   if (data.edad > 75) alertas.push('Mayor de 75 años: meta 140-180 mg/dL; no perseguir normoglicemia.');
 
+  // Línea breve que se agrega al impreso cuando hay algo que ajustar por
+  // fragilidad o corticoides; el detalle completo queda en pantalla.
+  const matiz = [
+    renalFragil ? 'reducir ~25% (VFG <30 / hepatopatía)' : '',
+    data.corticoidesSistemicos ? 'con corticoides, cargar en la mañana' : '',
+  ].filter(Boolean).join('; ');
+
   if (basalUkg >= BASAL_TOPE_UKG) {
     return {
       estado: 'sobrebasalizado',
       titulo: 'Sobrebasalización: no subir más la NPH',
+      impresion: [
+        `Basal ${basalUkg.toFixed(2).replace('.', ',')} U/kg/día: NO subir más NPH. Agregar prandial o revisar aporte nutricional y corticoides.`,
+        'Bajar 10-20% si hay hipoglicemia o ayuno <100 mg/dL.',
+      ],
       resumen: `La basal actual (${basalUkg.toFixed(2).replace('.', ',')} U/kg/día) alcanza o supera el techo de ${String(BASAL_TOPE_UKG).replace('.', ',')} U/kg/día. Seguir titulando aumenta la hipoglicemia sin mejorar el control.`,
       basalActualUkg: basalUkg,
       basalActualU: basalU,
@@ -236,6 +249,10 @@ export function getBasalGuidance(data: PatientData, grupo: PatientGroup): BasalG
     return {
       estado: 'con_basal',
       titulo: 'Ya tiene basal: titular por la glicemia de ayuno',
+      impresion: [
+        `Basal ${basalUkg.toFixed(2).replace('.', ',')} U/kg/día${basalU ? ` (≈ ${basalU} U)` : ''}: subir 10-20% cada 24-48 h sólo si el ayuno sigue sobre 140 mg/dL. Nunca por hiperglicemia post-prandial.`,
+        `Tope ${String(BASAL_TOPE_UKG).replace('.', ',')} U/kg/día${topeU ? ` (≈ ${topeU} U)` : ''}${matiz ? `; ${matiz}` : ''}.`,
+      ],
       resumen: `Basal actual ${basalUkg.toFixed(2).replace('.', ',')} U/kg/día${basalU ? ` (≈ ${basalU} U/día)` : ''}. Queda margen hasta ${String(BASAL_TOPE_UKG).replace('.', ',')} U/kg/día${topeU ? ` (≈ ${topeU} U/día)` : ''}.`,
       basalActualUkg: basalUkg,
       basalActualU: basalU,
@@ -261,6 +278,10 @@ export function getBasalGuidance(data: PatientData, grupo: PatientGroup): BasalG
   return {
     estado: 'sin_basal',
     titulo: 'Sin basal: la escala de corrección no es tratamiento',
+    impresion: [
+      `Sin basal: si la hiperglicemia persiste o la corrección supera ${CORRECCION_AVISO_UKG.toString().replace('.', ',')} U/kg${avisoU ? ` (≈ ${avisoU} U)` : ''}, valorar iniciar NPH ${sugeridaUkg.toString().replace('.', ',')} U/kg/día${sugeridaU ? ` (≈ ${sugeridaU} U)` : ''}.`,
+      `NPH en 2 dosis (2/3 mañana, 1/3 tarde); titular a las 24-48 h${matiz ? `; ${matiz}` : ''}.`,
+    ],
     resumen: 'La corrección aislada sirve para las primeras horas. Si la hiperglicemia se sostiene, corresponde programar insulina basal en vez de repetir correcciones.',
     basalActualUkg: 0,
     basalActualU: null,

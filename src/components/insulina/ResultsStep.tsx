@@ -162,36 +162,20 @@ export function ResultsStep({ data, grupo, onBack, onReset, usoCondicionado, onI
             </table>
           </div>
 
-          <div className="border-2 border-gray-800 p-3 text-xs">
-            <p className="font-bold mb-1">Insulina basal — {basal.titulo}</p>
-            <p className="mb-2">{basal.resumen}</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="font-semibold">{basal.estado === 'sin_basal' ? '¿Cuándo iniciarla?' : '¿Cuándo subirla?'}</p>
-                <ul className="list-disc list-inside space-y-0.5">{basal.cuando.map((item, index) => <li key={index}>{item}</li>)}</ul>
-              </div>
-              <div>
-                <p className="font-semibold">Dosis y titulación</p>
-                <ul className="list-disc list-inside space-y-0.5">{basal.titulacion.map((item, index) => <li key={index}>{item}</li>)}</ul>
-              </div>
-            </div>
-            {basal.alertas.length > 0 && (
-              <ul className="list-disc list-inside space-y-0.5 mt-2 border-t border-gray-400 pt-2">
-                {basal.alertas.map((item, index) => <li key={index}>{item}</li>)}
-              </ul>
-            )}
-          </div>
-
+          {/* Recordatorios: versión condensada, para que el protocolo quepa en una hoja. */}
           <div className="border border-gray-400 p-3 bg-gray-50 text-xs">
             <p className="font-semibold mb-1">⚠️ IMPORTANTE:</p>
             <p className="mb-2">
-              Esta es una herramienta de apoyo digital. El esquema debe ser validado y ajustado 
+              Esta es una herramienta de apoyo digital. El esquema debe ser validado y ajustado
               según criterio médico considerando la condición clínica específica del paciente.
             </p>
             <ul className="list-disc list-inside space-y-0.5 text-xs">
               <li>Comunicar si glicemia persistente &gt; 350 mg/dL</li>
               <li>Comunicar si correcciones &gt; 0.2 U/kg</li>
               <li>Vigilar hipoglicemias sintomáticas</li>
+              {basal.impresion.map((item, index) => (
+                <li key={index}>{index === 0 ? <strong>Insulina basal: </strong> : null}{item}</li>
+              ))}
             </ul>
           </div>
 
