@@ -33,6 +33,9 @@ import PECARNCalculator from '@/components/calculators/PECARNCalculator';
 import ProceduralSedoanalgesiaCalculator from '@/components/calculators/ProceduralSedoanalgesiaCalculator';
 import AntidepressantSwitchCalculator from '@/components/calculators/AntidepressantSwitchCalculator';
 import MoriskyCalculator from '@/components/calculators/MoriskyCalculator';
+import GRACECalculator from '@/components/calculators/GRACECalculator';
+import TalCalculator from '@/components/calculators/TalCalculator';
+import WestleyCalculator from '@/components/calculators/WestleyCalculator';
 
 export const calculatorsByCategory = {
   'Urgencias': [
@@ -51,7 +54,8 @@ export const calculatorsByCategory = {
     { id: 'heart', name: 'HEART Score', component: HEARTScoreCalculator, icon: Heart },
     { id: 'cha2ds2vasc', name: 'CHA₂DS₂-VASc — Riesgo de ACV en FA', component: CHA2DS2VAScCalculator, icon: Heart },
     { id: 'has-bled', name: 'HAS-BLED — Riesgo de Sangrado', component: HASBLEDCalculator, icon: ShieldAlert },
-    { id: 'morisky-mmas8', name: 'Morisky MMAS-8 — Adherencia a tratamiento', component: MoriskyCalculator, icon: Pill }
+    { id: 'morisky-mmas8', name: 'Morisky MMAS-8 — Adherencia a tratamiento', component: MoriskyCalculator, icon: Pill },
+    { id: 'grace', name: 'GRACE — Riesgo en síndrome coronario agudo', component: GRACECalculator, icon: Heart }
   ],
   'Neurología': [
     { id: 'nihss', name: 'NIHSS - Escala ACV', component: NIHSSCalculator, icon: Brain },
@@ -62,7 +66,9 @@ export const calculatorsByCategory = {
   ],
   'Pediatría': [
     { id: 'pediatric-dose', name: 'Dosis Pediátricas por Peso', component: PediatricDoseCalculator, icon: Baby },
-    { id: 'pecarn', name: 'PECARN — TEC pediátrico (TC sí/no)', component: PECARNCalculator, icon: Baby }
+    { id: 'pecarn', name: 'PECARN — TEC pediátrico (TC sí/no)', component: PECARNCalculator, icon: Baby },
+    { id: 'tal', name: 'Tal modificado — Obstrucción bronquial', component: TalCalculator, icon: Wind },
+    { id: 'westley', name: 'Westley — Crup / laringitis obstructiva', component: WestleyCalculator, icon: Wind }
   ],
   'Nutrición': [
     { id: 'nrs2002', name: 'NRS-2002 - Riesgo Nutricional', component: NRS2002Calculator, icon: Stethoscope }
