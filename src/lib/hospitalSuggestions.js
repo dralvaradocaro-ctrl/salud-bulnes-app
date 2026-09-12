@@ -116,6 +116,42 @@ export const SALA_CAMA_SUGGESTIONS = [
 ];
 
 // Previsiones más comunes (para formularios que tengan campo texto libre).
+// Diagnósticos infecciosos frecuentes en el hospital, para autocompletar los
+// formularios que piden diagnóstico. Los que terminan en "de " o "por " quedan
+// abiertos a propósito, para completar el foco o el agente.
+export const DIAGNOSTICOS_FRECUENTES = [
+  'Neumonía adquirida en la comunidad (NAC)',
+  'Neumonía asociada a la atención de salud (NAAS)',
+  'Neumonía aspirativa',
+  'Neumonía intrahospitalaria',
+  'Infección del tracto urinario (ITU)',
+  'ITU complicada',
+  'ITU asociada a catéter urinario',
+  'Pielonefritis aguda (PNA)',
+  'Sepsis',
+  'Shock séptico',
+  'Bacteriemia',
+  'Celulitis de ',
+  'Absceso de ',
+  'Infección de piel y partes blandas',
+  'Pie diabético infectado',
+  'Infección de herida operatoria',
+  'Colecistitis aguda',
+  'Colangitis aguda',
+  'Diverticulitis aguda',
+  'Peritonitis',
+  'Absceso intraabdominal',
+  'Diarrea por Clostridioides difficile',
+  'Meningitis bacteriana',
+  'Endocarditis infecciosa',
+  'Osteomielitis',
+  'Artritis séptica',
+  'Empiema pleural',
+  'Absceso pulmonar',
+  'Neutropenia febril',
+  'Exacerbación infecciosa de EPOC',
+];
+
 export const PREVISIONES = [
   'Fonasa A',
   'Fonasa B',

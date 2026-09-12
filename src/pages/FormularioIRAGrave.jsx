@@ -226,6 +226,49 @@ function DateDMA({ dia, mes, ano, onChange }) {
 // Deben vivir fuera de FormularioIRAGrave. Si se declaran dentro, su función
 // cambia de identidad en cada actualización del formulario y React desmonta el
 // input activo, haciendo que el foco salte mientras se escribe una fecha o texto.
+// Síntomas del formulario oficial, en las dos columnas en que aparecen en la
+// hoja A4. Se comparten con el panel inicial para que no se desincronicen.
+const SINTOMAS_COL1 = [
+  ['sFiebre', 'Fiebre sobre 38°C'],
+  ['sDolorGarganta', 'Dolor de garganta'],
+  ['sMialgia', 'Mialgia'],
+  ['sNeumonia', 'Neumonía'],
+  ['sEncefalitis', 'Encefalitis'],
+  ['sTos', 'Tos'],
+  ['sRinorrea', 'Rinorrea/congestión nasal'],
+  ['sDifResp', 'Dificultad respiratoria'],
+  ['sHipotension', 'Hipotensión'],
+];
+
+const SINTOMAS_COL2 = [
+  ['sCefalea', 'Cefalea'],
+  ['sTaquipnea', 'Taquipnea'],
+  ['sHipoxia', 'Hipoxia'],
+  ['sCianosis', 'Cianosis'],
+  ['sDeshidratacion', 'Deshidratación o rechazo alimentario (lactantes)'],
+  ['sCompromisoHemo', 'Compromiso hemodinámico'],
+  ['sConsultaRepetida', 'Consulta repetida por deterioro cuadro respiratorio'],
+];
+
+const SINTOMAS = [...SINTOMAS_COL1, ...SINTOMAS_COL2];
+
+function SintomaChip({ label, checked, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={checked}
+      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+        checked
+          ? 'border-blue-500 bg-blue-600 text-white'
+          : 'border-slate-300 bg-white text-slate-600 hover:border-blue-400 hover:text-blue-700'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 function QuickField({ label, children, span = 'col-span-1' }) {
   return (
     <div className={span}>
@@ -253,6 +296,12 @@ export default function FormularioIRAGrave() {
   const [f, setF] = useState({ ...EMPTY, ...HCSFB_DEFAULTS });
   const [showPreview, setShowPreview] = useState(false);
   const u = useCallback((k, v) => setF(prev => ({ ...prev, [k]: v })), []);
+  const sintomasMarcados = [...SINTOMAS.map(([key]) => key), 'sEnfBase'].filter(key => f[key]).length;
+  const limpiarSintomas = () => setF(prev => ({
+    ...prev,
+    ...Object.fromEntries([...SINTOMAS.map(([key]) => key), 'sEnfBase'].map(key => [key, false])),
+    enfBaseDetalle: '',
+  }));
   const setDate = (prefix) => (changes) => {
     setF(prev => {
       const next = {
@@ -568,6 +617,24 @@ export default function FormularioIRAGrave() {
             <QuickField label="Correo electrónico (lab)" span="col-span-2">
               <QuickInput value={f.correo} onChange={e => u('correo', e.target.value)} placeholder="lab@hospitalbulnes.cl" />
             </QuickField>
+          </div>
+
+          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+            <div className="mb-2">
+              <p className="text-[11px] font-medium text-slate-600">Síntomas</p>
+              <p className="text-[11px] text-slate-400">Quedan marcados en el formulario generado.</p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {SINTOMAS.map(([key, label]) => (
+                <SintomaChip key={key} label={label} checked={Boolean(f[key])} onClick={() => u(key, !f[key])} />
+              ))}
+              <SintomaChip label="Enfermedad de base" checked={Boolean(f.sEnfBase)} onClick={() => u('sEnfBase', !f.sEnfBase)} />
+            </div>
+            {f.sEnfBase && (
+              <div className="mt-2">
+                <QuickInput value={f.enfBaseDetalle} onChange={e => u('enfBaseDetalle', e.target.value)} placeholder="Especifique la enfermedad de base…" />
+              </div>
+            )}
           </div>
 
           <p className="text-[11px] text-slate-500 italic mt-3 leading-relaxed">

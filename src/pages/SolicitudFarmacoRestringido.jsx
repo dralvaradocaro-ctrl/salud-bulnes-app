@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
-import { SERVICIOS } from '@/lib/hospitalSuggestions';
+import { DIAGNOSTICOS_FRECUENTES, SERVICIOS } from '@/lib/hospitalSuggestions';
 
 // Catálogo de fármacos restringidos con sus presentaciones disponibles.
 // Cuando el Arsenal Ñuble / Arsenal local declara una presentación específica,
@@ -177,6 +177,12 @@ export default function SolicitudFarmacoRestringido() {
   useEffect(() => {
     const p = getMultiPrefill();
     if (!p) return;
+    // Diagnóstico completo: el principal más los asociados, en una línea.
+    const diagnostico = [p.diagnostico_principal || p.diagnostico, p.diagnostico_desglose]
+      .map(value => String(value || '').trim())
+      .filter(Boolean)
+      .join(' · ')
+      .replace(/\s*\n\s*/g, ' · ');
     setF(prev => ({
       ...prev,
       paciente:  p.patient_name      || prev.paciente,
@@ -185,7 +191,7 @@ export default function SolicitudFarmacoRestringido() {
       prevision: p.prevision         || prev.prevision,
       comuna:    p.patient_comuna    || prev.comuna,
       n_ficha:   p.n_ficha           || prev.n_ficha,
-      diagnostico: p.diagnostico     || prev.diagnostico,
+      diagnostico: diagnostico       || prev.diagnostico,
     }));
   }, []);
 
@@ -289,7 +295,16 @@ export default function SolicitudFarmacoRestringido() {
                 <Input value={f.n_ficha} onChange={e => u('n_ficha', e.target.value)} className="h-9" />
               </Field>
               <Field label="Diagnóstico" span="col-span-2 md:col-span-3">
-                <Input value={f.diagnostico} onChange={e => u('diagnostico', e.target.value)} className="h-9" />
+                <Input
+                  value={f.diagnostico}
+                  onChange={e => u('diagnostico', e.target.value)}
+                  list="diagnosticos-frecuentes"
+                  placeholder="Escribe o elige uno frecuente…"
+                  className="h-9"
+                />
+                <datalist id="diagnosticos-frecuentes">
+                  {DIAGNOSTICOS_FRECUENTES.map(item => <option key={item} value={item} />)}
+                </datalist>
               </Field>
 
               {/* Comuna + Servicio clínico en la misma fila */}
