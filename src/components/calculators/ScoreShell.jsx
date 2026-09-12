@@ -22,6 +22,7 @@ export default function ScoreShell({
   gradient = 'from-teal-700 to-cyan-700',
   badge,
   children,
+  highlight,
   result,
   pending,
   references = [],
@@ -43,6 +44,8 @@ export default function ScoreShell({
       </div>
 
       <div className="space-y-4 p-6">{children}</div>
+
+      {highlight}
 
       <div className="space-y-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
         {pending && (
