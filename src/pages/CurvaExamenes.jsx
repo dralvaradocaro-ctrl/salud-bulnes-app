@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { archiveProaRecord, deleteProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord } from '@/lib/proaRegistry';
 import { supabase } from '@/lib/supabase';
 import { HOSPITAL_LAB_FIELDS } from '@/components/hospitalizados/hospitalLabCatalog';
+import { inPlacePrintCss } from '@/components/print/PrintSheet';
 
 const STORAGE_KEY = 'hospital_lab_tracker_v1';
 const TEST_EPISODE_ID = 'curva-examenes-test-patient';
@@ -823,11 +824,9 @@ function CurvaExamenes() {
         </DialogContent>
       </Dialog>
       <style>{`
-        @media print {
+        ${inPlacePrintCss('.curve-print-sheet')}@media print {
           @page { size: A4 landscape; margin: 8mm; }
           html, body { margin: 0 !important; background: white !important; }
-          body * { visibility: hidden !important; }
-          .curve-print-sheet, .curve-print-sheet * { visibility: visible !important; }
           .curve-print-sheet {
             display: block !important;
             position: absolute !important;

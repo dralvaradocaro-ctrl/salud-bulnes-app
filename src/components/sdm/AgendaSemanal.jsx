@@ -18,6 +18,7 @@ import SdmHistoryDialog from './SdmHistoryDialog';
 import TimeInput24h from './TimeInput24h';
 import DateInputDdmm from './DateInputDdmm';
 import { getSdmEditor } from './lib/sdmEditHistory';
+import { inPlacePrintCss } from '@/components/print/PrintSheet';
 
 const ABSENCE_TYPES = ['FL', 'P', 'A', 'DT', 'LM', 'CAP', 'PAS', 'G', 'OTRO'];
 
@@ -1116,10 +1117,8 @@ ${table}
     <div className="space-y-4">
       <style>{`
         .sdm-print-only { display: none; }
-        @media print {
+        ${inPlacePrintCss('.sdm-print-area')}@media print {
           @page { size: A4 landscape; margin: 8mm; }
-          body * { visibility: hidden; }
-          .sdm-print-area, .sdm-print-area * { visibility: visible; }
           .sdm-print-area { position: absolute; left: 0; top: 0; width: 100%; }
           .sdm-print-hide { display: none !important; }
           .sdm-print-only { display: block !important; }

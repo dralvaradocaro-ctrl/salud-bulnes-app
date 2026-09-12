@@ -1,24 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { createPortal } from 'react-dom';
 import { Clock, AlertCircle, CheckCircle2, Info } from 'lucide-react';
-
-// El impreso se cuelga directamente del body: así la regla de impresión puede
-// descolgar el resto de la app (incluidos diálogos abiertos) sin ocultarse a sí
-// mismo por estar anidado dentro de ella.
-function usePrintHost() {
-  const [host] = useState(() => {
-    if (typeof document === 'undefined') return null;
-    const element = document.createElement('div');
-    element.setAttribute('data-print-root', '');
-    return element;
-  });
-  useEffect(() => {
-    if (!host) return undefined;
-    document.body.appendChild(host);
-    return () => { document.body.removeChild(host); };
-  }, [host]);
-  return host;
-}
+import { usePrintHost } from '@/components/print/PrintSheet';
 
 // Extrae el "Plazo: ..." del texto de interpretación para destacarlo como
 // banner. Maneja variantes: "Plazo: 48-72 horas hábiles", "Plazo: 5-7 días",

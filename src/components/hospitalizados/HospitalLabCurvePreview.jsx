@@ -3,6 +3,7 @@ import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 import { Printer, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HOSPITAL_LAB_FIELDS } from './hospitalLabCatalog';
+import { inPlacePrintCss } from '@/components/print/PrintSheet';
 
 const DEFINITIONS = HOSPITAL_LAB_FIELDS;
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
@@ -42,7 +43,7 @@ export default function HospitalLabCurvePreview({ open, rows, patient, bed, load
         </div>
       </div>
       <footer className="flex justify-end gap-2 border-t border-slate-200 bg-white px-5 py-3">{!embedded && <Button variant="outline" onClick={onClose}>Cerrar</Button>}<Button onClick={print} disabled={loading || normalized.length === 0} className="gap-2 bg-teal-700 hover:bg-teal-800"><Printer className="h-4 w-4" />Imprimir curva</Button></footer>
-      <style>{`@media print{@page{size:A4 landscape;margin:8mm}body *{visibility:hidden!important}.hospital-lab-print-page,.hospital-lab-print-page *{visibility:visible!important}.hospital-lab-print-page{position:absolute!important;left:0!important;top:0!important;width:100%!important;max-width:none!important;min-height:0!important;padding:0!important;box-shadow:none!important}.hospital-lab-print-page button{display:none!important}.hospital-lab-print-page section{break-inside:avoid;page-break-inside:avoid}}`}</style>
+      <style>{`${inPlacePrintCss('.hospital-lab-print-page')}@media print{@page{size:A4 landscape;margin:8mm}.hospital-lab-print-page{position:absolute!important;left:0!important;top:0!important;width:100%!important;max-width:none!important;min-height:0!important;padding:0!important;box-shadow:none!important}.hospital-lab-print-page button{display:none!important}.hospital-lab-print-page section{break-inside:avoid;page-break-inside:avoid}}`}</style>
     </div>
   </div>;
 }

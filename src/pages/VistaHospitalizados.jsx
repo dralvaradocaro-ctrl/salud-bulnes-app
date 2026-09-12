@@ -20,6 +20,7 @@ import HospitalMedicalReports from '@/components/hospitalizados/HospitalMedicalR
 import ProaEvolutionDocument from '@/components/visita-proa/ProaEvolutionDocument';
 import { emptyHospitalLabRow, HOSPITAL_LAB_FIELDS, HOSPITAL_LAB_GROUPS, LAB_FIELD_BY_EXAM } from '@/components/hospitalizados/hospitalLabCatalog';
 import { parseLabReportText } from '@/pages/CurvaExamenes';
+import PrintSheet from '@/components/print/PrintSheet';
 
 const STORAGE_KEY = 'vista_general_hospitalizados_v1';
 const SELECTED_BED_KEY = 'vista_general_hospitalizados_selected_bed';
@@ -2092,22 +2093,10 @@ function VistaHospitalizados() {
         <div className="hospital-preview-canvas"><div className="hospital-preview-page"><VisitTable rows={printRows} service={printServiceLabel} /></div></div>
       </div>
     </div>}
-    <section className="hospital-print-sheet">
-      <VisitTable rows={printRows} service={printServiceLabel} />
-    </section>
-    <style>{`
-      .hospital-print-sheet{display:none}
-      .hospital-preview-overlay{position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.72);padding:18px;backdrop-filter:blur(4px)}
-      .hospital-preview-dialog{display:flex;height:100%;flex-direction:column;overflow:hidden;border-radius:16px;background:#fff;box-shadow:0 24px 80px rgba(15,23,42,.35)}
-      .hospital-preview-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #e2e8f0;padding:14px 18px}.hospital-preview-toolbar h2{font-size:16px;font-weight:800;color:#0f172a}.hospital-preview-toolbar p{font-size:11px;color:#64748b}
-      .hospital-preview-canvas{flex:1;overflow:auto;background:#cbd5e1;padding:22px}.hospital-preview-page{box-sizing:border-box;width:1120px;min-height:792px;margin:0 auto;background:#fff;padding:28px;box-shadow:0 5px 24px rgba(15,23,42,.25);color:#000;font-family:Arial,sans-serif}
-      .hospital-preview-page .hospital-print-header{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid #0f172a;padding-bottom:6px;margin-bottom:10px}.hospital-preview-page .hospital-print-header h1{font-size:18px;font-weight:800}.hospital-preview-page .hospital-print-header p{font-size:10px;margin-top:2px}.hospital-preview-page table{width:100%;height:auto!important;border-collapse:collapse;table-layout:fixed;font-size:9px;line-height:1.2}.hospital-preview-page thead,.hospital-preview-page thead tr,.hospital-preview-page th{height:auto!important;min-height:0!important}.hospital-preview-page th,.hospital-preview-page td{border:1px solid #64748b;padding:4px;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}.hospital-preview-page th{background:#e2e8f0;font-size:7.5px;line-height:1.1;text-transform:uppercase;text-align:left}.hospital-preview-page th:nth-child(1){width:10%}.hospital-preview-page th:nth-child(2){width:15%}.hospital-preview-page th:nth-child(3){width:11%}.hospital-preview-page th:nth-child(4){width:12%}.hospital-preview-page th:nth-child(5){width:8%}.hospital-preview-page th:nth-child(6){width:13%}.hospital-preview-page th:nth-child(7){width:9%}.hospital-preview-page th:nth-child(8){width:14%}.hospital-preview-page th:nth-child(9){width:8%}.hospital-preview-page .visit-notes-cell{min-height:72px;background:repeating-linear-gradient(to bottom,transparent 0,transparent 17px,#cbd5e1 18px)}
+    <PrintSheet className="hospital-print-sheet" css={`
       @media print{
         @page{size:A4 landscape;margin:7mm}
-        html,body,#root{background:#fff!important}
-        body *{visibility:hidden!important}
-        .hospital-print-sheet,.hospital-print-sheet *{visibility:visible!important}
-        .hospital-print-sheet{display:block!important;position:absolute;inset:0;width:100%;color:#000;font-family:Arial,sans-serif}
+        .hospital-print-sheet{color:#000;font-family:Arial,sans-serif}
         .hospital-print-header{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid #0f172a;padding-bottom:4px;margin-bottom:7px}
         .hospital-print-header h1{font-size:14px;font-weight:800;margin:0}.hospital-print-header p{font-size:8px;margin:2px 0 0}
         .hospital-print-sheet table{width:100%;height:auto!important;border-collapse:collapse;table-layout:fixed;font-size:7px;line-height:1.18}
@@ -2117,6 +2106,15 @@ function VistaHospitalizados() {
         .hospital-print-sheet th:nth-child(1){width:10%}.hospital-print-sheet th:nth-child(2){width:15%}.hospital-print-sheet th:nth-child(3){width:11%}.hospital-print-sheet th:nth-child(4){width:12%}.hospital-print-sheet th:nth-child(5){width:8%}.hospital-print-sheet th:nth-child(6){width:13%}.hospital-print-sheet th:nth-child(7){width:9%}.hospital-print-sheet th:nth-child(8){width:14%}.hospital-print-sheet th:nth-child(9){width:8%}.hospital-print-sheet .visit-notes-cell{min-height:60px;background:repeating-linear-gradient(to bottom,transparent 0,transparent 14px,#cbd5e1 15px)}
         .hospital-print-sheet tr{break-inside:avoid}
       }
+    `}>
+      <VisitTable rows={printRows} service={printServiceLabel} />
+    </PrintSheet>
+    <style>{`
+      .hospital-preview-overlay{position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.72);padding:18px;backdrop-filter:blur(4px)}
+      .hospital-preview-dialog{display:flex;height:100%;flex-direction:column;overflow:hidden;border-radius:16px;background:#fff;box-shadow:0 24px 80px rgba(15,23,42,.35)}
+      .hospital-preview-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #e2e8f0;padding:14px 18px}.hospital-preview-toolbar h2{font-size:16px;font-weight:800;color:#0f172a}.hospital-preview-toolbar p{font-size:11px;color:#64748b}
+      .hospital-preview-canvas{flex:1;overflow:auto;background:#cbd5e1;padding:22px}.hospital-preview-page{box-sizing:border-box;width:1120px;min-height:792px;margin:0 auto;background:#fff;padding:28px;box-shadow:0 5px 24px rgba(15,23,42,.25);color:#000;font-family:Arial,sans-serif}
+      .hospital-preview-page .hospital-print-header{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid #0f172a;padding-bottom:6px;margin-bottom:10px}.hospital-preview-page .hospital-print-header h1{font-size:18px;font-weight:800}.hospital-preview-page .hospital-print-header p{font-size:10px;margin-top:2px}.hospital-preview-page table{width:100%;height:auto!important;border-collapse:collapse;table-layout:fixed;font-size:9px;line-height:1.2}.hospital-preview-page thead,.hospital-preview-page thead tr,.hospital-preview-page th{height:auto!important;min-height:0!important}.hospital-preview-page th,.hospital-preview-page td{border:1px solid #64748b;padding:4px;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}.hospital-preview-page th{background:#e2e8f0;font-size:7.5px;line-height:1.1;text-transform:uppercase;text-align:left}.hospital-preview-page th:nth-child(1){width:10%}.hospital-preview-page th:nth-child(2){width:15%}.hospital-preview-page th:nth-child(3){width:11%}.hospital-preview-page th:nth-child(4){width:12%}.hospital-preview-page th:nth-child(5){width:8%}.hospital-preview-page th:nth-child(6){width:13%}.hospital-preview-page th:nth-child(7){width:9%}.hospital-preview-page th:nth-child(8){width:14%}.hospital-preview-page th:nth-child(9){width:8%}.hospital-preview-page .visit-notes-cell{min-height:72px;background:repeating-linear-gradient(to bottom,transparent 0,transparent 17px,#cbd5e1 18px)}
     `}</style>
   </div>;
 }

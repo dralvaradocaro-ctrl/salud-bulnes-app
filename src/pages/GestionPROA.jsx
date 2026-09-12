@@ -61,6 +61,7 @@ import {
   UserPlus,
   Users,
 } from 'lucide-react';
+import { inPlacePrintCss } from '@/components/print/PrintSheet';
 
 const moduleCardClass = 'group block h-full rounded-2xl border bg-white p-5 transition-all hover:-translate-y-0.5 hover:shadow-md';
 const CHART_COLORS = ['#0f766e', '#0284c7', '#7c3aed', '#d97706', '#dc2626', '#059669', '#4f46e5', '#be185d'];
@@ -344,7 +345,7 @@ function printProaEvolutionPreview() {
   const popup = window.open('', '_blank', 'width=900,height=1000');
   if (!popup) return;
   const styles = [...document.querySelectorAll('link[rel="stylesheet"], style')].map(node => node.outerHTML).join('');
-  popup.document.write(`<!doctype html><html><head><title>Evolución clínica PROA</title><meta charset="utf-8">${styles}<style>body{margin:0;padding:0;font-family:Arial,sans-serif;color:#0f172a}@page{size:A4 portrait;margin:10mm}@media print{body{padding:0}}</style></head><body>${element.outerHTML}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+  popup.document.write(`<!doctype html><html><head><title>Evolución clínica PROA</title><meta charset="utf-8">${styles}<style>body{margin:0;padding:0;font-family:Arial,sans-serif;color:#0f172a}@page{size:A4 portrait;margin:10mm}${inPlacePrintCss('.proa-evolution-print')}@media print{body{padding:0}}</style></head><body>${element.outerHTML}<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
   popup.document.close();
 }
 
@@ -2722,7 +2723,7 @@ function GestionPROA() {
               {savingPreAdmission ? 'Guardando…' : editingEvolution ? 'Guardar cambios' : 'Guardar evolución PROA'}
             </Button>
           </div>
-          <style>{`@media print{body *{visibility:hidden!important}.proa-evolution-print,.proa-evolution-print *{visibility:visible!important}.proa-evolution-print{position:absolute!important;inset:0!important;width:100%!important;border:0!important;box-shadow:none!important}}`}</style>
+          <style>{`@media print{.proa-evolution-print{position:absolute!important;inset:0!important;width:100%!important;border:0!important;box-shadow:none!important}}`}</style>
         </DialogContent>
       </Dialog>
 

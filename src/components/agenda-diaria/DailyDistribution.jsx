@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/select';
 import { ALL_BEDS } from './bedCatalog';
 import { KIND_CLASS } from './roster';
+import { inPlacePrintCss } from '@/components/print/PrintSheet';
 
 /**
  * Vista final del reparto (estilo planilla de agenda) + edición manual.
@@ -382,9 +383,7 @@ function PrintPreview({ roster, date, day, telemed }) {
         </div>
       )}
       <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          .print-preview, .print-preview * { visibility: visible; }
+        ${inPlacePrintCss('.print-preview')}@media print {
           .print-preview { position: absolute; left: 0; top: 0; width: 100%; }
           @page { size: letter; margin: 0.55in; }
         }
