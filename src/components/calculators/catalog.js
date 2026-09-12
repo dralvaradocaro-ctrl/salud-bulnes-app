@@ -36,13 +36,29 @@ import MoriskyCalculator from '@/components/calculators/MoriskyCalculator';
 import GRACECalculator from '@/components/calculators/GRACECalculator';
 import TalCalculator from '@/components/calculators/TalCalculator';
 import WestleyCalculator from '@/components/calculators/WestleyCalculator';
+import QsofaCalculator from '@/components/calculators/QsofaCalculator';
+import SofaCalculator from '@/components/calculators/SofaCalculator';
+import ShockIndexCalculator from '@/components/calculators/ShockIndexCalculator';
+import PercCalculator from '@/components/calculators/PercCalculator';
+import WellsTepCalculator from '@/components/calculators/WellsTepCalculator';
+import Curb65Calculator from '@/components/calculators/Curb65Calculator';
+import PafiCalculator from '@/components/calculators/PafiCalculator';
+import RoxCalculator from '@/components/calculators/RoxCalculator';
+import CapriniCalculator from '@/components/calculators/CapriniCalculator';
+import PaduaCalculator from '@/components/calculators/PaduaCalculator';
+import ClinicalFrailtyScaleCalculator from '@/components/calculators/ClinicalFrailtyScaleCalculator';
+import MaintenanceFluidsCalculator from '@/components/calculators/MaintenanceFluidsCalculator';
+import PediatricNutritionCalculator from '@/components/calculators/PediatricNutritionCalculator';
 
 export const calculatorsByCategory = {
   'Urgencias': [
     { id: 'sri', name: 'SRI - Intubación Rápida', component: SRICalculator, icon: Activity, includeInStats: false },
     { id: 'procedural-sedoanalgesia', name: 'Sedoanalgesia procedural — combinación local', component: ProceduralSedoanalgesiaCalculator, icon: Syringe },
     { id: 'hyperglycemic-crisis', name: 'CAD/EHH — Criterios y manejo inicial', component: HyperglycemicCrisisCalculator, icon: Activity },
-    { id: 'hypoglycemia-treatment', name: 'Hipoglicemia en urgencias — Tratamiento inicial', component: HypoglycemiaTreatmentCalculator, icon: Candy }
+    { id: 'hypoglycemia-treatment', name: 'Hipoglicemia en urgencias — Tratamiento inicial', component: HypoglycemiaTreatmentCalculator, icon: Candy },
+    { id: 'qsofa', name: 'qSOFA — Sospecha rápida de sepsis', component: QsofaCalculator, icon: ShieldAlert },
+    { id: 'sofa', name: 'SOFA — Disfunción orgánica', component: SofaCalculator, icon: Activity },
+    { id: 'shock-index', name: 'Índice de shock', component: ShockIndexCalculator, icon: HeartPulse }
   ],
   'Nefrología': [
     { id: 'hypokalemia-correction', name: 'Hipokalemia — reposición de KCl', component: HypokalemiaCorrectionCalculator, icon: Pill },
@@ -55,7 +71,11 @@ export const calculatorsByCategory = {
     { id: 'cha2ds2vasc', name: 'CHA₂DS₂-VASc — Riesgo de ACV en FA', component: CHA2DS2VAScCalculator, icon: Heart },
     { id: 'has-bled', name: 'HAS-BLED — Riesgo de Sangrado', component: HASBLEDCalculator, icon: ShieldAlert },
     { id: 'morisky-mmas8', name: 'Morisky MMAS-8 — Adherencia a tratamiento', component: MoriskyCalculator, icon: Pill },
-    { id: 'grace', name: 'GRACE — Riesgo en síndrome coronario agudo', component: GRACECalculator, icon: Heart }
+    { id: 'grace', name: 'GRACE — Riesgo en síndrome coronario agudo', component: GRACECalculator, icon: Heart },
+    { id: 'wells-tep', name: 'Wells — Probabilidad de tromboembolismo pulmonar', component: WellsTepCalculator, icon: Activity },
+    { id: 'perc', name: 'PERC — Descarte de tromboembolismo', component: PercCalculator, icon: ShieldAlert },
+    { id: 'caprini', name: 'Caprini — Riesgo trombótico quirúrgico', component: CapriniCalculator, icon: ShieldAlert },
+    { id: 'padua', name: 'Padua — Riesgo trombótico en paciente médico', component: PaduaCalculator, icon: ShieldAlert }
   ],
   'Neurología': [
     { id: 'nihss', name: 'NIHSS - Escala ACV', component: NIHSSCalculator, icon: Brain },
@@ -68,13 +88,18 @@ export const calculatorsByCategory = {
     { id: 'pediatric-dose', name: 'Dosis Pediátricas por Peso', component: PediatricDoseCalculator, icon: Baby },
     { id: 'pecarn', name: 'PECARN — TEC pediátrico (TC sí/no)', component: PECARNCalculator, icon: Baby },
     { id: 'tal', name: 'Tal modificado — Obstrucción bronquial', component: TalCalculator, icon: Wind },
-    { id: 'westley', name: 'Westley — Crup / laringitis obstructiva', component: WestleyCalculator, icon: Wind }
+    { id: 'westley', name: 'Westley — Crup / laringitis obstructiva', component: WestleyCalculator, icon: Wind },
+    { id: 'maintenance-fluids', name: 'Fluidos de mantención — Holliday-Segar y 4-2-1', component: MaintenanceFluidsCalculator, icon: Droplet },
+    { id: 'pediatric-nutrition', name: 'Alimentación del lactante — volumen y calorías', component: PediatricNutritionCalculator, icon: Baby }
   ],
   'Nutrición': [
     { id: 'nrs2002', name: 'NRS-2002 - Riesgo Nutricional', component: NRS2002Calculator, icon: Stethoscope }
   ],
   'Respiratorio': [
-    { id: 'light-criteria', name: 'Criterios de Light — Líquido pleural', component: LightCriteriaCalculator, icon: Wind }
+    { id: 'light-criteria', name: 'Criterios de Light — Líquido pleural', component: LightCriteriaCalculator, icon: Wind },
+    { id: 'curb-65', name: 'CURB-65 — Gravedad de neumonía comunitaria', component: Curb65Calculator, icon: Wind },
+    { id: 'pafi', name: 'PaFi — PaO₂/FiO₂ con estimador de FiO₂', component: PafiCalculator, icon: Wind },
+    { id: 'rox', name: 'Índice de ROX — Respuesta a cánula de alto flujo', component: RoxCalculator, icon: Wind }
   ],
   'Salud Mental': [
     { id: 'sad-persons', name: 'SAD PERSONS — Riesgo Suicida', component: SadPersonsCalculator, icon: HeartPulse },
@@ -90,6 +115,9 @@ export const calculatorsByCategory = {
   ],
   'Cuidados Paliativos': [
     { id: 'opioid-conversion', name: 'Equivalencia y rotación de opioides', component: OpioidConversionCalculator, icon: ArrowRightLeft }
+  ],
+  'Geriatría': [
+    { id: 'clinical-frailty-scale', name: 'Clinical Frailty Scale — Escala de fragilidad', component: ClinicalFrailtyScaleCalculator, icon: Stethoscope }
   ],
   'Reumatología': [
     { id: 'fibromyalgia-acr', name: 'Fibromialgia — Criterios diagnósticos ACR 2016', component: FibromyalgiaACRCalculator, icon: Bone },
@@ -109,6 +137,7 @@ export const categoryIcons = {
   'Salud Mental': HeartPulse,
   'Gastroenterología': Pill,
   'Cuidados Paliativos': ArrowRightLeft,
+  'Geriatría': Stethoscope,
   'Reumatología': Bone
 };
 
@@ -123,6 +152,7 @@ export const categoryColors = {
   'Salud Mental': 'from-fuchsia-500 to-purple-600',
   'Gastroenterología': 'from-orange-500 to-amber-600',
   'Cuidados Paliativos': 'from-indigo-500 to-purple-600',
+  'Geriatría': 'from-amber-500 to-orange-600',
   'Reumatología': 'from-rose-500 to-purple-600'
 };
 
