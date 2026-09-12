@@ -33,17 +33,30 @@ const aproximarA10 = valor => Math.round(valor / 10) * 10;
 const esquemaPorEdad = meses => ESQUEMA.find(item => meses < item.hasta) || ESQUEMA[ESQUEMA.length - 1];
 const caloriasPorEdad = meses => CALORIAS_POR_MES[Math.min(Math.floor(meses), CALORIAS_POR_MES.length - 1)] ?? 80;
 
+// Fórmula que corresponde por edad: inicio hasta los 6 meses, continuación
+// hasta el año y leche total desde el año.
+export function formulaPorEdad(meses) {
+  if (!Number.isFinite(meses) || meses < 0) return null;
+  if (meses < 6) return 'inicio135';
+  if (meses < 12) return 'continuacion14';
+  return 'total10';
+}
+
 export default function PediatricNutritionCalculator() {
   const [peso, setPeso] = useState('');
   const [meses, setMeses] = useState('');
-  const [formulaId, setFormulaId] = useState('inicio135');
+  // null = seguir la edad; un id = el profesional eligió otra leche.
+  const [formulaElegida, setFormulaElegida] = useState(null);
   const [metodo, setMetodo] = useState('volumen');
 
   const pesoNum = Number(peso);
   const mesesNum = Number(meses);
   const listo = Number.isFinite(pesoNum) && pesoNum > 0 && Number.isFinite(mesesNum) && mesesNum >= 0;
 
+  const sugerida = meses === '' ? null : formulaPorEdad(mesesNum);
+  const formulaId = formulaElegida || sugerida || 'inicio135';
   const formula = FORMULAS.find(item => item.id === formulaId) || FORMULAS[0];
+  const sobrescrita = Boolean(formulaElegida && sugerida && formulaElegida !== sugerida);
   const esquema = listo ? esquemaPorEdad(mesesNum) : null;
   const calKg = listo ? caloriasPorEdad(mesesNum) : null;
 
@@ -81,7 +94,7 @@ export default function PediatricNutritionCalculator() {
       badge={listo ? aproximarA10(porToma) : '—'}
       result={result}
       pending={!listo ? 'Ingresa el peso y la edad en meses.' : null}
-      onReset={() => { setPeso(''); setMeses(''); setFormulaId('inicio135'); setMetodo('volumen'); }}
+      onReset={() => { setPeso(''); setMeses(''); setFormulaElegida(null); setMetodo('volumen'); }}
       references={[
         { label: 'Manual de supervivencia — Residencia Pediátrica, Hospital Luis Calvo Mackenna', url: '' },
       ]}
@@ -93,14 +106,35 @@ export default function PediatricNutritionCalculator() {
       </div>
 
       <div>
-        <p className="text-sm font-semibold text-slate-700">Leche o fórmula</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-slate-700">Leche o fórmula</p>
+          {sobrescrita && (
+            <button
+              type="button"
+              onClick={() => setFormulaElegida(null)}
+              className="text-xs font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-900"
+            >
+              Volver a la que corresponde por edad
+            </button>
+          )}
+        </div>
         <select
           value={formulaId}
-          onChange={event => setFormulaId(event.target.value)}
+          onChange={event => setFormulaElegida(event.target.value)}
           className="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
         >
           {FORMULAS.map(item => <option key={item.id} value={item.id}>{item.label} · {item.calorias} cal/100 ml</option>)}
         </select>
+        {sugerida && !sobrescrita && (
+          <p className="mt-1.5 text-xs text-sky-700">
+            Seleccionada automáticamente por la edad. Puedes cambiarla si corresponde otra.
+          </p>
+        )}
+        {sobrescrita && (
+          <p className="mt-1.5 text-xs text-amber-700">
+            Por edad correspondería {FORMULAS.find(item => item.id === sugerida)?.label.toLowerCase()}.
+          </p>
+        )}
       </div>
 
       <div>
