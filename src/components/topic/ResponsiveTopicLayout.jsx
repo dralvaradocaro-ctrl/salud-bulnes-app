@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { isHiddenCalculatorId, isHiddenCalculatorName } from '@/components/utils/hiddenContent';
 import MermaidDiagram from './MermaidDiagram';
+import TacoDecisionCalculator from '@/components/calculators/TacoDecisionCalculator';
 import LightCriteriaCalculator from '@/components/calculators/LightCriteriaCalculator';
 import OpioidConversionCalculator from '@/components/calculators/OpioidConversionCalculator';
 import HyperglycemicCrisisCalculator from '@/components/calculators/HyperglycemicCrisisCalculator';
@@ -754,6 +755,9 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
       case 'clinical':
         return <ClinicalBlock key={block.id} block={block} />;
 
+      case 'taco_decision_calculator':
+        return <TacoDecisionCalculator key={block.id} />;
+
       case 'dose_calculator':
         return <DoseCalculatorBlock key={block.id} block={block} />;
 
@@ -1217,7 +1221,12 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     }
   };
 
-  const safeBlocks = blocks || [];
+  // Existing published TACO content gains the calculator without rewriting its source.
+  const sourceBlocks = blocks || [];
+  const isTaco = sourceBlocks.some(block => block.tab === 'taco_protocolo');
+  const safeBlocks = isTaco && !sourceBlocks.some(block => block.type === 'taco_decision_calculator')
+    ? [...sourceBlocks, { id: 'taco-decision-calculator', type: 'taco_decision_calculator', tab: 'taco_calculadora', layout_position: 'main' }]
+    : sourceBlocks;
   const tabValues = [...new Set(safeBlocks.map(b => b.tab).filter(Boolean))];
   const hasTabs = tabValues.length > 0;
   const initialTab = (() => {
@@ -1537,6 +1546,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     tec_adulto_flujogramas: 'Flujogramas',
     'agresion-sexual': 'Agresión Sexual',
     taco_protocolo: 'Protocolo',
+    taco_calculadora: 'Decisión clínica',
     taco_equipo: 'Equipo',
     taco_farmacos: 'Fármacos',
     taco_flujogramas: 'Flujogramas',
