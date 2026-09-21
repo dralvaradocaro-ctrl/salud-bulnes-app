@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ import {
   ExternalLink,
   Printer,
   ArrowDown,
+  PenLine,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
@@ -24,7 +26,7 @@ import ImageProtocolForm from './ImageProtocolForm';
 
 const IMAGE_TYPE = 'Protocolo Imágenes';
 
-const EXTERNAL_FORMS = [
+export const EXTERNAL_FORMS = [
   {
     id: 'ext-nota-evolucion',
     name: 'Nota de evolución',
@@ -125,7 +127,27 @@ const EXTERNAL_FORMS = [
       { field_name: 'diagnostico', field_label: 'Diagnóstico', field_type: 'textarea' },
     ],
   },
+  {
+    id: 'ext-hodom',
+    name: 'Hospitalización Domiciliaria (HODOM)',
+    type: 'Hospitalizados',
+    description: 'Derivación y consentimiento informado editables.',
+    route: 'FormulariosHODOM',
+    shared_fields: [
+      { field_name: 'patient_name', field_label: 'Nombre del paciente', field_type: 'text' },
+      { field_name: 'patient_rut', field_label: 'RUT del paciente', field_type: 'text' },
+      { field_name: 'patient_telefono', field_label: 'Teléfono', field_type: 'text' },
+      { field_name: 'patient_direccion', field_label: 'Dirección', field_type: 'text' },
+      { field_name: 'diagnostico', field_label: 'Diagnóstico', field_type: 'textarea' },
+    ],
+  },
 ];
+
+// Un RequestTemplate de la BD puede entrar al lote si trae campos y contenido.
+export const isMultiEligibleTemplate = (t) =>
+  !!t && !t.external_route &&
+  Array.isArray(t.required_fields) && t.required_fields.length > 0 &&
+  typeof t.template_content === 'string';
 
 const DOC_CATEGORY_ORDER = ['GES', 'Hospitalizados', 'Policlínico', 'Formularios de solicitud', 'Otros'];
 
@@ -186,20 +208,21 @@ function renderTemplate(template, data) {
   return content;
 }
 
-export default function MultiTemplateGenerator({ open, templates, onClose, embedded = false }) {
-  const [step, setStep] = useState(1);
-  const [selectedIds, setSelectedIds] = useState([]);
+// Props opcionales para el flujo "selección múltiple" desde el tab Formularios:
+//   initialSelectedIds → documentos ya elegidos (se salta el paso 1)
+//   handoff            → el paso final deriva a cada documento por separado
+//                        (ver y editar solo ese documento) en vez de apilarlos.
+export default function MultiTemplateGenerator({ open, templates, onClose, embedded = false, initialSelectedIds = null, handoff = false }) {
+  const skipPick = Array.isArray(initialSelectedIds) && initialSelectedIds.length > 0;
+  const firstStep = skipPick ? 2 : 1;
+  const [step, setStep] = useState(firstStep);
+  const [selectedIds, setSelectedIds] = useState(skipPick ? initialSelectedIds : []);
   const [formData, setFormData] = useState({});
   const [generated, setGenerated] = useState([]);
   const [copiedId, setCopiedId] = useState(null);
 
   const eligibleTemplates = useMemo(
-    () => (templates || []).filter(t =>
-      !t.external_route &&
-      Array.isArray(t.required_fields) &&
-      t.required_fields.length > 0 &&
-      typeof t.template_content === 'string'
-    ),
+    () => (templates || []).filter(isMultiEligibleTemplate),
     [templates]
   );
 
@@ -255,8 +278,8 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
   };
 
   const reset = () => {
-    setStep(1);
-    setSelectedIds([]);
+    setStep(firstStep);
+    setSelectedIds(skipPick ? initialSelectedIds : []);
     setFormData({});
     setGenerated([]);
   };
@@ -338,7 +361,7 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
           <div className="flex-1">
             <h2 className="text-xl font-bold">Generar documentos clínicos</h2>
             <p className="text-violet-100 text-sm">
-              Paso {step} de 3 · {step === 1 ? 'Elige documentos por categoría' : step === 2 ? 'Completa los datos una sola vez' : 'Documentos listos'}
+              Paso {skipPick ? step - 1 : step} de {skipPick ? 2 : 3} · {step === 1 ? 'Elige documentos por categoría' : step === 2 ? 'Completa los datos una sola vez' : handoff ? 'Abre cada documento para verlo y editarlo' : 'Documentos listos'}
             </p>
           </div>
         </div>
@@ -424,7 +447,39 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
           </div>
         )}
 
-        {step === 3 && (
+        {step === 3 && handoff && (
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <p className="font-bold text-emerald-900">Datos del paciente guardados</p>
+              <p className="text-sm text-emerald-800">Cada documento se abre por separado con los datos ya cargados. Ábrelo, revísalo y edítalo; luego vuelve aquí para el siguiente.</p>
+            </div>
+            <ol className="space-y-2">
+              {orderedDocs.map((doc, idx) => {
+                const isExt = doc.kind === 'external';
+                const name = isExt ? doc.ext.name : doc.g.template.name;
+                const desc = isExt ? doc.ext.description : (doc.g.template.type || 'Formulario');
+                const href = isExt ? createPageUrl(doc.ext.route) : createPageUrl(`Templates?id=${doc.g.template.id}`);
+                return (
+                  <li key={doc.id} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-100 text-sm font-bold text-violet-700">{idx + 1}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold text-slate-900">{name}</p>
+                      <p className="truncate text-xs text-slate-500">{desc}</p>
+                    </div>
+                    <Link
+                      to={href}
+                      className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-700"
+                    >
+                      <PenLine className="h-4 w-4" /> Ver y editar
+                    </Link>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        )}
+
+        {step === 3 && !handoff && (
           <div className="space-y-4">
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
               <p className="font-bold text-emerald-900">Documentos listos</p>
@@ -516,7 +571,7 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
       <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
         <Button variant="ghost" onClick={handleClose}>{embedded ? 'Volver' : 'Cerrar'}</Button>
         <div className="flex gap-2">
-          {step > 1 && step < 3 && (
+          {step > firstStep && step < 3 && (
             <Button variant="outline" onClick={() => setStep(s => s - 1)} className="gap-1">
               <ChevronLeft className="h-4 w-4" /> Atrás
             </Button>
@@ -539,8 +594,11 @@ export default function MultiTemplateGenerator({ open, templates, onClose, embed
                   : 'Preparar formularios'}
             </Button>
           )}
-          {step === 3 && (
+          {step === 3 && !handoff && (
             <Button onClick={reset} variant="outline">Generar otro lote</Button>
+          )}
+          {step === 3 && handoff && (
+            <Button onClick={handleClose} className="bg-violet-600 hover:bg-violet-700">Listo</Button>
           )}
         </div>
       </div>

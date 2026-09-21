@@ -29,7 +29,23 @@ import {
   Search,
   ArrowRight,
   Database,
+  CheckSquare,
+  Check,
+  X,
+  Home,
+  Microscope,
+  MessageSquare,
+  Calculator,
+  Heart,
+  Brain,
+  Wind,
+  Droplet,
+  ShieldAlert,
+  Utensils,
+  HeartPulse,
 } from 'lucide-react';
+import { allCalculators } from '@/components/calculators/catalog';
+import MultiTemplateGenerator, { EXTERNAL_FORMS, isMultiEligibleTemplate } from '@/components/templates/MultiTemplateGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -49,17 +65,267 @@ import {
 // en el tab de Formularios.
 const HIDDEN_TEMPLATE_TYPES = ['Estudio Endoscópico', 'Laboratorio Especial'];
 
-// Estilo de tarjeta por tipo de formulario, para homogenizar con las tarjetas
-// hardcodeadas (tarjeta ancha + icono de color). default cubre tipos sin mapeo.
-const TEMPLATE_TYPE_STYLE = {
-  'Protocolo Imágenes': { border: 'border-indigo-200', bg: 'bg-indigo-50/80', icon: 'bg-indigo-600', Icon: Image },
-  default: { border: 'border-violet-200', bg: 'bg-violet-50/80', icon: 'bg-violet-600', Icon: ClipboardList },
+// Paleta por tono (clases literales para que Tailwind las compile).
+const FORM_TONES = {
+  slate:   { card: 'border-slate-200 bg-white hover:border-slate-400',          icon: 'bg-slate-700',   chip: 'bg-slate-100 text-slate-700',     label: 'text-slate-400' },
+  teal:    { card: 'border-teal-200 bg-teal-50/70 hover:border-teal-400',        icon: 'bg-teal-700',    chip: 'bg-teal-100 text-teal-800',       label: 'text-teal-600' },
+  blue:    { card: 'border-blue-200 bg-blue-50/70 hover:border-blue-400',        icon: 'bg-blue-600',    chip: 'bg-blue-100 text-blue-800',       label: 'text-blue-600' },
+  cyan:    { card: 'border-cyan-200 bg-cyan-50/70 hover:border-cyan-400',        icon: 'bg-cyan-600',    chip: 'bg-cyan-100 text-cyan-800',       label: 'text-cyan-600' },
+  rose:    { card: 'border-rose-200 bg-rose-50/70 hover:border-rose-400',        icon: 'bg-rose-600',    chip: 'bg-rose-100 text-rose-800',       label: 'text-rose-600' },
+  amber:   { card: 'border-amber-200 bg-amber-50/70 hover:border-amber-400',     icon: 'bg-amber-600',   chip: 'bg-amber-100 text-amber-800',     label: 'text-amber-600' },
+  indigo:  { card: 'border-indigo-200 bg-indigo-50/70 hover:border-indigo-400',  icon: 'bg-indigo-600',  chip: 'bg-indigo-100 text-indigo-800',   label: 'text-indigo-600' },
+  emerald: { card: 'border-emerald-200 bg-emerald-50/70 hover:border-emerald-400', icon: 'bg-emerald-600', chip: 'bg-emerald-100 text-emerald-800', label: 'text-emerald-600' },
+  violet:  { card: 'border-violet-200 bg-violet-50/70 hover:border-violet-400',  icon: 'bg-violet-600',  chip: 'bg-violet-100 text-violet-800',   label: 'text-violet-600' },
 };
 
-const FORM_CARD_CLASS = 'flex items-center gap-4 rounded-xl border p-4 transition-all hover:shadow-sm hover:-translate-y-0.5';
+// Áreas en que se agrupan los formularios del tab. El orden aquí es el orden
+// en pantalla; un área sin formularios visibles no se renderiza.
+const FORM_GROUPS = [
+  { id: 'registro',   title: 'Registro clínico',            subtitle: 'Evolución y seguimiento del paciente',          Icon: Stethoscope },
+  { id: 'examenes',   title: 'Exámenes e imágenes',         subtitle: 'Laboratorio, microbiología, ISP y protocolos',  Icon: FlaskConical },
+  { id: 'farmacia',   title: 'Farmacia y tratamiento',      subtitle: 'Fármacos que requieren autorización',           Icon: Pill },
+  { id: 'derivacion', title: 'Derivación y continuidad',    subtitle: 'Traslados, interconsultas y alta domiciliaria', Icon: Home },
+  { id: 'paciente',   title: 'Documentos para el paciente', subtitle: 'Constancias, informes y certificados',          Icon: UserCheck },
+  { id: 'urgencia',   title: 'Urgencia',                    subtitle: 'Plantillas de indicaciones rápidas',            Icon: ShieldPlus },
+  { id: 'otros',      title: 'Otros formularios',           subtitle: 'Solicitudes adicionales de la categoría',       Icon: Files },
+];
+
+// Formularios con página propia. `show` decide si aplica a la categoría;
+// `details` es lo que se despliega al pasar el mouse (qué se puede solicitar).
+const STATIC_FORMS = [
+  {
+    group: 'registro', route: 'NotaEvolucion', tone: 'slate', Icon: FileText,
+    title: 'Nota de evolución',
+    description: 'Evolución clínica diaria con firma médica.',
+    details: ['Anamnesis', 'Examen físico', 'Diagnósticos', 'Plan e indicaciones', 'Firma médica'],
+    show: c => c.hasHospitalizados,
+  },
+  {
+    group: 'registro', route: 'CurvaExamenes', tone: 'teal', Icon: Activity,
+    title: 'Curva de exámenes',
+    description: 'Seguimiento longitudinal anónimo por cama.',
+    details: ['Carga por fechas', 'Curvas por parámetro', 'Calcio corregido', 'PMN absolutos', 'Tendencias'],
+    show: c => c.hasHospitalizados,
+  },
+  {
+    group: 'examenes', route: 'SolicitudExamenes', tone: 'blue', Icon: FlaskConical,
+    title: 'Solicitud de Exámenes',
+    description: 'Formulario oficial COD. 32 con buscador.',
+    details: ['Hematología', 'Bioquímica', 'Coagulación', 'Orinas', 'Deposiciones', 'Hormonas · Inmunología', 'Derivados a HCHM'],
+    show: c => c.hasHospitalizados,
+  },
+  {
+    group: 'examenes', route: 'SolicitudMicrobiologia', tone: 'cyan', Icon: Microscope,
+    title: 'Exámenes Microbiológicos',
+    description: 'Formulario C 162. Imprime PDF.',
+    details: ['Bacteriológicos', 'Cultivos', 'Directos', 'Virológicos', 'Serología'],
+    show: c => c.hasHospitalizados,
+  },
+  {
+    group: 'examenes', route: 'FormularioIRAGrave', tone: 'rose', Icon: FlaskConical,
+    title: 'IRA grave y 2019-nCoV (ISP)',
+    description: 'PR-244.00-007. Notificación inmediata.',
+    details: ['Notificación ISP', 'Aspirado nasofaríngeo', 'Aspirado traqueal', 'Lavado broncoalveolar', 'Envío de muestras'],
+    show: c => c.hasHospitalizados,
+  },
+  {
+    group: 'farmacia', route: 'SolicitudFarmacoRestringido', tone: 'amber', Icon: Pill,
+    title: 'Fármaco de Uso Restringido',
+    description: 'Comité de Farmacia / MPJC. Imprime PDF.',
+    details: ['Antibióticos amplio espectro', 'Fármacos de uso ocasional', 'Justificación del tratamiento', 'Duración propuesta'],
+    show: c => c.hasHospitalizados,
+  },
+  {
+    group: 'derivacion', route: 'FormulariosHODOM', tone: 'indigo', Icon: Home,
+    title: 'Hospitalización Domiciliaria (HODOM)',
+    description: 'Derivación y consentimiento editables.',
+    details: ['Formulario de derivación', 'Consentimiento informado', 'Vista previa', 'Impresión formato original', 'Traslado a registro HODOM'],
+    show: c => c.hasHospitalizados || c.hasUrgencias,
+  },
+  {
+    group: 'paciente', route: 'FormularioGES', tone: 'emerald', Icon: FileText,
+    title: 'Constancia GES',
+    description: 'Art. 24 Ley 19.966. Información al paciente.',
+    details: ['Problema de salud GES', 'Garantías informadas', 'Firma paciente', 'Imprime PDF'],
+    show: c => c.hasGesConstancia,
+  },
+  {
+    group: 'paciente', route: 'InformeBiomedico', tone: 'amber', Icon: UserCheck,
+    title: 'Informe Biomédico Funcional',
+    description: 'Formulario oficial MINSAL editable.',
+    details: ['Diagnósticos', 'Funcionalidad', 'Fecha automática', 'Imprimible'],
+    show: c => c.hasPolicinico,
+  },
+  {
+    group: 'urgencia', route: 'IndicacionesUrgencia', tone: 'rose', Icon: ShieldPlus,
+    title: 'Indicaciones prehechas de Urgencia',
+    description: 'Plantillas editables por síndrome.',
+    details: ['Por síndrome', 'Edad y peso', 'Destino', 'Alergias', 'AINEs · Corticoides · β-lactámicos'],
+    show: c => c.hasUrgencias,
+  },
+];
+
+// Calculadoras que aplican al paciente hospitalizado adulto, agrupadas por
+// área temática (mismo orden de subcategorías que usa el tab Temas). Los ids
+// son los del catálogo de calculadoras; una que no exista se ignora.
+const HOSPITAL_CALCULATOR_GROUPS = [
+  { id: 'sepsis',     title: 'Sepsis y gravedad',            tone: 'rose',    Icon: ShieldAlert,
+    subtitle: 'Reconocimiento precoz y disfunción orgánica',
+    calcs: ['qsofa', 'sofa', 'shock-index', 'curb-65'] },
+  { id: 'cardio',     title: 'Cardiovascular',               tone: 'rose',    Icon: Heart,
+    subtitle: 'Síndrome coronario, FA, anticoagulación',
+    calcs: ['heart', 'grace', 'cha2ds2vasc', 'has-bled'] },
+  { id: 'trombo',     title: 'Tromboembolismo y profilaxis', tone: 'indigo',  Icon: Activity,
+    subtitle: 'Sospecha de TEP y riesgo trombótico del hospitalizado',
+    calcs: ['wells-tep', 'perc', 'padua', 'caprini'] },
+  { id: 'resp',       title: 'Respiratorio',                 tone: 'cyan',    Icon: Wind,
+    subtitle: 'Oxigenación, alto flujo y derrame pleural',
+    calcs: ['pafi', 'rox', 'light-criteria'] },
+  { id: 'electro',    title: 'Electrolitos y metabólico',    tone: 'blue',    Icon: Droplet,
+    subtitle: 'Corrección de sodio y potasio, crisis hiperglicémica',
+    calcs: ['hyponatremia-correction', 'hypernatremia-correction', 'hypokalemia-correction', 'hyperkalemia-management', 'hyperglycemic-crisis', 'hypoglycemia-treatment'] },
+  { id: 'neuro',      title: 'Neurología',                   tone: 'violet',  Icon: Brain,
+    subtitle: 'ACV, compromiso de conciencia y cognición',
+    calcs: ['nihss', 'glasgow', 'abcd2', 'moca', 'gds'] },
+  { id: 'digestivo',  title: 'Digestivo y Hepatología',      tone: 'amber',   Icon: Pill,
+    subtitle: 'Daño hepático crónico, hepatitis alcohólica y ascitis',
+    calcs: ['meld', 'child-pugh', 'maddrey', 'lille', 'ascitic-fluid', 'r-factor'] },
+  { id: 'nutricion',  title: 'Nutrición y fragilidad',       tone: 'emerald', Icon: Utensils,
+    subtitle: 'Tamizaje al ingreso y valoración geriátrica',
+    calcs: ['nrs2002', 'clinical-frailty-scale'] },
+  { id: 'analgesia',  title: 'Analgesia y paliativos',       tone: 'teal',    Icon: HeartPulse,
+    subtitle: 'Rotación de opioides y sedoanalgesia',
+    calcs: ['opioid-conversion', 'procedural-sedoanalgesia'] },
+  { id: 'mental',     title: 'Salud Mental',                 tone: 'slate',   Icon: Brain,
+    subtitle: 'Evaluación de riesgo en sala',
+    calcs: ['sad-persons'] },
+];
+
+const CALCULATOR_INDEX = Object.fromEntries(allCalculators.map(c => [c.id, c]));
+
+// Formularios de la BD (RequestTemplate): a qué área van y con qué estilo.
+const TEMPLATE_TYPE_META = {
+  'Protocolo Imágenes':   { group: 'examenes',   tone: 'indigo',  Icon: Image },
+  'Laboratorio Especial': { group: 'examenes',   tone: 'violet',  Icon: FlaskConical },
+  'Estudio Endoscópico':  { group: 'examenes',   tone: 'emerald', Icon: Microscope },
+  'Interconsulta':        { group: 'derivacion', tone: 'amber',   Icon: MessageSquare },
+  'Indicaciones clínicas':{ group: 'registro',   tone: 'rose',    Icon: ClipboardList },
+  default:                { group: 'otros',      tone: 'violet',  Icon: ClipboardList },
+};
+
 const FORM_ICON_CLASS = 'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl';
 const SSN2026_TAG = '[SSÑ-2026]';
 const CATEGORY_TABS = ['topics', 'tools', 'templates', 'gestiones'];
+
+// Tarjeta compacta de calculadora (tab Herramientas, hospitalizados).
+function CalcCard({ calc, tone, index }) {
+  const t = FORM_TONES[tone] || FORM_TONES.slate;
+  const Icon = calc.icon || Calculator;
+  const [name, hint] = calc.name.split(' — ');
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index, 10) * 0.03 }}
+      className="h-full"
+    >
+      <Link
+        to={createPageUrl(`AllCalculators?calc=${calc.id}`)}
+        className={`group flex h-full items-center gap-3 rounded-xl border p-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${t.card}`}
+      >
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${t.icon}`}>
+          <Icon className="h-[18px] w-[18px] text-white" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-900">{name}</p>
+          {hint && <p className="truncate text-xs text-slate-500">{hint}</p>}
+        </div>
+        <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" />
+      </Link>
+    </motion.div>
+  );
+}
+
+// Tarjeta de formulario: forma uniforme; al pasar el mouse (o enfocar con
+// teclado) despliega la lista de lo que se puede solicitar.
+function FormCard({ form, index, selectable = false, selected = false, onToggle }) {
+  const tone = FORM_TONES[form.tone] || FORM_TONES.slate;
+  const Icon = form.Icon;
+  const canSelect = selectable && !!form.multiId;
+  const body = (
+    <div className={`relative flex h-full flex-col rounded-2xl border p-4 transition-all duration-200 ${
+      selectable
+        ? canSelect
+          ? `cursor-pointer ${selected ? 'ring-2 ring-violet-500 border-violet-400 bg-violet-50/60' : tone.card}`
+          : 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-50'
+        : `hover:-translate-y-0.5 hover:shadow-md ${tone.card}`
+    }`}>
+      {selectable && canSelect && (
+        <span className={`absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors ${
+          selected ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-300 bg-white text-transparent'
+        }`}>
+          <Check className="h-4 w-4" />
+        </span>
+      )}
+      <div className="flex items-start gap-3">
+        <div className={`${FORM_ICON_CLASS} ${tone.icon}`}>
+          <Icon className="h-5 w-5 text-white" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={`font-semibold leading-snug text-slate-900 ${selectable ? 'pr-6' : ''}`}>{form.title}</p>
+          <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">{form.description}</p>
+          {selectable && !canSelect && (
+            <p className="mt-1 text-[11px] font-medium text-slate-400">No admite datos compartidos</p>
+          )}
+        </div>
+        {!selectable && (
+          <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" />
+        )}
+      </div>
+      {!selectable && form.details?.length > 0 && (
+        <div className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out group-hover:grid-rows-[1fr] group-focus-within:grid-rows-[1fr]">
+          <div className="overflow-hidden">
+            <div className="mt-3 border-t border-slate-900/5 pt-3">
+              <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${tone.label}`}>Puedes solicitar</p>
+              <div className="flex flex-wrap gap-1.5">
+                {form.details.map(d => (
+                  <span key={d} className={`rounded-md px-2 py-0.5 text-xs font-medium ${tone.chip}`}>{d}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+  if (selectable) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 8) * 0.04 }} className="h-full">
+        <button
+          type="button"
+          disabled={!canSelect}
+          aria-pressed={selected}
+          onClick={() => canSelect && onToggle?.(form.multiId)}
+          className="block h-full w-full rounded-2xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+        >
+          {body}
+        </button>
+      </motion.div>
+    );
+  }
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index, 8) * 0.04 }}
+      className="h-full"
+    >
+      <Link to={form.href} className="group block h-full rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400">
+        {body}
+      </Link>
+    </motion.div>
+  );
+}
 
 export default function Category() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -74,6 +340,12 @@ export default function Category() {
   const [gestionesTab, setGestionesTab] = useState('programas');
   const [arsenalSearch, setArsenalSearch] = useState('');
   const [arsenalSource, setArsenalSource] = useState('all'); // all | bulnes | ssn
+  // Selección múltiple de formularios (tab Formularios)
+  const [multiMode, setMultiMode] = useState(false);
+  const [multiSelected, setMultiSelected] = useState([]);
+  const [multiOpen, setMultiOpen] = useState(false);
+  const toggleMulti = (id) => setMultiSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const exitMultiMode = () => { setMultiMode(false); setMultiSelected([]); setMultiOpen(false); };
   const didRestoreReturnPoint = useRef(false);
   const pendingRestoreScroll = useRef(null);
 
@@ -121,6 +393,10 @@ export default function Category() {
     enabled: !!categoryId
   });
   const visibleTemplates = templates.filter(template => !HIDDEN_TEMPLATE_TYPES.includes(template.type));
+
+  const hospitalCalculatorSections = useMemo(() => HOSPITAL_CALCULATOR_GROUPS
+    .map(g => ({ ...g, calcs: g.calcs.map(id => CALCULATOR_INDEX[id]).filter(Boolean) }))
+    .filter(g => g.calcs.length > 0), []);
 
   const { data: medications = [], isLoading: loadingMedications } = useQuery({
     queryKey: ['category-arsenal-medications'],
@@ -458,7 +734,7 @@ export default function Category() {
               Temas ({topics.length})
             </button>
           )}
-          {visibleTools.length > 0 && (
+          {(visibleTools.length > 0 || hasHospitalizados) && (
             <button
               onClick={() => setActiveTab('tools')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
@@ -468,7 +744,7 @@ export default function Category() {
               }`}
             >
               <Stethoscope className="h-4 w-4" />
-              Herramientas ({visibleTools.length})
+              Herramientas ({visibleTools.length + (hasHospitalizados ? hospitalCalculatorSections.reduce((n, g) => n + g.calcs.length, 0) : 0)})
             </button>
           )}
           {(templates.length > 0 || hasPolicinico || hasHospitalizados || hasUrgencias || hasGesConstancia) && (
@@ -503,14 +779,6 @@ export default function Category() {
           >
             <Sparkles className="h-4 w-4" />
             Prescripción Inteligente
-          </Link>
-          <Link
-            to={createPageUrl('Templates?multi=1')}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all bg-white border border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300 shadow-sm"
-            title="Genera varias solicitudes o documentos para un mismo paciente — llena los datos una sola vez"
-          >
-            <Files className="h-4 w-4" />
-            Documentos clínicos
           </Link>
         </div>
 
@@ -756,11 +1024,26 @@ export default function Category() {
 
         {/* Tools Tab */}
         {activeTab === 'tools' && (
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-8">
+            {visibleTools.length > 0 && (
+              <section className="space-y-3">
+                {hasHospitalizados && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900/5 text-slate-600">
+                      <Stethoscope className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-sm font-bold uppercase tracking-wide text-slate-700">Herramientas de la categoría</h2>
+                      <p className="text-xs text-slate-500">Guías, protocolos y recursos propios</p>
+                    </div>
+                    <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">{visibleTools.length}</span>
+                  </div>
+                )}
+                <div className="grid md:grid-cols-2 gap-4">
             {visibleTools.map((tool, index) => {
               const isExternal = tool.reference_url && tool.reference_url.startsWith('http');
               const isInternal = tool.reference_url && !isExternal;
-              const cardClass = "group block bg-white rounded-2xl p-5 border border-slate-100 hover:border-emerald-200 hover:shadow-lg transition-all";
+              const cardClass = "group block h-full bg-white rounded-2xl p-5 border border-slate-100 hover:border-emerald-200 hover:shadow-lg transition-all";
               const inner = (
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-emerald-100 rounded-xl shrink-0">
@@ -807,194 +1090,167 @@ export default function Category() {
                 </motion.div>
               );
             })}
+                </div>
+              </section>
+            )}
+
+            {/* Calculadoras aplicables al paciente hospitalizado, por área */}
+            {hasHospitalizados && (() => {
+              let counter = 0;
+              return (
+                <div className={`space-y-8 ${visibleTools.length > 0 ? 'border-t border-slate-200/80 pt-6' : ''}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
+                        <Calculator className="h-4 w-4 text-violet-600" />
+                        Calculadoras para hospitalizados
+                      </h2>
+                      <p className="text-xs text-slate-500">Scores y correcciones de uso frecuente en sala, agrupados por área temática.</p>
+                    </div>
+                    <Link to={createPageUrl('AllCalculators')} className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 hover:underline">
+                      Ver todas <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                  {hospitalCalculatorSections.map(section => {
+                    const GroupIcon = section.Icon;
+                    return (
+                      <section key={section.id} className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900/5 text-slate-600">
+                            <GroupIcon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-700">{section.title}</h3>
+                            <p className="text-xs text-slate-500">{section.subtitle}</p>
+                          </div>
+                          <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">{section.calcs.length}</span>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          {section.calcs.map(calc => <CalcCard key={calc.id} calc={calc} tone={section.tone} index={counter++} />)}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
 
         {/* Templates Tab */}
-        {activeTab === 'templates' && (
-          <div className="space-y-7">
-            <div className="space-y-3">
-
-            {/* Formulario de Constancia GES – cuando la categoría lo trae como tool */}
-            {hasGesConstancia && (
-              <Link to={createPageUrl('FormularioGES')} className="block">
-                <div className={`${FORM_CARD_CLASS} border-emerald-200 bg-emerald-50/80 hover:border-emerald-300`}>
-                  <div className={`${FORM_ICON_CLASS} bg-emerald-600`}>
-                    <FileText className="h-5 w-5 text-white" />
+        {activeTab === 'templates' && (() => {
+          const ctx = { hasHospitalizados, hasPolicinico, hasUrgencias, hasGesConstancia };
+          const staticForms = STATIC_FORMS
+            .filter(f => f.show(ctx))
+            .map(f => ({ ...f, key: f.route, href: createPageUrl(f.route), multiId: EXTERNAL_FORMS.find(e => e.route === f.route)?.id || null }));
+          const dbForms = visibleTemplates.map(t => {
+            const meta = TEMPLATE_TYPE_META[t.type] || TEMPLATE_TYPE_META.default;
+            return {
+              key: t.id, group: meta.group, tone: meta.tone, Icon: meta.Icon,
+              title: t.name,
+              description: t.instructions || t.type,
+              details: t.instructions ? [t.type] : [],
+              href: createPageUrl(`Templates?id=${t.id}`),
+              multiId: isMultiEligibleTemplate(t) ? t.id : null,
+            };
+          });
+          const all = [...staticForms, ...dbForms];
+          const sections = FORM_GROUPS
+            .map(g => ({ ...g, forms: all.filter(f => f.group === g.id) }))
+            .filter(g => g.forms.length > 0);
+          let counter = 0;
+          const selectableCount = all.filter(f => f.multiId).length;
+          return (
+            <div className="space-y-8">
+              {selectableCount > 1 && (
+                <div className={`flex flex-wrap items-center gap-3 rounded-2xl border p-3 transition-colors ${multiMode ? 'border-violet-300 bg-violet-50' : 'border-dashed border-violet-200 bg-white'}`}>
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${multiMode ? 'bg-violet-600 text-white' : 'bg-violet-100 text-violet-700'}`}>
+                    <CheckSquare className="h-[18px] w-[18px]" />
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900">Formulario de Constancia — Información al Paciente GES</p>
-                    <p className="text-sm text-slate-500 truncate">Art. 24 Ley 19.966 — Constancia de información de garantías GES. Imprime PDF.</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-900">
+                      {multiMode ? 'Marca los documentos para este paciente' : 'Varios documentos para el mismo paciente'}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {multiMode
+                        ? `${multiSelected.length} ${multiSelected.length === 1 ? 'seleccionado' : 'seleccionados'} · los datos del paciente se piden una sola vez`
+                        : 'Selecciona varios, llena los datos una vez y abre cada documento para verlo y editarlo.'}
+                    </p>
                   </div>
+                  {multiMode ? (
+                    <div className="flex items-center gap-2">
+                      <Button type="button" variant="ghost" size="sm" onClick={exitMultiMode} className="gap-1 text-slate-600">
+                        <X className="h-4 w-4" /> Cancelar
+                      </Button>
+                      <Button type="button" size="sm" disabled={multiSelected.length === 0} onClick={() => setMultiOpen(true)} className="gap-1 bg-violet-600 hover:bg-violet-700">
+                        Continuar <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button type="button" variant="outline" size="sm" onClick={() => setMultiMode(true)} className="gap-1 border-violet-300 text-violet-700 hover:bg-violet-50">
+                      <CheckSquare className="h-4 w-4" /> Seleccionar varios
+                    </Button>
+                  )}
                 </div>
-              </Link>
-            )}
-
-            {/* Solicitud de Exámenes – solo en Hospitalizados */}
-            {hasHospitalizados && (
-              <Link to={createPageUrl('NotaEvolucion')} className="block">
-                <div className={`${FORM_CARD_CLASS} border-slate-200 bg-white hover:border-slate-400`}>
-                  <div className={`${FORM_ICON_CLASS} bg-slate-700`}>
-                    <FileText className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900">Nota de evolución</p>
-                    <p className="text-sm text-slate-500 truncate">Evolución clínica con anamnesis, examen físico, indicaciones y firma médica.</p>
-                  </div>
-                </div>
-              </Link>
-            )}
-
-            {hasHospitalizados && (
-              <Link to={createPageUrl('CurvaExamenes')} className="block">
-                <div className={`${FORM_CARD_CLASS} border-teal-200 bg-teal-50/80 hover:border-teal-300`}>
-                  <div className={`${FORM_ICON_CLASS} bg-teal-700`}>
-                    <Activity className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900">Curva de exámenes</p>
-                    <p className="text-sm text-slate-500 truncate">Seguimiento longitudinal anónimo por cama, carga por fechas, curvas y cálculos.</p>
-                  </div>
-                </div>
-              </Link>
-            )}
-
-            {/* Solicitud de Exámenes – solo en Hospitalizados */}
-            {hasHospitalizados && (
-              <Link to={createPageUrl('SolicitudExamenes')} className="block">
-                <div className={`${FORM_CARD_CLASS} border-blue-200 bg-blue-50/80 hover:border-blue-300`}>
-                  <div className={`${FORM_ICON_CLASS} bg-blue-600`}>
-                    <FlaskConical className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900">Solicitud de Exámenes — Hospital de Bulnes</p>
-                    <p className="text-sm text-slate-500 truncate">Selecciona exámenes con buscador e imprime el formulario oficial (COD. 32)</p>
-                  </div>
-                </div>
-              </Link>
-            )}
-
-            {/* Formulario IRA grave / 2019-nCoV (ISP) – solo en Hospitalizados */}
-            {hasHospitalizados && (
-              <Link to={createPageUrl('FormularioIRAGrave')} className="block">
-                <div className={`${FORM_CARD_CLASS} border-rose-200 bg-rose-50/80 hover:border-rose-300`}>
-                  <div className={`${FORM_ICON_CLASS} bg-rose-600`}>
-                    <FlaskConical className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900">Formulario IRA grave y 2019-nCoV (ISP)</p>
-                    <p className="text-sm text-slate-500 truncate">PR-244.00-007 — Notificación inmediata y envío de muestras al ISP. Imprime PDF.</p>
-                  </div>
-                </div>
-              </Link>
-            )}
-
-            {/* Solicitud de Exámenes Microbiológicos – solo en Hospitalizados */}
-            {hasHospitalizados && (
-              <Link to={createPageUrl('SolicitudMicrobiologia')} className="block">
-                <div className={`${FORM_CARD_CLASS} border-cyan-200 bg-cyan-50/80 hover:border-cyan-300`}>
-                  <div className={`${FORM_ICON_CLASS} bg-cyan-600`}>
-                    <FlaskConical className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900">Solicitud de Exámenes Microbiológicos</p>
-                    <p className="text-sm text-slate-500 truncate">Formulario C 162 — Cultivos, directos, virológicos. Imprime PDF.</p>
-                  </div>
-                </div>
-              </Link>
-            )}
-
-            {/* Solicitud de Fármaco Restringido – solo en Hospitalizados */}
-            {hasHospitalizados && (
-              <Link to={createPageUrl('SolicitudFarmacoRestringido')} className="block">
-                <div className={`${FORM_CARD_CLASS} border-amber-200 bg-amber-50/80 hover:border-amber-300`}>
-                  <div className={`${FORM_ICON_CLASS} bg-amber-600`}>
-                    <FlaskConical className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900">Solicitud de Fármaco de Uso Restringido</p>
-                    <p className="text-sm text-slate-500 truncate">Comité de Farmacia / MPJC — Antibióticos amplio espectro, fármacos de uso ocasional. Imprime PDF.</p>
-                  </div>
-                </div>
-              </Link>
-            )}
-
-            {/* Informe Biomédico Funcional – solo en Policlínico */}
-            {hasPolicinico && (
-              <Link to={createPageUrl('InformeBiomedico')} className="block">
-                <div className={`${FORM_CARD_CLASS} border-amber-200 bg-amber-50/80 hover:border-amber-300`}>
-                  <div className={`${FORM_ICON_CLASS} bg-amber-500`}>
-                    <UserCheck className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900">Informe Biomédico Funcional</p>
-                    <p className="text-sm text-slate-500 truncate">Formulario oficial editable con fecha automática, imprimible · Gobierno de Chile / MINSAL</p>
-                  </div>
-                </div>
-              </Link>
-            )}
-
-            {/* Indicaciones clínicas prehechas – solo en Urgencias */}
-            {(hasHospitalizados || hasUrgencias) && (
-              <Link to={createPageUrl('FormulariosHODOM')} className="block">
-                <div className={`${FORM_CARD_CLASS} border-indigo-200 bg-indigo-50/80 hover:border-indigo-300`}>
-                  <div className={`${FORM_ICON_CLASS} bg-indigo-600`}>
-                    <FileText className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900">Hospitalización Domiciliaria (HODOM)</p>
-                    <p className="text-sm text-slate-500 truncate">Derivación y consentimiento informado editables, con vista previa e impresión en formato original.</p>
-                  </div>
-                </div>
-              </Link>
-            )}
-
-            {/* Indicaciones clínicas prehechas – solo en Urgencias */}
-            {hasUrgencias && (
-              <Link to={createPageUrl('IndicacionesUrgencia')} className="block">
-                <div className={`${FORM_CARD_CLASS} border-rose-200 bg-rose-50/80 hover:border-rose-300`}>
-                  <div className={`${FORM_ICON_CLASS} bg-rose-600`}>
-                    <ShieldPlus className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-slate-900">Indicaciones prehechas de Urgencia</p>
-                    <p className="text-sm text-slate-500 truncate">Plantillas editables por síndrome, edad, peso, destino y alergias.</p>
-                  </div>
-                </div>
-              </Link>
-            )}
-            </div>
-
-            {visibleTemplates.length > 0 && (
-              <div className="space-y-3 border-t border-slate-200/80 pt-5">
-                {visibleTemplates.map((template, index) => {
-                const style = TEMPLATE_TYPE_STYLE[template.type] || TEMPLATE_TYPE_STYLE.default;
-                const Icon = style.Icon;
+              )}
+              {sections.map(section => {
+                const GroupIcon = section.Icon;
                 return (
-                  <motion.div
-                    key={template.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-	                  >
-	                    <Link to={createPageUrl(`Templates?id=${template.id}`)} className="block">
-	                      <div className={`${FORM_CARD_CLASS} ${style.border} ${style.bg}`}>
-	                        <div className={`${FORM_ICON_CLASS} ${style.icon}`}>
-	                          <Icon className="h-5 w-5 text-white" />
-	                        </div>
-	                        <div className="min-w-0">
-	                          <p className="font-semibold text-slate-900">{template.name}</p>
-	                          <p className="text-sm text-slate-500 truncate">{template.instructions || template.type}</p>
-	                        </div>
-	                      </div>
-	                    </Link>
-	                  </motion.div>
-	                );
-	              })}
-              </div>
-            )}
-          </div>
-        )}
+                  <section key={section.id} className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900/5 text-slate-600">
+                        <GroupIcon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="text-sm font-bold uppercase tracking-wide text-slate-700">{section.title}</h2>
+                        <p className="text-xs text-slate-500">{section.subtitle}</p>
+                      </div>
+                      <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                        {section.forms.length}
+                      </span>
+                    </div>
+                    <div className="grid items-start gap-3 sm:grid-cols-2">
+                      {section.forms.map(form => (
+                        <FormCard
+                          key={form.key}
+                          form={form}
+                          index={counter++}
+                          selectable={multiMode}
+                          selected={!!form.multiId && multiSelected.includes(form.multiId)}
+                          onToggle={toggleMulti}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+              {sections.length === 0 && (
+                <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+                  Esta categoría no tiene formularios disponibles.
+                </p>
+              )}
+              {multiMode && multiSelected.length > 0 && !multiOpen && (
+                <div className="sticky bottom-4 z-30 flex items-center justify-between gap-3 rounded-2xl border border-violet-200 bg-white/95 p-3 shadow-lg backdrop-blur">
+                  <p className="text-sm font-medium text-slate-700">
+                    <span className="font-bold text-violet-700">{multiSelected.length}</span> {multiSelected.length === 1 ? 'documento seleccionado' : 'documentos seleccionados'}
+                  </p>
+                  <Button type="button" onClick={() => setMultiOpen(true)} className="gap-1 bg-violet-600 hover:bg-violet-700">
+                    Continuar con los datos <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              {multiOpen && (
+                <MultiTemplateGenerator
+                  open
+                  handoff
+                  templates={visibleTemplates}
+                  initialSelectedIds={multiSelected}
+                  onClose={exitMultiMode}
+                />
+              )}
+            </div>
+          );
+        })()}
 
         {/* Gestiones Tab — solo Hospitalizados */}
         {activeTab === 'gestiones' && hasHospitalizados && (

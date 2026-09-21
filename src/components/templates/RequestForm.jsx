@@ -14,9 +14,19 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ImageProtocolForm from './ImageProtocolForm';
+import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 
 export default function RequestForm({ template, onClose }) {
-  const [formData, setFormData] = useState({});
+  // Si el usuario viene del lote de documentos, los datos del paciente ya
+  // están guardados: se precargan los campos con el mismo nombre.
+  const [formData, setFormData] = useState(() => {
+    const p = getMultiPrefill() || {};
+    const init = {};
+    (template?.required_fields || []).forEach(f => {
+      if (p[f.field_name]) init[f.field_name] = p[f.field_name];
+    });
+    return init;
+  });
   const [copied, setCopied] = useState(false);
   const [generated, setGenerated] = useState('');
 
