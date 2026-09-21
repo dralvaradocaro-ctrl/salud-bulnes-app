@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
@@ -84,7 +84,9 @@ export default function AllCalculators() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              {ActiveComponent && <ActiveComponent />}
+              <Suspense fallback={<div className="flex justify-center py-16"><div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" /></div>}>
+                {ActiveComponent && <ActiveComponent />}
+              </Suspense>
             </motion.div>
 
             {/* Other calculators */}

@@ -10,6 +10,7 @@ import CategoryCard from '@/components/home/CategoryCard';
 import { createPageUrl } from '@/utils';
 import { Activity, Users, FileText, Sparkles, Calculator, Syringe, ArrowRight, CalendarDays } from 'lucide-react';
 import { countedCalculators } from '@/components/calculators/catalog';
+import { supabase } from '@/lib/supabase';
 
 export default function Home() {
   // autoFocus solo en desktop — en móvil abre el teclado y molesta al volver al home
@@ -37,12 +38,19 @@ export default function Home() {
     queryFn: () => db.entities.Category.list('order'),
   });
 
-  const { data: topics = [] } = useQuery({
+  // Sólo se necesitan dos números: pedir la tabla completa (con el contenido
+  // de cada tema) costaba ~1,2 MB en cada apertura de la portada.
+  const { data: topicStats = { total: 0, withProtocol: 0 } } = useQuery({
     queryKey: ['topics-count'],
-    queryFn: () => db.entities.Topic.list(),
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('topics').select('id,has_local_protocol');
+      if (error) throw error;
+      return { total: data.length, withProtocol: data.filter(t => t.has_local_protocol).length };
+    },
   });
 
-  const protocolCount = topics.filter(t => t.has_local_protocol).length;
+  const protocolCount = topicStats.withProtocol;
   const calculatorCount = countedCalculators.length;
   const categoryEntries = categories;
 
@@ -95,7 +103,7 @@ export default function Home() {
                 <FileText className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-900">{topics.length}</p>
+                <p className="text-2xl font-bold text-slate-900">{topicStats.total}</p>
                 <p className="text-sm text-slate-500">Temas disponibles</p>
               </div>
             </div>

@@ -1,8 +1,8 @@
 /**
  * pages.config.js - Page routing configuration
  * 
- * This file is AUTO-GENERATED. Do not add imports or modify PAGES manually.
- * Pages are auto-registered when you create files in the ./pages/ folder.
+ * Las páginas se registran aquí con React.lazy para que cada una viaje en su
+ * propio chunk. Al agregar una página nueva: añadir su línea lazy y su clave en PAGES.
  * 
  * THE ONLY EDITABLE VALUE: mainPage
  * This controls which page is the landing page (shown when users visit the app).
@@ -47,40 +47,44 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import AdminAddTopic from './pages/AdminAddTopic';
-import AdminDashboard from './pages/AdminDashboard';
-import AdminEditTopic from './pages/AdminEditTopic';
-import AdminLogin from './pages/AdminLogin';
-import AdminNewsUpdates from './pages/AdminNewsUpdates';
-import AdminPanel from './pages/AdminPanel';
-import AllCalculators from './pages/AllCalculators';
-import Category from './pages/Category';
-import ClinicalTools from './pages/ClinicalTools';
-import CreateTool from './pages/CreateTool';
+import { lazy } from 'react';
 import Home from './pages/Home';
-import SRIProtocol from './pages/SRIProtocol';
-import Templates from './pages/Templates';
-import ToolsManager from './pages/ToolsManager';
-import TopicDetail from './pages/TopicDetail';
-import ProtocoloInsulina from './pages/ProtocoloInsulina';
-import FormularioGES from './pages/FormularioGES';
-import SolicitudExamenes from './pages/SolicitudExamenes';
-import InformeBiomedico from './pages/InformeBiomedico';
-import PrescripcionInteligente from './pages/PrescripcionInteligente';
-import SubdireccionMedica from './pages/SubdireccionMedica';
-import FormularioIRAGrave from './pages/FormularioIRAGrave';
-import SolicitudMicrobiologia from './pages/SolicitudMicrobiologia';
-import SolicitudFarmacoRestringido from './pages/SolicitudFarmacoRestringido';
-import GestionPROA from './pages/GestionPROA';
-import VisitaPROA from './pages/VisitaPROA';
-import AgendaDiaria from './pages/AgendaDiaria';
-import IndicacionesUrgencia from './pages/IndicacionesUrgencia';
-import NotaEvolucion from './pages/NotaEvolucion';
-import CurvaExamenes from './pages/CurvaExamenes';
-import FormulariosHODOM from './pages/FormulariosHODOM';
-import VistaHospitalizados from './pages/VistaHospitalizados';
-import CertificadoMedico from './pages/CertificadoMedico';
-import VerificarCertificado from './pages/VerificarCertificado';
+
+// Cada página se descarga sólo cuando el usuario navega a ella (code splitting).
+// Home se mantiene estática porque es la portada y debe pintar sin una segunda espera.
+const AdminAddTopic = lazy(() => import('./pages/AdminAddTopic'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const AdminEditTopic = lazy(() => import('./pages/AdminEditTopic'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+const AdminNewsUpdates = lazy(() => import('./pages/AdminNewsUpdates'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const AllCalculators = lazy(() => import('./pages/AllCalculators'));
+const Category = lazy(() => import('./pages/Category'));
+const ClinicalTools = lazy(() => import('./pages/ClinicalTools'));
+const CreateTool = lazy(() => import('./pages/CreateTool'));
+const SRIProtocol = lazy(() => import('./pages/SRIProtocol'));
+const Templates = lazy(() => import('./pages/Templates'));
+const ToolsManager = lazy(() => import('./pages/ToolsManager'));
+const TopicDetail = lazy(() => import('./pages/TopicDetail'));
+const ProtocoloInsulina = lazy(() => import('./pages/ProtocoloInsulina'));
+const FormularioGES = lazy(() => import('./pages/FormularioGES'));
+const SolicitudExamenes = lazy(() => import('./pages/SolicitudExamenes'));
+const InformeBiomedico = lazy(() => import('./pages/InformeBiomedico'));
+const PrescripcionInteligente = lazy(() => import('./pages/PrescripcionInteligente'));
+const SubdireccionMedica = lazy(() => import('./pages/SubdireccionMedica'));
+const FormularioIRAGrave = lazy(() => import('./pages/FormularioIRAGrave'));
+const SolicitudMicrobiologia = lazy(() => import('./pages/SolicitudMicrobiologia'));
+const SolicitudFarmacoRestringido = lazy(() => import('./pages/SolicitudFarmacoRestringido'));
+const GestionPROA = lazy(() => import('./pages/GestionPROA'));
+const VisitaPROA = lazy(() => import('./pages/VisitaPROA'));
+const AgendaDiaria = lazy(() => import('./pages/AgendaDiaria'));
+const IndicacionesUrgencia = lazy(() => import('./pages/IndicacionesUrgencia'));
+const NotaEvolucion = lazy(() => import('./pages/NotaEvolucion'));
+const CurvaExamenes = lazy(() => import('./pages/CurvaExamenes'));
+const FormulariosHODOM = lazy(() => import('./pages/FormulariosHODOM'));
+const VistaHospitalizados = lazy(() => import('./pages/VistaHospitalizados'));
+const CertificadoMedico = lazy(() => import('./pages/CertificadoMedico'));
+const VerificarCertificado = lazy(() => import('./pages/VerificarCertificado'));
 import __Layout from './Layout.jsx';
 
 export const PAGES = {
