@@ -3,6 +3,7 @@
 //   AGENDA DD-MM-YYYY
 //   [MÉDICO] | [TURNO / POST TURNO / REFUERZO / gestión@08:00 / MQ1 SALA 2 (2) …] | [Nº]
 import { jsPDF } from 'jspdf';
+import { sanitizeJsPdf } from '@/lib/pdfText';
 import { buildRoster, KIND_RGB } from './roster';
 
 const fmtDmy = (iso) => `${iso.slice(8, 10)}-${iso.slice(5, 7)}-${iso.slice(0, 4)}`;
@@ -19,7 +20,7 @@ async function loadLogo() {
 
 export async function exportDailyAgendaPdf({ date, day, result, telemed = [], extraBlocks = [], docName }) {
   const { rows, interns } = buildRoster({ day, result, extraBlocks, docName });
-  const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+  const doc = sanitizeJsPdf(new jsPDF({ unit: 'pt', format: 'letter' }));
   const M = 40;
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, Download, Eye, FileSignature, Printer, RotateCcw, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import { pdfSafe, sanitizeJsPdf } from '@/lib/pdfText';
 import { archiveProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, saveProaRecord } from '@/lib/proaRegistry';
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -115,7 +116,7 @@ function loadImageDataUrl(src) {
 
 async function createDerivacionPdf(jsPDF, f) {
   const pageSize = [216, 279];
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: pageSize, compress: true });
+  const pdf = sanitizeJsPdf(new jsPDF({ orientation: 'portrait', unit: 'mm', format: pageSize, compress: true }));
   const left = 18;
   const right = 198;
   const top = 12;
@@ -135,14 +136,17 @@ async function createDerivacionPdf(jsPDF, f) {
     pdf.setFontSize(size);
     lines.forEach(line => {
       ensureSpace(leading);
-      pdf.text(line || ' ', left + indent, y);
+      pdf.text(pdfSafe(line) || ' ', left + indent, y);
       y += leading;
     });
   };
   const drawText = (value, options = {}) => {
     const size = options.size || 11;
     const textWidth = width - (options.indent || 0);
-    const paragraphs = String(value || '—').replace(/\r\n?/g, '\n').split('\n');
+    // La medición debe hacerse con la misma fuente con que se dibuja.
+    pdf.setFont('times', options.font || 'normal');
+    pdf.setFontSize(size);
+    const paragraphs = pdfSafe(value || '—').replace(/\r\n?/g, '\n').split('\n');
     paragraphs.forEach((paragraph, index) => {
       const wrapped = pdf.splitTextToSize(paragraph || ' ', textWidth);
       drawLines(wrapped, { ...options, size });
@@ -172,10 +176,10 @@ async function createDerivacionPdf(jsPDF, f) {
     ensureSpace(6);
     pdf.setFont('times', 'bold');
     pdf.setFontSize(10.5);
-    pdf.text(`${label}:`, left, y);
+    pdf.text(pdfSafe(label) + ':', left, y);
     const labelWidth = pdf.getTextWidth(`${label}: `);
-    const wrapped = pdf.splitTextToSize(String(value || ' '), width - labelWidth);
     pdf.setFont('times', 'normal');
+    const wrapped = pdf.splitTextToSize(pdfSafe(value || ' '), width - labelWidth);
     pdf.text(wrapped[0] || ' ', left + labelWidth, y);
     y += 5;
     if (wrapped.length > 1) drawLines(wrapped.slice(1), { size: 10.5, leading: 4.8, indent: labelWidth });

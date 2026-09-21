@@ -2,6 +2,7 @@
 // Tipografía Helvetica: es la fuente base del PDF metricamente equivalente a Arial
 // (los visores la sustituyen por Arial), evita embeber una fuente con licencia.
 import { jsPDF } from 'jspdf';
+import { sanitizeJsPdf } from '@/lib/pdfText';
 
 export const INSTITUCIONES = {
   inalab: {
@@ -66,7 +67,7 @@ async function loadImage(src) {
 export async function buildCertificadoPdf(cert) {
   // A4 real: evita que impresoras configuradas en A4 recorten el pie de una
   // página creada originalmente como Carta.
-  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const doc = sanitizeJsPdf(new jsPDF({ unit: 'pt', format: 'a4' }));
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const M = 56;
