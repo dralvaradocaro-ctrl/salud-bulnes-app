@@ -61,7 +61,7 @@ async function loadImage(src) {
 
 /**
  * @param {{ code: string, paciente: string, rut: string, fecha: string,
- *           texto: string, verifyUrl: string, qrDataUrl: string }} cert
+ *           texto: string, verifyUrl: string, qrDataUrl: string, incluirFirmaElectronica?: boolean }} cert
  * @returns {Promise<jsPDF>}
  */
 export async function buildCertificadoPdf(cert) {
@@ -197,29 +197,31 @@ export async function buildCertificadoPdf(cert) {
   if (y > SIGNATURE_LIMIT) { doc.addPage('a4'); y = M; }
 
   // ── Recuadro de firma electrónica ────────────────────────────────────
-  doc.setDrawColor(190, 198, 210);
-  doc.setLineWidth(0.7);
-  doc.rect(M, SELLO_TOP, SELLO_W, SELLO_H);
+  if (cert.incluirFirmaElectronica !== false) {
+    doc.setDrawColor(190, 198, 210);
+    doc.setLineWidth(0.7);
+    doc.rect(M, SELLO_TOP, SELLO_W, SELLO_H);
 
-  const stx = M + 10;
-  doc.setTextColor(70, 80, 95);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.text('Firmado electrónicamente por', stx, SELLO_TOP + 14);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(15, 23, 42);
-  doc.text(MEDICO.nombre.toUpperCase(), stx, SELLO_TOP + 28);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(70, 80, 95);
-  doc.text(`RUT: ${MEDICO.rut}`, stx, SELLO_TOP + 40);
-  doc.text(`Fecha: ${cert.emitidoEn || fechaLarga(cert.fecha)}`, stx, SELLO_TOP + 51);
-  doc.setFontSize(6.5);
-  doc.setTextColor(140, 150, 165);
-  doc.text('Firma electrónica simple, sin validez legal de firma', stx, SELLO_TOP + 62);
-  doc.text('electrónica avanzada.', stx, SELLO_TOP + 70);
-  doc.setTextColor(15, 23, 42);
+    const stx = M + 10;
+    doc.setTextColor(70, 80, 95);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text('Firmado electrónicamente por', stx, SELLO_TOP + 14);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(MEDICO.nombre.toUpperCase(), stx, SELLO_TOP + 28);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(70, 80, 95);
+    doc.text(`RUT: ${MEDICO.rut}`, stx, SELLO_TOP + 40);
+    doc.text(`Fecha: ${cert.emitidoEn || fechaLarga(cert.fecha)}`, stx, SELLO_TOP + 51);
+    doc.setFontSize(6.5);
+    doc.setTextColor(140, 150, 165);
+    doc.text('Firma electrónica simple, sin validez legal de firma', stx, SELLO_TOP + 62);
+    doc.text('electrónica avanzada.', stx, SELLO_TOP + 70);
+    doc.setTextColor(15, 23, 42);
+  }
 
   // ── Firma manuscrita (si la institución la tiene) + línea con los datos ─
   const FIRMA_CX = W - M - 110; // eje de la columna derecha

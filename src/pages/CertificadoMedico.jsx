@@ -54,6 +54,7 @@ function CertificadoMedico() {
   const [texto, setTexto] = useState('');
   const [code, setCode] = useState(() => generarCodigo(hoyIso()));
   const [generando, setGenerando] = useState(false);
+  const [incluirFirmaElectronica, setIncluirFirmaElectronica] = useState(true);
 
   useEffect(() => {
     const prefill = getMultiPrefill();
@@ -102,6 +103,7 @@ function CertificadoMedico() {
       verifyUrl,
       verifyBaseUrl: `${window.location.origin}/VerificarCertificado`,
       qrDataUrl,
+      incluirFirmaElectronica,
       emitidoEn,
     });
   };
@@ -150,6 +152,7 @@ function CertificadoMedico() {
     setPaciente('');
     setRut('');
     setTexto('');
+    setIncluirFirmaElectronica(true);
     setFecha(hoyIso());
     setCode(generarCodigo(hoyIso()));
   };
@@ -271,6 +274,16 @@ function CertificadoMedico() {
               </p>
             </div>
 
+            <label className="flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-3 text-sm font-medium text-slate-700">
+              <input
+                type="checkbox"
+                checked={incluirFirmaElectronica}
+                onChange={(e) => setIncluirFirmaElectronica(e.target.checked)}
+                className="h-4 w-4 accent-blue-600"
+              />
+              Incluir firma electrónica
+            </label>
+
             <div className="flex flex-wrap gap-2 pt-1">
               <Button onClick={() => handleGenerar('download')} disabled={!puedeGenerar} className="gap-1.5">
                 <Download className="h-4 w-4" /> Descargar PDF
@@ -309,11 +322,14 @@ function CertificadoMedico() {
                 />
               ) : null}
               <p className="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                El PDF lleva recuadro de <span className="font-semibold">firma electrónica simple</span> (sin
-                validez legal de FEA)
+                {incluirFirmaElectronica ? (
+                  <>El PDF incluye el recuadro de <span className="font-semibold">firma electrónica simple</span> (sin validez legal de FEA). </>
+                ) : (
+                  'El PDF se genera sin el recuadro de firma electrónica. '
+                )}
                 {centro.firma
-                  ? ' y la firma manuscrita con timbre sobre la línea.'
-                  : ' y deja espacio en blanco sobre la línea para tu firma y timbre reales.'}
+                  ? 'Incluye la firma manuscrita con timbre sobre la línea.'
+                  : 'Deja espacio en blanco sobre la línea para tu firma y timbre reales.'}
               </p>
               <p className="mt-2 text-xs text-slate-500">{fechaLarga(fecha)}</p>
             </div>
