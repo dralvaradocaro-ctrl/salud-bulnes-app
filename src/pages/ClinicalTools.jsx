@@ -1,6 +1,6 @@
 const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import { Link } from 'react-router-dom';
@@ -21,9 +21,7 @@ import {
   Calculator
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import NIHSSCalculator from '@/components/calculators/NIHSSCalculator';
-import HEARTScoreCalculator from '@/components/calculators/HEARTScoreCalculator';
-import MOCACalculator from '@/components/calculators/MOCACalculator';
+import { allCalculators, clinicalToolCalculatorId } from '@/components/calculators/catalog';
 import { isHiddenClinicalTool } from '@/components/utils/hiddenContent';
 
 const specialtyIcons = {
@@ -194,21 +192,11 @@ export default function ClinicalTools() {
                             >
                               <div className="p-5 pt-0 border-t border-slate-100">
                                 {/* Calculadora interactiva si existe */}
-                                {tool.name.includes('NIHSS') && (
-                                  <div className="mb-4">
-                                    <NIHSSCalculator />
-                                  </div>
-                                )}
-                                {tool.name.includes('HEART') && (
-                                  <div className="mb-4">
-                                    <HEARTScoreCalculator />
-                                  </div>
-                                )}
-                                {tool.name.includes('MoCA') && (
-                                  <div className="mb-4">
-                                    <MOCACalculator />
-                                  </div>
-                                )}
+                                {(() => {
+                                  const id = clinicalToolCalculatorId(tool);
+                                  const Component = allCalculators.find(calc => calc.id === id)?.component;
+                                  return Component ? <div className="mb-4"><Suspense fallback={<p>Cargando calculadora…</p>}><Component /></Suspense></div> : null;
+                                })()}
                                 {tool.content && (
                                   <div className="bg-slate-50 rounded-xl p-4 mb-4">
                                     <div className="flex items-center gap-2 mb-2">

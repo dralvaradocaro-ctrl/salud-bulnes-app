@@ -1,7 +1,7 @@
 import { lazy } from 'react';
 // Cada calculadora se descarga al abrirla: así el catálogo (nombres e iconos)
 // puede importarse desde la portada sin arrastrar los 50 componentes.
-import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse, Wind, ArrowRightLeft, Candy, Bone, Droplet, Syringe } from 'lucide-react';
+import { Heart, Brain, Activity, Stethoscope, Pill, Baby, ShieldAlert, HeartPulse, Wind, ArrowRightLeft, Candy, Bone, Droplet, Syringe, Milk } from 'lucide-react';
 
 const NIHSSCalculator = lazy(() => import('@/components/calculators/NIHSSCalculator'));
 const HEARTScoreCalculator = lazy(() => import('@/components/calculators/HEARTScoreCalculator'));
@@ -53,9 +53,18 @@ const ClinicalFrailtyScaleCalculator = lazy(() => import('@/components/calculato
 const MaintenanceFluidsCalculator = lazy(() => import('@/components/calculators/MaintenanceFluidsCalculator'));
 const PediatricNutritionCalculator = lazy(() => import('@/components/calculators/PediatricNutritionCalculator'));
 const ScorePulmonarCalculator = lazy(() => import('@/components/calculators/ScorePulmonarCalculator'));
+const LactationSafetyTool = lazy(() => import('@/components/calculators/LactationSafetyTool'));
+
+// Single executable catalog. Configurable ClinicalTool records keep their reference content.
+const RenalFunctionCalculator = lazy(() => import('./ReferralCalculators').then(m => ({ default: m.RenalFunctionCalculator })));
+const GlasgowBlatchfordCalculator = lazy(() => import('./ReferralCalculators').then(m => ({ default: m.GlasgowBlatchfordCalculator })));
+const AlvaradoCalculator = lazy(() => import('./ReferralCalculators').then(m => ({ default: m.AlvaradoCalculator })));
+const CentorMcIsaacCalculator = lazy(() => import('./ReferralCalculators').then(m => ({ default: m.CentorMcIsaacCalculator })));
+const BishopCalculator = lazy(() => import('./ReferralCalculators').then(m => ({ default: m.BishopCalculator })));
 
 export const calculatorsByCategory = {
   'Urgencias': [
+    { id: 'alvarado', name: 'Alvarado — Sospecha de apendicitis', component: AlvaradoCalculator, icon: Activity },
     { id: 'sri', name: 'SRI - Intubación Rápida', component: SRICalculator, icon: Activity, includeInStats: false },
     { id: 'procedural-sedoanalgesia', name: 'Sedoanalgesia procedural — combinación local', component: ProceduralSedoanalgesiaCalculator, icon: Syringe },
     { id: 'hyperglycemic-crisis', name: 'CAD/EHH — Criterios y manejo inicial', component: HyperglycemicCrisisCalculator, icon: Activity },
@@ -65,6 +74,7 @@ export const calculatorsByCategory = {
     { id: 'shock-index', name: 'Índice de shock', component: ShockIndexCalculator, icon: HeartPulse }
   ],
   'Nefrología': [
+    { id: 'renal-function', name: 'Función renal — CKD-EPI y Cockcroft–Gault', component: RenalFunctionCalculator, icon: Droplet },
     { id: 'hypokalemia-correction', name: 'Hipokalemia — reposición de KCl', component: HypokalemiaCorrectionCalculator, icon: Pill },
     { id: 'hyperkalemia-management', name: 'Hiperkalemia — urgencia y manejo inicial', component: HyperkalemiaManagementCalculator, icon: Activity },
     { id: 'hyponatremia-correction', name: 'Hiponatremia — corrección (NaCl 3%, límite 24 h)', component: HyponatremiaCorrectionCalculator, icon: Droplet },
@@ -97,10 +107,15 @@ export const calculatorsByCategory = {
     { id: 'maintenance-fluids', name: 'Fluidos de mantención — Holliday-Segar y 4-2-1', component: MaintenanceFluidsCalculator, icon: Droplet },
     { id: 'pediatric-nutrition', name: 'Alimentación del lactante — volumen y calorías', component: PediatricNutritionCalculator, icon: Baby }
   ],
+  'Ginecología y Obstetricia': [
+    { id: 'bishop', name: 'Bishop — Evaluación cervical', component: BishopCalculator, icon: Baby },
+    { id: 'lactation-drugs', name: 'Fármacos y lactancia — compatibilidad (e-lactancia)', component: LactationSafetyTool, icon: Milk },
+  ],
   'Nutrición': [
     { id: 'nrs2002', name: 'NRS-2002 - Riesgo Nutricional', component: NRS2002Calculator, icon: Stethoscope }
   ],
   'Respiratorio': [
+    { id: 'centor-mcisaac', name: 'Centor–McIsaac — Faringoamigdalitis', component: CentorMcIsaacCalculator, icon: Stethoscope },
     { id: 'light-criteria', name: 'Criterios de Light — Líquido pleural', component: LightCriteriaCalculator, icon: Wind },
     { id: 'curb-65', name: 'CURB-65 — Gravedad de neumonía comunitaria', component: Curb65Calculator, icon: Wind },
     { id: 'pafi', name: 'PaFi — PaO₂/FiO₂ con estimador de FiO₂', component: PafiCalculator, icon: Wind },
@@ -111,6 +126,7 @@ export const calculatorsByCategory = {
     { id: 'antidepressant-switch', name: 'Cambio de antidepresivo (switch)', component: AntidepressantSwitchCalculator, icon: ArrowRightLeft }
   ],
   'Gastroenterología': [
+    { id: 'glasgow-blatchford', name: 'Glasgow–Blatchford — Hemorragia digestiva', component: GlasgowBlatchfordCalculator, icon: Activity },
     { id: 'meld', name: 'MELD 3.0', component: MELDCalculator, icon: Pill },
     { id: 'maddrey', name: 'Maddrey (mDF) — Hepatitis Alcohólica', component: MaddreyCalculator, icon: Pill },
     { id: 'lille', name: 'Lille — Respuesta a Corticoides (día 7)', component: LilleCalculator, icon: Pill },
@@ -132,6 +148,7 @@ export const calculatorsByCategory = {
 };
 
 export const categoryIcons = {
+  'Ginecología y Obstetricia': Baby,
   'Urgencias': Activity,
   'Nefrología': Pill,
   'Cardiología': Heart,
@@ -147,6 +164,7 @@ export const categoryIcons = {
 };
 
 export const categoryColors = {
+  'Ginecología y Obstetricia': 'from-pink-500 to-rose-600',
   'Urgencias': 'from-red-500 to-red-600',
   'Nefrología': 'from-sky-500 to-blue-600',
   'Cardiología': 'from-rose-500 to-rose-600',
@@ -165,3 +183,13 @@ export const allCalculators = Object.values(calculatorsByCategory).flat();
 export const countedCalculators = allCalculators.filter(({ includeInStats }) => includeInStats !== false);
 
 export const calculatorReferences = allCalculators.map(({ id, name }) => ({ id, name }));
+
+// Backwards-compatible bindings for existing configurable reference records.
+const clinicalToolBindings = {
+  '696ea74c245ef362de4f433f': 'heart',
+  '696ea74c245ef362de4f4341': 'moca',
+  '696ea74c245ef362de4f4340': 'grace',
+  '696ea74c245ef362de4f433e': 'nihss',
+  '0908b087-561f-4d07-8bad-8cb2d47d6697': 'antidepressant-switch',
+};
+export const clinicalToolCalculatorId = tool => tool?.calculator_id || clinicalToolBindings[tool?.id] || null;

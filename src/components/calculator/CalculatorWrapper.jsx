@@ -32,6 +32,7 @@ export default function CalculatorWrapper({
   onReset,
   showPatientInfo = true,
   printOnly = false,
+  hideCalculate = false,
   requestRecordLocation = false,
   onRecordResult = null,
   embeddedPatientContext = false,
@@ -239,7 +240,7 @@ export default function CalculatorWrapper({
 
       {/* Actions */}
       <div className="flex gap-3 mt-6">
-        {!(printOnly && result) && (
+        {!hideCalculate && !(printOnly && result) && (
           <Button onClick={handleCalculateWithHistory} disabled={!patientValid} title={!patientValid ? 'Anota nombre y RUT para guardar el resultado clínico' : 'Calcular'} className="flex-1">
             <Calculator className="h-4 w-4 mr-2" />
             Calcular

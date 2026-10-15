@@ -20,6 +20,7 @@ import PolicinicGuide from '@/components/topic/PolicinicGuide';
 import ResponsiveTopicLayout from '@/components/topic/ResponsiveTopicLayout';
 import SSN2026Notice from '@/components/topic/SSN2026Notice';
 import GESStructuredFallback from '@/components/topic/GESStructuredFallback';
+import { localContentPending, topicCalculatorIds, legacyClinicalBlocks } from '@/lib/protocolContent';
 import { getTopicVisual } from '@/lib/topicVisuals';
 import { hasGuaranteeContent, extractGuaranteeStages } from '@/lib/guarantees';
 import { getProtocolValidityStatus } from '@/lib/protocolUtils';
@@ -346,7 +347,8 @@ export default function TopicDetail() {
     );
   }
 
-  const hasContentBlocks = topic.content_blocks?.length > 0;
+  const enhancedBlocks = topic.content_blocks?.length ? topic.content_blocks : shouldRenderSpecial(topic) ? [] : legacyClinicalBlocks(topic);
+  const hasContentBlocks = enhancedBlocks.length > 0;
   const hasClinicalInfo = Boolean(
     topic.clinical_summary ||
     topic.diagnostic_orientation ||
@@ -356,7 +358,8 @@ export default function TopicDetail() {
   const hasProtocolFlowchart = topic.protocol_flowchart?.length > 0;
   const hasProtocolMedications = topic.protocol_medications?.length > 0;
   const hasSpecialContent = shouldRenderSpecial(topic);
-  const isSriTopic = topic.name.includes('Secuencia Rápida de Intubación');
+  const embeddedCalculators = topicCalculatorIds(topic);
+  const isSriTopic = embeddedCalculators.includes('sri');
   const showGesFallback = (
     topic.clasificacion_ges === 'GES' &&
     !isSriTopic &&
@@ -374,7 +377,6 @@ export default function TopicDetail() {
   const topicStatus = getTopicProtocolStatus(topic);
   const protocolValidityStatus = getProtocolValidityStatus(topic.protocol_validity);
 
-  const enhancedBlocks = topic.content_blocks || [];
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -398,7 +400,7 @@ export default function TopicDetail() {
                 <div className="flex min-w-0 items-center gap-2">
                   {category && (
                     <>
-                      <span className="truncate">{category.name}</span>
+                      <Link className="truncate hover:underline focus:underline" to={createPageUrl(`Category?id=${category.id}`)}>{category.name}</Link>
                       {topic.subcategory && (
                         <>
                           <span>/</span>
@@ -599,11 +601,13 @@ export default function TopicDetail() {
           </div>
         )}
 
+        {localContentPending(topic) && <div role="status" className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><strong>Contenido local pendiente de completar.</strong> Esta ficha no contiene un desarrollo clínico suficiente para mostrar el indicador de protocolo local. {topic.protocol_file_url ? 'Consulta el documento fuente asociado.' : 'PDF específico aún no asociado.'}</div>}
+
         {/* Protocol Header - For protocols with protocol_code or protocol_authors */}
         <ProtocolHeader topic={topic} />
 
         {/* SRI Calculator - Special Case */}
-        {topic.name.includes('Secuencia Rápida de Intubación') && (
+        {isSriTopic && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -614,7 +618,7 @@ export default function TopicDetail() {
         )}
 
         {/* NRS-2002 Calculator - Special Case */}
-        {topic.name.toLowerCase().includes('nrs') && (
+        {embeddedCalculators.includes('nrs2002') && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -674,8 +678,7 @@ export default function TopicDetail() {
         {/* Special Rendering for Specific Topics */}
         {renderSpecialContent(topic)}
 
-        {/* Clinical Information block removed: deprecated format (Resumen Clínico /
-            Orientación Diagnóstica / Estudios Complementarios / Tratamiento Inicial). */}
+        {/* Legacy clinical fields are rendered above through the read-only content-block adapter. */}
 
         {/* Flow Timeline */}
         {!isSriTopic && flowSteps.length > 0 && (

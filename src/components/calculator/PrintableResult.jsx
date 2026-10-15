@@ -1,4 +1,5 @@
 import React from 'react';
+import SwitchCalendarPrint from '../calculators/SwitchCalendarPrint';
 import { createPortal } from 'react-dom';
 import { Clock, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import { usePrintHost } from '@/components/print/PrintSheet';
@@ -58,6 +59,31 @@ export default function PrintableResult({ title, inputs, result, patientInfo, ge
     : '';
 
   if (!host) return null;
+  if (result?.patientCalendar && result?.plan) {
+    return createPortal(<SwitchCalendarPrint plan={result.plan} settings={result.patientCalendar} patientInfo={patientInfo} />, host);
+  }
+
+  if (result?.plan && result?.patientCalendar) return createPortal(
+    <>
+      <style>{`
+        @page { size: A4 landscape; margin: 10mm; }
+        @media print {
+          html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
+          body > *:not([data-print-root]) { display: none !important; }
+          [data-print-root] { display: block !important; }
+          .switch-print-sheet { width: 100%; color: #0f172a; font-family: Arial, sans-serif; }
+        }
+      `}</style>
+      <article className="switch-print-sheet">
+        <header className="flex items-center gap-3 border-b-2 border-slate-800 pb-2 mb-3">
+          <img src="/logo-hospital.png" alt="Hospital de Bulnes" className="h-12 w-auto object-contain" />
+          <p className="font-bold">Hospital de Bulnes · Servicio de Salud Ñuble</p>
+        </header>
+        <SwitchPatientCalendar plan={result.plan} settings={result.patientCalendar} patientInfo={patientInfo} />
+      </article>
+    </>, host,
+  );
+
 
   return createPortal(
     <>

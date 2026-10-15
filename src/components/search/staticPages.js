@@ -3,6 +3,10 @@
 // description y keywords/tags para matching.
 
 export const staticPages = [
+  { id: 'formulario-coqueluche', page: 'FormularioCoqueluche', name: 'Notificación de coqueluche', description: 'Formulario editable de investigación y notificación de casos de coqueluche, con descarga PDF.', keywords: ['coqueluche', 'tos convulsiva', 'pertussis', 'bordetella', 'notificación', 'notificacion', 'epidemiología', 'epidemiologia'] },
+  { id: 'operacion-clinica', page: 'OperacionClinica', name: 'Herramientas de trabajo', description: 'Censo, HODOM, IRA grave y solicitudes', keywords: ['trabajo', 'operacion', 'censo', 'hodom', 'ira'] },
+  { id: 'red-derivacion', page: 'RedDerivacion', name: 'Red y derivación Ñuble', description: 'Contactos oficiales y procedimiento local de traslado', keywords: ['telefonos', 'teléfonos', 'samu', 'red', 'derivacion', 'derivación', 'contactos'] },
+  { id: 'antibiograma', page: 'Antibiograma', name: 'Antibiograma local', description: 'Informe de sensibilidad local — pendiente de incorporación', keywords: ['antibiograma', 'resistencia', 'sensibilidad', 'proa'] },
   {
     id: 'protocolo-insulina',
     page: 'ProtocoloInsulina',

@@ -2,7 +2,8 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
-import { ChevronLeft } from 'lucide-react';
+import useCalculatorHistory from '@/hooks/useCalculatorHistory';
+import { ChevronLeft, Star } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,13 +21,15 @@ export default function AllCalculators() {
     allCalculators.some(calc => calc.id === calcParam) ? calcParam : null
   );
 
+  const history = useCalculatorHistory(activeCalculator);
+
   // Sincronizar con el parámetro ?calc de la URL — necesario porque el
   // buscador puede navegar a AllCalculators?calc=X estando ya en esta página
   // (el componente no se remonta, así que el useState inicial no se relee).
   useEffect(() => {
     if (calcParam && allCalculators.some(c => c.id === calcParam)) {
       setActiveCalculator(calcParam);
-    } else if (!calcParam) {
+    } else {
       setActiveCalculator(null);
     }
   }, [calcParam]);
@@ -80,6 +83,7 @@ export default function AllCalculators() {
               Ver todas las calculadoras
             </Button>
             
+            <button type="button" className="mb-4 ml-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm" aria-pressed={history.favorites.includes(activeCalculator)} onClick={() => history.toggle(activeCalculator)}><Star className={`h-4 w-4 ${history.favorites.includes(activeCalculator) ? 'fill-amber-400 text-amber-600' : ''}`} />{history.favorites.includes(activeCalculator) ? 'Quitar de favoritos' : 'Añadir a favoritos'}</button>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -110,6 +114,7 @@ export default function AllCalculators() {
           </div>
         ) : (
           <div className="space-y-8">
+            {[['Favoritos en este dispositivo', history.favorites], ['Usadas recientemente', history.recent]].map(([title, ids]) => <section key={title}><h2 className="mb-3 font-semibold text-slate-800">{title}</h2><div className="flex flex-wrap gap-2">{ids.filter(id => allCalculators.some(calc => calc.id === id)).map(id => <button key={id} onClick={() => selectCalculator(id)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-blue-700">{allCalculators.find(calc => calc.id === id).name}</button>)}{ids.length === 0 && <p className="text-sm text-slate-500">{title.startsWith('Favoritos') ? 'Abre una calculadora y pulsa la estrella para guardarla aquí.' : 'Tus calculadoras abiertas aparecerán aquí.'}</p>}</div></section>)}
             {Object.entries(calculatorsByCategory).map(([category, calcs]) => {
               const Icon = categoryIcons[category];
               const colorClass = categoryColors[category];

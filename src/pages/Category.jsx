@@ -1,3 +1,4 @@
+import { localContentPending } from '@/lib/protocolContent';
 const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -760,7 +761,7 @@ export default function Category() {
               Formularios
             </button>
           )}
-          {hasHospitalizados && (
+          {(hasHospitalizados || hasPolicinico) && (
             <button
               onClick={() => setActiveTab('gestiones')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
@@ -924,7 +925,8 @@ export default function Category() {
                                         Flujo local
                                       </Badge>
                                     )}
-                                    {topic.has_local_protocol && (
+                                    {localContentPending(topic) && <Badge className="bg-amber-50 text-amber-800 border-amber-200 text-xs">Contenido local pendiente</Badge>}
+                                    {getTopicProtocolStatus(topic) === 'local' && (
                                       <Badge className="bg-green-100 text-green-700 border-green-300 flex items-center gap-1 text-xs font-semibold">
                                         <CheckCircle2 className="h-3 w-3" />
                                         Protocolo Local
@@ -1252,7 +1254,29 @@ export default function Category() {
           );
         })()}
 
-        {/* Gestiones Tab — solo Hospitalizados */}
+        {activeTab === 'gestiones' && hasPolicinico && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <Link
+              to={createPageUrl(`GestionCardiovascular?categoryId=${encodeURIComponent(categoryId)}`)}
+              className="group rounded-2xl border border-teal-200 bg-teal-50/80 p-5 transition-all hover:border-teal-400 hover:shadow-md"
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-teal-700 text-white">
+                  <HeartPulse className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-slate-900">Programa de Salud Cardiovascular</h2>
+                  <p className="mt-1 text-sm text-slate-600">Espacio de trabajo con gestiones, agenda anual, nóminas, arsenal y protocolos integrados.</p>
+                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-teal-700">
+                    Abrir gestión <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </div>
+              </div>
+            </Link>
+          </div>
+        )}
+
+        {/* Gestiones Tab — Hospitalizados */}
         {activeTab === 'gestiones' && hasHospitalizados && (
           <motion.div
             key="gestiones-panel"

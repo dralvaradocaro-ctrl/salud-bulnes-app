@@ -1,7 +1,8 @@
+import { hasProtocolBody } from './protocolContent';
 /**
  * Estado del protocolo de un topic GES.
  *
- *  - 'local'     → tiene protocolo local desarrollado (has_local_protocol === true).
+ *  - 'local'     → marca local y cuerpo clínico presente (incluye campos legacy). El indicador no valida aprobación clínica.
  *  - 'checklist' → solo tiene pauta de cotejo (bloque type:'checklist' en content_blocks)
  *                  y no tiene protocolo local.
  *  - 'none'      → ni protocolo local ni pauta de cotejo cargada.
@@ -13,6 +14,12 @@ interface TopicLike {
   content_blocks?: unknown;
   tags?: unknown;
   protocol_code?: string | null;
+  clinical_summary?: unknown;
+  diagnostic_orientation?: unknown;
+  complementary_studies?: unknown;
+  initial_treatment?: unknown;
+  protocol_flowchart?: unknown;
+  protocol_medications?: unknown;
 }
 
 const hasChecklistBlock = (content_blocks: unknown): boolean => {
@@ -24,7 +31,7 @@ const hasChecklistBlock = (content_blocks: unknown): boolean => {
 
 export function getTopicProtocolStatus(topic: TopicLike | null | undefined): TopicProtocolStatus {
   if (!topic) return 'none';
-  if (topic.has_local_protocol === true) return 'local';
+  if (topic.has_local_protocol === true && hasProtocolBody(topic)) return 'local';
   if (hasChecklistBlock(topic.content_blocks)) return 'checklist';
   return 'none';
 }
@@ -77,7 +84,7 @@ export function hasSsnOrdinarioBadge(topic: TopicLike | null | undefined): boole
 }
 
 export const TOPIC_STATUS_LABELS: Record<TopicProtocolStatus, string> = {
-  local: 'Protocolo local activo',
+  local: 'Protocolo local con contenido',
   checklist: 'Pauta de cotejo',
   none: 'Sin protocolo',
 };

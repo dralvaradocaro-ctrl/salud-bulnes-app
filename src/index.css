@@ -568,3 +568,70 @@
     margin: 0 !important;
   }
 }
+
+/* Opt-in night palette for existing utility-based clinical screens. Printed forms stay light. */
+@media screen {
+  html.dark { color-scheme: dark; background: #0f172a; }
+  .dark :is(.bg-white, .bg-white\/95, .bg-white\/90, .bg-white\/80, .bg-white\/70, .bg-white\/60, .bg-white\/50, .bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100) { background-color: #162236; }
+  .dark :is(.text-slate-900, .text-slate-800, .text-slate-700, .text-gray-900, .text-gray-800, .text-gray-700) { color: #e2e8f0; }
+  .dark :is(.text-slate-600, .text-slate-500, .text-gray-600, .text-gray-500) { color: #b5c4d8; }
+  .dark :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-gray-200) { border-color: #3a4c63; }
+  .dark :is(input, select, textarea) { background-color: #152238; color: #e2e8f0; }
+  .dark [class*="from-slate-50"], .dark [class*="from-white"] { background-image: linear-gradient(to bottom right, #0f172a, #17253b); }
+  .dark .prose { --tw-prose-body: #d2deec; --tw-prose-headings: #eef5ff; --tw-prose-bold: #eef5ff; --tw-prose-links: #93c5fd; }
+}
+
+@media screen {
+  .dark :is(.bg-blue-50, .bg-blue-100) { background-color: rgb(30,58,95); }
+  .dark :is(.text-blue-600, .text-blue-700, .text-blue-800, .text-blue-900) { color: var(--night-blue, #dae7ff); }
+  .dark [class*="from-blue-50"] { background-image: linear-gradient(to bottom right, rgb(30,58,95), #162236); }
+  .dark :is(.bg-cyan-50, .bg-cyan-100) { background-color: rgb(22,64,74); }
+  .dark :is(.text-cyan-600, .text-cyan-700, .text-cyan-800, .text-cyan-900) { color: var(--night-cyan, #dae7ff); }
+  .dark [class*="from-cyan-50"] { background-image: linear-gradient(to bottom right, rgb(22,64,74), #162236); }
+  .dark :is(.bg-teal-50, .bg-teal-100) { background-color: rgb(20,65,61); }
+  .dark :is(.text-teal-600, .text-teal-700, .text-teal-800, .text-teal-900) { color: var(--night-teal, #dae7ff); }
+  .dark [class*="from-teal-50"] { background-image: linear-gradient(to bottom right, rgb(20,65,61), #162236); }
+  .dark :is(.bg-emerald-50, .bg-emerald-100) { background-color: rgb(19,66,51); }
+  .dark :is(.text-emerald-600, .text-emerald-700, .text-emerald-800, .text-emerald-900) { color: var(--night-emerald, #dae7ff); }
+  .dark [class*="from-emerald-50"] { background-image: linear-gradient(to bottom right, rgb(19,66,51), #162236); }
+  .dark :is(.bg-green-50, .bg-green-100) { background-color: rgb(24,65,43); }
+  .dark :is(.text-green-600, .text-green-700, .text-green-800, .text-green-900) { color: var(--night-green, #dae7ff); }
+  .dark [class*="from-green-50"] { background-image: linear-gradient(to bottom right, rgb(24,65,43), #162236); }
+  .dark :is(.bg-amber-50, .bg-amber-100) { background-color: rgb(75,55,18); }
+  .dark :is(.text-amber-600, .text-amber-700, .text-amber-800, .text-amber-900) { color: var(--night-amber, #dae7ff); }
+  .dark [class*="from-amber-50"] { background-image: linear-gradient(to bottom right, rgb(75,55,18), #162236); }
+  .dark :is(.bg-yellow-50, .bg-yellow-100) { background-color: rgb(75,63,20); }
+  .dark :is(.text-yellow-600, .text-yellow-700, .text-yellow-800, .text-yellow-900) { color: var(--night-yellow, #dae7ff); }
+  .dark [class*="from-yellow-50"] { background-image: linear-gradient(to bottom right, rgb(75,63,20), #162236); }
+  .dark :is(.bg-red-50, .bg-red-100) { background-color: rgb(80,35,40); }
+  .dark :is(.text-red-600, .text-red-700, .text-red-800, .text-red-900) { color: var(--night-red, #dae7ff); }
+  .dark [class*="from-red-50"] { background-image: linear-gradient(to bottom right, rgb(80,35,40), #162236); }
+  .dark :is(.bg-rose-50, .bg-rose-100) { background-color: rgb(80,32,50); }
+  .dark :is(.text-rose-600, .text-rose-700, .text-rose-800, .text-rose-900) { color: var(--night-rose, #dae7ff); }
+  .dark [class*="from-rose-50"] { background-image: linear-gradient(to bottom right, rgb(80,32,50), #162236); }
+  .dark :is(.bg-purple-50, .bg-purple-100) { background-color: rgb(57,40,82); }
+  .dark :is(.text-purple-600, .text-purple-700, .text-purple-800, .text-purple-900) { color: var(--night-purple, #dae7ff); }
+  .dark [class*="from-purple-50"] { background-image: linear-gradient(to bottom right, rgb(57,40,82), #162236); }
+  .dark :is(.bg-violet-50, .bg-violet-100) { background-color: rgb(53,42,87); }
+  .dark :is(.text-violet-600, .text-violet-700, .text-violet-800, .text-violet-900) { color: var(--night-violet, #dae7ff); }
+  .dark [class*="from-violet-50"] { background-image: linear-gradient(to bottom right, rgb(53,42,87), #162236); }
+  .dark :is(.bg-indigo-50, .bg-indigo-100) { background-color: rgb(41,45,83); }
+  .dark :is(.text-indigo-600, .text-indigo-700, .text-indigo-800, .text-indigo-900) { color: var(--night-indigo, #dae7ff); }
+  .dark [class*="from-indigo-50"] { background-image: linear-gradient(to bottom right, rgb(41,45,83), #162236); }
+  .dark :is(.bg-sky-50, .bg-sky-100) { background-color: rgb(24,56,82); }
+  .dark :is(.text-sky-600, .text-sky-700, .text-sky-800, .text-sky-900) { color: var(--night-sky, #dae7ff); }
+  .dark [class*="from-sky-50"] { background-image: linear-gradient(to bottom right, rgb(24,56,82), #162236); }
+  .dark :is(.bg-orange-50, .bg-orange-100) { background-color: rgb(78,46,25); }
+  .dark :is(.text-orange-600, .text-orange-700, .text-orange-800, .text-orange-900) { color: var(--night-orange, #dae7ff); }
+  .dark [class*="from-orange-50"] { background-image: linear-gradient(to bottom right, rgb(78,46,25), #162236); }
+  .dark :is(.bg-pink-50, .bg-pink-100) { background-color: rgb(77,35,63); }
+  .dark :is(.text-pink-600, .text-pink-700, .text-pink-800, .text-pink-900) { color: var(--night-pink, #dae7ff); }
+  .dark [class*="from-pink-50"] { background-image: linear-gradient(to bottom right, rgb(77,35,63), #162236); }
+  .dark :is(.bg-lime-50, .bg-lime-100) { background-color: rgb(45,62,25); }
+  .dark :is(.text-lime-600, .text-lime-700, .text-lime-800, .text-lime-900) { color: var(--night-lime, #dae7ff); }
+  .dark [class*="from-lime-50"] { background-image: linear-gradient(to bottom right, rgb(45,62,25), #162236); }
+}
+
+@media print {
+  html.dark { color-scheme: light; --background: 0 0% 100%; --foreground: 0 0% 3.9%; --card: 0 0% 100%; --card-foreground: 0 0% 3.9%; --muted: 0 0% 96.1%; --muted-foreground: 0 0% 45.1%; --border: 0 0% 89.8%; }
+}

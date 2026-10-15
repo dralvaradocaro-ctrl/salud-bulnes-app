@@ -1,0 +1,8 @@
+import { Link } from 'react-router-dom';
+import { localAntibiogram as report } from '@/data/clinicalResources';
+export default function Antibiograma() {
+  return <div className="mx-auto max-w-4xl space-y-6 px-4 py-8"><Link className="text-blue-700 underline" to="/OperacionClinica">Herramientas de trabajo</Link><h1 className="text-2xl font-bold text-slate-900">Antibiograma local</h1>
+    {report.url ? <section className="rounded-xl border bg-white p-6"><h2 className="font-bold">{report.establishment}</h2><p>Período: {report.period}</p><p>Validación: {report.approvedBy}</p><a className="mt-4 inline-block text-blue-700 underline" href={report.url} target="_blank" rel="noreferrer">Abrir informe original</a></section> : <section className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900"><h2 className="font-bold">Informe institucional pendiente de incorporación</h2><p className="mt-2">Todavía no hay porcentajes de sensibilidad local cargados. Se requiere el informe original con establecimiento, período, tipo de muestra, microorganismo, número de aislamientos y método de interpretación.</p><p className="mt-2 text-sm">Para decisiones individuales, revisar cultivos del paciente y recomendaciones del equipo PROA. Esta sección no sustituye un antibiograma individual.</p></section>}
+    <div className="flex flex-wrap gap-3"><Link className="rounded-lg border bg-white p-3 text-blue-700" to="/GestionPROA">Gestión PROA</Link><Link className="rounded-lg border bg-white p-3 text-blue-700" to="/VisitaPROA">Visita PROA</Link><Link className="rounded-lg border bg-white p-3 text-blue-700" to="/SolicitudMicrobiologia">Solicitud de microbiología</Link></div>
+  </div>;
+}

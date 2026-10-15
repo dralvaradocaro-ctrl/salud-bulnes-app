@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   AlertTriangle,
+  ArrowLeft,
   ArrowRight,
   ArrowRightLeft,
   Clock,
@@ -11,6 +13,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+import SwitchPresentationInput from './SwitchPresentationInput';
+import SwitchPatientCalendar from './SwitchPatientCalendar';
 import CalculatorWrapper from '@/components/calculator/CalculatorWrapper';
 import CalculatorReferences from '@/components/calculator/CalculatorReferences';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -150,12 +154,19 @@ function PlanDetalle({ plan }) {
 }
 
 export default function AntidepressantSwitchCalculator() {
+  const [step, setStep] = useState(1);
+  const [direction, setDirection] = useState(1);
+  const stepRef = useRef(null);
+  const reduceMotion = useReducedMotion();
+  const goTo = (next) => { setDirection(next > step ? 1 : -1); setStep(next); };
   const [fromKey, setFromKey] = useState(null);
   const [dosis, setDosis] = useState('');
   const [previewKey, setPreviewKey] = useState(null); // destino abierto en la emergente
   const [result, setResult] = useState(null);
+  const [calendar, setCalendar] = useState({ date: '', from: { strength: '', split: false }, to: { strength: '', split: false } });
 
-  const dosisNum = parseFloat(String(dosis).replace(',', '.')) || null;
+  const parsedDose = Number(String(dosis).replace(',', '.'));
+  const dosisNum = Number.isFinite(parsedDose) && parsedDose > 0 ? parsedDose : null;
 
   const previewPlan = useMemo(
     () => (fromKey && previewKey ? buildSwitchPlan(fromKey, previewKey, dosisNum) : null),
@@ -163,7 +174,10 @@ export default function AntidepressantSwitchCalculator() {
   );
 
   const elegirOrigen = (key) => {
-    setFromKey(key === fromKey ? null : key);
+    if (key !== fromKey) setDosis('');
+    setFromKey(key);
+    goTo(2);
+    setCalendar((c) => ({ ...c, from: { strength: '', split: false }, to: { strength: '', split: false } }));
     setResult(null);
   };
 
@@ -173,6 +187,7 @@ export default function AntidepressantSwitchCalculator() {
     const to = DRUGS[previewPlan.to];
     setResult({
       plan: previewPlan,
+      patientCalendar: calendar,
       // Forma que espera PrintableResult
       score: `${from.label} → ${to.label}`,
       label: ESTRATEGIA_LABEL[previewPlan.estrategia],
@@ -187,11 +202,14 @@ export default function AntidepressantSwitchCalculator() {
       ],
     });
     setPreviewKey(null);
+    goTo(3);
   };
 
   const reset = () => {
+    goTo(1);
     setFromKey(null);
     setDosis('');
+    setCalendar({ date: '', from: { strength: '', split: false }, to: { strength: '', split: false } });
     setPreviewKey(null);
     setResult(null);
   };
@@ -210,13 +228,29 @@ export default function AntidepressantSwitchCalculator() {
         'Cambiar a': result ? DRUGS[result.plan.to].label : '—',
       }}
       onCalculate={() => result}
-      result={result}
+      result={result ? { ...result, patientCalendar: calendar } : null}
       onReset={reset}
       printOnly
+      hideCalculate
     >
       <div className="space-y-5">
+        <div ref={stepRef} tabIndex={-1} className="scroll-mt-6 outline-none">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            {step > 1 ? <button type="button" onClick={() => { setResult(null); goTo(step - 1); }} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              <ArrowLeft className="h-4 w-4" /> Volver
+            </button> : <span className="text-sm font-semibold text-fuchsia-800">Comienza el cambio</span>}
+            <p className="text-xs font-semibold text-slate-500" aria-live="polite">Paso {step} de 3 · {['Fármaco actual', 'Nuevo fármaco', 'Calendario final'][step - 1]}</p>
+          </div>
+          <div className="mb-5 flex gap-2" aria-hidden="true">{[1, 2, 3].map((n) => <span key={n} className={`h-1 flex-1 rounded-full ${n <= step ? 'bg-fuchsia-600' : 'bg-slate-200'}`} />)}</div>
+        </div>
+        <div className="overflow-hidden">
+        <AnimatePresence mode="wait" initial={false} custom={direction}>
+        <motion.div key={step} custom={direction}
+          variants={{ enter: (d) => ({ opacity: 0, x: reduceMotion ? 0 : d * 36 }), center: { opacity: 1, x: 0 }, exit: (d) => ({ opacity: 0, x: reduceMotion ? 0 : d * -36 }) }}
+          initial="enter" animate="center" exit="exit" transition={{ duration: reduceMotion ? 0 : 0.2 }}
+          onAnimationComplete={(state) => { if (state === 'center') { stepRef.current?.focus({ preventScroll: true }); if (step > 1) stepRef.current?.scrollIntoView({ behavior: reduceMotion ? 'instant' : 'smooth', block: 'start' }); } }}>
         {/* Paso 1: fármaco actual */}
-        <div>
+        {step === 1 && <div>
           <Label className="text-sm font-bold text-slate-800">1. Antidepresivo actual</Label>
           <div className="mt-2 space-y-2.5">
             {GRUPOS_ORDEN.map((g) => (
@@ -241,13 +275,21 @@ export default function AntidepressantSwitchCalculator() {
               </div>
             ))}
           </div>
-          {from && (
+
+        </div>}
+
+        {/* Paso 2: destinos posibles */}
+        {step === 2 && from && (
+          <div>
+            <div className="mb-5 rounded-xl border border-fuchsia-200 bg-white p-4">
+              <p className="font-semibold text-slate-900">Actual: {from.label}</p>
+
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <div>
                 <Label className="text-xs text-slate-600">Dosis actual (mg/día, opcional)</Label>
                 <Input
                   value={dosis}
-                  onChange={(e) => setDosis(e.target.value)}
+                  onChange={(e) => { setDosis(e.target.value); setResult(null); }}
                   inputMode="decimal"
                   placeholder={`ej. ${from.safeTarget}`}
                   className="mt-1 w-36 bg-white"
@@ -257,12 +299,8 @@ export default function AntidepressantSwitchCalculator() {
                 {from.presentacion} · vida media {from.vidaMedia}
               </p>
             </div>
-          )}
-        </div>
-
-        {/* Paso 2: destinos posibles */}
-        {from && (
-          <div>
+              <p className="mt-2 text-xs text-slate-500">Ingresa la dosis actual para calcular las cantidades del descenso.</p>
+            </div>
             <Label className="text-sm font-bold text-slate-800">
               2. Cambiar {from.label} por… <span className="font-normal text-slate-500">(toca una opción para ver el esquema)</span>
             </Label>
@@ -274,7 +312,7 @@ export default function AntidepressantSwitchCalculator() {
                   <button
                     key={k}
                     type="button"
-                    onClick={() => setPreviewKey(k)}
+                    onClick={() => { setPreviewKey(k); if (k !== result?.plan.to) setCalendar((c) => ({ ...c, to: { strength: '', split: false } })); }}
                     className={`rounded-xl border-2 bg-white p-3 text-left transition ${ui.card}`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -293,6 +331,7 @@ export default function AntidepressantSwitchCalculator() {
                         </span>
                       )}
                     </div>
+                    {p.warnings[0] && <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-600" title={p.warnings[0]}>{p.warnings[0]}</p>}
                   </button>
                 );
               })}
@@ -301,16 +340,36 @@ export default function AntidepressantSwitchCalculator() {
         )}
 
         {/* Resultado confirmado (imprimible con el botón del wrapper) */}
-        {result && (
+        {step === 3 && result && (
           <div className="rounded-2xl border-2 border-fuchsia-200 bg-white p-4">
             <p className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-900">
               <ShieldAlert className="h-4 w-4 text-fuchsia-600" />
               Esquema seleccionado: {DRUGS[result.plan.from].label} → {DRUGS[result.plan.to].label}
             </p>
-            <PlanDetalle plan={result.plan} />
+            <p className="text-sm text-slate-700">{result.plan.titulo}. {result.plan.washoutDias > 0 ? `Retirar ${DRUGS[result.plan.from].label}, completar ${result.plan.washoutDias} días de lavado e iniciar ${DRUGS[result.plan.to].label}.` : 'Revisa en el calendario cuándo reducir, suspender e iniciar cada medicamento.'}</p>
+            <div className="mt-5 space-y-3 border-t pt-4">
+              <h3 className="font-bold">Calendario para entregar al paciente</h3>
+              <label className="block rounded-lg border border-fuchsia-200 bg-fuchsia-50 p-3 text-sm font-semibold">Fecha de inicio del cambio (día 1)
+                <Input type="date" value={calendar.date} onChange={(e) => setCalendar((c) => ({ ...c, date: e.target.value }))} className="mt-2 w-full sm:w-56 bg-white" />
+                <span className="mt-2 block text-xs font-normal text-slate-600">Selecciona la fecha para ver los días reales en el calendario y en la impresión.</span>
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {['from', 'to'].map((side) => <SwitchPresentationInput key={side}
+                  drugKey={result.plan[side]} side={side} value={calendar[side]}
+                  onChange={(value) => setCalendar((c) => ({ ...c, [side]: value }))} />)}
+              </div>
+              <SwitchPatientCalendar plan={result.plan} settings={calendar} />
+              <details className="rounded-xl border border-slate-200 p-3">
+                <summary className="cursor-pointer text-sm font-semibold">Resumen escrito, precauciones y detalle del cambio</summary>
+                <div className="mt-3"><PlanDetalle plan={result.plan} /></div>
+              </details>
+            </div>
           </div>
         )}
 
+        </motion.div>
+        </AnimatePresence>
+        </div>
         <p className="text-[11px] leading-relaxed text-slate-500">
           Esquemas orientativos basados en farmacocinética y opinión de expertos (PsychiatryNet, Keks 2016, Maudsley/NHS
           SPS). Adultos con función hepática y renal conservadas: adultos mayores, embarazo, comorbilidad o dosis altas
@@ -346,7 +405,7 @@ export default function AntidepressantSwitchCalculator() {
               onClick={confirmarPlan}
               className="rounded-lg bg-fuchsia-600 px-4 py-2 text-sm font-semibold text-white hover:bg-fuchsia-700"
             >
-              Usar este esquema
+              Confirmar y ver calendario
             </button>
           </div>
         </DialogContent>

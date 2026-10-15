@@ -1,3 +1,5 @@
+import { localContentPending } from '@/lib/protocolContent';
+import { getTopicProtocolStatus } from '@/lib/topicStatus';
 const db = globalThis.__B44_DB__ || { auth:{ isAuthenticated: async()=>false, me: async()=>null }, entities:new Proxy({}, { get:()=>({ filter:async()=>[], get:async()=>null, create:async()=>({}), update:async()=>({}), delete:async()=>({}) }) }), integrations:{ Core:{ UploadFile:async()=>({ file_url:'' }) } } };
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -325,7 +327,8 @@ function ResultRow({ item, aiReason, onClose, onNavigate }) {
                   : item.specialty}
         </p>
       </div>
-      {item.has_local_protocol && (
+      {localContentPending(item) && <span className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">Contenido local pendiente</span>}
+      {getTopicProtocolStatus(item) === 'local' && (
         <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full flex-shrink-0">
           Protocolo Local
         </span>

@@ -1,3 +1,4 @@
+import ThemeToggle from '@/components/ThemeToggle';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -27,6 +28,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Inicio', page: 'Home', icon: Home, to: createPageUrl('Home') },
     { name: 'Temas', page: null, icon: BookOpen, to: lastTopicUrl, active: isOnTopicPage },
     { name: 'Herramientas', page: 'AllCalculators', icon: Stethoscope, to: createPageUrl('AllCalculators') },
+    { name: 'Trabajo', page: 'OperacionClinica', icon: ClipboardList, to: createPageUrl('OperacionClinica') },
     { name: 'Plantillas', page: 'Templates', icon: ClipboardList, to: createPageUrl('Templates') },
   ];
 
@@ -80,6 +82,8 @@ export default function Layout({ children, currentPageName }) {
           })}
         </div>
       </nav>
+
+      <div className="fixed right-4 bottom-20 z-[60] print:hidden md:bottom-6"><ThemeToggle enabled={['Home', 'TopicDetail', 'Category', 'AllCalculators', 'ClinicalTools', 'OperacionClinica', 'RedDerivacion', 'Antibiograma', 'GestionCardiovascular'].includes(currentPageName)} /></div>
 
       {/* Content with bottom padding for mobile nav */}
       <main className="mobile-bottom-content md:pb-24">

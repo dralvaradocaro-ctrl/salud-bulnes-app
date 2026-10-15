@@ -1,6 +1,6 @@
+import ArsenalMatch from './ArsenalMatch';
 import React from 'react';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Pill, Clock, AlertCircle } from 'lucide-react';
 
 export default function MedicationCard({ medications }) {
@@ -24,6 +24,7 @@ export default function MedicationCard({ medications }) {
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="font-bold text-slate-900 mb-2">{med.name}</h4>
+                <ArsenalMatch text={med.name} />
                 
                 {med.dose && (
                   <div className="flex items-start gap-2 mb-2">

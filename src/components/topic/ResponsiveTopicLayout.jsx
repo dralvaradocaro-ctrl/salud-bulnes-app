@@ -1,3 +1,6 @@
+import { protocolBlockAnchor } from '@/lib/protocolContent';
+import MedicationCard from './MedicationCard';
+import ArsenalMatch from './ArsenalMatch';
 import { Component, useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
@@ -752,6 +755,9 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
 
     switch (block.type) {
 
+      case 'medications':
+        return <MedicationCard medications={block.medications || []} />;
+
       case 'clinical':
         return <ClinicalBlock key={block.id} block={block} />;
 
@@ -1083,13 +1089,16 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                 // as indented secondary text below the main item.
                 const lines = displayText.split('\n');
                 const mainText  = lines.filter(l => !l.trim().startsWith('~')).join(' ').trim();
+                const isDose = /\d[\d,.]*\s*(?:mg|mcg|µg|g|UI|mL)\b/i.test(mainText) && /\b(?:VO|EV|IV|IM|SC)\b|c\/\d|cada \d|infusi[oó]n/i.test(mainText);
                 const subItems  = lines.filter(l => l.trim().startsWith('~')).map(l => l.trim().slice(1).trim());
                 return (
-                  <li key={i} className="rounded-xl px-4 py-2.5 transition-colors hover:bg-white/60">
+                  <li key={i} className={`rounded-xl px-4 py-2.5 transition-colors ${isDose ? 'my-2 border border-purple-200 bg-white shadow-sm' : 'hover:bg-white/60'}`}>
                     <div className="flex items-start gap-3">
                       <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${cp.dot}`} />
                       <span className="text-sm leading-relaxed text-slate-800">
+                        {isDose && <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-purple-700">Dosis / administración</span>}
                         {renderWithLinks(mainText, block.links)}
+                        {isDose && <ArsenalMatch text={mainText} />}
                         <SampleTags text={mainText} />
                       </span>
                     </div>
@@ -1207,7 +1216,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
           key={block?.id || `${block?.type || 'block'}-${block?.title || 'untitled'}`}
           blockTitle={block?.title}
         >
-          {rendered}
+          <section id={protocolBlockAnchor(block, safeBlocks.indexOf(block))} className="scroll-mt-64">{rendered}</section>
         </TopicBlockErrorBoundary>
       );
     } catch (error) {
@@ -1750,6 +1759,14 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
             </div>
           </div>
         </div>
+      )}
+
+      {!isGESMode && !isLocalProtocolMode && safeBlocks.length >= 8 && (
+        <nav aria-label="Índice del protocolo" className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <details><summary className="cursor-pointer text-sm font-bold text-slate-700">Índice de esta sección</summary>
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2">{visibleAfterSubtab.filter(block => block.title && block.type !== 'protocol_header').map(block => <li key={protocolBlockAnchor(block, safeBlocks.indexOf(block))}><a className="text-sm text-blue-700 hover:underline" href={`#${protocolBlockAnchor(block, safeBlocks.indexOf(block))}`}>{block.title}</a></li>)}</ul>
+          </details>
+        </nav>
       )}
 
       {/* ── Normal blocks (non-GES, non-local-protocol mode) ── */}

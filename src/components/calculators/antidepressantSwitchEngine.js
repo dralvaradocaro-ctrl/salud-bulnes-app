@@ -126,7 +126,7 @@ const RISK = { BAJO: 'bajo', MODERADO: 'moderado', ALTO: 'alto' };
 
 const mg = (n) => {
   if (!Number.isFinite(n)) return '';
-  const redondeado = n >= 20 ? Math.round(n) : Math.round(n * 2) / 2;
+  const redondeado = Math.round(n * 1000) / 1000;
   return `${String(redondeado).replace('.', ',')} mg`;
 };
 

@@ -62,7 +62,7 @@ export default function Home() {
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-100 rounded-full blur-3xl opacity-40 -translate-y-1/2 translate-x-1/2"></div>
         <div className="absolute bottom-0 left-0 w-72 h-72 bg-violet-100 rounded-full blur-3xl opacity-40 translate-y-1/2 -translate-x-1/2"></div>
         
-        <div className="relative max-w-5xl mx-auto px-4 pt-16 pb-12">
+        <div className="relative max-w-5xl mx-auto px-4 pt-16 pb-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -113,7 +113,7 @@ export default function Home() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-slate-900">{protocolCount}</p>
-                <p className="text-sm text-slate-500">Protocolos locales</p>
+                <p className="text-sm text-slate-500">Fichas locales registradas</p>
               </div>
             </div>
             <div className="flex items-center gap-3 px-5 py-3 bg-white rounded-2xl shadow-sm border border-slate-100">
@@ -139,12 +139,13 @@ export default function Home() {
             </Link>
           </motion.div>
 
+
           {/* Protocolo Insulínico - Flashcard destacada */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="max-w-2xl mx-auto mb-16"
+            className="max-w-2xl mx-auto"
           >
             <Link to={createPageUrl('ProtocoloInsulina')}>
               <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 p-6 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1 cursor-pointer group">

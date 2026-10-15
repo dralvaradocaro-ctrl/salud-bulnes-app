@@ -1666,7 +1666,7 @@ function GestionPROA() {
                 <ShieldPlus className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900">Gestión PROA</h1>
+                <h1 className="text-xl font-bold text-slate-900">Gestión PROA</h1><Link to="/Antibiograma" className="text-xs text-blue-700 underline">Antibiograma local</Link>
                 <p className="text-sm text-slate-500">Seguimiento clínico e identificación exclusiva del módulo PROA</p>
               </div>
             </div>

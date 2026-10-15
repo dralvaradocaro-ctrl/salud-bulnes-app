@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { AlertTriangle, ChevronLeft, Printer, RotateCcw, Plus, Trash2, ShieldPlus, Sparkles, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -1235,7 +1235,7 @@ ${JSON.stringify(buildProaContext(f), null, 2)}`;
               <ShieldPlus className="h-4 w-4 text-teal-600" />
               Evolución PROA
             </h1>
-            <p className="text-xs text-slate-500">Programa de Optimización del Uso de Antimicrobianos · HCSFB</p>
+            <p className="text-xs text-slate-500">Programa de Optimización del Uso de Antimicrobianos · HCSFB</p><Link to="/Antibiograma" className="text-xs text-blue-700 underline">Antibiograma local</Link>
           </div>
           <Button
             variant="outline"

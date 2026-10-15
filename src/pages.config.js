@@ -14,6 +14,7 @@
  *   import Settings from './pages/Settings';
  *   
  *   export const PAGES = {
+    OperacionClinica, RedDerivacion, Antibiograma,
  *       "HomePage": HomePage,
  *       "Dashboard": Dashboard,
  *       "Settings": Settings,
@@ -31,6 +32,7 @@
  *   import __Layout from './Layout.jsx';
  *
  *   export const PAGES = {
+    OperacionClinica, RedDerivacion, Antibiograma,
  *       "Home": Home,
  *       "Settings": Settings,
  *   }
@@ -52,6 +54,9 @@ import Home from './pages/Home';
 
 // Cada página se descarga sólo cuando el usuario navega a ella (code splitting).
 // Home se mantiene estática porque es la portada y debe pintar sin una segunda espera.
+const OperacionClinica = lazy(() => import('./pages/OperacionClinica'));
+const RedDerivacion = lazy(() => import('./pages/RedDerivacion'));
+const Antibiograma = lazy(() => import('./pages/Antibiograma'));
 const AdminAddTopic = lazy(() => import('./pages/AdminAddTopic'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminEditTopic = lazy(() => import('./pages/AdminEditTopic'));
@@ -72,9 +77,11 @@ const SolicitudExamenes = lazy(() => import('./pages/SolicitudExamenes'));
 const InformeBiomedico = lazy(() => import('./pages/InformeBiomedico'));
 const PrescripcionInteligente = lazy(() => import('./pages/PrescripcionInteligente'));
 const SubdireccionMedica = lazy(() => import('./pages/SubdireccionMedica'));
+const FormularioCoqueluche = lazy(() => import('./pages/FormularioCoqueluche'));
 const FormularioIRAGrave = lazy(() => import('./pages/FormularioIRAGrave'));
 const SolicitudMicrobiologia = lazy(() => import('./pages/SolicitudMicrobiologia'));
 const SolicitudFarmacoRestringido = lazy(() => import('./pages/SolicitudFarmacoRestringido'));
+const GestionCardiovascular = lazy(() => import('./pages/GestionCardiovascular'));
 const GestionPROA = lazy(() => import('./pages/GestionPROA'));
 const VisitaPROA = lazy(() => import('./pages/VisitaPROA'));
 const AgendaDiaria = lazy(() => import('./pages/AgendaDiaria'));
@@ -88,6 +95,7 @@ const VerificarCertificado = lazy(() => import('./pages/VerificarCertificado'));
 import __Layout from './Layout.jsx';
 
 export const PAGES = {
+    OperacionClinica, RedDerivacion, Antibiograma,
     "AdminAddTopic": AdminAddTopic,
     "AdminDashboard": AdminDashboard,
     "AdminEditTopic": AdminEditTopic,
@@ -110,9 +118,11 @@ export const PAGES = {
     "PrescripcionInteligente": PrescripcionInteligente,
     "SubdireccionMedica": SubdireccionMedica,
     "FormularioIRAGrave": FormularioIRAGrave,
+    "FormularioCoqueluche": FormularioCoqueluche,
     "SolicitudMicrobiologia": SolicitudMicrobiologia,
     "SolicitudFarmacoRestringido": SolicitudFarmacoRestringido,
     "GestionPROA": GestionPROA,
+    "GestionCardiovascular": GestionCardiovascular,
     "VisitaPROA": VisitaPROA,
     "AgendaDiaria": AgendaDiaria,
     "IndicacionesUrgencia": IndicacionesUrgencia,

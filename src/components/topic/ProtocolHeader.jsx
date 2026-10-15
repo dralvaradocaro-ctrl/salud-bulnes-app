@@ -4,22 +4,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FileText, Calendar, User, Target, Download } from 'lucide-react';
 
-// Carpeta institucional compartida con los PDF originales de los protocolos
-// del HCSFB. Si el topic no tiene protocol_file_url propio, "Descargar
-// Protocolo" abre esta carpeta para que el usuario localice el archivo.
-const INSTITUTIONAL_PROTOCOLS_FOLDER_URL =
-  'https://drive.google.com/drive/u/1/folders/18Dacy33EKwqqudpVwCVpCrRKl6py7NwM';
-
 export default function ProtocolHeader({ topic }) {
-  const downloadUrl = topic.protocol_file_url || INSTITUTIONAL_PROTOCOLS_FOLDER_URL;
-  const isFolderFallback = !topic.protocol_file_url;
+  const downloadUrl = /^https?:\/\//i.test(topic.protocol_file_url || '') && !/drive\.google\.com\/.*folders\//i.test(topic.protocol_file_url) ? topic.protocol_file_url : null;
+
   const isMedicalReference =
     (topic.tipo_contenido || []).includes('contenido_medico') &&
     !topic.has_local_protocol &&
     /referencia clinica|referencia clínica|contenido medico|contenido médico/i.test(topic.protocol_code || '');
 
   const handleDownload = () => {
-    window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+    if (downloadUrl) window.open(downloadUrl, '_blank', 'noopener,noreferrer');
   };
 
   if (isMedicalReference || (!topic.protocol_code && !topic.protocol_authors?.length)) {
@@ -45,12 +39,11 @@ export default function ProtocolHeader({ topic }) {
         <Button
           onClick={handleDownload}
           className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
-          title={isFolderFallback
-            ? 'Abre la carpeta institucional en Google Drive (PDF directo no asociado todavía)'
-            : 'Descarga el PDF del protocolo'}
+          disabled={!downloadUrl}
+          title={downloadUrl ? 'Abrir el PDF asociado a este protocolo' : 'No hay un PDF específico asociado'}
         >
           <Download className="h-4 w-4" />
-          Descargar Protocolo
+          {downloadUrl ? 'Abrir PDF del protocolo' : 'PDF no disponible aún'}
         </Button>
       </div>
 

@@ -46,6 +46,13 @@ const typeColors = {
 // page builder dedicado en vez de abrir el RequestForm generico.
 export const EXTERNAL_TEMPLATES = [
   {
+    id: 'ext-coqueluche',
+    name: 'Notificación de coqueluche',
+    type: 'Formulario Oficial',
+    instructions: 'Formulario de investigación y notificación de coqueluche. Completa los datos, edita sobre el documento y descarga el PDF.',
+    external_route: 'FormularioCoqueluche',
+  },
+  {
     id: 'ext-nota-evolucion',
     name: 'Nota de evolución',
     type: 'Formulario Oficial',
