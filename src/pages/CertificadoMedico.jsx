@@ -1,5 +1,5 @@
-// PÁGINA OCULTA — no está enlazada desde ninguna navegación.
-// Sólo se accede por link directo: /CertificadoMedico
+// Herramienta de certificados con acceso al generador de recetas.
+// Disponible en Policlínico → Documentos y por /CertificadoMedico.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -160,7 +160,7 @@ function CertificadoMedico() {
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Volver">
             <ChevronLeft className="h-5 w-5" />
           </Button>
@@ -168,7 +168,8 @@ function CertificadoMedico() {
             <h1 className="truncate text-base font-semibold text-slate-900">Certificado médico</h1>
             <p className="truncate text-xs text-slate-500">{centro.nombre} · Fono {centro.fono}</p>
           </div>
-          <Button variant="outline" size="sm" className="ml-auto gap-1.5" onClick={nuevoCertificado}>
+          <Button variant="outline" size="sm" className="ml-auto" onClick={() => navigate('/RecetaMedica')}>Receta médica</Button>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={nuevoCertificado}>
             <RotateCcw className="h-4 w-4" /> Nuevo
           </Button>
         </div>

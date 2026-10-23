@@ -3,6 +3,8 @@
 // description y keywords/tags para matching.
 
 export const staticPages = [
+  { id: 'orden-examenes', page: 'OrdenExamenes', name: 'Orden de exámenes', description: 'Solicitud de estudios con buscador, contraste, creatinina y PDF.', keywords: ['exámenes', 'examenes', 'orden', 'estudios', 'laboratorio', 'tac', 'resonancia', 'contraste', 'creatinina'] },
+  { id: 'receta-medica', page: 'RecetaMedica', name: 'Receta médica', description: 'Receta tradicional con catálogo de medicamentos, firma opcional y PDF.', keywords: ['receta', 'rp', 'medicamentos', 'prescripción', 'hta', 'dm2', 'dlp'] },
   { id: 'formulario-coqueluche', page: 'FormularioCoqueluche', name: 'Notificación de coqueluche', description: 'Formulario editable de investigación y notificación de casos de coqueluche, con descarga PDF.', keywords: ['coqueluche', 'tos convulsiva', 'pertussis', 'bordetella', 'notificación', 'notificacion', 'epidemiología', 'epidemiologia'] },
   { id: 'operacion-clinica', page: 'OperacionClinica', name: 'Herramientas de trabajo', description: 'Censo, HODOM, IRA grave y solicitudes', keywords: ['trabajo', 'operacion', 'censo', 'hodom', 'ira'] },
   { id: 'red-derivacion', page: 'RedDerivacion', name: 'Red y derivación Ñuble', description: 'Contactos oficiales y procedimiento local de traslado', keywords: ['telefonos', 'teléfonos', 'samu', 'red', 'derivacion', 'derivación', 'contactos'] },

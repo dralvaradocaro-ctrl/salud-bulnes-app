@@ -90,6 +90,8 @@ const NotaEvolucion = lazy(() => import('./pages/NotaEvolucion'));
 const CurvaExamenes = lazy(() => import('./pages/CurvaExamenes'));
 const FormulariosHODOM = lazy(() => import('./pages/FormulariosHODOM'));
 const VistaHospitalizados = lazy(() => import('./pages/VistaHospitalizados'));
+const OrdenExamenes = lazy(() => import('./pages/OrdenExamenes'));
+const RecetaMedica = lazy(() => import('./pages/RecetaMedica'));
 const CertificadoMedico = lazy(() => import('./pages/CertificadoMedico'));
 const VerificarCertificado = lazy(() => import('./pages/VerificarCertificado'));
 import __Layout from './Layout.jsx';
@@ -130,8 +132,10 @@ export const PAGES = {
     "CurvaExamenes": CurvaExamenes,
     "FormulariosHODOM": FormulariosHODOM,
     "VistaHospitalizados": VistaHospitalizados,
-    // Páginas ocultas: no aparecen en ninguna navegación, sólo por link directo
+    // Documentos clínicos protegidos y verificación de certificados
     "CertificadoMedico": CertificadoMedico,
+    "RecetaMedica": RecetaMedica,
+    "OrdenExamenes": OrdenExamenes,
     "VerificarCertificado": VerificarCertificado,
 }
 

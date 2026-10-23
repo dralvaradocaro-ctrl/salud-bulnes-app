@@ -95,6 +95,27 @@ const FORM_GROUPS = [
 // `details` es lo que se despliega al pasar el mouse (qué se puede solicitar).
 const STATIC_FORMS = [
   {
+    group: 'paciente', route: 'OrdenExamenes', tone: 'blue', Icon: FlaskConical,
+    title: 'Orden de exámenes',
+    description: 'Estudios precargados, contraste y creatinina. Acceso restringido.',
+    details: ['Buscador de estudios', 'Con o sin contraste', 'Última creatinina', 'Firma opcional', 'Descarga PDF'],
+    show: c => c.hasPolicinico,
+  },
+  {
+    group: 'paciente', route: 'CertificadoMedico', tone: 'teal', Icon: FileText,
+    title: 'Certificado médico',
+    description: 'Certificado editable con firma y verificación. Acceso restringido.',
+    details: ['Datos del paciente', 'Texto libre', 'Firma opcional', 'Código de verificación', 'Descarga PDF'],
+    show: c => c.hasPolicinico,
+  },
+  {
+    group: 'paciente', route: 'RecetaMedica', tone: 'indigo', Icon: Pill,
+    title: 'Receta médica',
+    description: 'Medicamentos, presentaciones y posología. Acceso restringido.',
+    details: ['Buscador de medicamentos', 'Presentaciones precargadas', 'Posología editable', 'Firma opcional', 'Descarga PDF'],
+    show: c => c.hasPolicinico,
+  },
+  {
     group: 'registro', route: 'NotaEvolucion', tone: 'slate', Icon: FileText,
     title: 'Nota de evolución',
     description: 'Evolución clínica diaria con firma médica.',
@@ -758,7 +779,7 @@ export default function Category() {
               }`}
             >
               <ClipboardList className="h-4 w-4" />
-              Formularios
+              {hasPolicinico ? 'Documentos' : 'Formularios'}
             </button>
           )}
           {(hasHospitalizados || hasPolicinico) && (

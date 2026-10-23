@@ -1,0 +1,1150 @@
+{
+  "Clopidogrel": [
+    {
+      "texto": "75 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Ácido acetilsalicílico": [
+    {
+      "texto": "100 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Furosemida": [
+    {
+      "texto": "40 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "20 mg/mL · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Hidroclorotiazida": [
+    {
+      "texto": "50 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Espironolactona": [
+    {
+      "texto": "25 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Aciclovir": [
+    {
+      "texto": "200 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "400 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Oseltamivir": [
+    {
+      "texto": "75 mg · cápsula",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Amoxicilina": [
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "500 mg/5mL · suspensión oral",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Azitromicina": [
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "200 mg/5mL · suspensión oral",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "400 mg/5mL · suspensión oral",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Cefadroxilo": [
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "250 mg/5mL · suspensión oral",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Ceftriaxona": [
+    {
+      "texto": "1 g · polvo para solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Ciprofloxacino": [
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Claritromicina": [
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "250 mg/5mL · suspensión oral",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Clindamicina": [
+    {
+      "texto": "300 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "600 mg · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Cotrimoxazol": [
+    {
+      "texto": "960 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "480 mg · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Doxiciclina": [
+    {
+      "texto": "100 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Levofloxacino": [
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Metronidazol": [
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "500 mg · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Nitrofurantoína": [
+    {
+      "texto": "100 mg · cápsula",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Fluconazol": [
+    {
+      "texto": "150 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Clotrimazol": [
+    {
+      "texto": "1 % · crema",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "500 mg · óvulo vaginal",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Nistatina": [
+    {
+      "texto": "100000 UI/mL · suspensión oral",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Terbinafina": [
+    {
+      "texto": "250 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Albendazol": [
+    {
+      "texto": "200 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "200 mg/5mL · suspensión oral",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Permetrina": [
+    {
+      "texto": "1 % · shampoo",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Ácido fólico": [
+    {
+      "texto": "1 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Cianocobalamina": [
+    {
+      "texto": "0,1 mg/mL · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Calcio carbonato": [
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Paracetamol": [
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "160 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "10 mg/mL · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "100 mg/mL · solución oral gotas",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "125 mg/5mL · jarabe",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Metamizol": [
+    {
+      "texto": "500 mg/mL · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "250 mg · supositorio",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Diclofenaco": [
+    {
+      "texto": "50 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "25 mg/mL · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "12,5 mg · supositorio infantil",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Ibuprofeno": [
+    {
+      "texto": "200 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "400 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "600 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "100 mg/5 mL · suspensión oral",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "200 mg/5 mL · suspensión oral",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Ketoprofeno": [
+    {
+      "texto": "50 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Ketorolaco": [
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "30 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "30 mg/mL · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Naproxeno": [
+    {
+      "texto": "550 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Celecoxib": [
+    {
+      "texto": "200 mg · cápsula",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Meloxicam": [
+    {
+      "texto": "15 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Atenolol": [
+    {
+      "texto": "50 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Bisoprolol": [
+    {
+      "texto": "1,25 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "2,5 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Carvedilol": [
+    {
+      "texto": "6,25 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "12,5 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "25 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Amlodipino": [
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Enalapril": [
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "https://www.savalcorp.com/es/productos/ENALTEN.html?c=3"
+    },
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "https://www.savalcorp.com/es/productos/ENALTEN.html?c=3"
+    },
+    {
+      "texto": "20 mg · comprimido",
+      "fuente": "https://www.savalcorp.com/es/productos/ENALTEN.html?c=3"
+    }
+  ],
+  "Losartán": [
+    {
+      "texto": "50 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "100 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Nifedipino": [
+    {
+      "texto": "20 mg · comprimido liberación prolongada",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Atorvastatina": [
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "20 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "40 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "80 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Gemfibrozilo": [
+    {
+      "texto": "600 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Glibenclamida": [
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Metformina": [
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "https://ispch.gob.cl/wp-content/uploads/2023/01/F_10050.pdf"
+    },
+    {
+      "texto": "850 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "1000 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Vildagliptina": [
+    {
+      "texto": "50 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Dapagliflozina": [
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Levotiroxina": [
+    {
+      "texto": "50 µg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "100 µg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Omeprazol": [
+    {
+      "texto": "20 mg · cápsula",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "40 mg · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Famotidina": [
+    {
+      "texto": "20 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "40 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Domperidona": [
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "10 mg/mL · solución oral gotas",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "5 mg/mL · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "60 mg · supositorio",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Metoclopramida": [
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "5 mg/mL · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Ondansetrón": [
+    {
+      "texto": "4 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "8 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "2 mg/mL · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Lactulosa": [
+    {
+      "texto": "65 % · solución oral",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Loperamida": [
+    {
+      "texto": "2 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Salbutamol": [
+    {
+      "texto": "100 µg/dosis · inhalador",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "5 mg/mL · solución para nebulización",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Budesonida": [
+    {
+      "texto": "200 µg/dosis · inhalador",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Dexametasona": [
+    {
+      "texto": "4 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "4 mg/mL · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Prednisona": [
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "20 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "20 mg/5mL · suspensión oral",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Clobetasol": [
+    {
+      "texto": "0,05 % · crema",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Cetirizina": [
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Levocetirizina": [
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Loratadina": [
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Desloratadina": [
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Clorfenamina": [
+    {
+      "texto": "4 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "10 mg/mL · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Escitalopram": [
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "20 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Fluoxetina": [
+    {
+      "texto": "20 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Sertralina": [
+    {
+      "texto": "50 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Mirtazapina": [
+    {
+      "texto": "15 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "30 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Venlafaxina": [
+    {
+      "texto": "37,5 mg · comprimido de liberación prolongada",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "75 mg · comprimido de liberación prolongada",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "150 mg · comprimido de liberación prolongada",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Duloxetina": [
+    {
+      "texto": "30 mg · cápsula gastrorresistente",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "60 mg · cápsula gastrorresistente",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Amitriptilina": [
+    {
+      "texto": "25 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Risperidona": [
+    {
+      "texto": "1 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "3 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "1 mg/mL · solución oral gotas",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Quetiapina": [
+    {
+      "texto": "25 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "100 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "200 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "50 mg · comprimido de liberación prolongada",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "150 mg · comprimido de liberación prolongada",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "200 mg · comprimido de liberación prolongada",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "300 mg · comprimido de liberación prolongada",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Aripiprazol": [
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "15 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Ácido valproico": [
+    {
+      "texto": "200 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "250 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "10 mg/gota · solución oral gotas",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "250 mg/5mL · jarabe",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "250 mg · comprimido liberación prolongada",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "375 mg/mL · solución oral gotas",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Carbamazepina": [
+    {
+      "texto": "200 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "400 mg · comprimido liberación prolongada",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "200 mg · comprimido liberación prolongada",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Lamotrigina": [
+    {
+      "texto": "50 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "100 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "25 mg · comprimido bucodispersable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Levetiracetam": [
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "1000 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Pregabalina": [
+    {
+      "texto": "50 mg · cápsula",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "75 mg · cápsula",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "150 mg · cápsula",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Topiramato": [
+    {
+      "texto": "25 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "100 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Estradiol": [
+    {
+      "texto": "1 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Levonorgestrel": [
+    {
+      "texto": "1,5 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Tamsulosina": [
+    {
+      "texto": "0,4 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Oxibutinina": [
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Ciprofloxacino ótico": [
+    {
+      "texto": "0,3 % · solución ótica",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Mupirocina": [
+    {
+      "texto": "2 % · ungüento",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Alopurinol": [
+    {
+      "texto": "100 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    },
+    {
+      "texto": "300 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Colchicina": [
+    {
+      "texto": "0,5 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Empagliflozina": [
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Fluticasona": [
+    {
+      "texto": "125 mcg/dosis · inhalador",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Valsartán": [
+    {
+      "texto": "80 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "160 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Telmisartán": [
+    {
+      "texto": "40 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "80 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Clortalidona": [
+    {
+      "texto": "50 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Metoprolol": [
+    {
+      "texto": "25 mg · comprimido de liberación prolongada",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "50 mg · comprimido de liberación prolongada",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Rosuvastatina": [
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "20 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Ezetimiba": [
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Metformina liberación prolongada": [
+    {
+      "texto": "500 mg · comprimido de liberación prolongada",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "750 mg · comprimido de liberación prolongada",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "1000 mg · comprimido de liberación prolongada",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Gliclazida": [
+    {
+      "texto": "60 mg · comprimido de liberación prolongada",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Glimepirida": [
+    {
+      "texto": "4 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Sitagliptina": [
+    {
+      "texto": "50 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "100 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Fexofenadina": [
+    {
+      "texto": "120 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "180 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Ambroxol": [
+    {
+      "texto": "15 mg/5 mL · jarabe",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "30 mg/5 mL · jarabe",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Montelukast": [
+    {
+      "texto": "5 mg · comprimido masticable",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Valaciclovir": [
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Amoxicilina / ácido clavulánico": [
+    {
+      "texto": "500/125 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "875/125 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Cefuroxima": [
+    {
+      "texto": "500 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Esomeprazol": [
+    {
+      "texto": "20 mg · cápsula gastrorresistente",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "40 mg · cápsula gastrorresistente",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Ketoconazol": [
+    {
+      "texto": "2 % · crema",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Hidrocortisona": [
+    {
+      "texto": "1 % · crema",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Betametasona": [
+    {
+      "texto": "0,05 % · crema",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Gabapentina": [
+    {
+      "texto": "300 mg · cápsula",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "400 mg · cápsula",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Tadalafilo": [
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "20 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Finasterida": [
+    {
+      "texto": "1 mg · comprimido",
+      "fuente": "ascend-2025"
+    },
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Solifenacina": [
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Olopatadina oftálmica": [
+    {
+      "texto": "0,2 % · solución oftálmica",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Moxifloxacino oftálmico": [
+    {
+      "texto": "0,5 % · solución oftálmica",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Timolol oftálmico": [
+    {
+      "texto": "0,5 % · solución oftálmica",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Latanoprost oftálmico": [
+    {
+      "texto": "50 mcg/mL · solución oftálmica",
+      "fuente": "ascend-2025"
+    }
+  ],
+  "Insulina NPH": [
+    {
+      "texto": "100 UI/mL · suspensión inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Insulina cristalina": [
+    {
+      "texto": "100 UI/mL · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Lidocaína solución inyectable": [
+    {
+      "texto": "2 % · solución inyectable",
+      "fuente": "arsenal-bulnes"
+    }
+  ],
+  "Lidocaína gel": [
+    {
+      "texto": "4 % · gel tópico",
+      "fuente": "arsenal-bulnes"
+    }
+  ]
+}
