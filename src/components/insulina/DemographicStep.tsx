@@ -4,14 +4,27 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { PatientData } from '@/types/protocol';
 import { cn } from '@/lib/utils';
+import PatientLocationFields, { isPatientLocationComplete } from '@/components/hospitalizados/PatientLocationFields';
+
+export interface PatientIdentity {
+  service: string;
+  sala: string;
+  bedCode: string;
+  name: string;
+  rut: string;
+}
 
 interface DemographicStepProps {
   data: PatientData;
   onUpdate: (field: keyof PatientData, value: number | string) => void;
   onNext: () => void;
+  identity?: PatientIdentity;
+  onIdentityChange?: (identity: PatientIdentity) => void;
+  locations?: Record<string, string>[];
+  loadingLocations?: boolean;
 }
 
-export function DemographicStep({ data, onUpdate, onNext }: DemographicStepProps) {
+export function DemographicStep({ data, onUpdate, onNext, identity, onIdentityChange, locations = [], loadingLocations = false }: DemographicStepProps) {
   const [altura, setAltura] = useState<number>(0);
 
   // Calcular IMC automáticamente cuando cambia peso o altura
@@ -28,6 +41,25 @@ export function DemographicStep({ data, onUpdate, onNext }: DemographicStepProps
         <h2 className="text-2xl font-bold text-foreground mb-2">Datos Demográficos</h2>
         <p className="text-muted-foreground">Ingrese los datos básicos del paciente</p>
       </div>
+
+      {identity && onIdentityChange && (
+        // Opcional: si se completa aquí, "Guardar e imprimir" guarda directo en la cama sin volver a preguntar.
+        <details open className="group rounded-lg border border-slate-200 bg-slate-50/60 px-4 py-3">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-xs font-semibold text-slate-500">
+            <span>
+              Identificación del paciente
+              <span className="ml-1 font-normal text-slate-400">· opcional, para guardar en la cama e imprimir</span>
+            </span>
+            <span className="flex items-center gap-2">
+              {isPatientLocationComplete(identity) && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Completa</span>}
+              <span className="text-slate-400 transition-transform group-open:rotate-180" aria-hidden="true">▾</span>
+            </span>
+          </summary>
+          <div className="mt-3">
+            <PatientLocationFields compact value={identity} onChange={onIdentityChange} locations={locations} loading={loadingLocations} />
+          </div>
+        </details>
+      )}
 
       <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
         <p className="text-sm text-foreground">

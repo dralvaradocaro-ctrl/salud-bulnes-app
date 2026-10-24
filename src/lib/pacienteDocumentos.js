@@ -1,4 +1,4 @@
-import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import { getMultiPrefill, getMultiPrefillTimestamp } from '@/lib/multiTemplatePrefill';
 import { formatRut } from '@/lib/rut-ges';
 
 const KEY = 'pacienteDocumentos_v1';
@@ -11,8 +11,11 @@ function leerGuardado() {
 }
 export function leerPacienteDocumentos() {
   const guardado = leerGuardado();
-  if (guardado) return filtrar(guardado);
+  // Un lote del generador múltiple posterior al último documento manda sobre el paciente anterior.
+  const loteNuevo = getMultiPrefillTimestamp() > (memoria?.ts || 0);
+  if (guardado && !loteNuevo) return filtrar(guardado);
   const p = getMultiPrefill();
+  if (!p && guardado) return filtrar(guardado);
   if (!p) return {};
   const datos = {
     paciente: p.patient_name || '', rut: formatRut(p.patient_rut || ''),

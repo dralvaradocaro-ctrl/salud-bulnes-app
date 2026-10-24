@@ -18,6 +18,8 @@ interface ResultsStepProps {
   onIndexResult?: (result: Record<string, unknown>) => void;
   indexLabel?: string;
   recordContext?: { name: string; rut: string; servicio: string; cama: string } | null;
+  // Datos del paciente para el impreso; por defecto, los del registro guardado.
+  printContext?: { name: string; rut: string; servicio: string; cama: string } | null;
 }
 
 const groupInfo = {
@@ -41,7 +43,7 @@ const groupInfo = {
   },
 };
 
-export function ResultsStep({ data, grupo, onBack, onReset, usoCondicionado, onIndexResult, indexLabel = 'Guardar e imprimir', recordContext = null }: ResultsStepProps) {
+export function ResultsStep({ data, grupo, onBack, onReset, usoCondicionado, onIndexResult, indexLabel = 'Guardar e imprimir', recordContext = null, printContext = recordContext }: ResultsStepProps) {
   const [corticoideOverride, setCorticoideOverride] = useState<'resistente' | 'sensible' | null>(null);
 
   const mostrarAlertaCorticoide = grupo === 'sensible' && data.corticoidesSistemicos;
@@ -107,11 +109,11 @@ export function ResultsStep({ data, grupo, onBack, onReset, usoCondicionado, onI
         <div className="space-y-2 text-xs">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-0.5">
-              <p><strong>Nombre paciente:</strong> {recordContext?.name || '___________________________'}</p>
-              <p><strong>RUT:</strong> {recordContext?.rut || '___________________________'}</p>
+              <p><strong>Nombre paciente:</strong> {printContext?.name || '___________________________'}</p>
+              <p><strong>RUT:</strong> {printContext?.rut || '___________________________'}</p>
             </div>
             <div className="space-y-0.5">
-              <p><strong>N° cama / Servicio:</strong> {recordContext ? [recordContext.cama, recordContext.servicio].filter(Boolean).join(' · ') : '___________________________'}</p>
+              <p><strong>N° cama / Servicio:</strong> {[printContext?.cama, printContext?.servicio].filter(Boolean).join(' · ') || '___________________________'}</p>
               <p><strong>Fecha de emisión:</strong> {fechaEmision} - {horaEmision} h</p>
             </div>
           </div>

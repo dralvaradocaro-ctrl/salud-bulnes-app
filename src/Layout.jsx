@@ -2,7 +2,8 @@ import ThemeToggle from '@/components/ThemeToggle';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Home, Stethoscope, ClipboardList, BookOpen } from 'lucide-react';
+import { Home, Stethoscope, Briefcase, FileText, BookOpen } from 'lucide-react';
+import { DOCUMENT_ROUTES, WORK_ROUTES } from '@/lib/workspaceCatalog';
 import FloatingNewsButton from '@/components/news/FloatingNewsButton';
 
 const TOPIC_PAGES = ['TopicDetail', 'Category'];
@@ -28,8 +29,11 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Inicio', page: 'Home', icon: Home, to: createPageUrl('Home') },
     { name: 'Temas', page: null, icon: BookOpen, to: lastTopicUrl, active: isOnTopicPage },
     { name: 'Herramientas', page: 'AllCalculators', icon: Stethoscope, to: createPageUrl('AllCalculators') },
-    { name: 'Trabajo', page: 'OperacionClinica', icon: ClipboardList, to: createPageUrl('OperacionClinica') },
-    { name: 'Plantillas', page: 'Templates', icon: ClipboardList, to: createPageUrl('Templates') },
+    // Trabajo y Documentos quedan marcadas también dentro de sus módulos (censo, receta, etc.).
+    { name: 'Trabajo', page: 'OperacionClinica', icon: Briefcase, to: createPageUrl('OperacionClinica'),
+      active: currentPageName === 'OperacionClinica' || WORK_ROUTES.includes(currentPageName) },
+    { name: 'Documentos', page: 'Templates', icon: FileText, to: createPageUrl('Templates'),
+      active: currentPageName === 'Templates' || DOCUMENT_ROUTES.includes(currentPageName) },
   ];
 
   return (

@@ -119,6 +119,29 @@ export function initialCoqueluche(now = new Date()) {
     telefonoNotificador: '42 258 5900',
   };
 }
+// Datos del paciente que llegan desde el generador de varios documentos (ver patientProfile).
+// Nombre en formato "Apellidos, Nombres"; la comuna solo se toma si existe en el listado oficial.
+export function coquelucheFromPrefill(data, p, regiones = []) {
+  if (!p) return data;
+  const next = { ...data };
+  const rut = String(p.patient_rut || '').replace(/[^0-9kK]/g, '').toUpperCase();
+  if (rut.length > 1) { next.rut = rut.slice(0, -1); next.dv = rut.slice(-1); }
+  const [apellidos, nombres] = String(p.patient_name || '').split(',').map(part => part.trim());
+  if (nombres) {
+    const [primero = '', ...resto] = apellidos.split(/\s+/);
+    Object.assign(next, { nombres, apellido1: primero, apellido2: resto.join(' ') });
+  } else if (apellidos) next.nombres = apellidos;
+  const sexo = String(p.patient_sexo || '').toLowerCase();
+  if (sexo.startsWith('m')) next.sexo = 'M';
+  if (sexo.startsWith('f')) next.sexo = 'F';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(p.patient_fecha_nac || '')) next.fechaNacimiento = p.patient_fecha_nac;
+  if (p.patient_edad) next.edad = /\D/.test(String(p.patient_edad)) ? String(p.patient_edad) : `${p.patient_edad} años`;
+  if (p.patient_direccion) next.calle = p.patient_direccion;
+  const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const region = regiones.find(r => r.comunas.some(c => norm(c) === norm(p.patient_comuna)));
+  if (region) { next.region = region.nombre; next.comuna = region.comunas.find(c => norm(c) === norm(p.patient_comuna)); }
+  return next;
+}
 export function updateCoqueluche(data, id, value, regiones) {
   const next = { ...data, [id]: value };
   if (id === 'region' && !regiones.find(r => r.nombre === value)?.comunas.includes(data.comuna)) next.comuna = '';

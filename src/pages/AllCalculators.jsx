@@ -13,6 +13,13 @@ import {
   allCalculators
 } from '@/components/calculators/catalog';
 
+// Ancla de cada temática para la fila de accesos rápidos.
+const categoryAnchor = category => `cat-${category.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
+const jumpToCategory = category => {
+  document.getElementById(categoryAnchor(category))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
 export default function AllCalculators() {
   const [searchParams, setSearchParams] = useSearchParams();
   const calcParam = searchParams.get('calc');
@@ -68,6 +75,23 @@ export default function AllCalculators() {
             </div>
           </div>
           <GlobalSearch />
+          {!activeCalculator && (
+            <nav aria-label="Temáticas" className="-mx-4 mt-3 overflow-x-auto px-4 pb-1">
+              <div className="flex min-w-max gap-2">
+                {Object.entries(calculatorsByCategory).map(([category, calcs]) => {
+                  const Icon = categoryIcons[category];
+                  return (
+                    <button key={category} type="button" onClick={() => jumpToCategory(category)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-blue-300 hover:text-blue-700">
+                      {Icon && <Icon className="h-3.5 w-3.5" />}
+                      {category}
+                      <span className="text-slate-400">{calcs.length}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          )}
         </div>
       </div>
 
@@ -122,6 +146,8 @@ export default function AllCalculators() {
               return (
                 <motion.div
                   key={category}
+                  id={categoryAnchor(category)}
+                  className="scroll-mt-48"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                 >

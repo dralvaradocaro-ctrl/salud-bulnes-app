@@ -18,13 +18,9 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
-  FlaskConical,
   Sparkles,
-  UserCheck,
-  Files,
   Activity,
   ShieldPlus,
-  Image,
   Pill,
   Package,
   Search,
@@ -33,9 +29,6 @@ import {
   CheckSquare,
   Check,
   X,
-  Home,
-  Microscope,
-  MessageSquare,
   Calculator,
   Heart,
   Brain,
@@ -45,7 +38,8 @@ import {
   Utensils,
   HeartPulse,
 } from 'lucide-react';
-import { allCalculators } from '@/components/calculators/catalog';
+import { allCalculators, clinicalToolCalculatorId } from '@/components/calculators/catalog';
+import { FORM_TONES, FORM_GROUPS, STATIC_FORMS, TEMPLATE_TYPE_META } from '@/lib/workspaceCatalog';
 import MultiTemplateGenerator, { EXTERNAL_FORMS, isMultiEligibleTemplate } from '@/components/templates/MultiTemplateGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -65,127 +59,6 @@ import {
 // Formularios provenientes de la BD (RequestTemplate) que NO deben mostrarse
 // en el tab de Formularios.
 const HIDDEN_TEMPLATE_TYPES = ['Estudio Endoscópico', 'Laboratorio Especial'];
-
-// Paleta por tono (clases literales para que Tailwind las compile).
-const FORM_TONES = {
-  slate:   { card: 'border-slate-200 bg-white hover:border-slate-400',          icon: 'bg-slate-700',   chip: 'bg-slate-100 text-slate-700',     label: 'text-slate-400' },
-  teal:    { card: 'border-teal-200 bg-teal-50/70 hover:border-teal-400',        icon: 'bg-teal-700',    chip: 'bg-teal-100 text-teal-800',       label: 'text-teal-600' },
-  blue:    { card: 'border-blue-200 bg-blue-50/70 hover:border-blue-400',        icon: 'bg-blue-600',    chip: 'bg-blue-100 text-blue-800',       label: 'text-blue-600' },
-  cyan:    { card: 'border-cyan-200 bg-cyan-50/70 hover:border-cyan-400',        icon: 'bg-cyan-600',    chip: 'bg-cyan-100 text-cyan-800',       label: 'text-cyan-600' },
-  rose:    { card: 'border-rose-200 bg-rose-50/70 hover:border-rose-400',        icon: 'bg-rose-600',    chip: 'bg-rose-100 text-rose-800',       label: 'text-rose-600' },
-  amber:   { card: 'border-amber-200 bg-amber-50/70 hover:border-amber-400',     icon: 'bg-amber-600',   chip: 'bg-amber-100 text-amber-800',     label: 'text-amber-600' },
-  indigo:  { card: 'border-indigo-200 bg-indigo-50/70 hover:border-indigo-400',  icon: 'bg-indigo-600',  chip: 'bg-indigo-100 text-indigo-800',   label: 'text-indigo-600' },
-  emerald: { card: 'border-emerald-200 bg-emerald-50/70 hover:border-emerald-400', icon: 'bg-emerald-600', chip: 'bg-emerald-100 text-emerald-800', label: 'text-emerald-600' },
-  violet:  { card: 'border-violet-200 bg-violet-50/70 hover:border-violet-400',  icon: 'bg-violet-600',  chip: 'bg-violet-100 text-violet-800',   label: 'text-violet-600' },
-};
-
-// Áreas en que se agrupan los formularios del tab. El orden aquí es el orden
-// en pantalla; un área sin formularios visibles no se renderiza.
-const FORM_GROUPS = [
-  { id: 'registro',   title: 'Registro clínico',            subtitle: 'Evolución y seguimiento del paciente',          Icon: Stethoscope },
-  { id: 'examenes',   title: 'Exámenes e imágenes',         subtitle: 'Laboratorio, microbiología, ISP y protocolos',  Icon: FlaskConical },
-  { id: 'farmacia',   title: 'Farmacia y tratamiento',      subtitle: 'Fármacos que requieren autorización',           Icon: Pill },
-  { id: 'derivacion', title: 'Derivación y continuidad',    subtitle: 'Traslados, interconsultas y alta domiciliaria', Icon: Home },
-  { id: 'paciente',   title: 'Documentos para el paciente', subtitle: 'Constancias, informes y certificados',          Icon: UserCheck },
-  { id: 'urgencia',   title: 'Urgencia',                    subtitle: 'Plantillas de indicaciones rápidas',            Icon: ShieldPlus },
-  { id: 'otros',      title: 'Otros formularios',           subtitle: 'Solicitudes adicionales de la categoría',       Icon: Files },
-];
-
-// Formularios con página propia. `show` decide si aplica a la categoría;
-// `details` es lo que se despliega al pasar el mouse (qué se puede solicitar).
-const STATIC_FORMS = [
-  {
-    group: 'paciente', route: 'OrdenExamenes', tone: 'blue', Icon: FlaskConical,
-    title: 'Orden de exámenes',
-    description: 'Estudios precargados, contraste y creatinina. Acceso restringido.',
-    details: ['Buscador de estudios', 'Con o sin contraste', 'Última creatinina', 'Firma opcional', 'Descarga PDF'],
-    show: c => c.hasPolicinico,
-  },
-  {
-    group: 'paciente', route: 'CertificadoMedico', tone: 'teal', Icon: FileText,
-    title: 'Certificado médico',
-    description: 'Certificado editable con firma y verificación. Acceso restringido.',
-    details: ['Datos del paciente', 'Texto libre', 'Firma opcional', 'Código de verificación', 'Descarga PDF'],
-    show: c => c.hasPolicinico,
-  },
-  {
-    group: 'paciente', route: 'RecetaMedica', tone: 'indigo', Icon: Pill,
-    title: 'Receta médica',
-    description: 'Medicamentos, presentaciones y posología. Acceso restringido.',
-    details: ['Buscador de medicamentos', 'Presentaciones precargadas', 'Posología editable', 'Firma opcional', 'Descarga PDF'],
-    show: c => c.hasPolicinico,
-  },
-  {
-    group: 'registro', route: 'NotaEvolucion', tone: 'slate', Icon: FileText,
-    title: 'Nota de evolución',
-    description: 'Evolución clínica diaria con firma médica.',
-    details: ['Anamnesis', 'Examen físico', 'Diagnósticos', 'Plan e indicaciones', 'Firma médica'],
-    show: c => c.hasHospitalizados,
-  },
-  {
-    group: 'registro', route: 'CurvaExamenes', tone: 'teal', Icon: Activity,
-    title: 'Curva de exámenes',
-    description: 'Seguimiento longitudinal anónimo por cama.',
-    details: ['Carga por fechas', 'Curvas por parámetro', 'Calcio corregido', 'PMN absolutos', 'Tendencias'],
-    show: c => c.hasHospitalizados,
-  },
-  {
-    group: 'examenes', route: 'SolicitudExamenes', tone: 'blue', Icon: FlaskConical,
-    title: 'Solicitud de Exámenes',
-    description: 'Formulario oficial COD. 32 con buscador.',
-    details: ['Hematología', 'Bioquímica', 'Coagulación', 'Orinas', 'Deposiciones', 'Hormonas · Inmunología', 'Derivados a HCHM'],
-    show: c => c.hasHospitalizados,
-  },
-  {
-    group: 'examenes', route: 'SolicitudMicrobiologia', tone: 'cyan', Icon: Microscope,
-    title: 'Exámenes Microbiológicos',
-    description: 'Formulario C 162. Imprime PDF.',
-    details: ['Bacteriológicos', 'Cultivos', 'Directos', 'Virológicos', 'Serología'],
-    show: c => c.hasHospitalizados,
-  },
-  {
-    group: 'examenes', route: 'FormularioIRAGrave', tone: 'rose', Icon: FlaskConical,
-    title: 'IRA grave y 2019-nCoV (ISP)',
-    description: 'PR-244.00-007. Notificación inmediata.',
-    details: ['Notificación ISP', 'Aspirado nasofaríngeo', 'Aspirado traqueal', 'Lavado broncoalveolar', 'Envío de muestras'],
-    show: c => c.hasHospitalizados,
-  },
-  {
-    group: 'farmacia', route: 'SolicitudFarmacoRestringido', tone: 'amber', Icon: Pill,
-    title: 'Fármaco de Uso Restringido',
-    description: 'Comité de Farmacia / MPJC. Imprime PDF.',
-    details: ['Antibióticos amplio espectro', 'Fármacos de uso ocasional', 'Justificación del tratamiento', 'Duración propuesta'],
-    show: c => c.hasHospitalizados,
-  },
-  {
-    group: 'derivacion', route: 'FormulariosHODOM', tone: 'indigo', Icon: Home,
-    title: 'Hospitalización Domiciliaria (HODOM)',
-    description: 'Derivación y consentimiento editables.',
-    details: ['Formulario de derivación', 'Consentimiento informado', 'Vista previa', 'Impresión formato original', 'Traslado a registro HODOM'],
-    show: c => c.hasHospitalizados || c.hasUrgencias,
-  },
-  {
-    group: 'paciente', route: 'FormularioGES', tone: 'emerald', Icon: FileText,
-    title: 'Constancia GES',
-    description: 'Art. 24 Ley 19.966. Información al paciente.',
-    details: ['Problema de salud GES', 'Garantías informadas', 'Firma paciente', 'Imprime PDF'],
-    show: c => c.hasGesConstancia,
-  },
-  {
-    group: 'paciente', route: 'InformeBiomedico', tone: 'amber', Icon: UserCheck,
-    title: 'Informe Biomédico Funcional',
-    description: 'Formulario oficial MINSAL editable.',
-    details: ['Diagnósticos', 'Funcionalidad', 'Fecha automática', 'Imprimible'],
-    show: c => c.hasPolicinico,
-  },
-  {
-    group: 'urgencia', route: 'IndicacionesUrgencia', tone: 'rose', Icon: ShieldPlus,
-    title: 'Indicaciones prehechas de Urgencia',
-    description: 'Plantillas editables por síndrome.',
-    details: ['Por síndrome', 'Edad y peso', 'Destino', 'Alergias', 'AINEs · Corticoides · β-lactámicos'],
-    show: c => c.hasUrgencias,
-  },
-];
 
 // Calculadoras que aplican al paciente hospitalizado adulto, agrupadas por
 // área temática (mismo orden de subcategorías que usa el tab Temas). Los ids
@@ -224,16 +97,6 @@ const HOSPITAL_CALCULATOR_GROUPS = [
 ];
 
 const CALCULATOR_INDEX = Object.fromEntries(allCalculators.map(c => [c.id, c]));
-
-// Formularios de la BD (RequestTemplate): a qué área van y con qué estilo.
-const TEMPLATE_TYPE_META = {
-  'Protocolo Imágenes':   { group: 'examenes',   tone: 'indigo',  Icon: Image },
-  'Laboratorio Especial': { group: 'examenes',   tone: 'violet',  Icon: FlaskConical },
-  'Estudio Endoscópico':  { group: 'examenes',   tone: 'emerald', Icon: Microscope },
-  'Interconsulta':        { group: 'derivacion', tone: 'amber',   Icon: MessageSquare },
-  'Indicaciones clínicas':{ group: 'registro',   tone: 'rose',    Icon: ClipboardList },
-  default:                { group: 'otros',      tone: 'violet',  Icon: ClipboardList },
-};
 
 const FORM_ICON_CLASS = 'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl';
 const SSN2026_TAG = '[SSÑ-2026]';
@@ -392,7 +255,7 @@ export default function Category() {
     enabled: !!categoryId
   });
 
-  const visibleTools = tools.filter(tool => !isHiddenClinicalTool(tool));
+  const categoryTools = tools.filter(tool => !isHiddenClinicalTool(tool));
 
   // El Formulario de Constancia GES llega como ClinicalTool en algunas
   // categorías; se muestra como formulario (tab Formularios), no como
@@ -419,6 +282,11 @@ export default function Category() {
   const hospitalCalculatorSections = useMemo(() => HOSPITAL_CALCULATOR_GROUPS
     .map(g => ({ ...g, calcs: g.calcs.map(id => CALCULATOR_INDEX[id]).filter(Boolean) }))
     .filter(g => g.calcs.length > 0), []);
+  // En Hospitalizados no se repiten las herramientas de la BD que ya están entre las calculadoras de abajo.
+  const hospitalCalcIds = new Set(hospitalCalculatorSections.flatMap(g => g.calcs.map(c => c.id)));
+  const visibleTools = hasHospitalizados
+    ? categoryTools.filter(tool => !hospitalCalcIds.has(clinicalToolCalculatorId(tool)))
+    : categoryTools;
 
   const { data: medications = [], isLoading: loadingMedications } = useQuery({
     queryKey: ['category-arsenal-medications'],

@@ -19,6 +19,8 @@
 //     n_ficha:             '12345',
 //   }
 
+import { expandPatientProfile } from '@/lib/patientProfile';
+
 const KEY = 'multiTemplatePrefill_v1';
 // Los formularios oficiales se abren en pestañas nuevas con
 // `rel="noopener noreferrer"`. Eso impide que la nueva pestaña vea el
@@ -27,8 +29,10 @@ const KEY = 'multiTemplatePrefill_v1';
 // para que datos de una tanda anterior no contaminen una sesión nueva.
 const TTL_MS = 30 * 60 * 1000; // 30 min
 
+// Se guardan los datos con todos sus alias (edad/patient_edad, direccion/domicilio…) para que
+// cada formulario encuentre el nombre que ya usa.
 export function setMultiPrefill(data) {
-  const payload = JSON.stringify({ data: data || {}, ts: Date.now() });
+  const payload = JSON.stringify({ data: expandPatientProfile(data || {}), ts: Date.now() });
   try { localStorage.setItem(KEY, payload); } catch { /* noop */ }
   // Mantenemos también sessionStorage por compatibilidad (lecturas en la
   // misma pestaña que generó el lote).
@@ -49,6 +53,18 @@ const readFrom = (storage) => {
     return parsed; // formato legado
   } catch { return null; }
 };
+
+// Momento en que se guardó el último lote (0 si no hay o expiró).
+export function getMultiPrefillTimestamp() {
+  if (typeof window === 'undefined') return 0;
+  for (const storage of [window.sessionStorage, window.localStorage]) {
+    try {
+      const parsed = JSON.parse(storage.getItem(KEY) || 'null');
+      if (parsed?.ts && Date.now() - parsed.ts <= TTL_MS) return parsed.ts;
+    } catch { /* noop */ }
+  }
+  return 0;
+}
 
 export function getMultiPrefill() {
   if (typeof window === 'undefined') return null;

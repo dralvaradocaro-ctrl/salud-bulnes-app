@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import CoquelucheField from '@/components/coqueluche/CoquelucheField';
-import { coquelucheFields, initialCoqueluche, sections, updateCoqueluche, pendingPriorityFields, COQUELUCHE_SOURCE } from '@/lib/coquelucheForm';
+import { coquelucheFields, initialCoqueluche, sections, updateCoqueluche, pendingPriorityFields, COQUELUCHE_SOURCE, coquelucheFromPrefill } from '@/lib/coquelucheForm';
+import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 import { buildCoqueluchePdf } from '@/lib/coqueluchePdf';
 import regiones from '@/data/chile_regiones.json';
 import './FormularioCoqueluche.css';
@@ -22,7 +23,7 @@ function SectionFields({ section, data, onChange }) {
 }
 
 export default function FormularioCoqueluche() {
-  const [data, setData] = useState(initialCoqueluche);
+  const [data, setData] = useState(() => coquelucheFromPrefill(initialCoqueluche(), getMultiPrefill(), regiones));
   const [open, setOpen] = useState(true);
   const [resetOpen, setResetOpen] = useState(false);
   const [busy, setBusy] = useState(false);

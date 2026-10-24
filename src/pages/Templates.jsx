@@ -9,135 +9,54 @@ import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import RequestForm from '@/components/templates/RequestForm';
 import MultiTemplateGenerator from '@/components/templates/MultiTemplateGenerator';
-import {
-  ChevronLeft,
-  ClipboardList,
-  Image,
-  FlaskConical,
-  Microscope,
-  FileText,
-  MessageSquare,
-  Files
-} from 'lucide-react';
+import { ChevronLeft, ClipboardList, Files, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DOCUMENT_FORMS, FORM_GROUPS, FORM_TONES, TEMPLATE_TYPE_META } from '@/lib/workspaceCatalog';
 
-const typeIcons = {
-  'Protocolo Imágenes': Image,
-  'Laboratorio Especial': FlaskConical,
-  'Estudio Endoscópico': Microscope,
-  'Interconsulta': MessageSquare,
-  'Formulario Oficial': FileText,
-  'Indicaciones clínicas': ClipboardList,
-  'Otro': FileText
-};
+// Tipos de RequestTemplate que no se ofrecen en Documentos.
+const HIDDEN_TYPES = ['Estudio Endoscópico'];
 
-const typeColors = {
-  'Protocolo Imágenes': 'from-blue-500 to-blue-600',
-  'Laboratorio Especial': 'from-violet-500 to-violet-600',
-  'Estudio Endoscópico': 'from-emerald-500 to-emerald-600',
-  'Interconsulta': 'from-amber-500 to-amber-600',
-  'Formulario Oficial': 'from-cyan-500 to-blue-600',
-  'Indicaciones clínicas': 'from-rose-500 to-red-600',
-  'Otro': 'from-slate-500 to-slate-600'
-};
-
-// Formularios que viven como paginas standalone (no en RequestTemplate). Se
-// inyectan en la grilla con external_route — al hacer click se navega al
-// page builder dedicado en vez de abrir el RequestForm generico.
-export const EXTERNAL_TEMPLATES = [
-  {
-    id: 'ext-coqueluche',
-    name: 'Notificación de coqueluche',
-    type: 'Formulario Oficial',
-    instructions: 'Formulario de investigación y notificación de coqueluche. Completa los datos, edita sobre el documento y descarga el PDF.',
-    external_route: 'FormularioCoqueluche',
-  },
-  {
-    id: 'ext-nota-evolucion',
-    name: 'Nota de evolución',
-    type: 'Formulario Oficial',
-    instructions: 'Documento para hospitalizados con anamnesis, examen físico, indicaciones y firma médica.',
-    external_route: 'NotaEvolucion',
-  },
-  {
-    id: 'ext-solicitud-examenes',
-    name: 'Solicitud de Exámenes — Hospital de Bulnes',
-    type: 'Formulario Oficial',
-    instructions: 'Selecciona exámenes con buscador e imprime el formulario oficial (COD. 32).',
-    external_route: 'SolicitudExamenes',
-  },
-  {
-    id: 'ext-formulario-ges',
-    name: 'Formulario de Constancia GES',
-    type: 'Formulario Oficial',
-    instructions: 'Artículo 24° Ley 19.966 — Constancia GES para patologías cubiertas.',
-    external_route: 'FormularioGES',
-  },
-  {
-    id: 'ext-informe-biomedico',
-    name: 'Informe Biomédico Funcional',
-    type: 'Formulario Oficial',
-    instructions: 'Informe biomédico y funcional para credencial de discapacidad / pensión.',
-    external_route: 'InformeBiomedico',
-  },
-  {
-    id: 'ext-ira-grave',
-    name: 'Formulario IRA grave y 2019-nCoV (ISP)',
-    type: 'Formulario Oficial',
-    instructions: 'PR-244.00-007 — Notificación inmediata y envío de muestras al ISP. Genera PDF imprimible.',
-    external_route: 'FormularioIRAGrave',
-  },
-  {
-    id: 'ext-solicitud-microbio',
-    name: 'Solicitud de Exámenes Microbiológicos',
-    type: 'Formulario Oficial',
-    instructions: 'Formulario C 162 — Cultivos, directos al fresco, virológicos. Imprime PDF.',
-    external_route: 'SolicitudMicrobiologia',
-  },
-  {
-    id: 'ext-farmaco-restringido',
-    name: 'Solicitud de Fármaco de Uso Restringido',
-    type: 'Formulario Oficial',
-    instructions: 'Comité de Farmacia / MPJC — Antibióticos amplio espectro, fármacos de uso ocasional.',
-    external_route: 'SolicitudFarmacoRestringido',
-  },
-  {
-    id: 'ext-indicaciones-urgencia',
-    name: 'Indicaciones prehechas de Urgencia',
-    type: 'Indicaciones clínicas',
-    instructions: 'Genera indicaciones editables por síndrome, destino, edad, peso y alergias.',
-    external_route: 'IndicacionesUrgencia',
-  },
-];
+// Documentos con página propia + plantillas de la BD, en una sola lista agrupada por área.
+function buildDocumentItems(rawTemplates) {
+  const forms = DOCUMENT_FORMS.map(form => ({
+    id: form.route, group: form.group, title: form.title, description: form.description,
+    Icon: form.Icon, tone: form.tone, route: form.route, restricted: /restringido/i.test(form.description),
+  }));
+  const dbTemplates = rawTemplates
+    .filter(template => !HIDDEN_TYPES.includes(template.type))
+    .map(template => {
+      const meta = TEMPLATE_TYPE_META[template.type] || TEMPLATE_TYPE_META.default;
+      return {
+        id: template.id, group: meta.group, title: template.name, description: template.instructions,
+        Icon: meta.Icon, tone: meta.tone, template, fields: template.required_fields?.length || 0,
+      };
+    });
+  return [...forms, ...dbTemplates];
+}
 
 export default function Templates() {
   const urlParams = new URLSearchParams(window.location.search);
   const selectedTemplateId = urlParams.get('id');
   const openMultiOnLoad = urlParams.get('multi') === '1';
-  const requestedType = urlParams.get('type');
+  const requestedGroup = urlParams.get('group');
   const openImageOnLoad = urlParams.get('image') === '1';
 
   const [activeTemplate, setActiveTemplate] = useState(null);
-  const [activeType, setActiveType] = useState(requestedType || 'all');
-
-  const HIDDEN_TYPES = ['Estudio Endoscópico'];
+  const [activeGroup, setActiveGroup] = useState(requestedGroup || 'all');
 
   const { data: rawTemplates = [], isLoading } = useQuery({
     queryKey: ['templates'],
     queryFn: () => db.entities.RequestTemplate.list('type'),
   });
-  const templates = [
-    ...rawTemplates.filter(t => !HIDDEN_TYPES.includes(t.type)),
-    ...EXTERNAL_TEMPLATES,
-  ];
+  const items = buildDocumentItems(rawTemplates);
 
   // Open template from URL param
   useEffect(() => {
-    if (selectedTemplateId && templates.length > 0) {
-      const template = templates.find(t => t.id === selectedTemplateId);
+    if (selectedTemplateId && rawTemplates.length > 0) {
+      const template = rawTemplates.find(t => t.id === selectedTemplateId);
       if (template) setActiveTemplate(template);
     }
-  }, [selectedTemplateId, templates]);
+  }, [selectedTemplateId, rawTemplates]);
 
   useEffect(() => {
     if (!openImageOnLoad || rawTemplates.length === 0) return;
@@ -145,21 +64,10 @@ export default function Templates() {
     if (imageTemplate) setActiveTemplate(imageTemplate);
   }, [openImageOnLoad, rawTemplates]);
 
-  // Get unique types
-  const types = [...new Set(templates.map(t => t.type).filter(Boolean))];
-
-  // Filter templates
-  const filteredTemplates = activeType === 'all'
-    ? templates
-    : templates.filter(t => t.type === activeType);
-
-  // Group by type
-  const groupedTemplates = filteredTemplates.reduce((acc, template) => {
-    const type = template.type || 'Otro';
-    if (!acc[type]) acc[type] = [];
-    acc[type].push(template);
-    return acc;
-  }, {});
+  const groups = FORM_GROUPS
+    .map(group => ({ ...group, items: items.filter(item => item.group === group.id) }))
+    .filter(group => group.items.length > 0);
+  const visibleGroups = activeGroup === 'all' ? groups : groups.filter(group => group.id === activeGroup);
 
   const navigate = useNavigate();
   const goBack = () => {
@@ -170,6 +78,10 @@ export default function Templates() {
   const exitMultiMode = () => {
     window.history.pushState({}, '', createPageUrl('Templates'));
   };
+
+  const chipClass = active => `px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+    active ? 'bg-violet-600 text-white shadow-md' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+  }`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
@@ -182,7 +94,7 @@ export default function Templates() {
             </Button>
             <div>
               <h1 className="text-xl font-bold text-slate-900">Documentos clínicos</h1>
-              <p className="text-sm text-slate-500">Formularios categorizados y generación múltiple</p>
+              <p className="text-sm text-slate-500">Todo lo que se llena e imprime: recetas, certificados, órdenes, solicitudes y notificaciones</p>
             </div>
           </div>
           <GlobalSearch />
@@ -194,7 +106,7 @@ export default function Templates() {
           <MultiTemplateGenerator
             open
             embedded
-            templates={templates}
+            templates={rawTemplates.filter(t => !HIDDEN_TYPES.includes(t.type))}
             onClose={exitMultiMode}
           />
         ) : (
@@ -222,130 +134,81 @@ export default function Templates() {
           </div>
         </Link>
 
-        {/* Type Filters */}
+        {/* Filtro por área */}
         <div className="mb-8 overflow-x-auto pb-2">
           <div className="flex gap-2 min-w-max">
-            <button
-              onClick={() => setActiveType('all')}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                activeType === 'all'
-                  ? 'bg-violet-600 text-white shadow-md'
-                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-              }`}
-            >
-              Todas ({templates.length})
+            <button onClick={() => setActiveGroup('all')} className={chipClass(activeGroup === 'all')}>
+              Todos ({items.length})
             </button>
-            {types.map(type => {
-              const Icon = typeIcons[type] || FileText;
-              return (
-                <button
-                  key={type}
-                  onClick={() => setActiveType(type)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
-                    activeType === type
-                      ? 'bg-violet-600 text-white shadow-md'
-                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {type}
-                </button>
-              );
-            })}
+            {groups.map(group => (
+              <button key={group.id} onClick={() => setActiveGroup(group.id)} className={chipClass(activeGroup === group.id)}>
+                <group.Icon className="h-4 w-4" />
+                {group.title}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Templates List */}
-        {isLoading ? (
-          <div className="grid md:grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="bg-white rounded-2xl p-6 animate-pulse">
-                <div className="h-12 w-12 bg-slate-200 rounded-xl mb-4"></div>
-                <div className="h-5 bg-slate-200 rounded w-3/4 mb-2"></div>
-                <div className="h-4 bg-slate-200 rounded w-1/2"></div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {Object.entries(groupedTemplates).map(([type, typeTemplates]) => {
-              const Icon = typeIcons[type] || FileText;
-              const colorClass = typeColors[type] || typeColors['Otro'];
-
-              return (
-                <div key={type}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className={`p-2 rounded-xl bg-gradient-to-br ${colorClass}`}>
-                      <Icon className="h-5 w-5 text-white" />
-                    </div>
-                    <h2 className="text-lg font-semibold text-slate-900">{type}</h2>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {typeTemplates.map((template, index) => {
-                      const cardInner = (
-                        <div className="flex items-start gap-4">
-                          <div className={`p-3 rounded-xl bg-gradient-to-br ${colorClass} shadow-lg`}>
-                            <Icon className="h-6 w-6 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-slate-900 group-hover:text-violet-600 transition-colors">
-                              {template.name}
-                            </h3>
-                            {template.instructions && (
-                              <p className="text-sm text-slate-600 mt-1 line-clamp-2">
-                                {template.instructions}
-                              </p>
-                            )}
-                            {template.required_fields?.length > 0 && (
-                              <p className="text-xs text-slate-500 mt-2">
-                                {template.required_fields.length} campos requeridos
-                              </p>
-                            )}
-                            {template.external_route && (
-                              <p className="text-xs text-cyan-700 mt-2 font-medium">Abrir formulario oficial →</p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                      const motionProps = {
-                        initial: { opacity: 0, y: 10 },
-                        animate: { opacity: 1, y: 0 },
-                        transition: { delay: index * 0.05 },
-                        className: 'group bg-white rounded-2xl p-5 border border-slate-100 hover:border-violet-200 hover:shadow-lg transition-all text-left block',
-                      };
-                      return template.external_route ? (
-                        <motion.div key={template.id} {...motionProps}>
-                          <Link to={createPageUrl(template.external_route)} className="block">
-                            {cardInner}
-                          </Link>
-                        </motion.div>
-                      ) : (
-                        <motion.button
-                          key={template.id}
-                          {...motionProps}
-                          onClick={() => setActiveTemplate(template)}
-                        >
-                          {cardInner}
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        {isLoading && (
+          <p className="mb-4 text-xs text-slate-500">Cargando plantillas e interconsultas…</p>
         )}
 
-        {filteredTemplates.length === 0 && !isLoading && (
+        <div className="space-y-8">
+          {visibleGroups.map(group => (
+            <section key={group.id}>
+              <div className="mb-4 flex items-center gap-3">
+                <div className="rounded-xl bg-slate-900 p-2">
+                  <group.Icon className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">{group.title}</h2>
+                  <p className="text-xs text-slate-500">{group.subtitle}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {group.items.map((item, index) => {
+                  const tone = FORM_TONES[item.tone] || FORM_TONES.slate;
+                  const cardInner = (
+                    <div className="flex items-start gap-4">
+                      <div className={`shrink-0 rounded-xl p-3 shadow-sm ${tone.icon}`}>
+                        <item.Icon className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-slate-900 transition-colors group-hover:text-violet-600">{item.title}</h3>
+                        {item.description && <p className="mt-1 line-clamp-2 text-sm text-slate-600">{item.description}</p>}
+                        {item.restricted && (
+                          <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-700"><Lock className="h-3 w-3" />Requiere ingreso</p>
+                        )}
+                        {item.fields > 0 && <p className="mt-2 text-xs text-slate-500">{item.fields} campos requeridos</p>}
+                      </div>
+                    </div>
+                  );
+                  const motionProps = {
+                    initial: { opacity: 0, y: 10 },
+                    animate: { opacity: 1, y: 0 },
+                    transition: { delay: Math.min(index, 8) * 0.04 },
+                    className: `group block rounded-2xl border p-5 text-left transition-all hover:shadow-lg ${tone.card}`,
+                  };
+                  return item.route ? (
+                    <motion.div key={item.id} {...motionProps}>
+                      <Link to={createPageUrl(item.route)} className="block">{cardInner}</Link>
+                    </motion.div>
+                  ) : (
+                    <motion.button key={item.id} {...motionProps} onClick={() => setActiveTemplate(item.template)}>
+                      {cardInner}
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        {visibleGroups.length === 0 && !isLoading && (
           <div className="text-center py-16 bg-white rounded-3xl border border-slate-200">
             <ClipboardList className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-700 mb-2">
-              No hay formularios disponibles
-            </h3>
-            <p className="text-slate-500">
-              Los formularios están siendo configurados
-            </p>
+            <h3 className="text-lg font-medium text-slate-700 mb-2">No hay documentos en esta área</h3>
           </div>
         )}
         </>

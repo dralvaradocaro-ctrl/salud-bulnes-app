@@ -15,6 +15,8 @@ import { useNavigate } from 'react-router-dom';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 import HospitalLocationIndexDialog from '@/components/hospitalizados/HospitalLocationIndexDialog';
 import { buildInsulinEntry, saveInsulinProtocolToHospitalLocation, savePendingClinicalResult } from '@/lib/hospitalNrsRegistry';
+import { EMPTY_PATIENT_LOCATION, describePatientLocation, isPatientLocationComplete, useHospitalLocations } from '@/components/hospitalizados/PatientLocationFields';
+import type { PatientIdentity } from '@/components/insulina/DemographicStep';
 
 const ProtocoloInsulina = () => {
   const navigate = useNavigate();
@@ -29,6 +31,9 @@ const ProtocoloInsulina = () => {
   const [indexMessage, setIndexMessage] = useState('');
   // Cama y paciente confirmados al guardar, para estamparlos en el resultado impreso.
   const [recordContext, setRecordContext] = useState<{ name: string; rut: string; servicio: string; cama: string } | null>(null);
+  // Identificación anotada en Demografía (opcional): permite guardar e imprimir sin volver a preguntar.
+  const [identity, setIdentity] = useState<PatientIdentity>(EMPTY_PATIENT_LOCATION);
+  const { locations, loading: loadingLocations } = useHospitalLocations(true);
   const [patientData, setPatientData] = useState<PatientData>({
     edad: 0,
     peso: 0,
@@ -101,6 +106,9 @@ const ProtocoloInsulina = () => {
       glicemiaIngreso: 0, hba1c: 0, trigliceridos: 0,
       creatinina: 0, vfg: 0, usoPrevioNPH: 0,
     });
+    setIdentity(EMPTY_PATIENT_LOCATION);
+    setRecordContext(null);
+    setIndexMessage('');
     setActiveTab('1');
     setShowExclusion(localStorage.getItem('exclusion-modal-dismissed') !== 'true');
   };
@@ -108,8 +116,26 @@ const ProtocoloInsulina = () => {
   const grupo = classifyPatient(patientData);
   const tab1Complete = patientData.edad > 0 && patientData.sexo !== '' && patientData.peso > 0;
   const tab3Complete = patientData.glicemiaIngreso > 0;
+  const identityStarted = Boolean(identity.name.trim() || identity.rut.trim() || identity.bedCode);
+  // Lo anotado en Demografía se imprime aunque todavía no se haya guardado.
+  const printContext = recordContext || (identityStarted ? describePatientLocation(identity, locations) : null);
+
+  const saveWithIdentity = async (result: Record<string, unknown>) => {
+    setIndexMessage('Guardando protocolo en la cama indicada…');
+    try {
+      await savePendingClinicalResult({ service: identity.service, bedCode: identity.bedCode, patientName: identity.name.trim(), patientRut: identity.rut.trim(), tipo: 'insulina', payload: buildInsulinEntry(result) });
+      setRecordContext(describePatientLocation(identity, locations));
+      setIndexMessage('Protocolo guardado correctamente. Quedará disponible para el médico en la ficha de la cama.');
+      window.setTimeout(() => window.print(), 150);
+    } catch (error) { setIndexMessage(error instanceof Error ? error.message : 'No fue posible guardar el protocolo.'); }
+  };
+
   const handleIndexResult = async (result: Record<string, unknown>) => {
-    if (!sourceContext?.source_bed) { setIndexResult(result); return; }
+    if (!sourceContext?.source_bed) {
+      if (isPatientLocationComplete(identity)) { await saveWithIdentity(result); return; }
+      setIndexResult(result);
+      return;
+    }
     const patientName = String(sourceContext.patient_name || '');
     const initials = patientName.split(/\s+/).filter(Boolean).map(word => word[0]).join('').toUpperCase();
     setIndexMessage('Guardando protocolo en la ficha abierta…');
@@ -178,7 +204,8 @@ const ProtocoloInsulina = () => {
               </TabsList>
 
               <TabsContent value="1">
-                <DemographicStep data={patientData} onUpdate={updatePatientData} onNext={() => setActiveTab('2')} />
+                <DemographicStep data={patientData} onUpdate={updatePatientData} onNext={() => setActiveTab('2')}
+                  {...(sourceContext?.source_bed ? {} : { identity, onIdentityChange: setIdentity, locations, loadingLocations })} />
               </TabsContent>
               <TabsContent value="2">
                 <ClinicalStep data={patientData} sexo={patientData.sexo} onUpdate={updatePatientData} onNext={() => setActiveTab('3')} onBack={() => setActiveTab('1')} />
@@ -188,7 +215,7 @@ const ProtocoloInsulina = () => {
               </TabsContent>
               <TabsContent value="4">
                 {indexMessage && <div className={`mb-4 rounded-lg border p-3 text-sm font-semibold print:hidden ${/correctamente/i.test(indexMessage) ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : /pendiente|Guardando/i.test(indexMessage) ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-red-200 bg-red-50 text-red-700'}`}>{indexMessage}</div>}
-                <ResultsStep data={patientData} grupo={grupo} onBack={() => setActiveTab('3')} onReset={handleReset} usoCondicionado={usoCondicionado} onIndexResult={handleIndexResult} indexLabel={sourceContext ? 'Guardar en ficha del paciente' : 'Guardar e imprimir'} recordContext={recordContext} />
+                <ResultsStep data={patientData} grupo={grupo} onBack={() => setActiveTab('3')} onReset={handleReset} usoCondicionado={usoCondicionado} onIndexResult={handleIndexResult} indexLabel={sourceContext ? 'Guardar en ficha del paciente' : 'Guardar e imprimir'} recordContext={recordContext} printContext={printContext} />
               </TabsContent>
             </Tabs>
           </Card>
@@ -228,6 +255,7 @@ const ProtocoloInsulina = () => {
           open={Boolean(indexResult)}
           title="Guardar protocolo insulínico"
           description="Indica la cama y el paciente al que corresponde este protocolo."
+          initialValue={identity}
           onClose={() => setIndexResult(null)}
           onSave={(location) => savePendingClinicalResult({ ...location, tipo: 'insulina', payload: buildInsulinEntry(indexResult as Record<string, unknown>) })}
           onCompleted={(context) => { setRecordContext(context); setIndexResult(null); window.setTimeout(() => window.print(), 150); }}
