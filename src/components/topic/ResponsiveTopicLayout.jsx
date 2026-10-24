@@ -983,7 +983,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
               <p className="mb-3 text-sm text-slate-700">{block.reference_label}</p>
               <Button variant="outline" size="sm" className="gap-2">
                 <ExternalLink className="h-3 w-3" />
-                {isCalculator ? 'Abrir calculadora' : isPage ? 'Abrir solicitud' : 'Ver protocolo'}
+                {isCalculator ? 'Abrir herramienta' : isPage ? 'Abrir solicitud' : 'Ver protocolo'}
               </Button>
             </div>
           </Link>
@@ -1836,7 +1836,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                 <div className="rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-purple-300 hover:shadow-sm">
                   <div className="mb-1.5 flex items-center gap-2">
                     <Calculator className="h-3.5 w-3.5 text-purple-600" />
-                    <span className="text-xs font-semibold uppercase tracking-wide text-purple-700">Calculadora</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-purple-700">Herramienta</span>
                   </div>
                   <p className="text-sm font-medium text-slate-800">{ref.label}</p>
                 </div>

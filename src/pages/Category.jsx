@@ -37,6 +37,9 @@ import {
   ShieldAlert,
   Utensils,
   HeartPulse,
+  Baby,
+  Bone,
+  Syringe,
 } from 'lucide-react';
 import { allCalculators, clinicalToolCalculatorId } from '@/components/calculators/catalog';
 import { FORM_TONES, FORM_GROUPS, STATIC_FORMS, TEMPLATE_TYPE_META } from '@/lib/workspaceCatalog';
@@ -60,41 +63,121 @@ import {
 // en el tab de Formularios.
 const HIDDEN_TEMPLATE_TYPES = ['Estudio Endoscópico', 'Laboratorio Especial'];
 
-// Calculadoras que aplican al paciente hospitalizado adulto, agrupadas por
-// área temática (mismo orden de subcategorías que usa el tab Temas). Los ids
-// son los del catálogo de calculadoras; una que no exista se ignora.
-const HOSPITAL_CALCULATOR_GROUPS = [
-  { id: 'sepsis',     title: 'Sepsis y gravedad',            tone: 'rose',    Icon: ShieldAlert,
-    subtitle: 'Reconocimiento precoz y disfunción orgánica',
-    calcs: ['qsofa', 'sofa', 'shock-index', 'curb-65'] },
-  { id: 'cardio',     title: 'Cardiovascular',               tone: 'rose',    Icon: Heart,
-    subtitle: 'Síndrome coronario, FA, anticoagulación',
-    calcs: ['heart', 'grace', 'cha2ds2vasc', 'has-bled'] },
-  { id: 'trombo',     title: 'Tromboembolismo y profilaxis', tone: 'indigo',  Icon: Activity,
-    subtitle: 'Sospecha de TEP y riesgo trombótico del hospitalizado',
-    calcs: ['wells-tep', 'perc', 'padua', 'caprini'] },
-  { id: 'resp',       title: 'Respiratorio',                 tone: 'cyan',    Icon: Wind,
-    subtitle: 'Oxigenación, alto flujo y derrame pleural',
-    calcs: ['pafi', 'rox', 'light-criteria'] },
-  { id: 'electro',    title: 'Electrolitos y metabólico',    tone: 'blue',    Icon: Droplet,
-    subtitle: 'Corrección de sodio y potasio, crisis hiperglicémica',
-    calcs: ['hyponatremia-correction', 'hypernatremia-correction', 'hypokalemia-correction', 'hyperkalemia-management', 'hyperglycemic-crisis', 'hypoglycemia-treatment'] },
-  { id: 'neuro',      title: 'Neurología',                   tone: 'violet',  Icon: Brain,
-    subtitle: 'ACV, compromiso de conciencia y cognición',
-    calcs: ['nihss', 'glasgow', 'abcd2', 'moca', 'gds'] },
-  { id: 'digestivo',  title: 'Digestivo y Hepatología',      tone: 'amber',   Icon: Pill,
-    subtitle: 'Daño hepático crónico, hepatitis alcohólica y ascitis',
-    calcs: ['meld', 'child-pugh', 'maddrey', 'lille', 'ascitic-fluid', 'r-factor'] },
-  { id: 'nutricion',  title: 'Nutrición y fragilidad',       tone: 'emerald', Icon: Utensils,
-    subtitle: 'Tamizaje al ingreso y valoración geriátrica',
-    calcs: ['nrs2002', 'clinical-frailty-scale'] },
-  { id: 'analgesia',  title: 'Analgesia y paliativos',       tone: 'teal',    Icon: HeartPulse,
-    subtitle: 'Rotación de opioides y sedoanalgesia',
-    calcs: ['opioid-conversion', 'procedural-sedoanalgesia'] },
-  { id: 'mental',     title: 'Salud Mental',                 tone: 'slate',   Icon: Brain,
-    subtitle: 'Evaluación de riesgo en sala',
-    calcs: ['sad-persons'] },
-];
+// Herramientas del catálogo que aplican a cada categoría, agrupadas por área temática. Los ids
+// son los del catálogo (calculators/catalog.js); uno que no exista se ignora.
+const CATEGORY_TOOL_SETS = {
+  hospitalizados: {
+    subtitle: 'Scores y correcciones de uso frecuente en sala, por área temática.',
+    groups: [
+      { id: 'sepsis', title: 'Sepsis y gravedad', tone: 'rose', Icon: ShieldAlert,
+        subtitle: 'Reconocimiento precoz y disfunción orgánica', calcs: ['qsofa', 'sofa', 'shock-index', 'curb-65'] },
+      { id: 'cardio', title: 'Cardiovascular', tone: 'rose', Icon: Heart,
+        subtitle: 'Síndrome coronario, FA, anticoagulación', calcs: ['heart', 'grace', 'cha2ds2vasc', 'has-bled'] },
+      { id: 'trombo', title: 'Tromboembolismo y profilaxis', tone: 'indigo', Icon: Activity,
+        subtitle: 'Sospecha de TEP y riesgo trombótico del hospitalizado', calcs: ['wells-tep', 'perc', 'padua', 'caprini'] },
+      { id: 'resp', title: 'Respiratorio', tone: 'cyan', Icon: Wind,
+        subtitle: 'Oxigenación, alto flujo y derrame pleural', calcs: ['pafi', 'rox', 'light-criteria'] },
+      { id: 'electro', title: 'Electrolitos, renal y metabólico', tone: 'blue', Icon: Droplet,
+        subtitle: 'Función renal, sodio y potasio, crisis hiperglicémica',
+        calcs: ['renal-function', 'hyponatremia-correction', 'hypernatremia-correction', 'hypokalemia-correction', 'hyperkalemia-management', 'hyperglycemic-crisis', 'hypoglycemia-treatment'] },
+      { id: 'neuro', title: 'Neurología', tone: 'violet', Icon: Brain,
+        subtitle: 'ACV, compromiso de conciencia y cognición', calcs: ['nihss', 'glasgow', 'abcd2', 'moca', 'gds'] },
+      { id: 'digestivo', title: 'Digestivo y Hepatología', tone: 'amber', Icon: Pill,
+        subtitle: 'Hemorragia digestiva, daño hepático crónico y ascitis',
+        calcs: ['glasgow-blatchford', 'meld', 'child-pugh', 'maddrey', 'lille', 'ascitic-fluid', 'r-factor'] },
+      { id: 'nutricion', title: 'Nutrición y fragilidad', tone: 'emerald', Icon: Utensils,
+        subtitle: 'Tamizaje al ingreso y valoración geriátrica', calcs: ['nrs2002', 'clinical-frailty-scale'] },
+      { id: 'analgesia', title: 'Analgesia y paliativos', tone: 'teal', Icon: HeartPulse,
+        subtitle: 'Rotación de opioides y sedoanalgesia', calcs: ['opioid-conversion', 'procedural-sedoanalgesia'] },
+      { id: 'mental', title: 'Salud Mental', tone: 'slate', Icon: Brain,
+        subtitle: 'Evaluación de riesgo en sala', calcs: ['sad-persons'] },
+    ],
+  },
+  urgencias: {
+    subtitle: 'Scores de decisión rápida y manejo inicial, por área temática.',
+    groups: [
+      { id: 'sepsis', title: 'Sepsis y shock', tone: 'rose', Icon: ShieldAlert,
+        subtitle: 'Reconocimiento precoz y gravedad', calcs: ['qsofa', 'sofa', 'shock-index'] },
+      { id: 'torax', title: 'Dolor torácico y TEP', tone: 'rose', Icon: Heart,
+        subtitle: 'Estratificación y descarte', calcs: ['heart', 'wells-tep', 'perc'] },
+      { id: 'neuro', title: 'Trauma y neurología', tone: 'violet', Icon: Brain,
+        subtitle: 'Conciencia, TEC y ACV', calcs: ['glasgow', 'pecarn', 'nihss', 'abcd2'] },
+      { id: 'abdomen', title: 'Abdomen', tone: 'amber', Icon: Pill,
+        subtitle: 'Apendicitis y hemorragia digestiva', calcs: ['alvarado', 'glasgow-blatchford'] },
+      { id: 'resp', title: 'Respiratorio', tone: 'cyan', Icon: Wind,
+        subtitle: 'Neumonía, faringoamigdalitis y oxigenación', calcs: ['curb-65', 'centor-mcisaac', 'pafi'] },
+      { id: 'pediatria', title: 'Urgencia pediátrica', tone: 'teal', Icon: Baby,
+        subtitle: 'Obstrucción bronquial, crup y dosis', calcs: ['tal', 'score-pulmonar', 'westley', 'pediatric-dose'] },
+      { id: 'metabolico', title: 'Metabólico y electrolitos', tone: 'blue', Icon: Droplet,
+        subtitle: 'Crisis hiperglicémica, hipoglicemia y potasio', calcs: ['hyperglycemic-crisis', 'hypoglycemia-treatment', 'hyperkalemia-management'] },
+      { id: 'procedimientos', title: 'Procedimientos', tone: 'indigo', Icon: Syringe,
+        subtitle: 'Intubación y sedoanalgesia', calcs: ['sri', 'procedural-sedoanalgesia'] },
+      { id: 'mental', title: 'Salud Mental', tone: 'slate', Icon: Brain,
+        subtitle: 'Riesgo suicida', calcs: ['sad-persons'] },
+    ],
+  },
+  policlinico: {
+    subtitle: 'Scores y apoyos para el control ambulatorio, por área temática.',
+    groups: [
+      { id: 'cardio', title: 'Cardiovascular y renal', tone: 'rose', Icon: Heart,
+        subtitle: 'Anticoagulación, adherencia y función renal', calcs: ['cha2ds2vasc', 'has-bled', 'morisky-mmas8', 'renal-function'] },
+      { id: 'mental', title: 'Salud mental y cognición', tone: 'violet', Icon: Brain,
+        subtitle: 'Antidepresivos, riesgo suicida y deterioro cognitivo', calcs: ['antidepressant-switch', 'sad-persons', 'moca', 'gds'] },
+      { id: 'resp', title: 'Respiratorio', tone: 'cyan', Icon: Wind,
+        subtitle: 'Faringoamigdalitis', calcs: ['centor-mcisaac'] },
+      { id: 'reuma', title: 'Reumatología y dolor', tone: 'amber', Icon: Bone,
+        subtitle: 'Fibromialgia y funcionalidad', calcs: ['fibromyalgia-acr', 'fiq-r', 'psfs'] },
+      { id: 'digestivo', title: 'Digestivo y Hepatología', tone: 'amber', Icon: Pill,
+        subtitle: 'Daño hepático crónico y patrón de daño', calcs: ['meld', 'child-pugh', 'r-factor'] },
+      { id: 'geriatria', title: 'Geriatría y nutrición', tone: 'emerald', Icon: Utensils,
+        subtitle: 'Fragilidad y riesgo nutricional', calcs: ['clinical-frailty-scale', 'nrs2002'] },
+      { id: 'pediatria', title: 'Pediatría', tone: 'teal', Icon: Baby,
+        subtitle: 'Dosis y alimentación del lactante', calcs: ['pediatric-dose', 'pediatric-nutrition'] },
+      { id: 'lactancia', title: 'Lactancia', tone: 'rose', Icon: HeartPulse,
+        subtitle: 'Compatibilidad de fármacos con la lactancia', calcs: ['lactation-drugs'] },
+    ],
+  },
+  gyo: {
+    subtitle: 'Apoyos para el parto, el puerperio y la cirugía ginecológica.',
+    groups: [
+      { id: 'obstetricia', title: 'Obstetricia', tone: 'rose', Icon: Baby,
+        subtitle: 'Evaluación cervical para inducción', calcs: ['bishop'] },
+      { id: 'lactancia', title: 'Puerperio y lactancia', tone: 'rose', Icon: HeartPulse,
+        subtitle: 'Compatibilidad de fármacos con la lactancia', calcs: ['lactation-drugs'] },
+      { id: 'trombo', title: 'Profilaxis tromboembólica', tone: 'indigo', Icon: Activity,
+        subtitle: 'Riesgo trombótico en cirugía ginecológica', calcs: ['caprini'] },
+    ],
+  },
+  ges: {
+    subtitle: 'Scores que apoyan el manejo de problemas de salud GES frecuentes.',
+    groups: [
+      { id: 'cardio', title: 'Cardiovascular (HTA, DM, IAM)', tone: 'rose', Icon: Heart,
+        subtitle: 'Riesgo, anticoagulación, adherencia y función renal', calcs: ['heart', 'grace', 'cha2ds2vasc', 'has-bled', 'morisky-mmas8', 'renal-function'] },
+      { id: 'neuro', title: 'ACV y demencia', tone: 'violet', Icon: Brain,
+        subtitle: 'Severidad del ACV, riesgo post-AIT y cognición', calcs: ['nihss', 'abcd2', 'moca', 'gds'] },
+      { id: 'resp', title: 'Respiratorio (NAC, asma, IRA)', tone: 'cyan', Icon: Wind,
+        subtitle: 'Gravedad de neumonía y obstrucción bronquial', calcs: ['curb-65', 'tal', 'score-pulmonar'] },
+      { id: 'mental', title: 'Depresión', tone: 'slate', Icon: Brain,
+        subtitle: 'Cambio de antidepresivo y riesgo suicida', calcs: ['antidepressant-switch', 'sad-persons'] },
+      { id: 'paliativos', title: 'Alivio del dolor y cuidados paliativos', tone: 'teal', Icon: HeartPulse,
+        subtitle: 'Rotación de opioides', calcs: ['opioid-conversion'] },
+    ],
+  },
+};
+
+// Qué set corresponde a la categoría: primero por su nombre y, si no, por las subcategorías de sus temas.
+function categoryToolSetKey(category, flags) {
+  const name = (category?.name || '').toLowerCase();
+  if (name.includes('hospitaliz')) return 'hospitalizados';
+  if (name.includes('urgenc')) return 'urgencias';
+  if (name.includes('policl')) return 'policlinico';
+  if (name.includes('ginec') || name.includes('obstet')) return 'gyo';
+  if (/\bges\b/.test(name)) return 'ges';
+  if (flags.hasHospitalizados) return 'hospitalizados';
+  if (flags.hasUrgencias) return 'urgencias';
+  if (flags.hasPolicinico) return 'policlinico';
+  return null;
+}
 
 const CALCULATOR_INDEX = Object.fromEntries(allCalculators.map(c => [c.id, c]));
 
@@ -102,7 +185,7 @@ const FORM_ICON_CLASS = 'flex h-12 w-12 shrink-0 items-center justify-center rou
 const SSN2026_TAG = '[SSÑ-2026]';
 const CATEGORY_TABS = ['topics', 'tools', 'templates', 'gestiones'];
 
-// Tarjeta compacta de calculadora (tab Herramientas, hospitalizados).
+// Tarjeta compacta de una herramienta del catálogo (tab Herramientas).
 function CalcCard({ calc, tone, index }) {
   const t = FORM_TONES[tone] || FORM_TONES.slate;
   const Icon = calc.icon || Calculator;
@@ -279,14 +362,14 @@ export default function Category() {
   });
   const visibleTemplates = templates.filter(template => !HIDDEN_TEMPLATE_TYPES.includes(template.type));
 
-  const hospitalCalculatorSections = useMemo(() => HOSPITAL_CALCULATOR_GROUPS
+  const toolSet = CATEGORY_TOOL_SETS[categoryToolSetKey(category, { hasHospitalizados, hasUrgencias, hasPolicinico })] || null;
+  const toolSetSections = useMemo(() => (toolSet?.groups || [])
     .map(g => ({ ...g, calcs: g.calcs.map(id => CALCULATOR_INDEX[id]).filter(Boolean) }))
-    .filter(g => g.calcs.length > 0), []);
-  // En Hospitalizados no se repiten las herramientas de la BD que ya están entre las calculadoras de abajo.
-  const hospitalCalcIds = new Set(hospitalCalculatorSections.flatMap(g => g.calcs.map(c => c.id)));
-  const visibleTools = hasHospitalizados
-    ? categoryTools.filter(tool => !hospitalCalcIds.has(clinicalToolCalculatorId(tool)))
-    : categoryTools;
+    .filter(g => g.calcs.length > 0), [toolSet]);
+  const toolSetCount = toolSetSections.reduce((n, g) => n + g.calcs.length, 0);
+  // No se repiten las herramientas de la BD que ya están en el set de la categoría.
+  const toolSetCalcIds = new Set(toolSetSections.flatMap(g => g.calcs.map(c => c.id)));
+  const visibleTools = categoryTools.filter(tool => !toolSetCalcIds.has(clinicalToolCalculatorId(tool)));
 
   const { data: medications = [], isLoading: loadingMedications } = useQuery({
     queryKey: ['category-arsenal-medications'],
@@ -624,7 +707,7 @@ export default function Category() {
               Temas ({topics.length})
             </button>
           )}
-          {(visibleTools.length > 0 || hasHospitalizados) && (
+          {(visibleTools.length > 0 || toolSetCount > 0) && (
             <button
               onClick={() => setActiveTab('tools')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
@@ -634,7 +717,7 @@ export default function Category() {
               }`}
             >
               <Stethoscope className="h-4 w-4" />
-              Herramientas ({visibleTools.length + (hasHospitalizados ? hospitalCalculatorSections.reduce((n, g) => n + g.calcs.length, 0) : 0)})
+              Herramientas ({visibleTools.length + toolSetCount})
             </button>
           )}
           {(templates.length > 0 || hasPolicinico || hasHospitalizados || hasUrgencias || hasGesConstancia) && (
@@ -924,7 +1007,7 @@ export default function Category() {
                       <Stethoscope className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
-                      <h2 className="text-sm font-bold uppercase tracking-wide text-slate-700">Herramientas de la categoría</h2>
+                      <h2 className="text-sm font-bold uppercase tracking-wide text-slate-700">Recursos de la categoría</h2>
                       <p className="text-xs text-slate-500">Guías, protocolos y recursos propios</p>
                     </div>
                     <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">{visibleTools.length}</span>
@@ -985,24 +1068,24 @@ export default function Category() {
               </section>
             )}
 
-            {/* Calculadoras aplicables al paciente hospitalizado, por área */}
-            {hasHospitalizados && (() => {
+            {/* Herramientas del catálogo que aplican a la categoría, por área */}
+            {toolSetCount > 0 && (() => {
               let counter = 0;
               return (
                 <div className={`space-y-8 ${visibleTools.length > 0 ? 'border-t border-slate-200/80 pt-6' : ''}`}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <h2 className="flex items-center gap-2 text-base font-bold text-slate-900">
-                        <Calculator className="h-4 w-4 text-violet-600" />
-                        Calculadoras para hospitalizados
+                        <Stethoscope className="h-4 w-4 text-violet-600" />
+                        Herramientas
                       </h2>
-                      <p className="text-xs text-slate-500">Scores y correcciones de uso frecuente en sala, agrupados por área temática.</p>
+                      <p className="text-xs text-slate-500">{toolSet.subtitle}</p>
                     </div>
                     <Link to={createPageUrl('AllCalculators')} className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 hover:underline">
                       Ver todas <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   </div>
-                  {hospitalCalculatorSections.map(section => {
+                  {toolSetSections.map(section => {
                     const GroupIcon = section.Icon;
                     return (
                       <section key={section.id} className="space-y-3">

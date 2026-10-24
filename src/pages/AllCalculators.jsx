@@ -70,8 +70,8 @@ export default function AllCalculators() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-slate-900">Calculadoras y Scores</h1>
-              <p className="text-sm text-slate-500">Herramientas clínicas interactivas</p>
+              <h1 className="text-xl font-bold text-slate-900">Herramientas</h1>
+              <p className="text-sm text-slate-500">Scores, calculadoras y apoyos de decisión clínica</p>
             </div>
           </div>
           <GlobalSearch />
@@ -104,7 +104,7 @@ export default function AllCalculators() {
               className="mb-4"
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
-              Ver todas las calculadoras
+              Ver todas las herramientas
             </Button>
             
             <button type="button" className="mb-4 ml-3 inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm" aria-pressed={history.favorites.includes(activeCalculator)} onClick={() => history.toggle(activeCalculator)}><Star className={`h-4 w-4 ${history.favorites.includes(activeCalculator) ? 'fill-amber-400 text-amber-600' : ''}`} />{history.favorites.includes(activeCalculator) ? 'Quitar de favoritos' : 'Añadir a favoritos'}</button>
@@ -119,7 +119,7 @@ export default function AllCalculators() {
 
             {/* Other calculators */}
             <div className="mt-8">
-              <h3 className="text-sm font-semibold text-slate-700 mb-3">Otras calculadoras</h3>
+              <h3 className="text-sm font-semibold text-slate-700 mb-3">Otras herramientas</h3>
               <div className="grid md:grid-cols-3 gap-3">
                 {Object.values(calculatorsByCategory).flat()
                   .filter(c => c.id !== activeCalculator)
@@ -138,7 +138,7 @@ export default function AllCalculators() {
           </div>
         ) : (
           <div className="space-y-8">
-            {[['Favoritos en este dispositivo', history.favorites], ['Usadas recientemente', history.recent]].map(([title, ids]) => <section key={title}><h2 className="mb-3 font-semibold text-slate-800">{title}</h2><div className="flex flex-wrap gap-2">{ids.filter(id => allCalculators.some(calc => calc.id === id)).map(id => <button key={id} onClick={() => selectCalculator(id)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-blue-700">{allCalculators.find(calc => calc.id === id).name}</button>)}{ids.length === 0 && <p className="text-sm text-slate-500">{title.startsWith('Favoritos') ? 'Abre una calculadora y pulsa la estrella para guardarla aquí.' : 'Tus calculadoras abiertas aparecerán aquí.'}</p>}</div></section>)}
+            {[['Favoritos en este dispositivo', history.favorites], ['Usadas recientemente', history.recent]].map(([title, ids]) => <section key={title}><h2 className="mb-3 font-semibold text-slate-800">{title}</h2><div className="flex flex-wrap gap-2">{ids.filter(id => allCalculators.some(calc => calc.id === id)).map(id => <button key={id} onClick={() => selectCalculator(id)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-blue-700">{allCalculators.find(calc => calc.id === id).name}</button>)}{ids.length === 0 && <p className="text-sm text-slate-500">{title.startsWith('Favoritos') ? 'Abre una herramienta y pulsa la estrella para guardarla aquí.' : 'Las herramientas que abras aparecerán aquí.'}</p>}</div></section>)}
             {Object.entries(calculatorsByCategory).map(([category, calcs]) => {
               const Icon = categoryIcons[category];
               const colorClass = categoryColors[category];

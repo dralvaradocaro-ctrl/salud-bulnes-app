@@ -7,6 +7,8 @@ import { DOCUMENT_ROUTES, WORK_ROUTES } from '@/lib/workspaceCatalog';
 import FloatingNewsButton from '@/components/news/FloatingNewsButton';
 
 const TOPIC_PAGES = ['TopicDetail', 'Category'];
+// Pestaña Trabajo inhabilitada temporalmente: la página sigue en /OperacionClinica. Poner true para mostrarla.
+const WORK_TAB_ENABLED = false;
 const LAST_TOPIC_KEY = 'salud_bulnes_last_topic_url';
 
 export default function Layout({ children, currentPageName }) {
@@ -30,11 +32,11 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Temas', page: null, icon: BookOpen, to: lastTopicUrl, active: isOnTopicPage },
     { name: 'Herramientas', page: 'AllCalculators', icon: Stethoscope, to: createPageUrl('AllCalculators') },
     // Trabajo y Documentos quedan marcadas también dentro de sus módulos (censo, receta, etc.).
-    { name: 'Trabajo', page: 'OperacionClinica', icon: Briefcase, to: createPageUrl('OperacionClinica'),
+    WORK_TAB_ENABLED && { name: 'Trabajo', page: 'OperacionClinica', icon: Briefcase, to: createPageUrl('OperacionClinica'),
       active: currentPageName === 'OperacionClinica' || WORK_ROUTES.includes(currentPageName) },
     { name: 'Documentos', page: 'Templates', icon: FileText, to: createPageUrl('Templates'),
       active: currentPageName === 'Templates' || DOCUMENT_ROUTES.includes(currentPageName) },
-  ];
+  ].filter(Boolean);
 
   return (
     <div className="min-h-screen bg-slate-50">

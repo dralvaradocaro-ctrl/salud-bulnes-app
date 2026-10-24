@@ -321,7 +321,7 @@ function ResultRow({ item, aiReason, onClose, onNavigate }) {
             : item.type === 'topic'
               ? item.subcategory || 'Patología'
               : item.type === 'calculator'
-                ? 'Calculadora'
+                ? 'Herramienta'
                 : item.type === 'page'
                   ? item.description || 'Página'
                   : item.specialty}

@@ -134,7 +134,7 @@ export default function Home() {
               </div>
               <div>
                 <p className="text-2xl font-bold text-white">{calculatorCount}</p>
-                <p className="text-sm text-purple-100">Calculadoras</p>
+                <p className="text-sm text-purple-100">Herramientas</p>
               </div>
             </Link>
           </motion.div>
