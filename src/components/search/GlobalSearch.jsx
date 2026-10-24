@@ -10,11 +10,12 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { isHiddenClinicalTool } from '@/components/utils/hiddenContent';
-import { calculatorReferences } from '@/components/calculators/catalog';
+import { calculatorReferences, clinicalToolCalculatorId } from '@/components/calculators/catalog';
 import { filterStaticPages, staticPages } from '@/components/search/staticPages';
 import { getTopicVisual } from '@/lib/topicVisuals';
 import { hasSsnProtocolBadge, hasSsnOrdinarioBadge } from '@/lib/topicStatus';
 import { invokeLLM } from '@/lib/gemini';
+import { unifySearchResults, limitSearchResults } from '@/components/search/unifySearchResults';
 
 // ── AI search ──────────────────────────────────────────────────────────────
 async function fetchAISuggestions(query, topics, calculators, pages = []) {
@@ -124,12 +125,12 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
         const filteredPages = filterStaticPages(queryLower)
           .map(p => ({ ...p, type: 'page' }));
 
-        exactResults = [
-          ...filteredTopics.slice(0, 5),
-          ...filteredTools.slice(0, 3),
-          ...filteredCalculators.slice(0, 3),
-          ...filteredPages.slice(0, 4)
-        ];
+        exactResults = limitSearchResults(unifySearchResults([
+          ...filteredTopics,
+          ...filteredTools,
+          ...filteredCalculators,
+          ...filteredPages,
+        ], calculatorReferences, clinicalToolCalculatorId));
         resultsRef.current = exactResults;
         setResults(exactResults);
       } catch (err) {
@@ -155,10 +156,9 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
               if (page) return { ...page, type: 'page', aiReason: s.reason };
               return null;
             })
-            .filter(Boolean)
-            .slice(0, 4);
+            .filter(Boolean);
 
-          setAiResults(matched);
+          setAiResults(unifySearchResults(matched, calculatorReferences, clinicalToolCalculatorId).slice(0, 4));
         } catch (err) {
           console.error('[AI Search] Error:', err?.message ?? err);
           setAiResults([]);
@@ -226,10 +226,6 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
                 results.map((item) => (
                   <ResultRow key={`${item.type}-${item.id}`} item={item} onClose={() => { setIsOpen(false); setQuery(''); }} />
                 ))
-              ) : !isAiLoading && !showAiSection ? (
-                <div className="p-6 text-center text-slate-500">
-                  No se encontraron resultados para "{query}"
-                </div>
               ) : null}
 
               {/* ── AI section ──────────────────────────────────────── */}
