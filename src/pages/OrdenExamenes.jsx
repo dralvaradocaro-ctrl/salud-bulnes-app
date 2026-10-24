@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Download, Eye, Plus, Trash2, RotateCcw, FileText } from 'lucide-react';
+import { Download, Eye, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { formatRut, validateRut } from '@/lib/rut-ges';
-import { MEDICO, INSTITUCIONES, INSTITUCION_POR_DEFECTO, getInstitucion, fechaLarga } from '@/lib/certificadoPdf';
+import { MEDICO, INSTITUCION_POR_DEFECTO, getInstitucion, fechaLarga } from '@/lib/certificadoPdf';
 import { hoyChile } from '@/lib/recetaCatalogo';
 import { buscarExamenes, EXAMENES_CATALOGO, EXAMENES_CATEGORIAS, CONTRASTES, nuevoExamen, textoExamen, mostrarCreatinina, textoCreatinina, validarEstudios } from '@/lib/ordenExamenesCatalogo';
 import { buildOrdenExamenesPdf } from '@/lib/ordenExamenesPdf';
-import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import DocumentoHeader from '@/components/documentos/DocumentoHeader';
+import InstitucionSelector from '@/components/documentos/InstitucionSelector';
+import { leerPacienteDocumentos, guardarPacienteDocumentos, limpiarPacienteDocumentos } from '@/lib/pacienteDocumentos';
 import { toast } from 'sonner';
 
 const nuevaOrden = () => ({ paciente: '', rut: '', edad: '', direccion: '', fecha: hoyChile(), diagnostico: '', observaciones: '', institucion: INSTITUCION_POR_DEFECTO, firma: true, examenes: [], incluirCreatinina: false, creatinina: '', unidadCreatinina: 'mg/dL', fechaCreatinina: '' });
@@ -18,15 +19,14 @@ function Campo({ label, value, onChange, multiline, ...props }) {
   return <label className="block text-sm font-medium text-slate-700"><span className="mb-1 block">{label}</span><Tag {...props} className={inputClass} value={value} onChange={e => onChange(e.target.value)} /></label>;
 }
 function OrdenExamenes() {
-  const [orden, setOrden] = useState(nuevaOrden);
+  const [orden, setOrden] = useState(() => ({ ...nuevaOrden(), ...leerPacienteDocumentos() }));
   const [busqueda, setBusqueda] = useState('');
   const [categoria, setCategoria] = useState('');
   const [generando, setGenerando] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
   useEffect(() => {
-    const prefill = getMultiPrefill();
-    if (prefill) setOrden(r => ({ ...r, paciente: prefill.patient_name || '', rut: formatRut(prefill.patient_rut || ''), diagnostico: prefill.diagnostico_principal || prefill.diagnostico || '' }));
-  }, []);
+    guardarPacienteDocumentos({ paciente: orden.paciente, rut: orden.rut, edad: orden.edad, direccion: orden.direccion, diagnostico: orden.diagnostico, institucion: orden.institucion });
+  }, [orden.paciente, orden.rut, orden.edad, orden.direccion, orden.diagnostico, orden.institucion]);
   useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
   const cambiar = (key, value) => { setPdfUrl(''); setOrden(r => ({ ...r, [key]: value })); };
   const agregar = (item = {}) => {
@@ -59,17 +59,12 @@ function OrdenExamenes() {
     finally { setGenerando(false); }
   };
   return <div className="min-h-screen bg-slate-50 pb-16 text-slate-900">
-    <header className="border-b border-slate-200 bg-white"><div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-4">
-      <FileText className="h-6 w-6 text-blue-800" /><div className="mr-auto"><h1 className="text-lg font-semibold">Orden de exámenes</h1><p className="text-xs text-slate-500">Solicitud de estudios · {MEDICO.nombre}</p></div>
-      <Button asChild variant="outline"><Link to="/RecetaMedica">Receta médica</Link></Button>
-      <Button asChild variant="outline"><Link to="/CertificadoMedico">Certificados médicos</Link></Button>
-      <Button variant="outline" onClick={() => { if (window.confirm('¿Limpiar los datos y comenzar una nueva orden?')) { setOrden(nuevaOrden()); setPdfUrl(''); setBusqueda(''); setCategoria(''); } }}><RotateCcw className="mr-2 h-4 w-4" />Nueva orden</Button>
-    </div></header>
+    <DocumentoHeader pagina="OrdenExamenes" onNuevo={() => { if (window.confirm('¿Limpiar los datos y comenzar con un nuevo paciente?')) { limpiarPacienteDocumentos(); setOrden(nuevaOrden()); setPdfUrl(''); setBusqueda(''); setCategoria(''); } }} />
     <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[1.1fr_1fr]">
       <div className="space-y-5">
         <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold">Datos de la orden</h2>
-          <label className="block text-sm font-medium">Institución<select className={`${inputClass} mt-1`} value={orden.institucion} onChange={e => cambiar('institucion', e.target.value)}>{Object.values(INSTITUCIONES).map(inst => <option key={inst.id} value={inst.id}>{inst.nombre}</option>)}</select></label>
+          <InstitucionSelector value={orden.institucion} onChange={v => cambiar('institucion', v)} />
           <Campo label="Nombre del paciente *" value={orden.paciente} onChange={v => cambiar('paciente', v)} autoComplete="off" />
           <div className="grid grid-cols-2 gap-3"><Campo label="RUT del paciente *" value={orden.rut} onChange={v => cambiar('rut', formatRut(v))} placeholder="12.345.678-9" /><Campo label="Edad (años) *" value={orden.edad} type="number" min="0" max="130" onChange={v => cambiar('edad', v)} /></div>
           {orden.rut && !rutValido && <p className="text-xs text-red-600" role="alert">Revisa el RUT y su dígito verificador.</p>}

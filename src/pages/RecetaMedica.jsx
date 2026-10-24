@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Download, Eye, Plus, Trash2, RotateCcw, FileText } from 'lucide-react';
+import { Download, Eye, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { formatRut, validateRut } from '@/lib/rut-ges';
-import { MEDICO, INSTITUCIONES, INSTITUCION_POR_DEFECTO, getInstitucion, fechaLarga } from '@/lib/certificadoPdf';
+import { MEDICO, INSTITUCION_POR_DEFECTO, getInstitucion, fechaLarga } from '@/lib/certificadoPdf';
 import { RECETA_CATALOGO, buscarMedicamentos, FRECUENCIAS_RECETA, DURACIONES_RECETA, VIAS_RECETA, opcionesDosis, precargaPresentacion, actualizarPresentacion, hoyChile, textoMedicamento } from '@/lib/recetaCatalogo';
 import { buildRecetaPdf } from '@/lib/recetaPdf';
-import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import DocumentoHeader from '@/components/documentos/DocumentoHeader';
+import InstitucionSelector from '@/components/documentos/InstitucionSelector';
+import { leerPacienteDocumentos, guardarPacienteDocumentos, limpiarPacienteDocumentos } from '@/lib/pacienteDocumentos';
 import { toast } from 'sonner';
 
 const nuevoItem = (nombre = '', presentacion = '') => ({ id: crypto.randomUUID(), nombre, presentacion, ...precargaPresentacion(presentacion), frecuencia: '', duracion: '', cantidad: '', indicaciones: '' });
@@ -28,14 +29,13 @@ function CampoOpciones({ id, label, value, onChange, opciones, ...props }) {
   </div>;
 }
 function RecetaMedica() {
-  const [receta, setReceta] = useState(nuevaReceta);
+  const [receta, setReceta] = useState(() => ({ ...nuevaReceta(), ...leerPacienteDocumentos() }));
   const [busqueda, setBusqueda] = useState('');
   const [generando, setGenerando] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
   useEffect(() => {
-    const prefill = getMultiPrefill();
-    if (prefill) setReceta(r => ({ ...r, paciente: prefill.patient_name || '', rut: formatRut(prefill.patient_rut || ''), diagnostico: prefill.diagnostico_principal || prefill.diagnostico || '' }));
-  }, []);
+    guardarPacienteDocumentos({ paciente: receta.paciente, rut: receta.rut, edad: receta.edad, direccion: receta.direccion, diagnostico: receta.diagnostico, institucion: receta.institucion });
+  }, [receta.paciente, receta.rut, receta.edad, receta.direccion, receta.diagnostico, receta.institucion]);
   useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
   const cambiar = (key, value) => { setPdfUrl(''); setReceta(r => ({ ...r, [key]: value })); };
   const agregar = (nombre = '', presentacion = '') => {
@@ -72,17 +72,12 @@ function RecetaMedica() {
     finally { setGenerando(false); }
   };
   return <div className="min-h-screen bg-slate-50 pb-16 text-slate-900">
-    <header className="border-b border-slate-200 bg-white"><div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-4">
-      <FileText className="h-6 w-6 text-blue-800" /><div className="mr-auto"><h1 className="text-lg font-semibold">Receta médica</h1><p className="text-xs text-slate-500">Prescripción clínica · {MEDICO.nombre}</p></div>
-      <Button asChild variant="outline"><Link to="/OrdenExamenes">Orden de exámenes</Link></Button>
-      <Button asChild variant="outline"><Link to="/CertificadoMedico">Certificados médicos</Link></Button>
-      <Button variant="outline" onClick={() => { if (window.confirm('¿Limpiar los datos y comenzar una nueva receta?')) { setReceta(nuevaReceta()); setPdfUrl(''); setBusqueda(''); } }}><RotateCcw className="mr-2 h-4 w-4" />Nueva receta</Button>
-    </div></header>
+    <DocumentoHeader pagina="RecetaMedica" onNuevo={() => { if (window.confirm('¿Limpiar los datos y comenzar con un nuevo paciente?')) { limpiarPacienteDocumentos(); setReceta(nuevaReceta()); setPdfUrl(''); setBusqueda(''); } }} />
     <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[1.1fr_1fr]">
       <div className="space-y-5">
         <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold">Datos de la receta</h2>
-          <label className="block text-sm font-medium">Institución<select className={`${inputClass} mt-1`} value={receta.institucion} onChange={e => cambiar('institucion', e.target.value)}>{Object.values(INSTITUCIONES).map(inst => <option key={inst.id} value={inst.id}>{inst.nombre}</option>)}</select></label>
+          <InstitucionSelector value={receta.institucion} onChange={v => cambiar('institucion', v)} />
           <Campo label="Nombre del paciente *" value={receta.paciente} onChange={v => cambiar('paciente', v)} autoComplete="off" />
           <div className="grid grid-cols-2 gap-3"><Campo label="RUT del paciente *" value={receta.rut} onChange={v => cambiar('rut', formatRut(v))} placeholder="12.345.678-9" /><Campo label="Edad (años) *" value={receta.edad} type="number" min="0" max="130" onChange={v => cambiar('edad', v)} /></div>
           {receta.rut && !rutValido && <p className="text-xs text-red-600" role="alert">Revisa el RUT y su dígito verificador.</p>}

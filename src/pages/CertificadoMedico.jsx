@@ -1,9 +1,8 @@
 // Herramienta de certificados con acceso al generador de recetas.
 // Disponible en Policlínico → Documentos y por /CertificadoMedico.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
-import { ChevronLeft, Download, Eye, RotateCcw, ShieldCheck } from 'lucide-react';
+import { Download, Eye, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { formatRut, validateRut } from '@/lib/rut-ges';
@@ -11,13 +10,15 @@ import {
   buildCertificadoPdf,
   fechaLarga,
   getInstitucion,
-  INSTITUCIONES,
   INSTITUCION_POR_DEFECTO,
   MEDICO,
 } from '@/lib/certificadoPdf';
 import { generarCodigo, encodePayload, registrarCertificado } from '@/lib/certificadoCodigo';
 import { guardarCertificadoRemoto } from '@/lib/certificadosStore';
 import { toast } from 'sonner';
+import DocumentoHeader from '@/components/documentos/DocumentoHeader';
+import InstitucionSelector from '@/components/documentos/InstitucionSelector';
+import { leerPacienteDocumentos, guardarPacienteDocumentos, limpiarPacienteDocumentos } from '@/lib/pacienteDocumentos';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
 
 const hoyIso = () => {
@@ -44,12 +45,12 @@ const slug = (s) =>
     .replace(/^_|_$/g, '');
 
 function CertificadoMedico() {
-  const navigate = useNavigate();
+  const [datosIniciales] = useState(leerPacienteDocumentos);
   const qrRef = useRef(null);
 
-  const [institucionId, setInstitucionId] = useState(INSTITUCION_POR_DEFECTO);
-  const [paciente, setPaciente] = useState('');
-  const [rut, setRut] = useState('');
+  const [institucionId, setInstitucionId] = useState(datosIniciales.institucion || INSTITUCION_POR_DEFECTO);
+  const [paciente, setPaciente] = useState(datosIniciales.paciente || '');
+  const [rut, setRut] = useState(datosIniciales.rut || '');
   const [fecha, setFecha] = useState(hoyIso);
   const [texto, setTexto] = useState('');
   const [code, setCode] = useState(() => generarCodigo(hoyIso()));
@@ -57,6 +58,7 @@ function CertificadoMedico() {
   const [incluirFirmaElectronica, setIncluirFirmaElectronica] = useState(true);
 
   useEffect(() => {
+    if (!datosIniciales.desdeMulti) return;
     const prefill = getMultiPrefill();
     if (!prefill) return;
     setPaciente(prefill.patient_name || '');
@@ -69,7 +71,11 @@ function CertificadoMedico() {
       'Se extiende el presente certificado a solicitud del interesado/a para los fines que estime pertinentes.',
     ].filter(Boolean).join('\n\n');
     if (clinical) setTexto(clinical);
-  }, []);
+  }, [datosIniciales]);
+
+  useEffect(() => {
+    guardarPacienteDocumentos({ paciente, rut, institucion: institucionId });
+  }, [paciente, rut, institucionId]);
 
   const centro = getInstitucion(institucionId);
   const rutValido = rut.length > 0 && validateRut(rut);
@@ -149,6 +155,8 @@ function CertificadoMedico() {
   };
 
   const nuevoCertificado = () => {
+    if (!window.confirm('¿Limpiar los datos y comenzar con un nuevo paciente?')) return;
+    limpiarPacienteDocumentos();
     setPaciente('');
     setRut('');
     setTexto('');
@@ -159,55 +167,13 @@ function CertificadoMedico() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Volver">
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <div className="min-w-0">
-            <h1 className="truncate text-base font-semibold text-slate-900">Certificado médico</h1>
-            <p className="truncate text-xs text-slate-500">{centro.nombre} · Fono {centro.fono}</p>
-          </div>
-          <Button variant="outline" size="sm" className="ml-auto" onClick={() => navigate('/RecetaMedica')}>Receta médica</Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={nuevoCertificado}>
-            <RotateCcw className="h-4 w-4" /> Nuevo
-          </Button>
-        </div>
-      </header>
+      <DocumentoHeader pagina="CertificadoMedico" onNuevo={nuevoCertificado} />
 
-      <main className="mx-auto grid max-w-5xl gap-6 px-4 py-6 lg:grid-cols-[1.15fr_1fr]">
+      <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[1.1fr_1fr]">
         {/* Formulario */}
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="space-y-4">
-            <div>
-              <p className="mb-1 block text-sm font-semibold text-slate-700">Institución</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {Object.values(INSTITUCIONES).map((inst) => {
-                  const activa = inst.id === institucionId;
-                  return (
-                    <button
-                      key={inst.id}
-                      type="button"
-                      onClick={() => setInstitucionId(inst.id)}
-                      aria-pressed={activa}
-                      className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${
-                        activa
-                          ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-100'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <img src={inst.logo} alt="" className="h-9 w-9 shrink-0 object-contain" />
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold text-slate-900">
-                          {inst.id === 'bulnes' ? 'Hospital de Bulnes' : 'Inalab Centro Médico'}
-                        </span>
-                        <span className="block truncate text-xs text-slate-500">Fono {inst.fono}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            <InstitucionSelector value={institucionId} onChange={setInstitucionId} />
 
             <div>
               <label htmlFor="paciente" className="mb-1 block text-sm font-semibold text-slate-700">
