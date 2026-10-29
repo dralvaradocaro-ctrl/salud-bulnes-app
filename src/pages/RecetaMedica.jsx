@@ -44,7 +44,7 @@ function RecetaMedica() {
     guardarPacienteDocumentos({ paciente: receta.paciente, rut: receta.rut, edad: receta.edad, direccion: receta.direccion, diagnostico: receta.diagnostico, institucion: receta.institucion });
   }, [receta.paciente, receta.rut, receta.edad, receta.direccion, receta.diagnostico, receta.institucion]);
   useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
-  useAplicarPacienteGeneral(p => { setReceta(actual => ({ ...actual, paciente: p.nombre, rut: p.rut })); setPdfUrl(''); });
+  useAplicarPacienteGeneral(p => { setReceta(actual => ({ ...actual, paciente: p.nombre, rut: p.rut, ...(p.edad && { edad: p.edad }), ...(p.diagnostico && { diagnostico: p.diagnostico }) })); setPdfUrl(''); });
   const cambiar = (key, value) => { setPdfUrl(''); setReceta(r => ({ ...r, [key]: value })); };
   const agregar = (nombre = '', presentacion = '') => {
     cambiar('medicamentos', [...receta.medicamentos, nuevoItem(nombre, presentacion)]);

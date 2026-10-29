@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, Download, Eye, FileSignature, Printer, RotateCcw, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import { useAplicarPerfilPacienteGeneral } from '@/lib/PacienteGeneral';
 import { pdfSafe, sanitizeJsPdf } from '@/lib/pdfText';
 import { archiveProaRecord, fetchProaRecords, getLatestProaForm, isHistoricalProaRecord, saveProaRecord } from '@/lib/proaRegistry';
 
@@ -224,6 +225,7 @@ export default function FormulariosHODOM() {
   const exportRef = useRef(null);
   const update = useCallback((key, value) => setF(old => ({ ...old, [key]: value })), []);
   useEffect(() => { const p = getMultiPrefill(); if (p) { setPrefillContext(p); setF(old => ({ ...old, nombre: p.patient_name || '', rut: formatRut(p.patient_rut), edad: p.edad || '', telefono: p.patient_telefono || '', domicilio: p.patient_direccion || '', antecedentes: p.antecedentes_relevantes || p.antecedentes || '', anamnesis: p.resumen_caso || p.clinical_text || '', diagnosticos: p.diagnostico_principal || p.diagnostico || '', diagnosticoConsentimiento: p.diagnostico_principal || p.diagnostico || '' })); } }, []);
+  useAplicarPerfilPacienteGeneral(p => setF(old => ({ ...old, nombre: p.patient_name || old.nombre, rut: p.patient_rut ? formatRut(p.patient_rut) : old.rut, edad: p.patient_edad || old.edad, diagnosticos: p.diagnostico || old.diagnosticos, diagnosticoConsentimiento: p.diagnostico || old.diagnosticoConsentimiento })));
   const reset = () => setF({ ...EMPTY, fechaDerivacion: today(), fechaConsentimiento: today() });
   const normalizedRut = value => String(value || '').replace(/[^0-9kK]/g, '').toUpperCase();
   const prepareRegistryPrompt = async () => {

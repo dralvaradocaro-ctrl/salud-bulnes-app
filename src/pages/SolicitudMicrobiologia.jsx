@@ -291,7 +291,7 @@ export default function SolicitudMicrobiologia() {
   const [f, setF] = useState({ ...EMPTY, fecha_toma: todayIso() });
   const [showPreview, setShowPreview] = useState(false);
 
-  useAplicarPacienteGeneral(p => setF(actual => ({ ...actual, nombre: p.nombre, rut: p.rut })));
+  useAplicarPacienteGeneral(p => setF(actual => ({ ...actual, nombre: p.nombre, rut: p.rut, ...(p.fechaNacimiento && { fecha_nacimiento: p.fechaNacimiento }), ...(p.diagnostico && { diagnostico: p.diagnostico }) })));
   const u = (k, v) => setF(prev => ({ ...prev, [k]: v }));
   const toggleExam = (code) => setF(prev => ({
     ...prev,

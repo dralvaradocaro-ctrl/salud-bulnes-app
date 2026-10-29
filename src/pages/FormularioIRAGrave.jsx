@@ -4,6 +4,7 @@ import { createPageUrl } from '@/utils';
 import { ChevronLeft, Printer, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import { useAplicarPerfilPacienteGeneral } from '@/lib/PacienteGeneral';
 
 // ── Formato RUT chileno (idéntico al usado en otros formularios) ───────
 function formatRut(raw) {
@@ -325,9 +326,7 @@ export default function FormularioIRAGrave() {
   };
 
   // Prefill desde el wizard multi-plantilla.
-  useEffect(() => {
-    const p = getMultiPrefill();
-    if (!p) return;
+  const aplicarPerfil = p => {
     let apPaterno = '';
     let apMaterno = '';
     let nombres = '';
@@ -372,7 +371,9 @@ export default function FormularioIRAGrave() {
       }
       return next;
     });
-  }, []);
+  };
+  useEffect(() => { const p = getMultiPrefill(); if (p) aplicarPerfil(p); }, []);
+  useAplicarPerfilPacienteGeneral(aplicarPerfil);
 
   const clear = () => setF({ ...EMPTY, ...HCSFB_DEFAULTS });
 

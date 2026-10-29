@@ -309,7 +309,7 @@ export default function SolicitudExamenes() {
     }));
   }, []);
 
-  useAplicarPacienteGeneral(p => setPatient(actual => ({ ...actual, nombre: p.nombre, rut: p.rut })));
+  useAplicarPacienteGeneral(p => setPatient(actual => ({ ...actual, nombre: p.nombre, rut: p.rut, ...(p.fechaNacimiento && { fecha_nacimiento: p.fechaNacimiento, edad: p.edad }), ...(p.diagnostico && { diagnostico: p.diagnostico }) })));
   const pat = (field, value) => {
     if (field === 'fecha_nacimiento') {
       setPatient(p => ({ ...p, fecha_nacimiento: value, edad: calcularEdad(value) }));

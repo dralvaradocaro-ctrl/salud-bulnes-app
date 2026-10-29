@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import { useAplicarPerfilPacienteGeneral } from '@/lib/PacienteGeneral';
 import { DIAGNOSTICOS_FRECUENTES, SERVICIOS } from '@/lib/hospitalSuggestions';
 
 // Catálogo de fármacos restringidos con sus presentaciones disponibles.
@@ -174,9 +175,7 @@ export default function SolicitudFarmacoRestringido() {
     }
   }, [f.ampollas_dia, f.dias_tto, unidad]);
 
-  useEffect(() => {
-    const p = getMultiPrefill();
-    if (!p) return;
+  const aplicarPerfil = p => {
     // Diagnóstico completo: el principal más los asociados, en una línea.
     const diagnostico = [p.diagnostico_principal || p.diagnostico, p.diagnostico_desglose]
       .map(value => String(value || '').trim())
@@ -193,7 +192,9 @@ export default function SolicitudFarmacoRestringido() {
       n_ficha:   p.n_ficha           || prev.n_ficha,
       diagnostico: diagnostico       || prev.diagnostico,
     }));
-  }, []);
+  };
+  useEffect(() => { const p = getMultiPrefill(); if (p) aplicarPerfil(p); }, []);
+  useAplicarPerfilPacienteGeneral(aplicarPerfil);
 
   return (
     <>

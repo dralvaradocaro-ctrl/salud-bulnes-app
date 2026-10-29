@@ -21,7 +21,7 @@ export default function VariosDocumentos() {
   const allowedRoutes = useMemo(() => forms ? forms.split(',') : null, [forms]);
   const [initialSelectedIds] = useState(() => (params.get('docs') || '').split(',').filter(Boolean));
   const general = usePacienteGeneral();
-  const [initialData] = useState(() => ({ patient_name: general?.paciente?.nombre || '', patient_rut: general?.paciente?.rut || '' }));
+  const [initialData] = useState(() => ({ patient_name: general?.paciente?.nombre || '', patient_rut: general?.paciente?.rut || '', patient_fecha_nac: general?.paciente?.fechaNacimiento || '', diagnostico: general?.paciente?.diagnostico || '' }));
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ['templates', categoryId || 'all'],

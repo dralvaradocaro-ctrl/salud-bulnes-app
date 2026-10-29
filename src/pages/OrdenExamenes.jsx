@@ -32,7 +32,7 @@ function OrdenExamenes() {
     guardarPacienteDocumentos({ paciente: orden.paciente, rut: orden.rut, edad: orden.edad, direccion: orden.direccion, diagnostico: orden.diagnostico, institucion: orden.institucion });
   }, [orden.paciente, orden.rut, orden.edad, orden.direccion, orden.diagnostico, orden.institucion]);
   useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
-  useAplicarPacienteGeneral(p => { setOrden(actual => ({ ...actual, paciente: p.nombre, rut: p.rut })); setPdfUrl(''); });
+  useAplicarPacienteGeneral(p => { setOrden(actual => ({ ...actual, paciente: p.nombre, rut: p.rut, ...(p.edad && { edad: p.edad }), ...(p.diagnostico && { diagnostico: p.diagnostico }) })); setPdfUrl(''); });
   const cambiar = (key, value) => { setPdfUrl(''); setOrden(r => ({ ...r, [key]: value })); };
   const agregar = (item = {}) => {
     setPdfUrl('');

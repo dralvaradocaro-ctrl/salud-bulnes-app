@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import CoquelucheField from '@/components/coqueluche/CoquelucheField';
 import { coquelucheFields, initialCoqueluche, sections, updateCoqueluche, pendingPriorityFields, COQUELUCHE_SOURCE, coquelucheFromPrefill } from '@/lib/coquelucheForm';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import { useAplicarPerfilPacienteGeneral } from '@/lib/PacienteGeneral';
 import { buildCoqueluchePdf } from '@/lib/coqueluchePdf';
 import regiones from '@/data/chile_regiones.json';
 import './FormularioCoqueluche.css';
@@ -24,6 +25,7 @@ function SectionFields({ section, data, onChange }) {
 
 export default function FormularioCoqueluche() {
   const [data, setData] = useState(() => coquelucheFromPrefill(initialCoqueluche(), getMultiPrefill(), regiones));
+  useAplicarPerfilPacienteGeneral(p => setData(previous => coquelucheFromPrefill(previous, p, regiones)));
   const [open, setOpen] = useState(true);
   const [resetOpen, setResetOpen] = useState(false);
   const [busy, setBusy] = useState(false);

@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { createPageUrl } from '@/utils';
 import { formatRut } from '@/lib/rut-ges';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import { useAplicarPacienteGeneral } from '@/lib/PacienteGeneral';
 import { PROA_BED_MAP } from '@/lib/hospitalSuggestions';
 import { parseLabReportText } from '@/pages/CurvaExamenes';
 import { fetchProaRecords, getLatestProaForm, readProaRegistry, saveProaRecord } from '@/lib/proaRegistry';
@@ -173,6 +174,7 @@ function ExamRowsEditor({ title, listId, options, tipoPlaceholder, rows, onChang
 export default function NotaEvolucion() {
   const navigate = useNavigate();
   const [form, setForm] = useState(emptyForm);
+  useAplicarPacienteGeneral(p => setForm(prev => ({ ...prev, pacienteNombre: p.nombre || prev.pacienteNombre, pacienteRut: p.rut || prev.pacienteRut, diagnostico: p.diagnostico || prev.diagnostico })));
   const [showBedSelector, setShowBedSelector] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
   const [selectedService, setSelectedService] = useState(PROA_BED_MAP[0]?.servicio || '');

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import { useAplicarPerfilPacienteGeneral } from '@/lib/PacienteGeneral';
 import { ChevronLeft, Printer, RotateCcw, AlertCircle } from 'lucide-react';
 import { Button as ButtonBase } from '@/components/ui/button';
 /** @type {any} */
@@ -457,9 +458,7 @@ export default function InformeBiomedico() {
 
   // Prefill desde el wizard multi-plantilla. patient_name puede venir como
   // "Apellidos, Nombres" — partimos por la coma cuando esté presente.
-  useEffect(() => {
-    const p = getMultiPrefill();
-    if (!p) return;
+  const aplicarPerfil = p => {
     let apellidos = '';
     let nombre = '';
     if (p.patient_name) {
@@ -474,7 +473,9 @@ export default function InformeBiomedico() {
       rut:       p.patient_rut ? formatRut(p.patient_rut) : prev.rut,
       fechaNac:  p.patient_fecha_nac || prev.fechaNac,
     }));
-  }, []);
+  };
+  useEffect(() => { const p = getMultiPrefill(); if (p) aplicarPerfil(p); }, []);
+  useAplicarPerfilPacienteGeneral(aplicarPerfil);
   const u = useCallback((/** @type {string} */ key, /** @type {unknown} */ val) =>
     setF(prev => ({ ...prev, [key]: val })), []);
   const clear = () => setF({ ...EMPTY, fechaInforme: getTodayISO() });

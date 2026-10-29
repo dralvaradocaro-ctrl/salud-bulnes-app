@@ -37,10 +37,13 @@ const ProtocoloInsulina = () => {
   const { locations, loading: loadingLocations } = useHospitalLocations(true);
   // Nombre y RUT van sincronizados con "Paciente actual" (en ambos sentidos).
   const general = usePacienteGeneral();
-  useAplicarPacienteGeneral((p: { nombre: string; rut: string }) => setIdentity(old => ({ ...old, name: p.nombre, rut: p.rut })));
+  useAplicarPacienteGeneral((p: { nombre: string; rut: string; edad: string }) => {
+    setIdentity(old => ({ ...old, name: p.nombre, rut: p.rut }));
+    if (p.edad) setPatientData(prev => ({ ...prev, edad: Number(p.edad) }));
+  });
   const changeIdentity = (next: PatientIdentity) => {
     setIdentity(next);
-    if (general && (next.name !== identity.name || next.rut !== identity.rut)) general.actualizar({ nombre: next.name, rut: next.rut });
+    if (general && (next.name !== identity.name || next.rut !== identity.rut)) general.actualizar({ ...general.paciente, nombre: next.name, rut: next.rut });
   };
   const [patientData, setPatientData] = useState<PatientData>({
     edad: 0,

@@ -5,6 +5,7 @@ import DireccionAutocomplete from '@/components/ges/DireccionAutocomplete';
 import FirmaDigital from '@/components/ges/FirmaDigital';
 import FormToolbar from '@/components/ges/FormToolbar';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import { useAplicarPerfilPacienteGeneral } from '@/lib/PacienteGeneral';
 
 const defaultForm = {
   institucion: 'Hospital Comunitario de Salud Familiar de Bulnes',
@@ -140,9 +141,7 @@ export default function GesFormulario() {
   }, []);
 
   // Prefill desde el wizard multi-plantilla.
-  useEffect(() => {
-    const p = getMultiPrefill();
-    if (!p) return;
+  const aplicarPerfil = p => {
     setForm(prev => ({
       ...prev,
       nombreLegal:        p.patient_name      || prev.nombreLegal,
@@ -156,7 +155,9 @@ export default function GesFormulario() {
       pacienteCorreo:     p.patient_correo    || prev.pacienteCorreo,
     }));
     if (p.patient_name) setSocialModified(false); // permite override automático del nombreSocial
-  }, []);
+  };
+  useEffect(() => { const p = getMultiPrefill(); if (p) aplicarPerfil(p); }, []);
+  useAplicarPerfilPacienteGeneral(aplicarPerfil);
 
   const handleRut = (key, val) => {
     const fmt = formatRut(val);
