@@ -27,8 +27,6 @@ import {
   ArrowRight,
   Database,
   CheckSquare,
-  Check,
-  X,
   Calculator,
   Heart,
   Brain,
@@ -43,7 +41,7 @@ import {
 } from 'lucide-react';
 import { allCalculators, clinicalToolCalculatorId } from '@/components/calculators/catalog';
 import { FORM_TONES, FORM_GROUPS, STATIC_FORMS, TEMPLATE_TYPE_META } from '@/lib/workspaceCatalog';
-import MultiTemplateGenerator, { EXTERNAL_FORMS, isMultiEligibleTemplate } from '@/components/templates/MultiTemplateGenerator';
+import { EXTERNAL_FORMS, isMultiEligibleTemplate } from '@/components/templates/MultiTemplateGenerator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -216,71 +214,9 @@ function CalcCard({ calc, tone, index }) {
 
 // Tarjeta de formulario: forma uniforme; al pasar el mouse (o enfocar con
 // teclado) despliega la lista de lo que se puede solicitar.
-function FormCard({ form, index, selectable = false, selected = false, onToggle }) {
+function FormCard({ form, index }) {
   const tone = FORM_TONES[form.tone] || FORM_TONES.slate;
   const Icon = form.Icon;
-  const canSelect = selectable && !!form.multiId;
-  const body = (
-    <div className={`relative flex h-full flex-col rounded-2xl border p-4 transition-all duration-200 ${
-      selectable
-        ? canSelect
-          ? `cursor-pointer ${selected ? 'ring-2 ring-violet-500 border-violet-400 bg-violet-50/60' : tone.card}`
-          : 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-50'
-        : `hover:-translate-y-0.5 hover:shadow-md ${tone.card}`
-    }`}>
-      {selectable && canSelect && (
-        <span className={`absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors ${
-          selected ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-300 bg-white text-transparent'
-        }`}>
-          <Check className="h-4 w-4" />
-        </span>
-      )}
-      <div className="flex items-start gap-3">
-        <div className={`${FORM_ICON_CLASS} ${tone.icon}`}>
-          <Icon className="h-5 w-5 text-white" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className={`font-semibold leading-snug text-slate-900 ${selectable ? 'pr-6' : ''}`}>{form.title}</p>
-          <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">{form.description}</p>
-          {selectable && !canSelect && (
-            <p className="mt-1 text-[11px] font-medium text-slate-400">No admite datos compartidos</p>
-          )}
-        </div>
-        {!selectable && (
-          <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" />
-        )}
-      </div>
-      {!selectable && form.details?.length > 0 && (
-        <div className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out group-hover:grid-rows-[1fr] group-focus-within:grid-rows-[1fr]">
-          <div className="overflow-hidden">
-            <div className="mt-3 border-t border-slate-900/5 pt-3">
-              <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${tone.label}`}>Puedes solicitar</p>
-              <div className="flex flex-wrap gap-1.5">
-                {form.details.map(d => (
-                  <span key={d} className={`rounded-md px-2 py-0.5 text-xs font-medium ${tone.chip}`}>{d}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-  if (selectable) {
-    return (
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 8) * 0.04 }} className="h-full">
-        <button
-          type="button"
-          disabled={!canSelect}
-          aria-pressed={selected}
-          onClick={() => canSelect && onToggle?.(form.multiId)}
-          className="block h-full w-full rounded-2xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-        >
-          {body}
-        </button>
-      </motion.div>
-    );
-  }
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -289,7 +225,32 @@ function FormCard({ form, index, selectable = false, selected = false, onToggle 
       className="h-full"
     >
       <Link to={form.href} className="group block h-full rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400">
-        {body}
+        <div className={`relative flex h-full flex-col rounded-2xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${tone.card}`}>
+          <div className="flex items-start gap-3">
+            <div className={`${FORM_ICON_CLASS} ${tone.icon}`}>
+              <Icon className="h-5 w-5 text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold leading-snug text-slate-900">{form.title}</p>
+              <p className="mt-0.5 line-clamp-2 text-sm text-slate-500">{form.description}</p>
+            </div>
+            <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" />
+          </div>
+          {form.details?.length > 0 && (
+            <div className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out group-hover:grid-rows-[1fr] group-focus-within:grid-rows-[1fr]">
+              <div className="overflow-hidden">
+                <div className="mt-3 border-t border-slate-900/5 pt-3">
+                  <p className={`mb-1.5 text-[11px] font-semibold uppercase tracking-wider ${tone.label}`}>Puedes solicitar</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {form.details.map(d => (
+                      <span key={d} className={`rounded-md px-2 py-0.5 text-xs font-medium ${tone.chip}`}>{d}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </Link>
     </motion.div>
   );
@@ -309,11 +270,6 @@ export default function Category() {
   const [arsenalSearch, setArsenalSearch] = useState('');
   const [arsenalSource, setArsenalSource] = useState('all'); // all | bulnes | ssn
   // Selección múltiple de formularios (tab Formularios)
-  const [multiMode, setMultiMode] = useState(false);
-  const [multiSelected, setMultiSelected] = useState([]);
-  const [multiOpen, setMultiOpen] = useState(false);
-  const toggleMulti = (id) => setMultiSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  const exitMultiMode = () => { setMultiMode(false); setMultiSelected([]); setMultiOpen(false); };
   const didRestoreReturnPoint = useRef(false);
   const pendingRestoreScroll = useRef(null);
 
@@ -1116,7 +1072,7 @@ export default function Category() {
           const ctx = { hasHospitalizados, hasPolicinico, hasUrgencias, hasGesConstancia };
           const staticForms = STATIC_FORMS
             .filter(f => f.show(ctx))
-            .map(f => ({ ...f, key: f.route, href: createPageUrl(f.route), multiId: EXTERNAL_FORMS.find(e => e.route === f.route)?.id || null }));
+            .map(f => ({ ...f, key: f.route, href: createPageUrl(f.route), multi: EXTERNAL_FORMS.some(e => e.route === f.route) }));
           const dbForms = visibleTemplates.map(t => {
             const meta = TEMPLATE_TYPE_META[t.type] || TEMPLATE_TYPE_META.default;
             return {
@@ -1125,7 +1081,7 @@ export default function Category() {
               description: t.instructions || t.type,
               details: t.instructions ? [t.type] : [],
               href: createPageUrl(`Templates?id=${t.id}`),
-              multiId: isMultiEligibleTemplate(t) ? t.id : null,
+              multi: isMultiEligibleTemplate(t),
             };
           });
           const all = [...staticForms, ...dbForms];
@@ -1133,38 +1089,15 @@ export default function Category() {
             .map(g => ({ ...g, forms: all.filter(f => f.group === g.id) }))
             .filter(g => g.forms.length > 0);
           let counter = 0;
-          const selectableCount = all.filter(f => f.multiId).length;
+          const selectableCount = all.filter(f => f.multi).length;
+          const multiHref = createPageUrl(`VariosDocumentos?category=${encodeURIComponent(categoryId)}&forms=${staticForms.map(f => f.route).join(',')}`);
           return (
             <div className="space-y-8">
               {selectableCount > 1 && (
-                <div className={`flex flex-wrap items-center gap-3 rounded-2xl border p-3 transition-colors ${multiMode ? 'border-violet-300 bg-violet-50' : 'border-dashed border-violet-200 bg-white'}`}>
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${multiMode ? 'bg-violet-600 text-white' : 'bg-violet-100 text-violet-700'}`}>
-                    <CheckSquare className="h-[18px] w-[18px]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-900">
-                      {multiMode ? 'Marca los documentos para este paciente' : 'Varios documentos para el mismo paciente'}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {multiMode
-                        ? `${multiSelected.length} ${multiSelected.length === 1 ? 'seleccionado' : 'seleccionados'} · los datos del paciente se piden una sola vez`
-                        : 'Selecciona varios, llena los datos una vez y abre cada documento para verlo y editarlo.'}
-                    </p>
-                  </div>
-                  {multiMode ? (
-                    <div className="flex items-center gap-2">
-                      <Button type="button" variant="ghost" size="sm" onClick={exitMultiMode} className="gap-1 text-slate-600">
-                        <X className="h-4 w-4" /> Cancelar
-                      </Button>
-                      <Button type="button" size="sm" disabled={multiSelected.length === 0} onClick={() => setMultiOpen(true)} className="gap-1 bg-violet-600 hover:bg-violet-700">
-                        Continuar <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button type="button" variant="outline" size="sm" onClick={() => setMultiMode(true)} className="gap-1 border-violet-300 text-violet-700 hover:bg-violet-50">
-                      <CheckSquare className="h-4 w-4" /> Seleccionar varios
-                    </Button>
-                  )}
+                <div className="flex justify-end">
+                  <Link to={multiHref} className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-white px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-50">
+                    <CheckSquare className="h-4 w-4" /> Varios documentos para un paciente
+                  </Link>
                 </div>
               )}
               {sections.map(section => {
@@ -1189,9 +1122,6 @@ export default function Category() {
                           key={form.key}
                           form={form}
                           index={counter++}
-                          selectable={multiMode}
-                          selected={!!form.multiId && multiSelected.includes(form.multiId)}
-                          onToggle={toggleMulti}
                         />
                       ))}
                     </div>
@@ -1202,25 +1132,6 @@ export default function Category() {
                 <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
                   Esta categoría no tiene formularios disponibles.
                 </p>
-              )}
-              {multiMode && multiSelected.length > 0 && !multiOpen && (
-                <div className="sticky bottom-4 z-30 flex items-center justify-between gap-3 rounded-2xl border border-violet-200 bg-white/95 p-3 shadow-lg backdrop-blur">
-                  <p className="text-sm font-medium text-slate-700">
-                    <span className="font-bold text-violet-700">{multiSelected.length}</span> {multiSelected.length === 1 ? 'documento seleccionado' : 'documentos seleccionados'}
-                  </p>
-                  <Button type="button" onClick={() => setMultiOpen(true)} className="gap-1 bg-violet-600 hover:bg-violet-700">
-                    Continuar con los datos <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-              {multiOpen && (
-                <MultiTemplateGenerator
-                  open
-                  handoff
-                  templates={visibleTemplates}
-                  initialSelectedIds={multiSelected}
-                  onClose={exitMultiMode}
-                />
               )}
             </div>
           );

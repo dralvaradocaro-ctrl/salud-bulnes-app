@@ -40,6 +40,11 @@ export default function Layout({ children, currentPageName }) {
       active: currentPageName === 'Templates' || DOCUMENT_ROUTES.includes(currentPageName) },
   ].filter(Boolean);
 
+  // ?embed=1: el documento se muestra dentro de la vista previa de Varios documentos, sin navegación.
+  if (new URLSearchParams(location.search).get('embed') === '1') {
+    return <div className="min-h-screen bg-slate-50">{children}</div>;
+  }
+
   return (
     <PacienteGeneralProvider enabled={permitePacienteGeneral(currentPageName, location.search)}>
     <div className="min-h-screen bg-slate-50">

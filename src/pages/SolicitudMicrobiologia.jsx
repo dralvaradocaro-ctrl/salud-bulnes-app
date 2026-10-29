@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
-import { SERVICIOS, SALAS, CAMAS, PREVISIONES } from '@/lib/hospitalSuggestions';
+import { SERVICIOS, PREVISIONES, camasDelServicio, salasDelServicio } from '@/lib/hospitalSuggestions';
 
 // Formulario oficial C 162 — Hospital Comunitario de Salud Familiar de Bulnes.
 // Estructura por secciones en DOS COLUMNAS preservando el layout del original
@@ -632,10 +632,10 @@ export default function SolicitudMicrobiologia() {
         {SERVICIOS.map(s => <option key={s} value={s} />)}
       </datalist>
       <datalist id="sala-suggestions">
-        {SALAS.map(s => <option key={s} value={s} />)}
+        {salasDelServicio(f.servicio).map(s => <option key={s} value={s} />)}
       </datalist>
       <datalist id="cama-suggestions">
-        {CAMAS.map(s => <option key={s} value={s} />)}
+        {camasDelServicio(f.servicio, f.sala).map(s => <option key={s} value={s} />)}
       </datalist>
       <datalist id="prev-suggestions">
         {PREVISIONES.map(s => <option key={s} value={s} />)}

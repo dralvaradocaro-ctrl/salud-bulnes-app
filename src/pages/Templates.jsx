@@ -8,7 +8,6 @@ import { createPageUrl } from '@/utils';
 import { motion } from 'framer-motion';
 import GlobalSearch from '@/components/search/GlobalSearch';
 import RequestForm from '@/components/templates/RequestForm';
-import MultiTemplateGenerator from '@/components/templates/MultiTemplateGenerator';
 import { ChevronLeft, ClipboardList, Files, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DOCUMENT_FORMS, FORM_GROUPS, FORM_TONES, TEMPLATE_TYPE_META } from '@/lib/workspaceCatalog';
@@ -37,7 +36,8 @@ function buildDocumentItems(rawTemplates) {
 export default function Templates() {
   const urlParams = new URLSearchParams(window.location.search);
   const selectedTemplateId = urlParams.get('id');
-  const openMultiOnLoad = urlParams.get('multi') === '1';
+  // Enlaces antiguos a ?multi=1 van a la nueva vista.
+  if (urlParams.get('multi') === '1') window.location.replace(createPageUrl('VariosDocumentos'));
   const requestedGroup = urlParams.get('group');
   const openImageOnLoad = urlParams.get('image') === '1';
 
@@ -75,9 +75,6 @@ export default function Templates() {
     else navigate(createPageUrl('Home'));
   };
 
-  const exitMultiMode = () => {
-    window.history.pushState({}, '', createPageUrl('Templates'));
-  };
 
   const chipClass = active => `px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
     active ? 'bg-violet-600 text-white shadow-md' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
@@ -102,37 +99,11 @@ export default function Templates() {
       </div>
 
       <div className="max-w-5xl mx-auto px-4 py-8">
-        {openMultiOnLoad ? (
-          <MultiTemplateGenerator
-            open
-            embedded
-            templates={rawTemplates.filter(t => !HIDDEN_TYPES.includes(t.type))}
-            onClose={exitMultiMode}
-          />
-        ) : (
-        <>
-        {/* Multi-template generator launcher */}
-        <Link
-          to={createPageUrl('Templates?multi=1')}
-          className="group mb-6 block w-full rounded-2xl border-2 border-dashed border-violet-300 bg-gradient-to-br from-violet-50 to-indigo-50 p-5 text-left transition-all hover:border-violet-400 hover:from-violet-100 hover:to-indigo-100"
-        >
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 shadow-lg shrink-0">
-              <Files className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-slate-900 group-hover:text-violet-700 transition-colors">
-                Solicitar varios formularios para el mismo paciente
-              </h3>
-              <p className="text-sm text-slate-600 mt-0.5">
-                Elige documentos por categoría, llena los datos una sola vez y revisa una vista previa editable antes de imprimir.
-              </p>
-            </div>
-            <span className="text-xs font-medium text-violet-700 group-hover:translate-x-1 transition-transform shrink-0">
-              Abrir →
-            </span>
-          </div>
-        </Link>
+        <div className="mb-4 flex justify-end">
+          <Link to={createPageUrl('VariosDocumentos')} className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-white px-3 py-1.5 text-sm font-medium text-violet-700 hover:bg-violet-50">
+            <Files className="h-4 w-4" /> Varios documentos para un paciente
+          </Link>
+        </div>
 
         {/* Filtro por área */}
         <div className="mb-8 overflow-x-auto pb-2">
@@ -210,8 +181,6 @@ export default function Templates() {
             <ClipboardList className="h-16 w-16 text-slate-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-700 mb-2">No hay documentos en esta área</h3>
           </div>
-        )}
-        </>
         )}
       </div>
 

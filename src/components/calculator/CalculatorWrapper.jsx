@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calculator, Printer, RotateCcw, User } from 'lucide-react';
 import PrintableResult from './PrintableResult';
-import { SERVICIOS, CAMAS } from '@/lib/hospitalSuggestions';
+import { SERVICIOS, camasDelServicio } from '@/lib/hospitalSuggestions';
 
 // Formato RUT chileno: 12345678K → 12.345.678-K.
 // Acepta dígitos y "k"/"K". El último carácter es el dígito verificador.
@@ -214,7 +214,7 @@ export default function CalculatorWrapper({
                   className="mt-1 w-full h-9 rounded-md border border-slate-200 px-3 text-sm focus:border-blue-400 focus:outline-none"
                 />
                 <datalist id="calc-cama-suggestions">
-                  {CAMAS.map(s => <option key={s} value={s} />)}
+                  {camasDelServicio(patientInfo.servicio).map(s => <option key={s} value={s} />)}
                 </datalist>
               </div>
             </>}

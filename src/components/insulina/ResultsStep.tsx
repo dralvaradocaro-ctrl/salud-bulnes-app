@@ -43,6 +43,28 @@ const groupInfo = {
   },
 };
 
+// Manejo de hipoglicemia (paciente insulinosensible). Regla de 15 y dextrosa EV ~25 g
+// (ADA Standards of Care, cap. Diabetes en el hospital; protocolos hospitalarios habituales).
+// SG 30%: ampolla 20 mL = 6 g.
+const HIPOGLICEMIA = [
+  ['HGT < 60, vigil y con vía oral', '15–20 g glucosa VO (3–4 cdtas de azúcar en agua o 150 mL de jugo).'],
+  ['HGT < 60 en régimen cero', 'SG 30% 2 amp (40 mL) EV.'],
+  ['HGT < 45 o hipoglicemia sintomática', 'SG 30% 4 amp (80 mL ≈ 25 g) EV. Sin vía venosa: glucagón 1 mg IM.'],
+];
+const HIPOGLICEMIA_CONTROL = 'Control HGT a los 15 min y repetir hasta ≥ 70 mg/dL; luego colación, omitir la próxima corrección y avisar al médico.';
+
+function HipoglicemiaWarning({ print = false }: { print?: boolean }) {
+  return (
+    <div className={print ? 'mt-1 border border-gray-400 p-1.5 text-[10px] leading-snug' : 'rounded-md border border-rose-200 bg-rose-50/60 px-3 py-2 text-xs leading-snug text-rose-950 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-100'}>
+      <p className="font-semibold">Hipoglicemia (insulinosensible)</p>
+      <ul className="mt-0.5 space-y-0.5">
+        {HIPOGLICEMIA.map(([cuando, que]) => <li key={cuando}><strong>{cuando}:</strong> {que}</li>)}
+      </ul>
+      <p className="mt-0.5">{HIPOGLICEMIA_CONTROL}</p>
+    </div>
+  );
+}
+
 export function ResultsStep({ data, grupo, onBack, onReset, usoCondicionado, onIndexResult, indexLabel = 'Guardar e imprimir', recordContext = null, printContext = recordContext }: ResultsStepProps) {
   const [corticoideOverride, setCorticoideOverride] = useState<'resistente' | 'sensible' | null>(null);
 
@@ -180,6 +202,7 @@ export function ResultsStep({ data, grupo, onBack, onReset, usoCondicionado, onI
               ))}
             </ul>
           </div>
+          {grupoEfectivo === 'sensible' && <HipoglicemiaWarning print />}
 
           <div className="mt-3 pt-2 border-t-2 border-gray-400">
             <div className="grid grid-cols-2 gap-8">
@@ -339,6 +362,8 @@ export function ResultsStep({ data, grupo, onBack, onReset, usoCondicionado, onI
           </table>
         </div>
       </Card>
+
+      {grupoEfectivo === 'sensible' && <HipoglicemiaWarning />}
 
       <Card className={`p-6 border-2 ${basalTone.card}`}>
         <div className="flex items-start gap-3">

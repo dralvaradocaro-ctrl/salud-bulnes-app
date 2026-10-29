@@ -92,6 +92,7 @@ const NotaEvolucion = lazy(() => import('./pages/NotaEvolucion'));
 const CurvaExamenes = lazy(() => import('./pages/CurvaExamenes'));
 const FormulariosHODOM = lazy(() => import('./pages/FormulariosHODOM'));
 const AdecuacionTerapeutica = lazy(() => import('./pages/AdecuacionTerapeutica'));
+const VariosDocumentos = lazy(() => import('./pages/VariosDocumentos'));
 const VistaHospitalizados = lazy(() => import('./pages/VistaHospitalizados'));
 const OrdenExamenes = lazy(() => import('./pages/OrdenExamenes'));
 const RecetaMedica = lazy(() => import('./pages/RecetaMedica'));
@@ -135,6 +136,7 @@ export const PAGES = {
     "CurvaExamenes": CurvaExamenes,
     "FormulariosHODOM": FormulariosHODOM,
     "AdecuacionTerapeutica": AdecuacionTerapeutica,
+    "VariosDocumentos": VariosDocumentos,
     "VistaHospitalizados": VistaHospitalizados,
     // Documentos clínicos protegidos y verificación de certificados
     "CertificadoMedico": CertificadoMedico,

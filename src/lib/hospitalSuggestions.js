@@ -163,3 +163,38 @@ export const PREVISIONES = [
   'Acc. Escolar',
   'Acc. Mutual',
 ];
+
+// ── Filtro por servicio: al elegir el servicio, sala y cama solo ofrecen las suyas ──
+const normalizar = value => String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+// Servicio canónico a partir de lo escrito ("mq1", "Pediatria", "Urgencia"…); null si no calza.
+export function servicioCanonico(value) {
+  const typed = normalizar(value);
+  if (!typed) return null;
+  return SERVICIOS.find(servicio => {
+    const name = normalizar(servicio);
+    return typed.startsWith(name) || name.startsWith(typed) || name.split(' ')[0] === typed.split(' ')[0];
+  }) || null;
+}
+
+export function salasDelServicio(servicio) {
+  const canonico = servicioCanonico(servicio);
+  if (!canonico) return SALAS;
+  return SALAS.filter(sala => normalizar(sala).startsWith(normalizar(canonico)));
+}
+
+// Camas del servicio; si además hay sala ("MQ1 - Sala 3"), solo las de esa sala.
+export function camasDelServicio(servicio, sala = '') {
+  const canonico = servicioCanonico(servicio) || servicioCanonico(sala);
+  const entry = PROA_BED_MAP.find(item => item.servicio === canonico);
+  if (!entry) return CAMAS;
+  const room = String(sala || '').match(/Sala (\d+)/i)?.[1];
+  const group = room && entry.groups.find(item => item.label === `Sala ${room}`);
+  return group ? group.beds : entry.groups.flatMap(item => item.beds);
+}
+
+export function salaCamaDelServicio(servicio) {
+  const canonico = servicioCanonico(servicio);
+  if (!canonico) return SALA_CAMA_SUGGESTIONS;
+  return SALA_CAMA_SUGGESTIONS.filter(item => normalizar(item).startsWith(normalizar(canonico)));
+}

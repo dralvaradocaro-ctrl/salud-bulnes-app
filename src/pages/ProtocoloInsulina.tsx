@@ -13,6 +13,7 @@ import { Activity, FileText, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { getMultiPrefill } from '@/lib/multiTemplatePrefill';
+import { usePacienteGeneral, useAplicarPacienteGeneral } from '@/lib/PacienteGeneral';
 import HospitalLocationIndexDialog from '@/components/hospitalizados/HospitalLocationIndexDialog';
 import { buildInsulinEntry, saveInsulinProtocolToHospitalLocation, savePendingClinicalResult } from '@/lib/hospitalNrsRegistry';
 import { EMPTY_PATIENT_LOCATION, describePatientLocation, isPatientLocationComplete, useHospitalLocations } from '@/components/hospitalizados/PatientLocationFields';
@@ -34,6 +35,13 @@ const ProtocoloInsulina = () => {
   // Identificación anotada en Demografía (opcional): permite guardar e imprimir sin volver a preguntar.
   const [identity, setIdentity] = useState<PatientIdentity>(EMPTY_PATIENT_LOCATION);
   const { locations, loading: loadingLocations } = useHospitalLocations(true);
+  // Nombre y RUT van sincronizados con "Paciente actual" (en ambos sentidos).
+  const general = usePacienteGeneral();
+  useAplicarPacienteGeneral((p: { nombre: string; rut: string }) => setIdentity(old => ({ ...old, name: p.nombre, rut: p.rut })));
+  const changeIdentity = (next: PatientIdentity) => {
+    setIdentity(next);
+    if (general && (next.name !== identity.name || next.rut !== identity.rut)) general.actualizar({ nombre: next.name, rut: next.rut });
+  };
   const [patientData, setPatientData] = useState<PatientData>({
     edad: 0,
     peso: 0,
@@ -205,7 +213,7 @@ const ProtocoloInsulina = () => {
 
               <TabsContent value="1">
                 <DemographicStep data={patientData} onUpdate={updatePatientData} onNext={() => setActiveTab('2')}
-                  {...(sourceContext?.source_bed ? {} : { identity, onIdentityChange: setIdentity, locations, loadingLocations })} />
+                  {...(sourceContext?.source_bed ? {} : { identity, onIdentityChange: changeIdentity, locations, loadingLocations })} />
               </TabsContent>
               <TabsContent value="2">
                 <ClinicalStep data={patientData} sexo={patientData.sexo} onUpdate={updatePatientData} onNext={() => setActiveTab('3')} onBack={() => setActiveTab('1')} />

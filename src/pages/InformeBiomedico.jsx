@@ -25,7 +25,7 @@ const EMPTY = {
   historia: '', medicamentos: '', estadoFuncional: '', atenciones: '',
   requiereAyudaTecnica: '', cualesRequiere: '',
   usaAyudaTecnica: '', cualesUsa: '',
-  profNombre: '', profRut: '', profCorreo: '', profTelefono: '',
+  profNombre: '', profRut: '', profCorreo: '', profTelefono: '(42) 258 5900',
   fechaInforme: getTodayISO(),
 };
 
