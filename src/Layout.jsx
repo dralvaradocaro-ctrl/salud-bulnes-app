@@ -98,7 +98,7 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </nav>
 
-      <div className="fixed right-4 bottom-20 z-[60] print:hidden md:bottom-6"><ThemeToggle enabled={['Home', 'TopicDetail', 'Category', 'AllCalculators', 'ClinicalTools', 'OperacionClinica', 'RedDerivacion', 'Antibiograma', 'GestionCardiovascular'].includes(currentPageName)} /></div>
+      <div className="fixed bottom-[5.1rem] right-[3.75rem] z-[60] print:hidden md:bottom-[1.6rem] md:right-[4.25rem]"><ThemeToggle enabled={['Home', 'TopicDetail', 'Category', 'AllCalculators', 'ClinicalTools', 'OperacionClinica', 'RedDerivacion', 'Antibiograma', 'GestionCardiovascular'].includes(currentPageName)} /></div>
 
       {/* Content with bottom padding for mobile nav */}
       <main className="mobile-bottom-content md:pb-24">

@@ -30,11 +30,8 @@ export default function PacienteGeneralButton() {
         <label className="block text-xs text-slate-600">RUT<input className="mt-1 w-full rounded-lg border p-2 text-sm text-slate-900" autoComplete="off" placeholder="12.345.678-9" value={draft.rut} onChange={e => cambiar('rut', formatRut(e.target.value))} onKeyDown={e => { if (e.key === 'Enter' && dirty) guardar(); }} /></label>
         {draft.rut && !validateRut(draft.rut) && <p role="status" className="text-xs text-red-700">Revisa el RUT y su dígito verificador.</p>}
         <label className="block text-xs text-slate-600"><span className="flex justify-between">Fecha de nacimiento{edad && <span className="font-medium text-slate-800">{edad} años</span>}</span><input type="date" className="mt-1 w-full rounded-lg border p-2 text-sm text-slate-900" value={draft.fechaNacimiento} onChange={e => cambiar('fechaNacimiento', e.target.value)} /></label>
-        <label className="block text-xs text-slate-600">Diagnóstico<textarea rows={2} className="mt-1 w-full resize-y rounded-lg border p-2 text-sm text-slate-900" value={draft.diagnostico} onChange={e => cambiar('diagnostico', e.target.value)} /></label>
-        <select aria-label="Agregar diagnóstico frecuente" value="" onChange={e => e.target.value && cambiar('diagnostico', draft.diagnostico.trim() ? `${draft.diagnostico.trim()}\n${e.target.value}` : e.target.value)} className="-mt-2 h-8 w-full rounded-md border bg-white px-2 text-xs text-slate-600">
-          <option value="">+ Diagnóstico frecuente…</option>
-          {DIAGNOSTICOS_FRECUENTES.map(dx => <option key={dx} value={dx}>{dx}</option>)}
-        </select>
+        <label className="block text-xs text-slate-600">Diagnóstico<input list="paciente-actual-dx" autoComplete="off" placeholder="Escribe o elige uno frecuente…" className="mt-1 w-full rounded-lg border p-2 text-sm text-slate-900" value={draft.diagnostico} onChange={e => cambiar('diagnostico', e.target.value)} /></label>
+        <datalist id="paciente-actual-dx">{DIAGNOSTICOS_FRECUENTES.map(dx => <option key={dx} value={dx} />)}</datalist>
         <div className="flex items-center justify-between gap-2">
           <button type="button" onClick={limpiar} className="text-xs text-slate-500 underline hover:text-slate-700">Limpiar</button>
           {saved && !dirty
