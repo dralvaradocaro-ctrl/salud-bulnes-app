@@ -111,6 +111,9 @@ const emptyForm = () => ({
   indicaciones: '',
   medico: '',
   firma: '',
+  otroFirmante: false,
+  medico2: '',
+  firma2: '',
   servicio: '',
   cama: '',
   recordBedCode: '',
@@ -193,7 +196,7 @@ export default function NotaEvolucion() {
 
   // Orden del impreso: los exámenes complementarios van entre el examen físico
   // y las indicaciones, y cada bloque vacío simplemente no se emite.
-  const tituloNota = [form.esVisitaServicio && 'Visita servicio Dr. Rubilar', form.esVisitaIAAS && 'Visita IAAS', form.esNotaPROA && 'Nota PROA'].filter(Boolean).join(' · ') || 'Nota de evolución';
+  const tituloNota = [form.esVisitaServicio && 'Visita de servicio', form.esVisitaIAAS && 'Visita IAAS', form.esNotaPROA && 'Nota PROA'].filter(Boolean).join(' · ') || 'Nota de evolución';
   const complementary = complementaryBlocks(form);
   const printSections = SECTIONS.flatMap(section => {
     const own = form[section.key].trim() ? [{ key: section.key, label: section.label, text: form[section.key].trim() }] : [];
@@ -316,7 +319,7 @@ export default function NotaEvolucion() {
         proa_entry_type: form.esVisitaServicio ? 'visita_servicio' : 'nota_evolucion_hospitalaria',
         evolucion: narrative,
         ...(form.actualizaEstadoClinico ? { vista_ultima_evolucion: currentState || narrative, vista_ultima_evolucion_actualizada_en: stateTimestamp, vista_planes_pendientes: currentPlans || latest.vista_planes_pendientes || '' } : {}),
-        nota_evolucion: { diagnostico: form.diagnostico, anamnesis: form.anamnesis, examen_fisico: form.examenFisico, examenes_complementarios: complementarios, laboratorio: form.laboratorio, imagenes: filledRows(form.imagenes), otros_examenes: filledRows(form.otrosExamenes), indicaciones: form.indicaciones, medico: form.medico, fecha_hora: form.fechaHora, visita_servicio: form.esVisitaServicio, actualiza_estado_clinico: form.actualizaEstadoClinico, visita_iaas: form.esVisitaIAAS, nota_proa: form.esNotaPROA, titulo: tituloNota },
+        nota_evolucion: { diagnostico: form.diagnostico, anamnesis: form.anamnesis, examen_fisico: form.examenFisico, examenes_complementarios: complementarios, laboratorio: form.laboratorio, imagenes: filledRows(form.imagenes), otros_examenes: filledRows(form.otrosExamenes), indicaciones: form.indicaciones, medico: form.medico, medico_cofirmante: form.otroFirmante ? form.medico2 : '', fecha_hora: form.fechaHora, visita_servicio: form.esVisitaServicio, actualiza_estado_clinico: form.actualizaEstadoClinico, visita_iaas: form.esVisitaIAAS, nota_proa: form.esNotaPROA, titulo: tituloNota },
       });
       const refreshed = await fetchProaRecords();
       setBedRecords(refreshed);
@@ -431,10 +434,17 @@ export default function NotaEvolucion() {
                 )}
               </Fragment>
             ))}
-            <div className="evolution-preview-signature">
-              <FirmaDigital value={form.firma} onSave={value => update('firma', value)} />
-              <input value={form.medico} onChange={e => update('medico', e.target.value)} placeholder="Médico que firma" />
-              <span>Firma</span>
+            <div className="evolution-preview-signatures">
+              {form.otroFirmante && <div className="evolution-preview-signature">
+                <FirmaDigital value={form.firma2} onSave={value => update('firma2', value)} />
+                <input value={form.medico2} onChange={e => update('medico2', e.target.value)} placeholder="Otro médico firmante" />
+                <span>Firma</span>
+              </div>}
+              <div className="evolution-preview-signature">
+                <FirmaDigital value={form.firma} onSave={value => update('firma', value)} />
+                <input value={form.medico} onChange={e => update('medico', e.target.value)} placeholder="Médico que firma" />
+                <span>Firma</span>
+              </div>
             </div>
           </div>
           <div className="flex justify-end gap-2 rounded-xl bg-white p-3">
@@ -487,7 +497,7 @@ export default function NotaEvolucion() {
         <section aria-label="Opciones de la nota" className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
           <div className="grid gap-2 sm:grid-cols-2">
             {[
-              ['esVisitaServicio', 'Visita servicio Dr. Rubilar'],
+              ['esVisitaServicio', 'Visita de servicio'],
               ['esVisitaIAAS', 'Visita IAAS'],
               ['esNotaPROA', 'Nota PROA'],
               ['actualizaEstadoClinico', 'Actualizar estado clínico'],
@@ -617,6 +627,17 @@ export default function NotaEvolucion() {
             <p className="mb-3 text-sm font-medium text-slate-700">Firma manuscrita</p>
             <FirmaDigital value={form.firma} onSave={value => update('firma', value)} />
           </div>
+          <label className="mt-5 flex cursor-pointer items-center gap-2 border-t border-slate-200 pt-5 text-sm font-semibold text-slate-800">
+            <input type="checkbox" checked={form.otroFirmante} onChange={e => update('otroFirmante', e.target.checked)} className="h-4 w-4 accent-teal-600" />
+            Añadir otro médico firmante
+          </label>
+          {form.otroFirmante && <div className="mt-4 space-y-4">
+            <label className="space-y-1.5 text-sm font-medium text-slate-700">
+              Otro médico firmante
+              <Input value={form.medico2} onChange={e => update('medico2', e.target.value)} placeholder="Nombre del médico" />
+            </label>
+            <FirmaDigital value={form.firma2} onSave={value => update('firma2', value)} />
+          </div>}
         </section>
       </main>
 
@@ -648,12 +669,21 @@ export default function NotaEvolucion() {
           </section>
         ))}
 
-        <footer className="evolution-signature">
-          <div className="evolution-signature-space" />
-          {form.firma && <img src={form.firma} alt="Firma del médico" />}
-          <div className="evolution-signature-line" />
-          <strong>{form.medico || 'Médico que firma'}</strong>
-          <span>Firma</span>
+        <footer className="evolution-signatures">
+          {form.otroFirmante && <div className="evolution-signature">
+            <div className="evolution-signature-space" />
+            {form.firma2 && <img src={form.firma2} alt="Firma del otro médico" />}
+            <div className="evolution-signature-line" />
+            <strong>{form.medico2 || 'Médico que firma'}</strong>
+            <span>Firma</span>
+          </div>}
+          <div className="evolution-signature">
+            <div className="evolution-signature-space" />
+            {form.firma && <img src={form.firma} alt="Firma del médico" />}
+            <div className="evolution-signature-line" />
+            <strong>{form.medico || 'Médico que firma'}</strong>
+            <span>Firma</span>
+          </div>
         </footer>
       </article>
     </div>

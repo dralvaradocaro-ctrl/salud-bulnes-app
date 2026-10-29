@@ -715,7 +715,7 @@ function escapeHtml(value) {
 function openStoredNotePreview(form, record) {
   const note = form?.nota_evolucion;
   if (!note) return false;
-  const title = note.titulo || (note.visita_servicio ? 'Visita servicio Dr. Rubilar' : 'Nota de evolución');
+  const title = note.titulo || (note.visita_servicio ? 'Visita de servicio' : 'Nota de evolución');
   const sections = [['Diagnóstico(s)', note.diagnostico], ['Anamnesis', note.anamnesis], ['Examen físico', note.examen_fisico], ['Indicaciones', note.indicaciones]].filter(([, value]) => String(value || '').trim());
   const popup = window.open('', '_blank', 'width=900,height=1000');
   if (!popup) return true;

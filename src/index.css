@@ -115,7 +115,8 @@
   background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(7mm - 1px), #aaa calc(7mm - 1px), #aaa 7mm);
 }
 .evolution-preview-section textarea:focus { outline-color: #94a3b8; }
-.evolution-preview-signature { width: 75mm; margin: 12mm 0 0 auto; text-align: center; }
+.evolution-preview-signatures { display: flex; justify-content: flex-end; gap: 10mm; margin-top: 12mm; }
+.evolution-preview-signature { width: 75mm; text-align: center; }
 .evolution-preview-signature input { width: 100%; border: 0; border-top: 1px solid #000; padding-top: 4px; text-align: center; font: 700 14px Arial, sans-serif; outline: none; }
 .evolution-preview-signature span { display: block; font-size: 12px; }
 
@@ -183,9 +184,16 @@
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+  .evolution-signatures {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12mm;
+    margin-top: 10mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   .evolution-signature {
     width: 75mm;
-    margin: 10mm 0 0 auto;
     text-align: center;
     break-inside: avoid;
     page-break-inside: avoid;
