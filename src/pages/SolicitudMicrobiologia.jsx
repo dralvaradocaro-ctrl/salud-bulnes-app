@@ -1,3 +1,4 @@
+import { usePacienteGeneral, useAplicarPacienteGeneral } from '@/lib/PacienteGeneral';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -281,6 +282,7 @@ function ExamRow({ exam, selected, onToggle, noteValue, onNoteChange }) {
 }
 
 export default function SolicitudMicrobiologia() {
+  const general = usePacienteGeneral();
   const navigate = useNavigate();
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -289,15 +291,18 @@ export default function SolicitudMicrobiologia() {
   const [f, setF] = useState({ ...EMPTY, fecha_toma: todayIso() });
   const [showPreview, setShowPreview] = useState(false);
 
+  useAplicarPacienteGeneral(p => setF(actual => ({ ...actual, nombre: p.nombre, rut: p.rut })));
   const u = (k, v) => setF(prev => ({ ...prev, [k]: v }));
   const toggleExam = (code) => setF(prev => ({
     ...prev,
     selected: { ...prev.selected, [code]: !prev.selected[code] },
   }));
+  const clearContent = () => setF(prev => ({ ...prev, selected: {}, cultivo_corriente_detalle: '', examenes_libres: '', tipo_muestra: '', sitio_anatomico: '' }));
   const clear = () => setF({ ...EMPTY, fecha_toma: todayIso() });
 
   // Prefill desde wizard multi-plantilla
   useEffect(() => {
+    if (general?.paciente) return;
     const p = getMultiPrefill();
     if (!p) return;
     setF(prev => ({
@@ -349,7 +354,7 @@ export default function SolicitudMicrobiologia() {
 
       {/* Toolbar */}
       <div className="micro-screen-only sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex flex-wrap items-center gap-3">
           <Button variant="ghost" size="icon" className="rounded-xl" onClick={goBack} title="Volver">
             <ChevronLeft className="h-5 w-5" />
           </Button>
@@ -357,8 +362,9 @@ export default function SolicitudMicrobiologia() {
             <h1 className="text-base font-bold text-slate-900">Solicitud de Exámenes Microbiológicos</h1>
             <p className="text-xs text-slate-500">Hospital Comunitario de Salud Familiar de Bulnes · Formulario C 162</p>
           </div>
+          <Button variant="outline" size="sm" onClick={clearContent}>Borrar contenido</Button>
           <Button variant="outline" size="sm" onClick={clear} className="gap-1.5">
-            <RotateCcw className="h-4 w-4" /> Limpiar
+            <RotateCcw className="h-4 w-4" /> Nuevo paciente
           </Button>
           {showPreview && (
             <>
@@ -513,7 +519,7 @@ export default function SolicitudMicrobiologia() {
             </div>
 
             <div className="mt-4 flex items-center justify-end gap-2">
-              <Button variant="outline" onClick={clear}>Limpiar datos</Button>
+              <Button variant="outline" onClick={clearContent}>Borrar contenido</Button><Button variant="outline" onClick={clear}>Nuevo paciente</Button>
               <Button onClick={() => setShowPreview(true)} className="bg-cyan-600 hover:bg-cyan-700 gap-2">
                 Generar formulario →
               </Button>

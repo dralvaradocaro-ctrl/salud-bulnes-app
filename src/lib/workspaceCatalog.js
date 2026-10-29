@@ -2,7 +2,7 @@
 // Trabajo (módulos con seguimiento durante el turno). Lo usan Templates, OperacionClinica,
 // Category y Layout, así un formulario nuevo aparece en todas partes al agregarlo aquí.
 import {
-  Activity, BedDouble, CalendarDays, ClipboardList, FileText, Files, FlaskConical, HeartPulse, Home, Image,
+  Activity, BedDouble, CalendarDays, ClipboardList, FileText, Files, FlaskConical, HeartHandshake, HeartPulse, Home, Image,
   Megaphone, MessageSquare, Microscope, Phone, Pill, ShieldPlus, Stethoscope, Syringe, UserCheck, Users,
 } from 'lucide-react';
 
@@ -26,6 +26,7 @@ export const FORM_GROUPS = [
   { id: 'examenes',   title: 'Exámenes e imágenes',         subtitle: 'Laboratorio, microbiología, ISP y protocolos',  Icon: FlaskConical },
   { id: 'farmacia',   title: 'Farmacia y tratamiento',      subtitle: 'Fármacos que requieren autorización',           Icon: Pill },
   { id: 'derivacion', title: 'Derivación y continuidad',    subtitle: 'Traslados, interconsultas y alta domiciliaria', Icon: Home },
+  { id: 'consentimientos', title: 'Consentimientos y límites', subtitle: 'Adecuación terapéutica y consentimientos informados', Icon: HeartHandshake },
   { id: 'paciente',   title: 'Documentos para el paciente', subtitle: 'Constancias, informes y certificados',          Icon: UserCheck },
   { id: 'notificacion', title: 'Notificación obligatoria',  subtitle: 'Enfermedades de notificación e investigación',  Icon: Megaphone },
   { id: 'urgencia',   title: 'Urgencia',                    subtitle: 'Plantillas de indicaciones rápidas',            Icon: ShieldPlus },
@@ -104,6 +105,13 @@ export const STATIC_FORMS = [
     description: 'Derivación y consentimiento editables.',
     details: ['Formulario de derivación', 'Consentimiento informado', 'Vista previa', 'Impresión formato original', 'Traslado a registro HODOM'],
     show: c => c.hasHospitalizados || c.hasUrgencias,
+  },
+  {
+    group: 'consentimientos', route: 'AdecuacionTerapeutica', tone: 'amber', Icon: HeartHandshake,
+    title: 'Adecuación y límites terapéuticos',
+    description: 'AET, no RCP, no IOT, no UCI y confort. Imprime constancia.',
+    details: ['Selección múltiple del plan', 'Otras medidas de soporte', 'Capacidad para consentir', 'Representante', 'Vista previa e impresión'],
+    show: c => c.hasHospitalizados,
   },
   {
     group: 'paciente', route: 'FormularioGES', tone: 'emerald', Icon: FileText,

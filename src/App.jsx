@@ -12,36 +12,15 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import WelcomeLogin from '@/pages/WelcomeLogin';
 import { isLoggedIn } from '@/lib/hospitalAuth';
 import { Component, Suspense, useState } from 'react';
+import { isPageLoadError } from '@/lib/loadPage';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 
-// Las páginas se descargan bajo demanda: tras un deploy, una pestaña abierta pide archivos con
-// nombres que ya no existen. Se recarga una sola vez para traer la versión nueva (el guardia de
-// 10 s evita un bucle si el archivo realmente falta).
-const STALE_CHUNK_ERROR = /Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module|Unable to preload CSS/i;
-const STALE_RELOAD_KEY = 'stale-chunk-reload-at';
-
-function reloadOnceForStaleChunk() {
-  try {
-    const last = Number(sessionStorage.getItem(STALE_RELOAD_KEY) || 0);
-    if (Date.now() - last < 10000) return false;
-    sessionStorage.setItem(STALE_RELOAD_KEY, String(Date.now()));
-  } catch {
-    // Sin sessionStorage no hay guardia contra bucles: mejor mostrar el error.
-    return false;
-  }
-  window.location.reload();
-  return true;
-}
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('vite:preloadError', event => {
-    if (reloadOnceForStaleChunk()) event.preventDefault();
-  });
-}
-
+// Do not preventDefault on vite:preloadError: that resolves failed imports to
+// undefined, causing React.lazy to crash while reading `default`.
+// Recovery is explicit to avoid reload loops and losing unsaved form data.
 class AppErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -53,24 +32,24 @@ class AppErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    if (STALE_CHUNK_ERROR.test(String(error?.message || error)) && reloadOnceForStaleChunk()) return;
     console.error('Error de renderizado no controlado:', error, info);
   }
 
   render() {
     if (!this.state.error) return this.props.children;
-    const staleChunk = STALE_CHUNK_ERROR.test(String(this.state.error?.message || this.state.error));
+    const staleChunk = isPageLoadError(this.state.error);
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
         <div className="w-full max-w-xl rounded-2xl border border-red-200 bg-white p-6 shadow-sm">
           <h1 className="text-xl font-black text-red-800">
-            {staleChunk ? 'Hay una versión nueva de la app' : 'No se pudo mostrar esta sección'}
+            {staleChunk ? 'No se pudo cargar esta sección' : 'No se pudo mostrar esta sección'}
           </h1>
           <p className="mt-2 text-sm text-slate-600">
             {staleChunk
-              ? 'Esta pestaña quedó con una versión anterior. Recarga la página para continuar.'
-              : 'Se produjo un error de interfaz. Tus datos no se guardaron automáticamente.'}
+              ? 'La conexión puede estar lenta o interrumpida, o la aplicación se actualizó. Puedes recargar para intentarlo de nuevo. Si ocurre solo en la red del hospital, solicita a informática revisar el acceso a este sitio.'
+              : 'Se produjo un error de interfaz. Los cambios sin guardar pueden perderse al recargar.'}
           </p>
+          {staleChunk && <p className="mt-2 text-sm text-slate-600">Los cambios sin guardar pueden perderse al recargar.</p>}
           <pre className="mt-4 max-h-32 overflow-auto rounded-lg bg-slate-100 p-3 text-xs text-slate-700">
             {String(this.state.error?.message || this.state.error)}
           </pre>
@@ -81,6 +60,7 @@ class AppErrorBoundary extends Component {
           >
             Recargar página
           </button>
+          {staleChunk && <a href="/" className="ml-4 text-sm font-bold underline">Volver al inicio</a>}
         </div>
       </div>
     );
@@ -93,7 +73,10 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
 
 const PageLoading = () => (
   <div className="fixed inset-0 flex items-center justify-center">
-    <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+    <div role="status" className="text-center">
+      <div className="mx-auto w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
+      <p className="mt-3 text-sm text-slate-600">Descargando sección…</p>
+    </div>
   </div>
 );
 

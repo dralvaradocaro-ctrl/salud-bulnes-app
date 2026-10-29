@@ -11,7 +11,7 @@ async function imagen(src) {
   bytes.forEach(byte => { binary += String.fromCharCode(byte); });
   return `data:image/${src.endsWith('.png') ? 'png' : 'jpeg'};base64,${btoa(binary)}`;
 }
-export async function buildDocumentoClinicoPdf(receta, { titulo, seccion, lineas, antecedentes = [] }) {
+export async function buildDocumentoClinicoPdf(receta, { titulo, seccion, lineas = [], tablas = [], antecedentes = [] }) {
   const doc = sanitizeJsPdf(new jsPDF({ unit: 'pt', format: 'a4' }));
   const centro = getInstitucion(receta.institucion);
   const width = doc.internal.pageSize.getWidth();
@@ -51,12 +51,58 @@ export async function buildDocumentoClinicoPdf(receta, { titulo, seccion, lineas
   line(`Dirección: ${receta.direccion}`);
   if (receta.diagnostico.trim()) line(`Dg.: ${receta.diagnostico}`);
   antecedentes.filter(Boolean).forEach(texto => line(texto));
-  y += 8; line(seccion, true);
-  lineas.forEach((texto, index) => { line(`${index + 1}. ${texto}`); y += 8; });
+  y += 8; if (seccion) line(seccion, true);
+  if (tablas.length) {
+    for (const tabla of tablas) {
+    const widths = [30, 220, contentWidth - 250];
+    const row = (cells, heading = false) => {
+      doc.setFont('helvetica', heading ? 'bold' : 'normal'); doc.setFontSize(9);
+      const wrapped = cells.map((cell, i) => doc.splitTextToSize(String(cell || '—'), widths[i] - 12));
+      const count = Math.max(...wrapped.map(parts => parts.length));
+      // Split oversized rows safely across pages, with repeated column headings.
+      let offset = 0;
+      while (offset < count) {
+        if (y + 28 > height - 65) { doc.addPage(); header(); tableTitle(); tableHeader(); }
+        const capacity = Math.max(1, Math.floor((height - 65 - y - 12) / 14));
+        const take = Math.min(count - offset, capacity);
+        const rowHeight = take * 14 + 12;
+        let x = margin;
+        doc.setFont('helvetica', heading ? 'bold' : 'normal'); doc.setFontSize(9);
+        wrapped.forEach((parts, i) => {
+          doc.setDrawColor(180, 190, 205); doc.setLineWidth(0.5);
+          if (heading) { doc.setFillColor(240, 244, 248); doc.rect(x, y, widths[i], rowHeight, 'FD'); }
+          else doc.rect(x, y, widths[i], rowHeight);
+          const segment = parts.slice(offset, offset + take);
+          segment.forEach((part, j) => doc.text(part, x + 6, y + 16 + j * 14));
+          x += widths[i];
+        });
+        y += rowHeight;
+        offset += take;
+      }
+    };
+    const tableTitle = () => line(tabla.titulo, true);
+    const tableHeader = () => row(tabla.encabezados, true);
+    if (y + 80 > height - 65) { doc.addPage(); header(); }
+    tableTitle();
+    tableHeader();
+    tabla.filas.forEach((cells, index) => row([String(index + 1), ...cells]));
+    y += 16;
+    }
+  } else {
+    lineas.forEach((texto, index) => {
+      const parts = texto.split('\n');
+      const needed = parts.reduce((n, part) => n + doc.splitTextToSize(part, contentWidth).length * 16 + 6, 0);
+      if (y + needed > height - 65 && needed < height - 240) { doc.addPage(); header(); }
+      line(`${index + 1}. ${parts[0]}`, true);
+      parts.slice(1).forEach(part => line(part));
+      y += 8;
+    });
+  }
+  if (receta.textoLibre?.trim()) { line('Otras indicaciones:', true); line(receta.textoLibre); }
   if (receta.observaciones.trim()) line(`Indicaciones generales: ${receta.observaciones}`);
-  if (y > height - 215) { doc.addPage(); header(); }
+  if (y > height - 242) { doc.addPage(); header(); }
   const signatureY = height - 125;
-  if (firma) doc.addImage(firma, 'PNG', width / 2 - 75, signatureY - 105, 150, 100);
+  if (firma) doc.addImage(firma, 'PNG', width / 2 - 75, signatureY - 105, 150, 150 * (centro.firmaProporcion || 2 / 3));
   doc.setDrawColor(100); doc.line(width / 2 - 130, signatureY, width / 2 + 130, signatureY);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
   doc.text(MEDICO.nombre, width / 2, signatureY + 17, { align: 'center' });

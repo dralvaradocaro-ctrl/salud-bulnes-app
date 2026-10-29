@@ -1,3 +1,4 @@
+import { usePacienteGeneral, useAplicarPacienteGeneral } from '@/lib/PacienteGeneral';
 import { useEffect, useMemo, useState } from 'react';
 import { Download, Eye, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,10 +10,11 @@ import { buildRecetaPdf } from '@/lib/recetaPdf';
 import DocumentoHeader from '@/components/documentos/DocumentoHeader';
 import InstitucionSelector from '@/components/documentos/InstitucionSelector';
 import { leerPacienteDocumentos, guardarPacienteDocumentos, limpiarPacienteDocumentos } from '@/lib/pacienteDocumentos';
+import { KINESIOTERAPIA, textoOrdenKine, tieneContenidoReceta, borrarContenidoReceta } from '@/lib/indicacionesReceta';
 import { toast } from 'sonner';
 
 const nuevoItem = (nombre = '', presentacion = '') => ({ id: crypto.randomUUID(), nombre, presentacion, ...precargaPresentacion(presentacion), frecuencia: '', duracion: '', cantidad: '', indicaciones: '' });
-const nuevaReceta = () => ({ paciente: '', rut: '', edad: '', direccion: '', fecha: hoyChile(), diagnostico: '', observaciones: '', institucion: INSTITUCION_POR_DEFECTO, firma: true, medicamentos: [] });
+const nuevaReceta = () => ({ paciente: '', rut: '', edad: '', direccion: '', fecha: hoyChile(), diagnostico: '', textoLibre: '', observaciones: '', institucion: INSTITUCION_POR_DEFECTO, firma: true, medicamentos: [] });
 const inputClass = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
 function Campo({ label, value, onChange, multiline, ...props }) {
   const Tag = multiline ? 'textarea' : 'input';
@@ -29,14 +31,20 @@ function CampoOpciones({ id, label, value, onChange, opciones, ...props }) {
   </div>;
 }
 function RecetaMedica() {
-  const [receta, setReceta] = useState(() => ({ ...nuevaReceta(), ...leerPacienteDocumentos() }));
+  const general = usePacienteGeneral();
+  const [receta, setReceta] = useState(() => ({ ...nuevaReceta(), ...(general?.paciente ? { paciente: general.paciente.nombre, rut: general.paciente.rut } : leerPacienteDocumentos()) }));
+  const [plantillaKine, setPlantillaKine] = useState('');
+  const [sesionesKine, setSesionesKine] = useState('');
+  const [detalleKine, setDetalleKine] = useState('');
   const [busqueda, setBusqueda] = useState('');
   const [generando, setGenerando] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
   useEffect(() => {
+    if (general?.paciente) return;
     guardarPacienteDocumentos({ paciente: receta.paciente, rut: receta.rut, edad: receta.edad, direccion: receta.direccion, diagnostico: receta.diagnostico, institucion: receta.institucion });
   }, [receta.paciente, receta.rut, receta.edad, receta.direccion, receta.diagnostico, receta.institucion]);
   useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
+  useAplicarPacienteGeneral(p => { setReceta(actual => ({ ...actual, paciente: p.nombre, rut: p.rut })); setPdfUrl(''); });
   const cambiar = (key, value) => { setPdfUrl(''); setReceta(r => ({ ...r, [key]: value })); };
   const agregar = (nombre = '', presentacion = '') => {
     cambiar('medicamentos', [...receta.medicamentos, nuevoItem(nombre, presentacion)]);
@@ -58,7 +66,7 @@ function RecetaMedica() {
     !receta.paciente.trim() && 'nombre del paciente', !rutValido && 'RUT válido',
     (receta.edad === '' || Number(receta.edad) < 0 || Number(receta.edad) > 130) && 'edad entre 0 y 130 años',
     !receta.direccion.trim() && 'dirección', !/^\d{4}-\d{2}-\d{2}$/.test(receta.fecha) && 'fecha',
-    !receta.medicamentos.length && 'al menos un medicamento',
+    !tieneContenidoReceta(receta) && 'al menos un medicamento o una indicación en texto libre',
     receta.medicamentos.some(item => !item.nombre.trim() || !item.dosis.trim() || !item.via.trim() || !item.frecuencia.trim() || !item.duracion.trim()) && 'nombre, dosis, vía, frecuencia y duración de cada medicamento',
   ].filter(Boolean);
   const generar = async (preview) => {
@@ -72,7 +80,7 @@ function RecetaMedica() {
     finally { setGenerando(false); }
   };
   return <div className="min-h-screen bg-slate-50 pb-16 text-slate-900">
-    <DocumentoHeader pagina="RecetaMedica" onNuevo={() => { if (window.confirm('¿Limpiar los datos y comenzar con un nuevo paciente?')) { limpiarPacienteDocumentos(); setReceta(nuevaReceta()); setPdfUrl(''); setBusqueda(''); } }} />
+    <DocumentoHeader pagina="RecetaMedica" onBorrarContenido={() => { setReceta(borrarContenidoReceta); setPdfUrl(''); setBusqueda(''); setPlantillaKine(''); setSesionesKine(''); setDetalleKine(''); }} onNuevo={() => { if (window.confirm('¿Limpiar los datos y comenzar con un nuevo paciente?')) { limpiarPacienteDocumentos(); general?.actualizar({ nombre: '', rut: '' }); setReceta(nuevaReceta()); setPdfUrl(''); setBusqueda(''); setPlantillaKine(''); setSesionesKine(''); setDetalleKine(''); } }} />
     <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[1.1fr_1fr]">
       <div className="space-y-5">
         <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -116,6 +124,15 @@ function RecetaMedica() {
             </article>;
           })}</div>
           <details className="text-xs text-slate-500"><summary className="cursor-pointer">Acerca del catálogo</summary><p className="mt-2 leading-relaxed">Presentaciones de referencia del arsenal local y <a className="underline" href="https://ascendlabs.cl/wp-content/uploads/2025/04/vademecum-2-1_compressed.pdf" target="_blank" rel="noreferrer">vademécum Ascend Chile</a>. No es un listado exhaustivo ni confirma stock. Puedes editar cualquier presentación. Consulta el <a className="underline" href="https://registrosanitario.ispch.gob.cl/" target="_blank" rel="noreferrer">registro ISP</a>. Las opciones de posología son atajos de escritura; la pauta la eliges tú.</p></details>
+          <div className="space-y-3 border-t pt-4">
+            <h2 className="font-semibold">Otras indicaciones / texto libre</h2>
+            <p className="text-xs text-slate-500">Puedes emitir una orden sin medicamentos. Las plantillas se agregan al texto y puedes editarlas antes de imprimir.</p>
+            <label className="block text-sm font-medium">Plantilla de kinesioterapia<select className={inputClass} value={plantillaKine} onChange={e => setPlantillaKine(e.target.value)}><option value="">Seleccionar plantilla</option>{KINESIOTERAPIA.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></label>
+            <Campo label="Número de sesiones" type="number" min="1" step="1" value={sesionesKine} onChange={setSesionesKine} />
+            <Campo label="Región, lateralidad, objetivos y restricciones" value={detalleKine} onChange={setDetalleKine} multiline rows={2} />
+            <Button variant="outline" disabled={!textoOrdenKine(plantillaKine, sesionesKine, detalleKine)} onClick={() => cambiar('textoLibre', [receta.textoLibre, textoOrdenKine(plantillaKine, sesionesKine, detalleKine)].filter(Boolean).join('\n\n'))}>Agregar orden al texto</Button>
+            <Campo label="Texto libre de la receta / orden" multiline rows={8} value={receta.textoLibre} onChange={v => cambiar('textoLibre', v)} placeholder="Escribe aquí otras indicaciones o agrega una plantilla de kinesioterapia…" />
+          </div>
           <Campo label="Indicaciones generales" multiline rows={3} value={receta.observaciones} onChange={v => cambiar('observaciones', v)} />
         </section>
       </div>
@@ -131,6 +148,7 @@ function RecetaMedica() {
           <div className="space-y-2 border-b pb-4 text-sm"><p><strong>Nombre:</strong> {receta.paciente || '________________________'}</p><p><strong>RUT:</strong> {receta.rut || '_______________'} <strong className="ml-3">Edad:</strong> {receta.edad || '___'} años</p><p><strong>Dirección:</strong> {receta.direccion || '________________________'}</p><p><strong>Fecha:</strong> {receta.fecha ? fechaLarga(receta.fecha) : '________________'}</p>{receta.diagnostico && <p><strong>Dg.:</strong> {receta.diagnostico}</p>}</div>
           <p className="mb-4 mt-6 font-serif text-3xl italic">Rp.</p>
           <ol className="min-h-36 list-decimal space-y-5 pl-5 text-sm leading-relaxed">{receta.medicamentos.map(item => <li key={item.id} className="whitespace-pre-wrap">{textoMedicamento(item) || 'Medicamento por completar'}</li>)}</ol>
+          {receta.textoLibre && <div className="mt-5 whitespace-pre-wrap text-sm"><strong>Otras indicaciones:</strong><p>{receta.textoLibre}</p></div>}
           {receta.observaciones && <p className="mt-5 whitespace-pre-wrap text-sm"><strong>Indicaciones generales:</strong><br />{receta.observaciones}</p>}
           <div className="mx-auto mt-10 max-w-xs text-center">{receta.firma && centro.firma ? <img src={centro.firma} alt="Firma y timbre del profesional" className="mx-auto h-24 object-contain" /> : <div className="h-20" />}<p className="border-t border-slate-400 pt-2 text-sm font-bold">{MEDICO.nombre}</p><p className="text-xs">{MEDICO.titulo} · RUT {MEDICO.rut}</p><p className="mt-2 text-[10px] text-slate-500">{receta.firma ? 'Firma electrónica simple · No constituye firma electrónica avanzada' : 'Firma y timbre'}</p></div>
         </section>

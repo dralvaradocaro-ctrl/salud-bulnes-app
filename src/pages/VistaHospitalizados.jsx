@@ -1604,7 +1604,7 @@ function VistaHospitalizados() {
       return;
     }
     const [page, search] = route.split('?');
-    navigate(`${createPageUrl(page)}${search ? `?${search}` : ''}`);
+    navigate(`${createPageUrl(page)}?${search ? `${search}&` : ''}contextoClinico=hospitalizados`);
   };
   const openAction = (route, isProa = false) => requestFirstClinicalUse((confirmedDraft) => openActionDirect(route, isProa, confirmedDraft || draft));
   const openFullProa = () => {

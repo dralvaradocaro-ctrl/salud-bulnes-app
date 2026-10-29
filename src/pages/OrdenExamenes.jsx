@@ -1,3 +1,4 @@
+import { usePacienteGeneral, useAplicarPacienteGeneral } from '@/lib/PacienteGeneral';
 import { useEffect, useMemo, useState } from 'react';
 import { Download, Eye, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -5,29 +6,33 @@ import { conPuertaAcceso } from '@/components/PuertaAcceso';
 import { formatRut, validateRut } from '@/lib/rut-ges';
 import { MEDICO, INSTITUCION_POR_DEFECTO, getInstitucion, fechaLarga } from '@/lib/certificadoPdf';
 import { hoyChile } from '@/lib/recetaCatalogo';
-import { buscarExamenes, EXAMENES_CATALOGO, EXAMENES_CATEGORIAS, CONTRASTES, nuevoExamen, textoExamen, mostrarCreatinina, textoCreatinina, validarEstudios } from '@/lib/ordenExamenesCatalogo';
+import { buscarExamenes, EXAMENES_CATALOGO, EXAMENES_CATEGORIAS, CONTRASTES, agruparExamenes, nuevoExamen, camposExamen, renombrarExamen, mostrarCreatinina, textoCreatinina, validarEstudios } from '@/lib/ordenExamenesCatalogo';
 import { buildOrdenExamenesPdf } from '@/lib/ordenExamenesPdf';
 import DocumentoHeader from '@/components/documentos/DocumentoHeader';
 import InstitucionSelector from '@/components/documentos/InstitucionSelector';
 import { leerPacienteDocumentos, guardarPacienteDocumentos, limpiarPacienteDocumentos } from '@/lib/pacienteDocumentos';
+import { borrarContenidoOrden } from '@/lib/indicacionesReceta';
 import { toast } from 'sonner';
 
-const nuevaOrden = () => ({ paciente: '', rut: '', edad: '', direccion: '', fecha: hoyChile(), diagnostico: '', observaciones: '', institucion: INSTITUCION_POR_DEFECTO, firma: true, examenes: [], incluirCreatinina: false, creatinina: '', unidadCreatinina: 'mg/dL', fechaCreatinina: '' });
+const nuevaOrden = () => ({ paciente: '', rut: '', edad: '', direccion: '', fecha: hoyChile(), diagnostico: '', textoLibre: '', observaciones: '', institucion: INSTITUCION_POR_DEFECTO, firma: true, examenes: [], incluirCreatinina: false, creatinina: '', unidadCreatinina: 'mg/dL', fechaCreatinina: '' });
 const inputClass = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
 function Campo({ label, value, onChange, multiline, ...props }) {
   const Tag = multiline ? 'textarea' : 'input';
   return <label className="block text-sm font-medium text-slate-700"><span className="mb-1 block">{label}</span><Tag {...props} className={inputClass} value={value} onChange={e => onChange(e.target.value)} /></label>;
 }
 function OrdenExamenes() {
-  const [orden, setOrden] = useState(() => ({ ...nuevaOrden(), ...leerPacienteDocumentos() }));
+  const general = usePacienteGeneral();
+  const [orden, setOrden] = useState(() => ({ ...nuevaOrden(), ...(general?.paciente ? { paciente: general.paciente.nombre, rut: general.paciente.rut } : leerPacienteDocumentos()) }));
   const [busqueda, setBusqueda] = useState('');
   const [categoria, setCategoria] = useState('');
   const [generando, setGenerando] = useState(false);
   const [pdfUrl, setPdfUrl] = useState('');
   useEffect(() => {
+    if (general?.paciente) return;
     guardarPacienteDocumentos({ paciente: orden.paciente, rut: orden.rut, edad: orden.edad, direccion: orden.direccion, diagnostico: orden.diagnostico, institucion: orden.institucion });
   }, [orden.paciente, orden.rut, orden.edad, orden.direccion, orden.diagnostico, orden.institucion]);
   useEffect(() => () => { if (pdfUrl) URL.revokeObjectURL(pdfUrl); }, [pdfUrl]);
+  useAplicarPacienteGeneral(p => { setOrden(actual => ({ ...actual, paciente: p.nombre, rut: p.rut })); setPdfUrl(''); });
   const cambiar = (key, value) => { setPdfUrl(''); setOrden(r => ({ ...r, [key]: value })); };
   const agregar = (item = {}) => {
     setPdfUrl('');
@@ -59,7 +64,7 @@ function OrdenExamenes() {
     finally { setGenerando(false); }
   };
   return <div className="min-h-screen bg-slate-50 pb-16 text-slate-900">
-    <DocumentoHeader pagina="OrdenExamenes" onNuevo={() => { if (window.confirm('¿Limpiar los datos y comenzar con un nuevo paciente?')) { limpiarPacienteDocumentos(); setOrden(nuevaOrden()); setPdfUrl(''); setBusqueda(''); setCategoria(''); } }} />
+    <DocumentoHeader pagina="OrdenExamenes" onBorrarContenido={() => { setOrden(borrarContenidoOrden); setPdfUrl(''); setBusqueda(''); setCategoria(''); }} onNuevo={() => { if (window.confirm('¿Limpiar los datos y comenzar con un nuevo paciente?')) { limpiarPacienteDocumentos(); general?.actualizar({ nombre: '', rut: '' }); setOrden(nuevaOrden()); setPdfUrl(''); setBusqueda(''); setCategoria(''); } }} />
     <main className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[1.1fr_1fr]">
       <div className="space-y-5">
         <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -74,8 +79,9 @@ function OrdenExamenes() {
         </section>
         <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="font-semibold">Exámenes solicitados</h2>
-          <Campo label="Buscar y agregar" type="search" placeholder="Ej.: hemograma, TAC abdomen, RM, creatinina…" value={busqueda} onChange={setBusqueda} />
-          <div className="flex flex-wrap gap-2" aria-label="Categorías de exámenes">{['', ...EXAMENES_CATEGORIAS].map(c => <button key={c} type="button" aria-pressed={categoria === c} onClick={() => setCategoria(c)} className={`rounded-full border px-3 py-1.5 text-xs ${categoria === c ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-white hover:bg-blue-50'}`}>{c || 'Todos'}</button>)}</div>
+          {categoria !== 'Texto libre' && <Campo label="Buscar y agregar" type="search" placeholder="Ej.: hemograma, TAC abdomen, RM, creatinina…" value={busqueda} onChange={setBusqueda} />}
+          <div className="flex flex-wrap gap-2" aria-label="Categorías de exámenes">{['', ...EXAMENES_CATEGORIAS, 'Texto libre'].map(c => <button key={c} type="button" aria-pressed={categoria === c} onClick={() => setCategoria(c)} className={`rounded-full border px-3 py-1.5 text-xs ${categoria === c ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-white hover:bg-blue-50'}`}>{c || 'Todos'}</button>)}</div>
+          {categoria === 'Texto libre' ? <Campo label="Texto libre de la orden" multiline rows={8} placeholder="Escribe directamente lo que deseas solicitar…" value={orden.textoLibre} onChange={v => cambiar('textoLibre', v)} /> : <>
           <div className="max-h-64 overflow-y-auto rounded-lg border border-slate-200" aria-label="Catálogo de exámenes">
             {resultados.map(item => {
               const agregado = orden.examenes.some(e => e.nombre === item.nombre);
@@ -84,12 +90,13 @@ function OrdenExamenes() {
             {!resultados.length && <p className="p-3 text-sm text-slate-500">Sin coincidencias. Puedes escribir el estudio manualmente.</p>}
           </div>
           <div className="flex flex-wrap items-center justify-between gap-2"><Button variant="outline" size="sm" onClick={() => agregar({ nombre: busqueda.trim() })}><Plus className="mr-2 h-4 w-4" />Agregar manualmente</Button><span className="text-xs text-slate-500">{EXAMENES_CATALOGO.length} estudios precargados</span></div>
+          </>}
           <div className="space-y-3">{orden.examenes.map((item, i) => <article key={item.id} className="space-y-3 rounded-xl border border-blue-100 bg-slate-50 p-4">
             <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold">Estudio {i + 1}</h3><Button size="icon" variant="ghost" aria-label={`Eliminar estudio ${i + 1}`} onClick={() => cambiar('examenes', orden.examenes.filter(e => e.id !== item.id))}><Trash2 className="h-4 w-4" /></Button></div>
-            <Campo label="Examen *" value={item.nombre} onChange={nombre => editarExamen(item.id, { nombre })} />
-            <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={item.permiteContraste} onChange={e => editarExamen(item.id, { permiteContraste: e.target.checked, contraste: '' })} className="h-4 w-4 accent-blue-600" />Especificar contraste</label>
-            {item.permiteContraste && <fieldset><legend className="mb-2 text-sm font-medium">Contraste *</legend><div className="flex flex-wrap gap-2">{CONTRASTES.map(c => <label key={c} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm ${item.contraste === c ? 'border-blue-500 bg-blue-50 text-blue-900' : 'border-slate-200 bg-white'}`}><input type="radio" name={`contraste-${item.id}`} value={c} checked={item.contraste === c} onChange={() => editarExamen(item.id, { contraste: c })} className="accent-blue-600" />{c}</label>)}</div></fieldset>}
-            <Campo label="Detalle / lateralidad (opcional)" placeholder="Ej.: rodilla derecha; proyecciones; protocolo solicitado…" value={item.detalle} onChange={detalle => editarExamen(item.id, { detalle })} />
+            <Campo label="Examen *" value={item.nombre} onChange={nombre => editarExamen(item.id, renombrarExamen(item, nombre))} />
+            {camposExamen(item).contraste && <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={item.permiteContraste} onChange={e => editarExamen(item.id, { permiteContraste: e.target.checked, contraste: '' })} className="h-4 w-4 accent-blue-600" />Especificar contraste</label>}
+            {camposExamen(item).contraste && item.permiteContraste && <fieldset><legend className="mb-2 text-sm font-medium">Contraste *</legend><div className="flex flex-wrap gap-2">{CONTRASTES.map(c => <label key={c} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm ${item.contraste === c ? 'border-blue-500 bg-blue-50 text-blue-900' : 'border-slate-200 bg-white'}`}><input type="radio" name={`contraste-${item.id}`} value={c} checked={item.contraste === c} onChange={() => editarExamen(item.id, { contraste: c })} className="accent-blue-600" />{c}</label>)}</div></fieldset>}
+            <Campo label={camposExamen(item).detalleLabel} placeholder={camposExamen(item).detallePlaceholder} value={item.detalle} onChange={detalle => editarExamen(item.id, { detalle })} />
           </article>)}</div>
           <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={orden.incluirCreatinina} onChange={e => cambiar('incluirCreatinina', e.target.checked)} className="h-4 w-4 accent-blue-600" />Anotar última creatinina también en estudios sin contraste</label>
           {tieneCreatinina && <div className="space-y-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
@@ -112,8 +119,12 @@ function OrdenExamenes() {
           <h2 className="my-6 text-center text-lg font-bold tracking-widest">ORDEN DE EXÁMENES</h2>
           <div className="space-y-2 border-b pb-4 text-sm"><p><strong>Nombre:</strong> {orden.paciente || '________________________'}</p><p><strong>RUT:</strong> {orden.rut || '_______________'} <strong className="ml-3">Edad:</strong> {orden.edad || '___'} años</p><p><strong>Dirección:</strong> {orden.direccion || '________________________'}</p><p><strong>Fecha:</strong> {orden.fecha ? fechaLarga(orden.fecha) : '________________'}</p>{orden.diagnostico && <p><strong>Dg.:</strong> {orden.diagnostico}</p>}</div>
           {tieneCreatinina && <p className="mt-4 text-sm">{textoCreatinina(orden)}</p>}
-          <p className="mb-4 mt-6 text-sm font-semibold">Solicito los siguientes estudios:</p>
-          <ol className="min-h-36 list-decimal space-y-5 pl-5 text-sm leading-relaxed">{orden.examenes.map(item => <li key={item.id} className="whitespace-pre-wrap">{textoExamen(item) || 'Examen por completar'}</li>)}</ol>
+          {orden.examenes.length > 0 && <p className="mb-4 mt-6 text-sm font-semibold">Solicito los siguientes estudios:</p>}
+          {agruparExamenes(orden.examenes).map(grupo => <div key={grupo.titulo} className="mb-5">
+            <h3 className="mb-2 text-xs font-semibold">{grupo.titulo}</h3>
+            <table className="w-full table-fixed border-collapse text-left text-xs"><thead><tr className="bg-slate-100"><th className="w-9 border border-slate-300 p-2">N°</th><th className="border border-slate-300 p-2">Examen</th><th className="border border-slate-300 p-2">{grupo.detalle}</th></tr></thead><tbody>{grupo.examenes.map((item, i) => <tr key={item.id}><td className="border border-slate-300 p-2 align-top">{i + 1}</td><td className="whitespace-pre-wrap border border-slate-300 p-2 align-top">{item.nombre}</td><td className="whitespace-pre-wrap border border-slate-300 p-2 align-top">{[item.permiteContraste && item.contraste, item.detalle].filter(Boolean).join(' · ') || '—'}</td></tr>)}</tbody></table>
+          </div>)}
+          {orden.textoLibre && <p className="mt-5 whitespace-pre-wrap text-sm"><strong>Texto libre:</strong><br />{orden.textoLibre}</p>}
           {orden.observaciones && <p className="mt-5 whitespace-pre-wrap text-sm"><strong>Indicaciones generales:</strong><br />{orden.observaciones}</p>}
           <div className="mx-auto mt-10 max-w-xs text-center">{orden.firma && centro.firma ? <img src={centro.firma} alt="Firma y timbre del profesional" className="mx-auto h-24 object-contain" /> : <div className="h-20" />}<p className="border-t border-slate-400 pt-2 text-sm font-bold">{MEDICO.nombre}</p><p className="text-xs">{MEDICO.titulo} · RUT {MEDICO.rut}</p><p className="mt-2 text-[10px] text-slate-500">{orden.firma ? 'Firma electrónica simple · No constituye firma electrónica avanzada' : 'Firma y timbre'}</p></div>
         </section>

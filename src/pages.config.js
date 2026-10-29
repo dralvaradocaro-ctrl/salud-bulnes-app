@@ -49,7 +49,9 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import { lazy } from 'react';
+import { lazy as reactLazy } from 'react';
+import { loadPage } from './lib/loadPage';
+const lazy = importer => reactLazy(() => loadPage(importer));
 import Home from './pages/Home';
 
 // Cada página se descarga sólo cuando el usuario navega a ella (code splitting).
@@ -89,6 +91,7 @@ const IndicacionesUrgencia = lazy(() => import('./pages/IndicacionesUrgencia'));
 const NotaEvolucion = lazy(() => import('./pages/NotaEvolucion'));
 const CurvaExamenes = lazy(() => import('./pages/CurvaExamenes'));
 const FormulariosHODOM = lazy(() => import('./pages/FormulariosHODOM'));
+const AdecuacionTerapeutica = lazy(() => import('./pages/AdecuacionTerapeutica'));
 const VistaHospitalizados = lazy(() => import('./pages/VistaHospitalizados'));
 const OrdenExamenes = lazy(() => import('./pages/OrdenExamenes'));
 const RecetaMedica = lazy(() => import('./pages/RecetaMedica'));
@@ -131,6 +134,7 @@ export const PAGES = {
     "NotaEvolucion": NotaEvolucion,
     "CurvaExamenes": CurvaExamenes,
     "FormulariosHODOM": FormulariosHODOM,
+    "AdecuacionTerapeutica": AdecuacionTerapeutica,
     "VistaHospitalizados": VistaHospitalizados,
     // Documentos clínicos protegidos y verificación de certificados
     "CertificadoMedico": CertificadoMedico,

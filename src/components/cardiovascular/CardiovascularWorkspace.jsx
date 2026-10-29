@@ -1,3 +1,4 @@
+import { loadPage } from '@/lib/loadPage';
 import { useState, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -11,7 +12,7 @@ import { filterLocallyAvailableMedications } from '@/lib/localArsenal';
 import { resources, rosterGroups, safeResourceUrl, calendarDays, normalize } from './resources';
 import useWorkspace from './useWorkspace';
 
-const ProtocolView = lazy(() => import('@/components/topic/ResponsiveTopicLayout'));
+const ProtocolView = lazy(() => loadPage(() => import('@/components/topic/ResponsiveTopicLayout')));
 const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const field = 'w-full rounded-lg border border-slate-300 bg-white p-2 text-sm';
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };

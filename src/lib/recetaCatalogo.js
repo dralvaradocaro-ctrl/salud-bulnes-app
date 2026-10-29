@@ -24,7 +24,7 @@ export const RECETA_CATALOGO = Object.entries(grupos).flatMap(([categoria, nombr
 export const normalizarBusqueda = value => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
 export const hoyChile = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Santiago' }).format(new Date());
 export function textoMedicamento(item) {
-  return [item.nombre, item.presentacion, item.dosis && `Dosis: ${item.dosis}`, item.via && `Vía: ${item.via}`, item.frecuencia && `Frecuencia: ${item.frecuencia}`, item.duracion && `Duración: ${item.duracion}`, item.cantidad && `Cantidad total: ${item.cantidad}`, item.indicaciones].filter(Boolean).join(' · ');
+  return [item.nombre, item.presentacion && `Presentación: ${item.presentacion}`, item.dosis && `Dosis: ${item.dosis}`, item.via && `Vía: ${item.via}`, item.frecuencia && `Frecuencia: ${item.frecuencia}`, item.duracion && `Duración: ${item.duracion}`, item.cantidad && `Cantidad total: ${item.cantidad}`, item.indicaciones && `Indicaciones: ${item.indicaciones}`].filter(Boolean).join('\n');
 }
 
 // Opciones de escritura: ninguna frecuencia o dosis se asigna por diagnóstico.

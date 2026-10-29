@@ -1,3 +1,4 @@
+import { usePacienteGeneral, useAplicarPacienteGeneral } from '@/lib/PacienteGeneral';
 // Herramienta de certificados con acceso al generador de recetas.
 // Disponible en Policlínico → Documentos y por /CertificadoMedico.
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -45,7 +46,8 @@ const slug = (s) =>
     .replace(/^_|_$/g, '');
 
 function CertificadoMedico() {
-  const [datosIniciales] = useState(leerPacienteDocumentos);
+  const general = usePacienteGeneral();
+  const [datosIniciales] = useState(() => general?.paciente ? { paciente: general.paciente.nombre, rut: general.paciente.rut } : leerPacienteDocumentos());
   const qrRef = useRef(null);
 
   const [institucionId, setInstitucionId] = useState(datosIniciales.institucion || INSTITUCION_POR_DEFECTO);
@@ -74,8 +76,11 @@ function CertificadoMedico() {
   }, [datosIniciales]);
 
   useEffect(() => {
+    if (general?.paciente) return;
     guardarPacienteDocumentos({ paciente, rut, institucion: institucionId });
   }, [paciente, rut, institucionId]);
+
+  useAplicarPacienteGeneral(p => { setPaciente(p.nombre); setRut(p.rut); setCode(generarCodigo(hoyIso())); });
 
   const centro = getInstitucion(institucionId);
   const rutValido = rut.length > 0 && validateRut(rut);
@@ -156,7 +161,7 @@ function CertificadoMedico() {
 
   const nuevoCertificado = () => {
     if (!window.confirm('¿Limpiar los datos y comenzar con un nuevo paciente?')) return;
-    limpiarPacienteDocumentos();
+    limpiarPacienteDocumentos(); general?.actualizar({ nombre: '', rut: '' });
     setPaciente('');
     setRut('');
     setTexto('');

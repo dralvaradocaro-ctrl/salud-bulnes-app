@@ -20,7 +20,7 @@ try {
   assert.ok(!opcionesDosis('750 mg · comprimido de liberación prolongada').some(d => d.includes('½')));
   assert.ok(opcionesDosis('100 mg/5 mL · suspensión oral').includes('5 mL'));
   for (const item of RECETA_CATALOGO) assert.equal(new Set(item.presentaciones).size, item.presentaciones.length);
-  assert.equal(textoMedicamento({nombre: 'Losartán', presentacion: losartan.presentaciones[1], frecuencia: 'Cada 24 horas', duracion: '30 días'}), 'Losartán · 100 mg · comprimido · Frecuencia: Cada 24 horas · Duración: 30 días');
+  assert.equal(textoMedicamento({nombre: 'Losartán', presentacion: losartan.presentaciones[1], frecuencia: 'Cada 24 horas', duracion: '30 días'}), 'Losartán\nPresentación: 100 mg · comprimido\nFrecuencia: Cada 24 horas\nDuración: 30 días');
   assert.deepEqual(precargaPresentacion('50 mg · comprimido'), { dosis: '1 comprimido', via: 'Oral' });
   assert.deepEqual(precargaPresentacion('20 mg · cápsula gastrorresistente'), { dosis: '1 cápsula', via: 'Oral' });
   assert.deepEqual(precargaPresentacion('500 mg · cápsula vaginal'), { dosis: '', via: '' });
@@ -30,6 +30,9 @@ try {
   assert.equal(actualizarPresentacion({ ...previo, dosis: '2 comprimidos' }, '100 mg · comprimido').dosis, '2 comprimidos');
   assert.equal(actualizarPresentacion(previo, '').via, '');
   const receta = { paciente: 'Paciente de prueba', rut: '12.345.678-5', edad: '40', direccion: 'Calle de prueba 123', fecha: '2026-10-20', diagnostico: 'Control', observaciones: '', institucion: 'inalab', firma: false, medicamentos: [{ nombre: 'Losartán', presentacion: '100 mg · comprimido', dosis: '1 comprimido', via: 'oral', frecuencia: 'cada 24 horas', duracion: '30 días' }] };
+  const libre = await buildRecetaPdf({ ...receta, medicamentos: [], textoLibre: 'Orden de kinesioterapia. 12 sesiones.' });
+  assert.ok(libre.output().includes('12 sesiones'));
+  assert.equal(libre.getNumberOfPages(), 1);
   const sinFirma = await buildRecetaPdf(receta);
   assert.equal(sinFirma.getNumberOfPages(), 1);
   assert.ok(sinFirma.output().includes('100 mg'));

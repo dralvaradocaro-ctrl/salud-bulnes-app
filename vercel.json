@@ -1,5 +1,19 @@
 {
   "rewrites": [
-    { "source": "/((?!api/|assets/|_next/|favicon|.*\\..*).*)", "destination": "/index.html" }
+    {
+      "source": "/((?!api/|assets/|_next/|favicon|.*\\..*).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/((?!assets/|api/).*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    }
   ]
 }

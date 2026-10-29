@@ -115,6 +115,8 @@ const emptyForm = () => ({
   cama: '',
   recordBedCode: '',
   esVisitaServicio: false,
+  esVisitaIAAS: false,
+  esNotaPROA: false,
   actualizaEstadoClinico: false,
 });
 
@@ -191,6 +193,7 @@ export default function NotaEvolucion() {
 
   // Orden del impreso: los exámenes complementarios van entre el examen físico
   // y las indicaciones, y cada bloque vacío simplemente no se emite.
+  const tituloNota = [form.esVisitaServicio && 'Visita servicio Dr. Rubilar', form.esVisitaIAAS && 'Visita IAAS', form.esNotaPROA && 'Nota PROA'].filter(Boolean).join(' · ') || 'Nota de evolución';
   const complementary = complementaryBlocks(form);
   const printSections = SECTIONS.flatMap(section => {
     const own = form[section.key].trim() ? [{ key: section.key, label: section.label, text: form[section.key].trim() }] : [];
@@ -313,11 +316,11 @@ export default function NotaEvolucion() {
         proa_entry_type: form.esVisitaServicio ? 'visita_servicio' : 'nota_evolucion_hospitalaria',
         evolucion: narrative,
         ...(form.actualizaEstadoClinico ? { vista_ultima_evolucion: currentState || narrative, vista_ultima_evolucion_actualizada_en: stateTimestamp, vista_planes_pendientes: currentPlans || latest.vista_planes_pendientes || '' } : {}),
-        nota_evolucion: { diagnostico: form.diagnostico, anamnesis: form.anamnesis, examen_fisico: form.examenFisico, examenes_complementarios: complementarios, laboratorio: form.laboratorio, imagenes: filledRows(form.imagenes), otros_examenes: filledRows(form.otrosExamenes), indicaciones: form.indicaciones, medico: form.medico, fecha_hora: form.fechaHora, visita_servicio: form.esVisitaServicio, actualiza_estado_clinico: form.actualizaEstadoClinico, titulo: form.esVisitaServicio ? 'Visita servicio Dr. Rubilar' : 'Nota de evolución' },
+        nota_evolucion: { diagnostico: form.diagnostico, anamnesis: form.anamnesis, examen_fisico: form.examenFisico, examenes_complementarios: complementarios, laboratorio: form.laboratorio, imagenes: filledRows(form.imagenes), otros_examenes: filledRows(form.otrosExamenes), indicaciones: form.indicaciones, medico: form.medico, fecha_hora: form.fechaHora, visita_servicio: form.esVisitaServicio, actualiza_estado_clinico: form.actualizaEstadoClinico, visita_iaas: form.esVisitaIAAS, nota_proa: form.esNotaPROA, titulo: tituloNota },
       });
       const refreshed = await fetchProaRecords();
       setBedRecords(refreshed);
-      setSaveMessage(`${form.esVisitaServicio ? 'Visita servicio Dr. Rubilar' : 'Nota de evolución'} guardada en el historial${form.actualizaEstadoClinico ? '; estado clínico y planes actualizados.' : '; la tabla clínica no fue modificada.'}`);
+      setSaveMessage(`${tituloNota} guardada en el historial${form.actualizaEstadoClinico ? '; estado clínico y planes actualizados.' : '; la tabla clínica no fue modificada.'}`);
     } catch (error) {
       console.error('Error guardando nota de evolución:', error);
       setSaveMessage('No fue posible guardar la nota. Intenta nuevamente.');
@@ -397,7 +400,7 @@ export default function NotaEvolucion() {
           <div className="evolution-live-preview mx-auto w-full max-w-[210mm] bg-white shadow-xl">
             <div className="evolution-preview-heading">
               <img src="/logo-hospital.png" alt="Hospital de Bulnes" />
-              <h1>{form.esVisitaServicio ? 'VISITA SERVICIO DR. RUBILAR' : 'NOTA DE EVOLUCIÓN'}</h1>
+              <h1>{tituloNota.toUpperCase()}</h1>
             </div>
             <div className="evolution-preview-grid">
               <label className="col-span-2"><strong>Nombre:</strong><input value={form.pacienteNombre} onChange={e => update('pacienteNombre', e.target.value)} /></label>
@@ -481,20 +484,19 @@ export default function NotaEvolucion() {
           </Button>
         </section>
 
-        <section className={`rounded-2xl border p-4 shadow-sm ${form.esVisitaServicio ? 'border-teal-300 bg-teal-50' : 'border-slate-200 bg-white'}`}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div><p className="font-bold text-slate-900">Visita servicio Dr. Rubilar</p><p className="text-xs text-slate-500">Al activarlo, la nota se guarda y se imprime con este título como visita de servicio.</p></div>
-            <button type="button" role="switch" aria-checked={form.esVisitaServicio} onClick={() => update('esVisitaServicio', !form.esVisitaServicio)} className={`relative h-8 w-14 rounded-full transition ${form.esVisitaServicio ? 'bg-teal-600' : 'bg-slate-300'}`}><span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${form.esVisitaServicio ? 'left-7' : 'left-1'}`} /></button>
+        <section aria-label="Opciones de la nota" className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[
+              ['esVisitaServicio', 'Visita servicio Dr. Rubilar'],
+              ['esVisitaIAAS', 'Visita IAAS'],
+              ['esNotaPROA', 'Nota PROA'],
+              ['actualizaEstadoClinico', 'Actualizar estado clínico'],
+            ].map(([key, label]) => <label key={key} className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-3 py-2.5 ${form[key] ? 'border-teal-200 bg-teal-50' : 'border-slate-100'}`}>
+              <span className="text-sm font-semibold text-slate-800">{label}</span>
+              <button type="button" role="switch" aria-label={label} aria-checked={form[key]} onClick={() => update(key, !form[key])} className={`relative h-6 w-11 shrink-0 rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-teal-600 ${form[key] ? 'bg-teal-600' : 'bg-slate-300'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${form[key] ? 'left-[22px]' : 'left-0.5'}`} /></button>
+            </label>)}
           </div>
-          {saveMessage && <p className={`mt-3 rounded-lg px-3 py-2 text-sm font-semibold ${saveMessage.startsWith('No ') || saveMessage.startsWith('Completa') ? 'bg-red-50 text-red-700' : 'bg-emerald-100 text-emerald-800'}`}>{saveMessage}</p>}
-        </section>
-
-        <section className={`rounded-2xl border p-4 shadow-sm ${form.actualizaEstadoClinico ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="max-w-2xl"><p className="font-bold text-slate-900">Actualizar el estado clínico desde esta nota</p><p className="mt-1 text-xs text-slate-500">Desactivado por defecto: la nota solo queda en la historia y no modifica la tabla. Al activarlo, anamnesis y examen físico actualizarán “Estado clínico actual”; las indicaciones actualizarán “Planes”.</p></div>
-            <button type="button" role="switch" aria-checked={form.actualizaEstadoClinico} onClick={() => update('actualizaEstadoClinico', !form.actualizaEstadoClinico)} className={`relative h-8 w-14 shrink-0 rounded-full transition ${form.actualizaEstadoClinico ? 'bg-emerald-600' : 'bg-slate-300'}`}><span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-all ${form.actualizaEstadoClinico ? 'left-7' : 'left-1'}`} /></button>
-          </div>
-          {form.actualizaEstadoClinico && <p className="mt-3 rounded-lg border border-emerald-200 bg-white/70 px-3 py-2 text-xs font-semibold text-emerald-800">Esta nota sí renovará la vigencia del estado clínico y actualizará los planes visibles en la tabla.</p>}
+          {saveMessage && <p role="status" className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-sm">{saveMessage}</p>}
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -621,7 +623,7 @@ export default function NotaEvolucion() {
       <article className="evolution-print-sheet">
         <div className="evolution-print-heading">
           <img src="/logo-hospital.png" alt="Hospital de Bulnes" />
-          <h1>{form.esVisitaServicio ? 'VISITA SERVICIO DR. RUBILAR' : 'NOTA DE EVOLUCIÓN'}</h1>
+          <h1>{tituloNota.toUpperCase()}</h1>
         </div>
         <div className="evolution-patient-grid">
           <p><strong>Nombre:</strong> {form.pacienteNombre}</p>

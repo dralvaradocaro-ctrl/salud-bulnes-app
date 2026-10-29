@@ -1,3 +1,4 @@
+import { useAplicarPacienteGeneral } from '@/lib/PacienteGeneral';
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ export default function CalculatorWrapper({
     servicio: '',
     cama: '',
   });
+  const pacienteGeneral = useAplicarPacienteGeneral(p => setPatientInfo(actual => ({ ...actual, name: p.nombre, rut: p.rut })), showPatientInfo && !embeddedPatientContext && !requestRecordLocation && !onRecordResult);
   const [isPrintMode, setIsPrintMode] = useState(false);
   const [printTimestamp, setPrintTimestamp] = useState(null);
   const [printError, setPrintError] = useState('');
@@ -105,7 +107,7 @@ export default function CalculatorWrapper({
         title={title}
         inputs={inputs}
         result={result}
-        patientInfo={recordContext || (needsPatient ? patientInfo : null)}
+        patientInfo={recordContext || ((needsPatient || pacienteGeneral) ? patientInfo : null)}
         generatedAt={printTimestamp}
       />
     );

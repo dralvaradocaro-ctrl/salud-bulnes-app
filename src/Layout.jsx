@@ -1,3 +1,5 @@
+import { PacienteGeneralProvider, permitePacienteGeneral } from '@/lib/PacienteGeneral';
+import PacienteGeneralButton from '@/components/PacienteGeneralButton';
 import ThemeToggle from '@/components/ThemeToggle';
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
@@ -39,7 +41,9 @@ export default function Layout({ children, currentPageName }) {
   ].filter(Boolean);
 
   return (
+    <PacienteGeneralProvider enabled={permitePacienteGeneral(currentPageName, location.search)}>
     <div className="min-h-screen bg-slate-50">
+      <PacienteGeneralButton />
       <nav
         aria-label="Navegación principal"
         className="fixed bottom-5 left-1/2 z-[60] hidden -translate-x-1/2 items-center gap-1 rounded-full border border-white/45 bg-white/60 p-1.5 shadow-[0_18px_45px_rgba(15,23,42,0.16)] backdrop-blur-2xl supports-[backdrop-filter]:bg-white/45 md:flex print:hidden"
@@ -97,5 +101,6 @@ export default function Layout({ children, currentPageName }) {
       </main>
       <FloatingNewsButton currentPageName={currentPageName} />
     </div>
+    </PacienteGeneralProvider>
   );
 }

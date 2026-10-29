@@ -1,3 +1,4 @@
+import { usePacienteGeneral, useAplicarPacienteGeneral } from '@/lib/PacienteGeneral';
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -277,6 +278,7 @@ function PatInput({ field, patient, pat, ...rest }) {
 
 // ── Página principal ──────────────────────────────────────────────────
 export default function SolicitudExamenes() {
+  const general = usePacienteGeneral();
   const navigate = useNavigate();
   const goBack = () => {
     if (window.history.length > 1) navigate(-1);
@@ -290,6 +292,7 @@ export default function SolicitudExamenes() {
   // comunes del paciente en /Templates y luego abrió esta página, los
   // tomamos aquí. La key se mantiene en sessionStorage hasta nueva tanda.
   useEffect(() => {
+    if (general?.paciente) return;
     const p = getMultiPrefill();
     if (!p) return;
     setPatient(prev => ({
@@ -306,6 +309,7 @@ export default function SolicitudExamenes() {
     }));
   }, []);
 
+  useAplicarPacienteGeneral(p => setPatient(actual => ({ ...actual, nombre: p.nombre, rut: p.rut })));
   const pat = (field, value) => {
     if (field === 'fecha_nacimiento') {
       setPatient(p => ({ ...p, fecha_nacimiento: value, edad: calcularEdad(value) }));
@@ -350,9 +354,10 @@ export default function SolicitudExamenes() {
             <h1 className="text-base font-bold text-slate-900">Solicitud de Exámenes</h1>
             <p className="text-xs text-slate-500">Hospital de Bulnes · COD. 32</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setSelected(new Set()); setSearch(''); }}>Borrar contenido</Button>
             <Button variant="outline" size="sm" onClick={clearAll} className="gap-1.5">
-              <RotateCcw className="h-3.5 w-3.5" /> Limpiar
+              <RotateCcw className="h-3.5 w-3.5" /> Nuevo paciente
             </Button>
             <Button size="sm" onClick={() => window.print()} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
               <Printer className="h-3.5 w-3.5" /> Imprimir

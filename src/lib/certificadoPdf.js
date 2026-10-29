@@ -14,7 +14,7 @@ export const INSTITUCIONES = {
     logo: '/logo-inalab.jpg',
     logoFormato: 'JPEG',
     // Firma manuscrita + timbre, superpuesta sobre la línea de firma.
-    firma: '/firma-alvarado.png',
+    firma: '/firma-alvarado-limpia.png',
     firmaProporcion: 682 / 1012,
   },
   bulnes: {

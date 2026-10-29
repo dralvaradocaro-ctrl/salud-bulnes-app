@@ -68,7 +68,23 @@ export function buscarExamenes(query = '', categoria = '') {
   return EXAMENES_CATALOGO.filter(item => (!categoria || item.categoria === categoria) && tokens.every(t => normalizar(`${item.nombre} ${item.categoria} ${item.alias}`).includes(t)));
 }
 export function nuevoExamen(item = {}) {
-  return { id: crypto.randomUUID(), nombre: item.nombre || '', permiteContraste: !!item.permiteContraste, contraste: '', detalle: '' };
+  const conocido = EXAMENES_CATALOGO.find(e => normalizar(e.nombre) === normalizar(item.nombre));
+  return { id: crypto.randomUUID(), nombre: item.nombre || '', categoria: conocido?.categoria || item.categoria || '', permiteContraste: conocido?.permiteContraste ?? !!item.permiteContraste, contraste: '', detalle: '' };
+}
+export function camposExamen(item) {
+  const conocido = EXAMENES_CATALOGO.find(e => normalizar(e.nombre) === normalizar(item.nombre));
+  const categoria = conocido?.categoria || item.categoria || '';
+  const imagen = ['Radiografía', 'Ecografía', 'Tomografía', 'Resonancia'].includes(categoria);
+  return {
+    contraste: conocido ? conocido.permiteContraste : (!categoria || ['Tomografía', 'Resonancia'].includes(categoria)),
+    detalleLabel: imagen ? 'Detalle / lateralidad (opcional)' : 'Observaciones del examen (opcional)',
+    detallePlaceholder: imagen ? 'Ej.: región, lado o proyecciones solicitadas…' : 'Escribe una observación si corresponde…',
+  };
+}
+export function renombrarExamen(item, nombre) {
+  const actualizado = { ...item, nombre, categoria: '' };
+  const conocido = EXAMENES_CATALOGO.find(e => normalizar(e.nombre) === normalizar(nombre));
+  return { ...actualizado, categoria: conocido?.categoria || '', permiteContraste: conocido?.permiteContraste ?? item.permiteContraste, contraste: '' };
 }
 export function textoExamen(item) {
   return [item.nombre.trim(), item.permiteContraste && item.contraste, item.detalle.trim()].filter(Boolean).join(' · ');
@@ -83,7 +99,7 @@ export function textoCreatinina(orden) {
 }
 export function validarEstudios(orden) {
   const errores = [];
-  if (!orden.examenes.length) errores.push('al menos un examen');
+  if (!orden.examenes.length && !orden.textoLibre?.trim()) errores.push('al menos un examen o texto libre');
   if (orden.examenes.some(e => !e.nombre.trim())) errores.push('nombre de cada examen');
   if (orden.examenes.some(e => e.permiteContraste && !CONTRASTES.includes(e.contraste))) errores.push('con o sin contraste para cada estudio que corresponda');
   if (mostrarCreatinina(orden) && orden.creatinina.trim()) {
@@ -92,4 +108,21 @@ export function validarEstudios(orden) {
     if (!['mg/dL', 'µmol/L'].includes(orden.unidadCreatinina)) errores.push('unidad de creatinina');
   }
   return errores;
+}
+
+// Shared grouping keeps the on-screen order and the PDF consistent.
+export function agruparExamenes(examenes) {
+  const grupos = [
+    { titulo: 'Laboratorio y otros estudios', detalle: 'Observaciones', examenes: [] },
+    { titulo: 'Imagenología', detalle: 'Detalle / contraste', examenes: [] },
+  ];
+  for (const item of examenes) {
+    const conocido = EXAMENES_CATALOGO.find(e => normalizar(e.nombre) === normalizar(item.nombre));
+    const categoria = conocido?.categoria || item.categoria;
+    const imagen = ['Radiografía', 'Ecografía', 'Tomografía', 'Resonancia'].includes(categoria)
+      || ['Mamografía bilateral', 'Densitometría ósea', 'Ecocardiograma Doppler'].includes(conocido?.nombre)
+      || (!conocido && /^(radiografia|rx |ecografia|eco |tomografia|tc |tac |angio-tc|uro-tc|resonancia|rm |rnm |mamografia|densitometria|ecocardiograma)/.test(normalizar(item.nombre)));
+    grupos[imagen ? 1 : 0].examenes.push(item);
+  }
+  return grupos.filter(grupo => grupo.examenes.length);
 }

@@ -7,7 +7,7 @@ const originalFetch = globalThis.fetch;
 try {
   globalThis.fetch = async path => new Response(await readFile(new URL(`../public${path}`, import.meta.url)));
   const { buildOrdenExamenesPdf } = await server.ssrLoadModule('/src/lib/ordenExamenesPdf.js');
-  const { EXAMENES_CATALOGO, buscarExamenes, nuevoExamen, mostrarCreatinina, textoCreatinina, textoExamen, validarEstudios } = await server.ssrLoadModule('/src/lib/ordenExamenesCatalogo.js');
+  const { EXAMENES_CATALOGO, buscarExamenes, nuevoExamen, mostrarCreatinina, textoCreatinina, textoExamen, validarEstudios, agruparExamenes, camposExamen, renombrarExamen } = await server.ssrLoadModule('/src/lib/ordenExamenesCatalogo.js');
   assert.ok(EXAMENES_CATALOGO.length > 100);
   assert.equal(new Set(EXAMENES_CATALOGO.map(e => e.nombre)).size, EXAMENES_CATALOGO.length);
   assert.ok(buscarExamenes('TAC ABDOMEN').some(e => e.nombre === 'TC de abdomen y pelvis'));
@@ -28,9 +28,39 @@ try {
   assert.deepEqual(validarEstudios(orden), []);
   assert.equal(mostrarCreatinina(orden), false);
   assert.equal(textoCreatinina(orden), '');
+  const viral = nuevoExamen(buscarExamenes('Panel viral respiratorio')[0]);
+  assert.equal(viral.categoria, 'Microbiología y serología');
+  assert.equal(camposExamen(viral).contraste, false);
+  assert.doesNotMatch(camposExamen(viral).detalleLabel, /lateralidad/);
+  assert.match(camposExamen(nuevoExamen(buscarExamenes('Radiografía de rodilla')[0])).detalleLabel, /lateralidad/);
+  assert.equal(camposExamen(tc).contraste, true);
+  const renombrado = renombrarExamen({ ...tc, contraste: 'Con contraste' }, 'Panel viral respiratorio');
+  assert.equal(renombrado.permiteContraste, false);
+  assert.equal(renombrado.contraste, '');
+  const libre = { ...orden, examenes: [], textoLibre: 'Solicitud escrita directamente\nSegunda línea de la solicitud' };
+  assert.deepEqual(validarEstudios(libre), []);
+  assert.ok(validarEstudios({ ...libre, textoLibre: '   ' }).length);
+  const pdfLibre = await buildOrdenExamenesPdf(libre);
+  assert.ok(pdfLibre.output().includes('Solicitud escrita directamente'));
+  assert.ok(pdfLibre.output().includes('Segunda'));
+  assert.ok(!pdfLibre.output().includes('Detalle / contraste'));
+  const mixtos = [nuevoExamen({ nombre: 'Hemograma' }), tc, nuevoExamen({ nombre: 'Proteína C reactiva (PCR)' }), nuevoExamen({ nombre: 'Mamografía bilateral' })];
+  const grupos = agruparExamenes(mixtos);
+  assert.equal(grupos.length, 2);
+  assert.deepEqual(grupos[0].examenes.map(e => e.nombre), ['Hemograma', 'Proteína C reactiva (PCR)']);
+  assert.deepEqual(grupos[1].examenes.map(e => e.nombre), ['TC de cerebro', 'Mamografía bilateral']);
+  assert.equal(agruparExamenes([]).length, 0);
+  assert.equal(agruparExamenes([tc]).length, 1);
+  assert.equal(agruparExamenes([nuevoExamen({ nombre: 'TAC rodilla derecha' })])[0].titulo, 'Imagenología');
+  const mixtoPdf = await buildOrdenExamenesPdf({ ...orden, examenes: mixtos });
+  assert.ok(mixtoPdf.output().includes('Laboratorio y otros estudios'));
+  assert.ok(mixtoPdf.output().includes('Imagenolog'));
+  assert.ok(mixtoPdf.output().includes('/F1 9 Tf'));
   const simple = await buildOrdenExamenesPdf(orden);
   assert.equal(simple.getNumberOfPages(), 1);
   assert.ok(simple.output().includes('Sin contraste'));
+  assert.ok(simple.output().includes('Detalle / contraste'));
+  assert.ok(simple.output().includes(' re')); // table cell rectangles
   assert.ok(!simple.output().includes('RECETA'));
   assert.ok(!simple.output().includes('creatinina'));
   assert.ok(!simple.output().includes('Firma electr'));
@@ -56,6 +86,9 @@ try {
   assert.ok(larga.getNumberOfPages() > 2);
   assert.ok(larga.output().includes('Estudio manual 65'));
   assert.ok(larga.output().includes(`de ${larga.getNumberOfPages()}`));
+  const gigante = await buildOrdenExamenesPdf({ ...lab, examenes: [{ ...nuevoExamen({ nombre: 'Estudio extenso' }), detalle: 'Detalle '.repeat(2000) + 'FINDETALLE' }] });
+  assert.ok(gigante.getNumberOfPages() > 2);
+  assert.ok(gigante.output().includes('FINDETALLE'));
   console.log(`OK: ${EXAMENES_CATALOGO.length} estudios; búsquedas, contraste, creatinina/fecha, firma, ambas instituciones y PDF de ${larga.getNumberOfPages()} páginas.`);
 } finally {
   globalThis.fetch = originalFetch;
