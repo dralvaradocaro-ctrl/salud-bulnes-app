@@ -8,6 +8,7 @@ import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import SideSectionIndex from './SideSectionIndex';
+import ArsenalHighlighter from './ArsenalHighlighter';
 import {
   LinkIcon, Calculator,
   Eye, Stethoscope, FlaskConical, Scissors,
@@ -1269,7 +1270,8 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
   const enter = 'animate-in fade-in slide-in-from-bottom-2 duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] fill-mode-both motion-reduce:animate-none';
   const renderBlockList = (list) => {
     // Se lee al renderizar (las pestañas se declaran más abajo).
-    const tabKey = [activeTab, activeSubtab, localTab, gesTab].join('|');
+    // Única por lista (dos listas hermanas no pueden compartir key, o React deja copias al cambiar de pestaña).
+    const tabKey = [activeTab, activeSubtab, localTab, gesTab, safeBlocks.indexOf(list[0])].join('|');
     if (!isModular) return <div key={tabKey} className={`space-y-5 ${enter}`}>{list.map(renderSafeBlock).filter(Boolean)}</div>;
     const spans = packRows(list.map(blockSize));
     return <div key={tabKey} className={`grid items-start gap-4 lg:grid-cols-12 ${enter}`}>{list.map((block, i) => renderSafeBlockAt(block, spans[i])).filter(Boolean)}</div>;
@@ -1293,6 +1295,8 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     return tabValues.includes(requested) ? requested : tabValues[0];
   })();
   const [activeTab, setActiveTab] = useState(initialTab);
+  // Contenedor del protocolo: ahí se destacan los medicamentos del arsenal local.
+  const contentRef = useRef(null);
   const tabBarRef = useRef(null);
 
   // Offsets dinámicos para las barras sticky: medimos la altura real del header
@@ -1679,7 +1683,8 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
   const gesMermaidBlocks = safeBlocks.filter(b => b.type === 'mermaid');
 
   return (
-    <div className="space-y-5">
+    <div ref={contentRef} className="space-y-5">
+      <ArsenalHighlighter rootRef={contentRef} />
 
       {/* ── Pinned protocol header (above all tabs) ── */}
       {pinnedHeaderBlocks.length > 0 && (
