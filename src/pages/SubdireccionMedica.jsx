@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LogOut, FileText, Settings2, Users, CalendarDays, Clock, Mic, Gavel, MoreHorizontal, BarChart3, ClipboardCheck, AlertCircle, LayoutGrid, ListOrdered } from 'lucide-react';
 import AgendaSemanal from '@/components/sdm/AgendaSemanal';
+import Documentos from '@/components/sdm/Documentos';
 import ProgramAssignments from '@/components/sdm/ProgramAssignments';
 import Cronograma from '@/components/sdm/Cronograma';
 import MeetingBlocks from '@/components/sdm/MeetingBlocks';
@@ -97,8 +98,7 @@ export default function SubdireccionMedica() {
           </TabsList>
 
           <TabsContent value="documentos">
-            <Placeholder icon={FileText} title="Documentos relevantes"
-              description="Acceso a documentos administrativos y de gestión." />
+            <Documentos />
           </TabsContent>
 
           <TabsContent value="consola">

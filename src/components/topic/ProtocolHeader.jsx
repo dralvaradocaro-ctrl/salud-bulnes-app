@@ -4,8 +4,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FileText, Calendar, User, Target, Download } from 'lucide-react';
 
+// URL del PDF propio del protocolo; una carpeta de Drive no cuenta como documento.
+export function getProtocolPdfUrl(topic) {
+  const url = topic?.protocol_file_url || '';
+  return /^https?:\/\//i.test(url) && !/drive\.google\.com\/.*folders\//i.test(url) ? url : null;
+}
+
 export default function ProtocolHeader({ topic }) {
-  const downloadUrl = /^https?:\/\//i.test(topic.protocol_file_url || '') && !/drive\.google\.com\/.*folders\//i.test(topic.protocol_file_url) ? topic.protocol_file_url : null;
+  const downloadUrl = getProtocolPdfUrl(topic);
 
   const isMedicalReference =
     (topic.tipo_contenido || []).includes('contenido_medico') &&

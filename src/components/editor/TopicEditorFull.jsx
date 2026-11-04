@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   GripVertical, X, Plus, FileText, Sparkles, Link as LinkIcon,
-  Save, Eye, EyeOff, GitBranch, AlertCircle
+  Save, Eye, EyeOff, GitBranch, AlertCircle, Star
 } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import ReactMarkdown from 'react-markdown';
@@ -22,8 +22,21 @@ const BLOCK_TYPES = [
   { type: 'flowchart', label: 'Paso de Flujo', icon: GripVertical },
   { type: 'algorithm', label: 'Algoritmo', icon: GitBranch },
   { type: 'alert', label: 'Alerta', icon: AlertCircle },
-  { type: 'reference', label: 'Referencia', icon: LinkIcon }
+  { type: 'reference', label: 'Referencia', icon: LinkIcon },
+  { type: 'key_facts', label: 'Lo esencial', icon: Star }
 ];
+
+// "Lo esencial": hasta 4 datos que la vista modular muestra arriba del protocolo.
+const MAX_KEY_FACTS = 4;
+const KEY_FACT_TONES = [
+  { value: 'neutral', label: 'Gris', swatch: 'bg-slate-200' },
+  { value: 'blue', label: 'Azul', swatch: 'bg-blue-200' },
+  { value: 'teal', label: 'Verde azulado', swatch: 'bg-teal-200' },
+  { value: 'amber', label: 'Ámbar', swatch: 'bg-amber-200' },
+  { value: 'red', label: 'Rojo', swatch: 'bg-red-200' },
+];
+const KEY_FACT_SOFT = { neutral: 'bg-slate-50', blue: 'bg-blue-50', teal: 'bg-teal-50', amber: 'bg-amber-50', red: 'bg-red-50' };
+const emptyKeyFact = () => ({ label: '', value: '', note: '', tone: 'neutral' });
 
 const FLOW_COLORS = [
   { value: 'blue', label: 'Azul', bg: 'bg-blue-50', border: 'border-blue-200', circle: 'bg-blue-600' },
@@ -141,6 +154,10 @@ export default function TopicEditorFull({
   };
 
   const addBlock = (type) => {
+    if (type === 'key_facts' && formData.blocks.some(b => b.type === 'key_facts')) {
+      toast.info('Este protocolo ya tiene un bloque «Lo esencial».');
+      return;
+    }
     const newBlock = {
       id: `block-${Date.now()}`,
       type,
@@ -158,7 +175,12 @@ export default function TopicEditorFull({
       newBlock.reference_id = '';
       newBlock.reference_label = '';
     }
-    
+
+    if (type === 'key_facts') {
+      newBlock.title = 'Lo esencial';
+      newBlock.facts = [emptyKeyFact()];
+    }
+
     setFormData(prev => ({
       ...prev,
       blocks: [...prev.blocks, newBlock]
@@ -169,6 +191,13 @@ export default function TopicEditorFull({
     setFormData(prev => ({
       ...prev,
       blocks: prev.blocks.map(b => b.id === id ? { ...b, [field]: value } : b)
+    }));
+  };
+
+  const updateFacts = (id, update) => {
+    setFormData(prev => ({
+      ...prev,
+      blocks: prev.blocks.map(b => b.id === id ? { ...b, facts: update(b.facts || []) } : b)
     }));
   };
 
@@ -786,6 +815,67 @@ export default function TopicEditorFull({
                               />
                             )}
 
+                            {block.type === 'key_facts' && (
+                              <div className="space-y-3">
+                                <p className="text-xs text-slate-500">
+                                  Hasta {MAX_KEY_FACTS} datos que la vista modular muestra arriba del protocolo. Un dato sin valor no se muestra.
+                                </p>
+                                {(block.facts || []).map((fact, idx) => (
+                                  <div key={idx} className="rounded-lg border border-slate-200 bg-white p-3 space-y-2">
+                                    <div className="flex gap-2">
+                                      <Input
+                                        value={fact.label || ''}
+                                        onChange={(e) => updateFacts(block.id, facts => facts.map((f, i) => i === idx ? { ...f, label: e.target.value } : f))}
+                                        placeholder="Etiqueta (ej. Primera línea, vía oral)"
+                                        aria-label={`Etiqueta del dato ${idx + 1}`}
+                                        className="flex-1"
+                                      />
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => updateFacts(block.id, facts => facts.filter((_, i) => i !== idx))}
+                                        aria-label={`Quitar dato ${idx + 1}`}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                    <Input
+                                      value={fact.value || ''}
+                                      onChange={(e) => updateFacts(block.id, facts => facts.map((f, i) => i === idx ? { ...f, value: e.target.value } : f))}
+                                      placeholder="Dato principal (ej. Risperidona 0,25–0,5 mg)"
+                                      aria-label={`Valor del dato ${idx + 1}`}
+                                    />
+                                    <Input
+                                      value={fact.note || ''}
+                                      onChange={(e) => updateFacts(block.id, facts => facts.map((f, i) => i === idx ? { ...f, note: e.target.value } : f))}
+                                      placeholder="Nota breve (opcional)"
+                                      aria-label={`Nota del dato ${idx + 1}`}
+                                    />
+                                    <div className="flex items-center gap-2" role="radiogroup" aria-label={`Color del dato ${idx + 1}`}>
+                                      {KEY_FACT_TONES.map(tone => (
+                                        <button
+                                          key={tone.value}
+                                          type="button"
+                                          role="radio"
+                                          aria-checked={(fact.tone || 'neutral') === tone.value}
+                                          title={tone.label}
+                                          aria-label={tone.label}
+                                          onClick={() => updateFacts(block.id, facts => facts.map((f, i) => i === idx ? { ...f, tone: tone.value } : f))}
+                                          className={`h-6 w-6 rounded-full border-2 ${tone.swatch} ${(fact.tone || 'neutral') === tone.value ? 'border-slate-800' : 'border-transparent'}`}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                ))}
+                                {(block.facts || []).length < MAX_KEY_FACTS && (
+                                  <Button variant="outline" size="sm" onClick={() => updateFacts(block.id, facts => [...facts, emptyKeyFact()])}>
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Agregar dato
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+
                             {(block.type === 'flowchart' || block.type === 'algorithm') && (
                               <div className="space-y-3">
                                 {/* Color selector */}
@@ -964,6 +1054,22 @@ export default function TopicEditorFull({
                                 <p className="text-xs text-amber-800 mt-0.5">{block.content}</p>
                               )}
                             </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* lo esencial */}
+                      {block.type === 'key_facts' && (block.facts || []).some(f => f.value?.trim()) && (
+                        <div className="border-t border-slate-100 pt-4">
+                          <p className="mb-2 text-xs font-semibold text-slate-500">Lo esencial (vista modular)</p>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {block.facts.filter(f => f.value?.trim()).slice(0, MAX_KEY_FACTS).map((f, i) => (
+                              <div key={i} className={`rounded-lg px-3 py-2 ${KEY_FACT_SOFT[f.tone] || KEY_FACT_SOFT.neutral}`}>
+                                {f.label && <p className="text-[11px] font-semibold text-slate-600">{f.label}</p>}
+                                <p className="text-sm font-bold text-slate-900">{f.value}</p>
+                                {f.note && <p className="text-xs text-slate-600">{f.note}</p>}
+                              </div>
+                            ))}
                           </div>
                         </div>
                       )}

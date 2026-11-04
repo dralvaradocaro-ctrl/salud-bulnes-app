@@ -96,6 +96,7 @@ const VariosDocumentos = lazy(() => import('./pages/VariosDocumentos'));
 const VistaHospitalizados = lazy(() => import('./pages/VistaHospitalizados'));
 const OrdenExamenes = lazy(() => import('./pages/OrdenExamenes'));
 const RecetaMedica = lazy(() => import('./pages/RecetaMedica'));
+const InformeComplementario = lazy(() => import('./pages/InformeComplementario'));
 const CertificadoMedico = lazy(() => import('./pages/CertificadoMedico'));
 const VerificarCertificado = lazy(() => import('./pages/VerificarCertificado'));
 import __Layout from './Layout.jsx';
@@ -140,6 +141,7 @@ export const PAGES = {
     "VistaHospitalizados": VistaHospitalizados,
     // Documentos clínicos protegidos y verificación de certificados
     "CertificadoMedico": CertificadoMedico,
+    "InformeComplementario": InformeComplementario,
     "RecetaMedica": RecetaMedica,
     "OrdenExamenes": OrdenExamenes,
     "VerificarCertificado": VerificarCertificado,

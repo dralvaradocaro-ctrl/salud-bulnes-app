@@ -37,6 +37,13 @@ export const FORM_GROUPS = [
 // `details` es lo que se despliega al pasar el mouse (qué se puede solicitar).
 export const STATIC_FORMS = [
   {
+    group: 'paciente', route: 'InformeComplementario', tone: 'teal', Icon: FileText,
+    title: 'Informe complementario de médico tratante',
+    description: 'Informe para COMPIN editable directamente sobre el documento.',
+    details: ['Licencia médica', 'Antecedentes y evolución', 'Pronóstico laboral', 'Fechas precargadas', 'Imprimir / Guardar PDF'],
+    show: c => c.hasPolicinico,
+  },
+  {
     group: 'paciente', route: 'OrdenExamenes', tone: 'blue', Icon: FlaskConical,
     title: 'Orden de exámenes',
     description: 'Estudios precargados, contraste y creatinina. Acceso restringido.',

@@ -6,6 +6,8 @@ import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import SideSectionIndex from './SideSectionIndex';
 import {
   LinkIcon, Calculator,
   Eye, Stethoscope, FlaskConical, Scissors,
@@ -29,6 +31,10 @@ import FIQRCalculator from '@/components/calculators/FIQRCalculator';
 import PSFSCalculator from '@/components/calculators/PSFSCalculator';
 import ProceduralSedoanalgesiaCalculator from '@/components/calculators/ProceduralSedoanalgesiaCalculator';
 import HeartsPathway, { HeartsTreatmentLadder } from './HeartsPathway';
+import { renderModularBlock, ModularReference } from './modular/ModularBlock';
+import ModularTabBar from './modular/ModularTabBar';
+import ModuleCard from './modular/ModuleCard';
+import { blockSize, isDocumentInfoBlock, packRows, summarizeBlocks } from '@/lib/blockContent';
 
 // Renders text with inline clickable links for patterns defined in block.links.
 // block.links value can be:
@@ -742,7 +748,9 @@ function ChecklistBlock({ block }) {
   );
 }
 
-export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto', relatedTopics, relatedTools }) {
+// stickyBarClassName: fondo de las barras de pestañas fijas.
+// variant 'modular': todos los bloques con la tarjeta común, en grilla de 12 columnas y con pestañas descriptivas.
+export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto', relatedTopics, relatedTools, stickyBarClassName = 'bg-white', variant = 'classic' }) {
   const safeRelatedTopics = relatedTopics || [];
   const safeRelatedTools = relatedTools || [];
   const visibleRelatedTopics = safeRelatedTopics.filter(ref => ref?.topic_id && ref?.label);
@@ -750,7 +758,29 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     !isHiddenCalculatorId(ref.tool_id) && !isHiddenCalculatorName(ref.label)
   );
 
-  const renderBlock = (block) => {
+  const isModular = variant === 'modular';
+
+  // Vista modular: texto, flujos, criterios, alertas, referencias y diagramas comparten la tarjeta común;
+  // calculadoras, tablas y demás tipos con diseño propio siguen con su renderizado.
+  const renderModular = (block, wide) => {
+    if (block.type === 'reference') {
+      if (!block.reference_id || !block.reference_label) return null;
+      const kind = block.reference_type === 'calculator' ? 'calculator' : block.reference_type === 'page' ? 'page' : 'topic';
+      if (kind === 'calculator' && (isHiddenCalculatorId(block.reference_id) || isHiddenCalculatorName(block.reference_label))) return null;
+      const to = kind === 'calculator'
+        ? createPageUrl(`AllCalculators?calc=${block.reference_id}`)
+        : kind === 'page' ? createPageUrl(block.reference_id) : createPageUrl(`TopicDetail?id=${block.reference_id}`);
+      return <ModularReference block={block} to={to} kind={kind} onNavigate={rememberReturnPoint} />;
+    }
+    return renderModularBlock({ block, wide, renderInline: (text) => renderWithLinks(text, block.links) });
+  };
+
+  const renderBlock = (block, wide = false) => {
+    if (block.type === 'key_facts') return null;
+    if (isModular) {
+      const modular = renderModular(block, wide);
+      if (modular !== undefined) return modular;
+    }
     const colorConfig = FLOW_COLORS[block.color] || FLOW_COLORS.blue;
 
     switch (block.type) {
@@ -1206,9 +1236,11 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     }
   };
 
-  const renderSafeBlock = (block) => {
+  const SPAN_CLASS = { 12: 'lg:col-span-12', 8: 'lg:col-span-8', 6: 'lg:col-span-6', 4: 'lg:col-span-4' };
+
+  const renderSafeBlockAt = (block, span = 0) => {
     try {
-      const rendered = renderBlock(block);
+      const rendered = renderBlock(block, span >= 8);
       if (!rendered) return null;
 
       return (
@@ -1216,7 +1248,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
           key={block?.id || `${block?.type || 'block'}-${block?.title || 'untitled'}`}
           blockTitle={block?.title}
         >
-          <section id={protocolBlockAnchor(block, safeBlocks.indexOf(block))} className="scroll-mt-64">{rendered}</section>
+          <section id={protocolBlockAnchor(block, safeBlocks.indexOf(block))} className={`scroll-mt-64 ${SPAN_CLASS[span] || ''}`}>{rendered}</section>
         </TopicBlockErrorBoundary>
       );
     } catch (error) {
@@ -1230,8 +1262,21 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
     }
   };
 
+  const renderSafeBlock = (block) => renderSafeBlockAt(block, 0);
+
+  // Lista de bloques: apilada en la vista clásica; en la modular, filas de 12 columnas sin huecos (8+4, 4+4+4…).
+  const renderBlockList = (list) => {
+    if (!isModular) return <div className="space-y-5">{list.map(renderSafeBlock).filter(Boolean)}</div>;
+    const spans = packRows(list.map(blockSize));
+    return <div className="grid items-start gap-4 lg:grid-cols-12">{list.map((block, i) => renderSafeBlockAt(block, spans[i])).filter(Boolean)}</div>;
+  };
+
   // Existing published TACO content gains the calculator without rewriting its source.
-  const sourceBlocks = blocks || [];
+  // "Lo esencial" (key_facts) se muestra en el encabezado de la vista, nunca como bloque.
+  // En la modular, los bloques administrativos ("Documento base…", "Objetivo y alcance") van a la ficha del documento.
+  const sourceBlocks = (blocks || []).filter(block =>
+    block?.type !== 'key_facts' && !(isModular && isDocumentInfoBlock(block))
+  );
   const isTaco = sourceBlocks.some(block => block.tab === 'taco_protocolo');
   const safeBlocks = isTaco && !sourceBlocks.some(block => block.type === 'taco_decision_calculator')
     ? [...sourceBlocks, { id: 'taco-decision-calculator', type: 'taco_decision_calculator', tab: 'taco_calculadora', layout_position: 'main' }]
@@ -1346,6 +1391,7 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
 
   const isGESMode = hasMermaid && !hasTabs && !isLocalProtocolMode && safeBlocks.some(b => b.type !== 'mermaid');
   const [gesTab, setGesTab] = useState('protocolo');
+  const [indexOpen, setIndexOpen] = useState(false);
 
   const TAB_LABELS = {
     // Electrolitos
@@ -1641,7 +1687,21 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
       {/* ── Local Protocol 3-tab mode (GES topic + protocolo local HCSFB) ── */}
       {isLocalProtocolMode && (
         <>
-          <div ref={tabBarRef} style={{ top: headerH }} className="sticky z-30 scroll-mt-32 bg-white pb-2">
+          {isModular ? (
+            <ModularTabBar
+              tabs={[
+                { id: 'local', label: 'Protocolo local', summary: summarizeBlocks(safeBlocks.filter(b => b.local_protocol === true)) },
+                { id: 'checklist', label: 'Pauta de cotejo', summary: 'Pauta' },
+                ...(hasMermaid ? [{ id: 'algoritmo', label: 'Algoritmo', summary: 'Diagrama' }] : []),
+              ]}
+              active={localTab}
+              onSelect={(id) => preserveScrollDuring(() => setLocalTab(id))}
+              barRef={tabBarRef}
+              top={headerH}
+              className={stickyBarClassName}
+            />
+          ) : (
+          <div ref={tabBarRef} style={{ top: headerH }} className={`sticky z-30 scroll-mt-32 ${stickyBarClassName} pb-2`}>
             <div className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-1.5 shadow-sm">
               <button
                 onClick={() => preserveScrollDuring(() => setLocalTab('local'))}
@@ -1680,29 +1740,35 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
               )}
             </div>
           </div>
+          )}
 
-          <div className="space-y-5">
-            {localTab === 'local' &&
-              safeBlocks
-                .filter(b => b.local_protocol === true)
-                .sort((a, b) => (a.order || 0) - (b.order || 0))
-                .map(renderSafeBlock)
-                .filter(Boolean)
-            }
-            {localTab === 'checklist' &&
-              safeBlocks.filter(b => b.type === 'checklist').map(renderSafeBlock).filter(Boolean)
-            }
-            {localTab === 'algoritmo' &&
-              safeBlocks.filter(b => b.type === 'mermaid').map(renderSafeBlock).filter(Boolean)
-            }
-          </div>
+          {renderBlockList(
+            localTab === 'local'
+              ? safeBlocks.filter(b => b.local_protocol === true).sort((a, b) => (a.order || 0) - (b.order || 0))
+              : localTab === 'checklist'
+                ? safeBlocks.filter(b => b.type === 'checklist')
+                : safeBlocks.filter(b => b.type === 'mermaid')
+          )}
         </>
       )}
 
       {/* ── GES Protocol auto-tabs ── */}
       {isGESMode && (
         <>
-          <div ref={tabBarRef} style={{ top: headerH }} className="sticky z-30 scroll-mt-32 bg-white pb-2">
+          {isModular ? (
+            <ModularTabBar
+              tabs={[
+                { id: 'protocolo', label: 'Criterios y derivación', summary: summarizeBlocks(gesProtocolBlocks) },
+                { id: 'algoritmo', label: 'Algoritmo', summary: 'Diagrama' },
+              ]}
+              active={gesTab}
+              onSelect={(id) => preserveScrollDuring(() => setGesTab(id))}
+              barRef={tabBarRef}
+              top={headerH}
+              className={stickyBarClassName}
+            />
+          ) : (
+          <div ref={tabBarRef} style={{ top: headerH }} className={`sticky z-30 scroll-mt-32 ${stickyBarClassName} pb-2`}>
             <div className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-1.5 shadow-sm">
               <button
                 onClick={() => preserveScrollDuring(() => setGesTab('protocolo'))}
@@ -1728,19 +1794,25 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
               </button>
             </div>
           </div>
+          )}
 
-          <div className="space-y-5">
-            {gesTab === 'protocolo'
-              ? gesProtocolBlocks.map(renderSafeBlock).filter(Boolean)
-              : gesMermaidBlocks.map(renderSafeBlock).filter(Boolean)
-            }
-          </div>
+          {renderBlockList(gesTab === 'protocolo' ? gesProtocolBlocks : gesMermaidBlocks)}
         </>
       )}
 
       {/* ── Normal tab switcher ── */}
-      {!isGESMode && hasTabs && (
-        <div ref={tabBarRef} style={{ top: headerH }} className="sticky z-30 scroll-mt-32 bg-white pb-2">
+      {!isGESMode && hasTabs && isModular && (
+        <ModularTabBar
+          tabs={tabValues.map(tab => ({ id: tab, label: TAB_LABELS[tab] || tab, summary: summarizeBlocks(safeBlocks.filter(b => b.tab === tab)) }))}
+          active={activeTab}
+          onSelect={updateActiveTab}
+          barRef={tabBarRef}
+          top={headerH}
+          className={stickyBarClassName}
+        />
+      )}
+      {!isGESMode && hasTabs && !isModular && (
+        <div ref={tabBarRef} style={{ top: headerH }} className={`sticky z-30 scroll-mt-32 ${stickyBarClassName} pb-2`}>
           <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50 p-1.5 shadow-sm">
             <div className="flex gap-1.5 min-w-max">
               {tabValues.map(tab => (
@@ -1761,12 +1833,45 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
         </div>
       )}
 
-      {!isGESMode && !isLocalProtocolMode && safeBlocks.length >= 8 && (
-        <nav aria-label="Índice del protocolo" className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <details><summary className="cursor-pointer text-sm font-bold text-slate-700">Índice de esta sección</summary>
-            <ul className="mt-3 grid gap-2 sm:grid-cols-2">{visibleAfterSubtab.filter(block => block.title && block.type !== 'protocol_header').map(block => <li key={protocolBlockAnchor(block, safeBlocks.indexOf(block))}><a className="text-sm text-blue-700 hover:underline" href={`#${protocolBlockAnchor(block, safeBlocks.indexOf(block))}`}>{block.title}</a></li>)}</ul>
-          </details>
+      {!isGESMode && !isLocalProtocolMode && (isModular
+        ? visibleAfterSubtab.filter(block => block.title && block.type !== 'protocol_header').length >= 3
+        : safeBlocks.length >= 8) && (
+        // Índice: en pantallas anchas, pestaña lateral que se abre sola hacia el costado (SideSectionIndex);
+        // en angostas, un botón pequeño con menú flotante. En la modular aparece con 3 o más bloques con título.
+        <>
+        <SideSectionIndex
+          items={visibleAfterSubtab
+            .filter(block => block.title && block.type !== 'protocol_header')
+            .map(block => ({ id: protocolBlockAnchor(block, safeBlocks.indexOf(block)), title: block.title }))}
+        />
+        <nav aria-label="Índice de esta sección" className="flex xl:hidden">
+          <Popover open={indexOpen} onOpenChange={setIndexOpen}>
+            <PopoverTrigger asChild>
+              <button type="button" className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[13px] font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50">
+                <ClipboardList className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
+                Índice
+                <span className="text-slate-500 [font-variant-numeric:tabular-nums]">· {visibleAfterSubtab.filter(block => block.title && block.type !== 'protocol_header').length}</span>
+                <ChevronDown className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-150 ${indexOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-72 p-1.5">
+              <ul className="max-h-80 overflow-y-auto">
+                {visibleAfterSubtab.filter(block => block.title && block.type !== 'protocol_header').map(block => (
+                  <li key={protocolBlockAnchor(block, safeBlocks.indexOf(block))}>
+                    <a
+                      href={`#${protocolBlockAnchor(block, safeBlocks.indexOf(block))}`}
+                      onClick={() => setIndexOpen(false)}
+                      className="flex min-h-[40px] items-center rounded-lg px-3 py-2 text-sm text-slate-800 hover:bg-slate-100"
+                    >
+                      {block.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </PopoverContent>
+          </Popover>
         </nav>
+        </>
       )}
 
       {/* ── Normal blocks (non-GES, non-local-protocol mode) ── */}
@@ -1774,13 +1879,9 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
         <>
           {hasSubtabs ? (
             <>
-              {commonMainBlocks.length > 0 && (
-                <div className="space-y-5">
-                  {commonMainBlocks.map(renderSafeBlock).filter(Boolean)}
-                </div>
-              )}
+              {commonMainBlocks.length > 0 && renderBlockList(commonMainBlocks)}
               {/* Sub-tab bar — sticky apilada justo debajo de la barra principal */}
-              <div style={{ top: headerH + tabBarH }} className="sticky z-20 -mt-2 border-b border-slate-200 bg-white pt-1 pb-1">
+              <div style={{ top: headerH + tabBarH }} className={`sticky z-20 -mt-2 border-b border-slate-200 ${stickyBarClassName} pt-1 pb-1`}>
                 <div className="flex flex-wrap gap-1.5 pb-2">
                   {subtabValues.map(st => (
                     <button
@@ -1797,16 +1898,12 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
                   ))}
                 </div>
               </div>
-              <div className="space-y-5">
-                {subMainBlocks.map(renderSafeBlock).filter(Boolean)}
-              </div>
+              {renderBlockList(isModular ? [...subMainBlocks, ...sidebarBlocks] : subMainBlocks)}
             </>
           ) : (
-            <div className="space-y-5">
-              {mainBlocks.map(renderSafeBlock).filter(Boolean)}
-            </div>
+            renderBlockList(isModular ? [...mainBlocks, ...sidebarBlocks] : mainBlocks)
           )}
-          {sidebarBlocks.length > 0 && (
+          {!isModular && sidebarBlocks.length > 0 && (
             <div className={sidebarBlocks.length > 1 ? 'grid gap-5 sm:grid-cols-2' : ''}>
               {sidebarBlocks.map(renderSafeBlock).filter(Boolean)}
             </div>
@@ -1814,7 +1911,36 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
         </>
       )}
 
-      {(visibleRelatedTopics.length > 0 || visibleRelatedTools.length > 0) && (
+      {isModular && (visibleRelatedTopics.length > 0 || visibleRelatedTools.length > 0) && (
+        <ModuleCard icon={LinkIcon} tone="neutral" title="Contenido relacionado">
+          <ul className="grid gap-2 md:grid-cols-2">
+            {visibleRelatedTopics.map((ref, idx) => (
+              <li key={`t-${idx}`}>
+                <Link to={createPageUrl(`TopicDetail?id=${ref.topic_id}`)} onClick={rememberReturnPoint} className="flex min-h-[48px] items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-2 hover:bg-slate-100">
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-slate-600">{ref.type === 'flujo_local' ? 'Flujo local' : 'Protocolo'}</span>
+                    <span className="block text-[15px] font-semibold text-blue-700">{ref.label}</span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 flex-none text-slate-400" aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+            {visibleRelatedTools.map((ref, idx) => (
+              <li key={`h-${idx}`}>
+                <Link to={createPageUrl(`AllCalculators?calc=${ref.tool_id}`)} onClick={rememberReturnPoint} className="flex min-h-[48px] items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-2 hover:bg-slate-100">
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-slate-600">Herramienta</span>
+                    <span className="block text-[15px] font-semibold text-blue-700">{ref.label}</span>
+                  </span>
+                  <Calculator className="h-4 w-4 flex-none text-slate-400" aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </ModuleCard>
+      )}
+
+      {!isModular && (visibleRelatedTopics.length > 0 || visibleRelatedTools.length > 0) && (
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <h3 className="mb-4 text-sm font-bold uppercase tracking-[0.12em] text-slate-500">Contenido relacionado</h3>
           <div className="grid gap-3 md:grid-cols-2">

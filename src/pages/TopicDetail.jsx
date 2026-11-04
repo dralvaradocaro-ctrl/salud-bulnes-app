@@ -11,7 +11,11 @@ import FlowTimeline from '@/components/topic/FlowTimeline';
 import GESGuarantee from '@/components/topic/GESGuarantee';
 import SRICalculator from '@/components/calculators/SRICalculator';
 import NRS2002Calculator from '@/components/calculators/NRS2002Calculator';
-import ProtocolHeader from '@/components/topic/ProtocolHeader';
+import ProtocolHeader, { getProtocolPdfUrl } from '@/components/topic/ProtocolHeader';
+import ModularTopicView from '@/components/topic/modular/ModularTopicView';
+import { isDocumentInfoBlock, readKeyFacts } from '@/lib/blockContent';
+import { isAdultTbiTopic } from '@/lib/glasgow';
+import { resolveProtocolView, readStoredProtocolView, storeProtocolView } from '@/lib/protocolView';
 import ProtocolFlowchart from '@/components/topic/ProtocolFlowchart';
 import MedicationCard from '@/components/topic/MedicationCard';
 import PolicinicTable from '@/components/topic/PolicinicTable';
@@ -297,6 +301,13 @@ const renderSpecialContent = (topic) => {
   return null;
 };
 
+// Plazos GES oncológicos genéricos cuando la ficha aún no trae los suyos.
+const ONCOLOGY_GUARANTEE_FALLBACK = [
+  { label: 'Confirmación diagnóstica', timeframe: '45 días', description: 'Desde sospecha fundada hasta confirmación histológica o citológica.' },
+  { label: 'Inicio de tratamiento',    timeframe: '45 días', description: 'Desde indicación médica (cirugía, quimioterapia o radioterapia).' },
+  { label: 'Seguimiento',              timeframe: '15 días', description: 'Desde indicación médica para control y continuidad asistencial.' },
+];
+
 export default function TopicDetail() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -325,6 +336,22 @@ export default function TopicDetail() {
     queryFn: () => db.entities.FlowStep.filter({ topic_id: topicId }, 'step_number'),
     enabled: !!topicId
   });
+
+  // Vista clásica (por defecto) o modular (en prueba); ?vista= en la URL queda recordado.
+  const [view, setView] = React.useState(() => resolveProtocolView(location.search, readStoredProtocolView()));
+  React.useEffect(() => {
+    const fromUrl = new URLSearchParams(location.search).get('vista');
+    if (fromUrl) {
+      const resolved = resolveProtocolView(location.search, null);
+      storeProtocolView(resolved);
+      setView(resolved);
+    }
+  }, [location.search]);
+  const switchView = (next) => {
+    storeProtocolView(next);
+    setView(next);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
 
   if (loadingTopic) {
     return (
@@ -385,6 +412,168 @@ export default function TopicDetail() {
     }
     navigate(category ? createPageUrl(`Category?id=${category.id}`) : createPageUrl('Home'));
   };
+
+  const renderClinicalBody = ({ modular = false } = {}) => (
+    <>
+          {/* GES Guarantee — only for non-GES topics with guarantee content (GES topics show it inside the hero) */}
+          {!showGesFallback && !isGesTopic && hasGuaranteeContent(topic) && (
+            <div className="mb-8">
+              <GESGuarantee topic={topic} />
+            </div>
+          )}
+
+          {localContentPending(topic) && <div role="status" className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><strong>Contenido local pendiente de completar.</strong> Esta ficha no contiene un desarrollo clínico suficiente para mostrar el indicador de protocolo local. {topic.protocol_file_url ? 'Consulta el documento fuente asociado.' : 'PDF específico aún no asociado.'}</div>}
+
+          {/* Protocol Header - For protocols with protocol_code or protocol_authors */}
+          {!modular && <ProtocolHeader topic={topic} />}
+
+          {/* SRI Calculator - Special Case */}
+          {isSriTopic && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8"
+            >
+              <SRICalculator />
+            </motion.div>
+          )}
+
+          {/* NRS-2002 Calculator - Special Case */}
+          {embeddedCalculators.includes('nrs2002') && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8"
+            >
+              <NRS2002Calculator />
+            </motion.div>
+          )}
+
+          {/* SSÑ-2026 yellow notice — auto-dismiss for protocols with new arsenal additions */}
+          <SSN2026Notice topicId={topic.id} />
+
+          {/* New Content Blocks System - If content_blocks exists */}
+          {hasContentBlocks && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-10"
+            >
+              <ResponsiveTopicLayout
+                blocks={enhancedBlocks}
+                layoutMode={topic.layout_mode || 'auto'}
+                relatedTopics={topic.related_topics}
+                relatedTools={topic.related_tools}
+                stickyBarClassName={modular ? 'bg-slate-100/95' : 'bg-white'}
+                variant={modular ? 'modular' : 'classic'}
+              />
+            </motion.div>
+          )}
+
+          {/* Protocol Flowchart - If protocol_flowchart exists */}
+          {hasProtocolFlowchart && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="mb-10"
+            >
+              <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <GitBranch className="h-5 w-5 text-blue-600" />
+                Flujograma Operativo
+              </h2>
+              <ProtocolFlowchart flowchart={topic.protocol_flowchart} />
+            </motion.div>
+          )}
+
+          {/* Medications - If protocol_medications exists */}
+          {hasProtocolMedications && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mb-10"
+            >
+              <MedicationCard medications={topic.protocol_medications} />
+            </motion.div>
+          )}
+
+          {/* Special Rendering for Specific Topics */}
+          {renderSpecialContent(topic)}
+
+          {/* Legacy clinical fields are rendered above through the read-only content-block adapter. */}
+
+          {/* Flow Timeline */}
+          {!isSriTopic && flowSteps.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <GitBranch className="h-5 w-5 text-blue-600" />
+                Flujo de Atención
+              </h2>
+              <FlowTimeline steps={flowSteps} />
+            </motion.div>
+          )}
+
+          {/* Structured GES fallback */}
+          {showGesFallback && (
+            <div className="mb-10">
+              <GESStructuredFallback topic={topic} />
+            </div>
+          )}
+
+          {/* Empty state if no content */}
+          {!isSriTopic && !hasSpecialContent && !showGesFallback && !hasClinicalInfo && !hasContentBlocks && !hasProtocolFlowchart && !hasProtocolMedications && flowSteps.length === 0 && (
+            <div className="text-center py-16 bg-white rounded-3xl border border-slate-200">
+              <FileText className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-700 mb-2">
+                Contenido en desarrollo
+              </h3>
+              <p className="text-slate-500">
+                El protocolo y flujo para este tema está siendo elaborado
+              </p>
+            </div>
+          )}
+    </>
+  );
+
+  if (view === 'modular') {
+    const statusItems = [
+      isGesTopic && topic.order ? `GES N.°${topic.order}` : null,
+      isGesTopic ? gesArea : null,
+      topicStatus === 'local' ? 'Protocolo local' : topicStatus === 'checklist' ? 'Pauta de cotejo' : null,
+      hasSsnProtocolBadge(topic) ? 'Protocolo SSÑ' : null,
+      hasMinsalOrdinarioBadge(topic) ? 'Ordinario MINSAL' : null,
+      hasSsnOrdinarioBadge(topic) ? 'Ordinario SSÑ' : null,
+      (topic.tipo_contenido || []).includes('flujo_local') ? 'Flujo local' : null,
+    ].filter(Boolean);
+    const extractedStages = isGesTopic && !showGesFallback ? extractGuaranteeStages(topic) : [];
+    const gesStages = extractedStages.length > 0
+      ? extractedStages
+      : isGesTopic && !showGesFallback && gesArea === 'Oncología' ? ONCOLOGY_GUARANTEE_FALLBACK : [];
+
+    return (
+      <ModularTopicView
+        topic={topic}
+        category={category}
+        statusItems={statusItems}
+        validityStatus={protocolValidityStatus}
+        gesStages={gesStages}
+        icon={TopicIcon}
+        keyFacts={readKeyFacts(topic.content_blocks)}
+        documentBlocks={(topic.content_blocks || []).filter(isDocumentInfoBlock)}
+        showGlasgow={isAdultTbiTopic(topic)}
+        pdfUrl={getProtocolPdfUrl(topic)}
+        onBack={handleBack}
+        onUseClassic={() => switchView('clasica')}
+      >
+        {renderClinicalBody({ modular: true })}
+      </ModularTopicView>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
@@ -459,6 +648,9 @@ export default function TopicDetail() {
               </div>
               <h1 className="min-w-0 truncate text-xl font-bold text-slate-900">{topic.name}</h1>
             </div>
+            <Button type="button" variant="outline" size="sm" className="flex-none rounded-xl" onClick={() => switchView('modular')}>
+              Probar vista nueva
+            </Button>
           </div>
           <GlobalSearch />
         </div>
@@ -475,12 +667,7 @@ export default function TopicDetail() {
             {isGesTopic && gesTheme ? (() => {
                 const gesGuaranteeStages = extractGuaranteeStages(topic);
                 const isOncologyTopic = gesArea === 'Oncología';
-                const oncologyFallback = [
-                  { label: 'Confirmación diagnóstica', timeframe: '45 días', description: 'Desde sospecha fundada hasta confirmación histológica o citológica.' },
-                  { label: 'Inicio de tratamiento',    timeframe: '45 días', description: 'Desde indicación médica (cirugía, quimioterapia o radioterapia).' },
-                  { label: 'Seguimiento',              timeframe: '15 días', description: 'Desde indicación médica para control y continuidad asistencial.' },
-                ];
-                const stagesToShow = gesGuaranteeStages.length > 0 ? gesGuaranteeStages : (isOncologyTopic ? oncologyFallback : []);
+                const stagesToShow = gesGuaranteeStages.length > 0 ? gesGuaranteeStages : (isOncologyTopic ? ONCOLOGY_GUARANTEE_FALLBACK : []);
                 return (
                   <div className={`relative overflow-hidden rounded-[2rem] bg-gradient-to-br ${gesTheme.hero} p-6 md:p-8 text-white shadow-xl`}>
                     <div className="absolute inset-0 opacity-20 pointer-events-none">
@@ -594,126 +781,7 @@ export default function TopicDetail() {
           </motion.div>
         )}
 
-        {/* GES Guarantee — only for non-GES topics with guarantee content (GES topics show it inside the hero) */}
-        {!showGesFallback && !isGesTopic && hasGuaranteeContent(topic) && (
-          <div className="mb-8">
-            <GESGuarantee topic={topic} />
-          </div>
-        )}
-
-        {localContentPending(topic) && <div role="status" className="mb-6 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><strong>Contenido local pendiente de completar.</strong> Esta ficha no contiene un desarrollo clínico suficiente para mostrar el indicador de protocolo local. {topic.protocol_file_url ? 'Consulta el documento fuente asociado.' : 'PDF específico aún no asociado.'}</div>}
-
-        {/* Protocol Header - For protocols with protocol_code or protocol_authors */}
-        <ProtocolHeader topic={topic} />
-
-        {/* SRI Calculator - Special Case */}
-        {isSriTopic && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
-          >
-            <SRICalculator />
-          </motion.div>
-        )}
-
-        {/* NRS-2002 Calculator - Special Case */}
-        {embeddedCalculators.includes('nrs2002') && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
-          >
-            <NRS2002Calculator />
-          </motion.div>
-        )}
-
-        {/* SSÑ-2026 yellow notice — auto-dismiss for protocols with new arsenal additions */}
-        <SSN2026Notice topicId={topic.id} />
-
-        {/* New Content Blocks System - If content_blocks exists */}
-        {hasContentBlocks && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-10"
-          >
-            <ResponsiveTopicLayout
-              blocks={enhancedBlocks}
-              layoutMode={topic.layout_mode || 'auto'}
-              relatedTopics={topic.related_topics}
-              relatedTools={topic.related_tools}
-            />
-          </motion.div>
-        )}
-
-        {/* Protocol Flowchart - If protocol_flowchart exists */}
-        {hasProtocolFlowchart && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mb-10"
-          >
-            <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-              <GitBranch className="h-5 w-5 text-blue-600" />
-              Flujograma Operativo
-            </h2>
-            <ProtocolFlowchart flowchart={topic.protocol_flowchart} />
-          </motion.div>
-        )}
-
-        {/* Medications - If protocol_medications exists */}
-        {hasProtocolMedications && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mb-10"
-          >
-            <MedicationCard medications={topic.protocol_medications} />
-          </motion.div>
-        )}
-
-        {/* Special Rendering for Specific Topics */}
-        {renderSpecialContent(topic)}
-
-        {/* Legacy clinical fields are rendered above through the read-only content-block adapter. */}
-
-        {/* Flow Timeline */}
-        {!isSriTopic && flowSteps.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-              <GitBranch className="h-5 w-5 text-blue-600" />
-              Flujo de Atención
-            </h2>
-            <FlowTimeline steps={flowSteps} />
-          </motion.div>
-        )}
-
-        {/* Structured GES fallback */}
-        {showGesFallback && (
-          <div className="mb-10">
-            <GESStructuredFallback topic={topic} />
-          </div>
-        )}
-
-        {/* Empty state if no content */}
-        {!isSriTopic && !hasSpecialContent && !showGesFallback && !hasClinicalInfo && !hasContentBlocks && !hasProtocolFlowchart && !hasProtocolMedications && flowSteps.length === 0 && (
-          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200">
-            <FileText className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-700 mb-2">
-              Contenido en desarrollo
-            </h3>
-            <p className="text-slate-500">
-              El protocolo y flujo para este tema está siendo elaborado
-            </p>
-          </div>
-        )}
+        {renderClinicalBody()}
       </div>
     </div>
   );

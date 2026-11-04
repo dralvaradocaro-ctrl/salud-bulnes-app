@@ -1,0 +1,423 @@
+[
+  {
+    "key": "actividad",
+    "label": "Nombre de la actividad",
+    "default": "",
+    "maxLength": 140
+  },
+  {
+    "key": "nombre",
+    "label": "Nombres y apellidos",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "rut",
+    "label": "RUT",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "telefono",
+    "label": "Teléfono",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "ley",
+    "label": "Ley a la cual pertenece",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "horas",
+    "label": "Grado / Horas",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "profesion",
+    "label": "Estamento o profesión",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "cargo",
+    "label": "Cargo",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "funciones",
+    "label": "Funciones asociadas al programa",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "unidad",
+    "label": "Unidad de trabajo",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "establecimiento",
+    "label": "Establecimiento",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "emailInstitucional",
+    "label": "Correo institucional",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "emailPersonal",
+    "label": "Correo personal",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "fechas",
+    "label": "Fechas de ejecución",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "entidad",
+    "label": "Entidad ejecutora",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "lugar",
+    "label": "Lugar de ejecución",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "ciudad",
+    "label": "Ciudad de ejecución",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "compromisos",
+    "label": "Mes y año de ejecución de compromisos",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "firmaNombre",
+    "label": "Nombre y cargo del postulante (firma)",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "jefatura",
+    "label": "Nombre y cargo de jefatura directa",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "director",
+    "label": "Nombre del director del establecimiento",
+    "default": "",
+    "maxLength": 85
+  },
+  {
+    "key": "cuotas",
+    "label": "Número de cuotas del descuento",
+    "default": "",
+    "type": "select",
+    "maxLength": 85,
+    "options": [
+      {
+        "value": "1",
+        "label": "1"
+      },
+      {
+        "value": "2",
+        "label": "2"
+      },
+      {
+        "value": "3",
+        "label": "3"
+      }
+    ]
+  },
+  {
+    "key": "fechaDocumento",
+    "label": "Fecha del documento (postulante)",
+    "default": "",
+    "type": "date",
+    "maxLength": 85
+  },
+  {
+    "key": "viatico",
+    "label": "Solicita viático",
+    "default": "",
+    "type": "select",
+    "maxLength": 85,
+    "options": [
+      {
+        "value": "0",
+        "label": "Sí"
+      },
+      {
+        "value": "1",
+        "label": "No"
+      }
+    ]
+  },
+  {
+    "key": "pasajes",
+    "label": "Solicita pasajes",
+    "default": "",
+    "type": "select",
+    "maxLength": 85,
+    "options": [
+      {
+        "value": "0",
+        "label": "Sí"
+      },
+      {
+        "value": "1",
+        "label": "No"
+      }
+    ]
+  },
+  {
+    "key": "matricula",
+    "label": "Solicita matrícula",
+    "default": "",
+    "type": "select",
+    "maxLength": 85,
+    "options": [
+      {
+        "value": "0",
+        "label": "Sí"
+      },
+      {
+        "value": "1",
+        "label": "No"
+      }
+    ]
+  },
+  {
+    "key": "arancel",
+    "label": "Solicita arancel",
+    "default": "",
+    "type": "select",
+    "maxLength": 85,
+    "options": [
+      {
+        "value": "0",
+        "label": "Sí"
+      },
+      {
+        "value": "1",
+        "label": "No"
+      }
+    ]
+  },
+  {
+    "key": "tipoActividad",
+    "label": "Tipo de actividad",
+    "default": [],
+    "type": "checkboxes",
+    "maxLength": 85,
+    "options": [
+      {
+        "value": "0",
+        "label": "PAC"
+      },
+      {
+        "value": "1",
+        "label": "Programa Iniciativa Ministerial"
+      },
+      {
+        "value": "2",
+        "label": "Sistema de Aprendizaje a Distancia"
+      },
+      {
+        "value": "3",
+        "label": "Formación Médica Continua"
+      },
+      {
+        "value": "4",
+        "label": "Capital Humano"
+      },
+      {
+        "value": "5",
+        "label": "No programada Minsal"
+      },
+      {
+        "value": "6",
+        "label": "Extraprogramática interna"
+      },
+      {
+        "value": "7",
+        "label": "Externa"
+      }
+    ]
+  },
+  {
+    "key": "calidad",
+    "label": "Calidad jurídica",
+    "default": "",
+    "type": "select",
+    "maxLength": 85,
+    "options": [
+      {
+        "value": "0",
+        "label": "Titular"
+      },
+      {
+        "value": "1",
+        "label": "Contrata"
+      },
+      {
+        "value": "2",
+        "label": "Honorarios"
+      }
+    ]
+  },
+  {
+    "key": "horasCronologicas",
+    "label": "Horas cronológicas",
+    "default": "",
+    "type": "number",
+    "maxLength": 85
+  },
+  {
+    "key": "horasPedagogicas",
+    "label": "Horas pedagógicas",
+    "default": "",
+    "type": "number",
+    "maxLength": 85
+  },
+  {
+    "key": "discapacidad",
+    "label": "Requiere adaptación por discapacidad acreditada",
+    "default": "",
+    "type": "select",
+    "maxLength": 85,
+    "options": [
+      {
+        "value": "0",
+        "label": "Sí"
+      },
+      {
+        "value": "1",
+        "label": "No"
+      }
+    ]
+  },
+  {
+    "key": "adaptacion",
+    "label": "Adaptación requerida",
+    "default": "",
+    "type": "text",
+    "maxLength": 85
+  },
+  {
+    "key": "sistemaTrabajo",
+    "label": "Sistema de trabajo",
+    "default": "",
+    "type": "select",
+    "maxLength": 85,
+    "options": [
+      {
+        "value": "0",
+        "label": "Horario normal"
+      },
+      {
+        "value": "1",
+        "label": "Sistema de turno"
+      }
+    ]
+  },
+  {
+    "key": "remuneraciones",
+    "label": "Mantención de remuneraciones",
+    "default": "",
+    "type": "select",
+    "maxLength": 85,
+    "options": [
+      {
+        "value": "0",
+        "label": "Total"
+      },
+      {
+        "value": "1",
+        "label": "Parcial"
+      }
+    ]
+  },
+  {
+    "key": "porcentaje",
+    "label": "Porcentaje de remuneración parcial",
+    "default": "",
+    "type": "number",
+    "maxLength": 85
+  },
+  {
+    "key": "cubiertas",
+    "label": "Número de cubiertas de turno",
+    "default": "",
+    "type": "number",
+    "maxLength": 85
+  },
+  {
+    "key": "compensacion",
+    "label": "Horas por compensar",
+    "default": "",
+    "type": "number",
+    "maxLength": 85
+  },
+  {
+    "key": "aprendizajes",
+    "label": "Compromisos adquiridos",
+    "default": [],
+    "type": "checkboxes",
+    "maxLength": 85,
+    "options": [
+      {
+        "value": "0",
+        "label": "Réplica al equipo de trabajo"
+      },
+      {
+        "value": "1",
+        "label": "Preparar capacitación interna"
+      },
+      {
+        "value": "2",
+        "label": "Diseñar y ejecutar un proyecto de mejora"
+      },
+      {
+        "value": "3",
+        "label": "Elaborar orientaciones técnicas"
+      },
+      {
+        "value": "4",
+        "label": "Elaborar propuesta de rediseño de procesos"
+      },
+      {
+        "value": "5",
+        "label": "Exponer en reuniones o consejos técnicos"
+      },
+      {
+        "value": "6",
+        "label": "Otro"
+      }
+    ]
+  },
+  {
+    "key": "otroCompromiso",
+    "label": "Otro compromiso",
+    "default": "",
+    "type": "text",
+    "maxLength": 85
+  }
+]
