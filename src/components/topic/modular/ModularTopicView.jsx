@@ -48,17 +48,18 @@ export default function ModularTopicView({
             <ChevronLeft className="h-5 w-5" aria-hidden="true" />
           </button>
           {category && (
-            <nav aria-label="Ruta" className="hidden min-w-0 items-center gap-2 text-sm text-slate-600 md:flex">
-              <Link className="truncate hover:underline" to={createPageUrl(`Category?id=${category.id}`)}>{category.name}</Link>
-              {topic.subcategory && (<><span aria-hidden="true">/</span><span className="truncate text-slate-900">{topic.subcategory}</span></>)}
+            <nav aria-label="Ruta" className="hidden min-w-0 flex-1 items-center gap-2 text-sm text-slate-600 md:flex">
+              <Link title={category.name} className="min-w-[3rem] shrink truncate hover:underline" to={createPageUrl(`Category?id=${category.id}`)}>{category.name}</Link>
+              {topic.subcategory && (<><span aria-hidden="true">/</span><span title={topic.subcategory} className="min-w-[3rem] shrink-[2] truncate text-slate-900">{topic.subcategory}</span></>)}
             </nav>
           )}
           <p className="min-w-0 flex-1 truncate text-[15px] font-semibold md:hidden">{topic.name}</p>
-          <span className="hidden flex-1 md:block" />
+          {!category && <span className="hidden flex-1 md:block" />}
           <div className="relative flex flex-none items-center gap-2">
           <span aria-hidden="true" className="hidden w-44 flex-none md:block lg:w-52" />
-          <GlobalSearch compact onActiveChange={setSearching}
-            className={`absolute left-0 top-1/2 z-10 hidden -translate-y-1/2 transition-[width] ${EASE} md:block ${searching ? 'w-full' : 'w-44 lg:w-52'}`} />
+          <div className={`absolute inset-y-0 left-0 z-10 hidden items-center transition-[width] ${EASE} md:flex ${searching ? 'w-full' : 'w-44 lg:w-52'}`}>
+            <GlobalSearch compact onActiveChange={setSearching} className="w-full" />
+          </div>
           <div className={`hidden flex-none sm:block ${fold}`} aria-hidden={searching || undefined}>
             <button type="button" onClick={onUseClassic} tabIndex={searching ? -1 : undefined} className="h-9 whitespace-nowrap rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">
               Vista clásica
