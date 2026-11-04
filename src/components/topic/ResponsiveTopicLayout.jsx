@@ -1265,10 +1265,14 @@ export default function ResponsiveTopicLayout({ blocks = [], layoutMode = 'auto'
   const renderSafeBlock = (block) => renderSafeBlockAt(block, 0);
 
   // Lista de bloques: apilada en la vista clásica; en la modular, filas de 12 columnas sin huecos (8+4, 4+4+4…).
+  // Al cambiar de pestaña el contenido entra con un fundido y un leve ascenso, en vez de aparecer de golpe.
+  const enter = 'animate-in fade-in slide-in-from-bottom-2 duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] fill-mode-both motion-reduce:animate-none';
   const renderBlockList = (list) => {
-    if (!isModular) return <div className="space-y-5">{list.map(renderSafeBlock).filter(Boolean)}</div>;
+    // Se lee al renderizar (las pestañas se declaran más abajo).
+    const tabKey = [activeTab, activeSubtab, localTab, gesTab].join('|');
+    if (!isModular) return <div key={tabKey} className={`space-y-5 ${enter}`}>{list.map(renderSafeBlock).filter(Boolean)}</div>;
     const spans = packRows(list.map(blockSize));
-    return <div className="grid items-start gap-4 lg:grid-cols-12">{list.map((block, i) => renderSafeBlockAt(block, spans[i])).filter(Boolean)}</div>;
+    return <div key={tabKey} className={`grid items-start gap-4 lg:grid-cols-12 ${enter}`}>{list.map((block, i) => renderSafeBlockAt(block, spans[i])).filter(Boolean)}</div>;
   };
 
   // Existing published TACO content gains the calculator without rewriting its source.

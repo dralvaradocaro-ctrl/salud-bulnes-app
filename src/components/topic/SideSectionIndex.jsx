@@ -4,6 +4,34 @@ const OPEN_DELAY = 80;
 const CLOSE_DELAY = 180;
 const SCROLL_GAP = 12;
 
+// Desplazamiento animado propio: el 'smooth' nativo es demasiado brusco. Dura más cuanto más lejos va
+// (700–1400 ms) con una curva que acelera y frena suave; se cancela si el usuario mueve la página.
+const easeInOutCubic = t => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+let cancelScroll = null;
+function smoothScrollTo(top) {
+  cancelScroll?.();
+  const start = window.scrollY;
+  const distance = top - start;
+  if (Math.abs(distance) < 2) return;
+  const duration = Math.min(1400, Math.max(700, Math.abs(distance) * 0.45));
+  let frame = 0;
+  let begin = null;
+  const stop = () => {
+    window.cancelAnimationFrame(frame);
+    ['wheel', 'touchstart', 'keydown'].forEach(type => window.removeEventListener(type, stop));
+    cancelScroll = null;
+  };
+  const step = now => {
+    if (begin === null) begin = now;
+    const t = Math.min(1, (now - begin) / duration);
+    window.scrollTo(0, start + distance * easeInOutCubic(t));
+    if (t < 1) frame = window.requestAnimationFrame(step); else stop();
+  };
+  ['wheel', 'touchstart', 'keydown'].forEach(type => window.addEventListener(type, stop, { passive: true }));
+  cancelScroll = stop;
+  frame = window.requestAnimationFrame(step);
+}
+
 // Índice lateral discreto: plegado son marcas finas en el margen izquierdo (una por sección, la visible más larga);
 // al pasar el mouse o con el teclado aparecen los títulos junto a las marcas. Solo en pantallas anchas (xl),
 // donde la columna de 1024 px deja margen libre. Marca la sección visible al hacer scroll.
@@ -46,7 +74,7 @@ export default function SideSectionIndex({ items = [] }) {
       .filter(rect => rect.top >= 0 && rect.top < 240 && rect.height < 240)
       .map(rect => rect.bottom));
     const top = target.getBoundingClientRect().top + window.scrollY - stickyBottom - SCROLL_GAP;
-    window.scrollTo({ top, behavior: reduce ? 'auto' : 'smooth' });
+    if (reduce) window.scrollTo(0, top); else smoothScrollTo(top);
     window.history.replaceState(null, '', `#${id}`);
   };
 

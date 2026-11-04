@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion, MotionConfig } from 'framer-motion';
 import { ArrowRightLeft, BookOpen, Calculator, ClipboardCheck, Gauge, Pill, Workflow } from 'lucide-react';
 import { TONES } from './tones';
 
@@ -19,6 +20,7 @@ export default function ModularTabBar({ tabs, active, onSelect, barRef, top, cla
   if (!tabs?.length) return null;
   const equal = tabs.length <= 6;
   return (
+    <MotionConfig reducedMotion="user">
     <div ref={barRef} style={{ top }} className={`sticky z-30 -mx-1 scroll-mt-32 px-1 pt-1 backdrop-blur ${className}`}>
       <div
         role="tablist"
@@ -37,11 +39,13 @@ export default function ModularTabBar({ tabs, active, onSelect, barRef, top, cla
               role="tab"
               aria-selected={selected}
               onClick={() => onSelect(tab.id)}
-              className={`-mb-px flex min-h-[52px] min-w-[150px] flex-none items-center gap-3 rounded-t-xl border-b-[3px] px-3 py-2 text-left transition-colors lg:min-w-0 ${
-                selected ? `${t.soft} ${t.border}` : 'border-transparent hover:bg-white/70'
+              className={`relative -mb-px flex min-h-[52px] min-w-[150px] flex-none items-center gap-3 rounded-t-xl border-b-[3px] border-transparent px-3 py-2 text-left transition-colors duration-300 ease-out lg:min-w-0 ${
+                selected ? t.soft : 'hover:bg-white/70'
               }`}
             >
-              <span aria-hidden="true" className={`flex h-8 w-8 flex-none items-center justify-center rounded-lg ${selected ? `${t.solid} text-white` : t.icon}`}>
+              {/* La línea inferior se desliza de una pestaña a otra. */}
+              {selected && <motion.span layoutId="modular-tab-indicator" aria-hidden="true" className={`absolute inset-x-0 -bottom-[3px] h-[3px] rounded-full ${t.solid}`} transition={{ type: 'spring', stiffness: 320, damping: 34 }} />}
+              <span aria-hidden="true" className={`flex h-8 w-8 flex-none items-center justify-center rounded-lg transition-colors duration-300 ease-out ${selected ? `${t.solid} text-white` : t.icon}`}>
                 <Icon className="h-4 w-4" />
               </span>
               <span className="min-w-0">
@@ -53,5 +57,6 @@ export default function ModularTabBar({ tabs, active, onSelect, barRef, top, cla
         })}
       </div>
     </div>
+    </MotionConfig>
   );
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronLeft, Clock, FileText, ScrollText } from 'lucide-react';
 import { createPageUrl } from '@/utils';
@@ -34,6 +34,11 @@ export default function ModularTopicView({
 }) {
   const validity = VALIDITY_CHIP[validityStatus];
   const showFicha = hasFichaContent(topic) || pdfUrl || documentBlocks.length > 0;
+  // Al usar el buscador se ensancha y las acciones de la derecha se pliegan, con la misma curva suave.
+  const [searching, setSearching] = useState(false);
+  // El buscador no se mueve: su borde izquierdo queda fijo y se alarga sobre las acciones, que solo se desvanecen.
+  const EASE = 'duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none';
+  const fold = `transition-opacity ${EASE} ${searching ? 'pointer-events-none opacity-0' : 'opacity-100'}`;
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
@@ -50,14 +55,20 @@ export default function ModularTopicView({
           )}
           <p className="min-w-0 flex-1 truncate text-[15px] font-semibold md:hidden">{topic.name}</p>
           <span className="hidden flex-1 md:block" />
-          <GlobalSearch className="hidden w-60 md:block lg:w-72" />
-          <button type="button" onClick={onUseClassic} className="hidden h-9 flex-none rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 sm:block">
-            Vista clásica
-          </button>
+          <div className="relative flex flex-none items-center gap-2">
+          <span aria-hidden="true" className="hidden w-44 flex-none md:block lg:w-52" />
+          <GlobalSearch compact onActiveChange={setSearching}
+            className={`absolute left-0 top-1/2 z-10 hidden -translate-y-1/2 transition-[width] ${EASE} md:block ${searching ? 'w-full' : 'w-44 lg:w-52'}`} />
+          <div className={`hidden flex-none sm:block ${fold}`} aria-hidden={searching || undefined}>
+            <button type="button" onClick={onUseClassic} tabIndex={searching ? -1 : undefined} className="h-9 whitespace-nowrap rounded-xl px-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+              Vista clásica
+            </button>
+          </div>
           {showFicha && (
+            <div className={`flex-none ${fold}`} aria-hidden={searching || undefined}>
             <Sheet>
               <SheetTrigger asChild>
-                <button type="button" className="flex h-9 flex-none items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 hover:bg-slate-50">
+                <button type="button" tabIndex={searching ? -1 : undefined} className="flex h-9 flex-none items-center gap-2 whitespace-nowrap rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 hover:bg-slate-50">
                   <ScrollText className="h-4 w-4" aria-hidden="true" />
                   <span className="hidden sm:inline">Ficha del documento</span>
                   <span className="sm:hidden">Ficha</span>
@@ -73,13 +84,17 @@ export default function ModularTopicView({
                 </div>
               </SheetContent>
             </Sheet>
+            </div>
           )}
           {pdfUrl && (
-            <a href={pdfUrl} target="_blank" rel="noopener noreferrer" className="hidden h-9 flex-none items-center gap-2 rounded-xl bg-blue-700 px-3 text-sm font-semibold text-white hover:bg-blue-800 lg:flex">
-              <FileText className="h-4 w-4" aria-hidden="true" />
-              Abrir PDF
-            </a>
+            <div className={`hidden flex-none lg:block ${fold}`} aria-hidden={searching || undefined}>
+              <a href={pdfUrl} target="_blank" rel="noopener noreferrer" tabIndex={searching ? -1 : undefined} className="flex h-9 items-center gap-2 whitespace-nowrap rounded-xl bg-blue-700 px-3 text-sm font-semibold text-white hover:bg-blue-800">
+                <FileText className="h-4 w-4" aria-hidden="true" />
+                Abrir PDF
+              </a>
+            </div>
           )}
+          </div>
         </div>
       </header>
 

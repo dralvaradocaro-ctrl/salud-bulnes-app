@@ -48,7 +48,8 @@ Si no hay nada relevante, devuelve [].`;
   return Array.isArray(result) ? result : [];
 }
 
-export default function GlobalSearch({ className = "", autoFocus = false }) {
+// compact: versión baja para barras de encabezado. onActiveChange avisa cuando el buscador se abre o se cierra.
+export default function GlobalSearch({ className = "", autoFocus = false, compact = false, onActiveChange }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [aiResults, setAiResults] = useState([]);
@@ -173,11 +174,12 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
   const hasAnyResults = results.length > 0 || aiResults.length > 0;
   const showAiSection = !isAiLoading && aiResults.length > 0;
   const showDropdown = isOpen && query.length >= 2;
+  useEffect(() => { onActiveChange?.(isOpen); }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+        <Search className={`absolute top-1/2 -translate-y-1/2 text-slate-400 ${compact ? 'left-3 h-4 w-4' : 'left-4 h-5 w-5'}`} />
         <Input
           ref={inputRef}
           type="text"
@@ -188,8 +190,11 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
+          onBlur={() => { if (!query) setIsOpen(false); }}
           autoFocus={autoFocus}
-          className="w-full h-14 pl-12 pr-12 text-lg bg-white border-2 border-slate-200 rounded-2xl shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all"
+          className={compact
+            ? 'w-full h-9 pl-9 pr-9 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-colors'
+            : 'w-full h-14 pl-12 pr-12 text-lg bg-white border-2 border-slate-200 rounded-2xl shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all'}
         />
         {query && (
           <button
@@ -199,9 +204,9 @@ export default function GlobalSearch({ className = "", autoFocus = false }) {
               setAiResults([]);
               inputRef.current?.focus();
             }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full transition-colors"
+            className={`absolute top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded-full transition-colors ${compact ? 'right-2' : 'right-4'}`}
           >
-            <X className="h-5 w-5 text-slate-400" />
+            <X className={`${compact ? 'h-4 w-4' : 'h-5 w-5'} text-slate-400`} />
           </button>
         )}
       </div>
