@@ -1,0 +1,77 @@
+{
+  "Clonazepam": [
+    "Ravotril",
+    "Neuryl"
+  ],
+  "Alprazolam": [
+    "Zotran",
+    "Adax"
+  ],
+  "Metformina": [
+    "Glucophage",
+    "Glafornil",
+    "Glicenex"
+  ],
+  "Levotiroxina": [
+    "Eutirox"
+  ],
+  "Losartán": [
+    "Cozaar"
+  ],
+  "Atorvastatina": [
+    "Lipitor"
+  ],
+  "Clotiazepam": [
+    "Rize",
+    "Neuroval CD"
+  ],
+  "Lorazepam": [
+    "Amparax"
+  ],
+  "Ketazolam": [
+    "Grifoketam",
+    "Ansietil",
+    "Sedavital"
+  ],
+  "Lormetazepam": [
+    "Nocton"
+  ],
+  "Bupropión": [
+    "Wellbutrin SR"
+  ],
+  "Dextrometorfano": [
+    "Tusminal",
+    "Pectobronc"
+  ],
+  "Metotrexato": [
+    "Metoject"
+  ],
+  "Leflunomida": [
+    "Artrilab"
+  ],
+  "Micofenolato mofetilo": [
+    "Cellcept"
+  ],
+  "Micofenolato sódico": [
+    "Myfortic"
+  ],
+  "Tacrolimus": [
+    "Prograf"
+  ],
+  "Apixabán": [
+    "Eliquis"
+  ],
+  "Rivaroxabán": [
+    "Rivoxa",
+    "Xarelto"
+  ],
+  "Dabigatrán etexilato": [
+    "Pradaxa",
+    "Dabin"
+  ],
+  "Acenocumarol": [
+    "Acebron",
+    "Neo-Sintrom",
+    "Isquelium"
+  ]
+}

@@ -1,6 +1,9 @@
 import { jsPDF } from 'jspdf';
 import { sanitizeJsPdf } from '@/lib/pdfText';
 import { getInstitucion, MEDICO, fechaLarga } from '@/lib/certificadoPdf';
+import { medicoCompleto, puedeUsarFirma } from '@/lib/medicoDocumento';
+import { validarControlados } from '@/lib/recetaControlados';
+import { validarMagistrales } from '@/lib/recetaMagistrales';
 import { textoMedicamento } from '@/lib/recetaCatalogo';
 
 async function imagen(src) {
@@ -11,16 +14,19 @@ async function imagen(src) {
   bytes.forEach(byte => { binary += String.fromCharCode(byte); });
   return `data:image/${src.endsWith('.png') ? 'png' : 'jpeg'};base64,${btoa(binary)}`;
 }
-export async function buildDocumentoClinicoPdf(receta, { titulo, seccion, lineas = [], tablas = [], antecedentes = [] }) {
+export async function buildDocumentoClinicoPdf(receta, { titulo, seccion, lineas = [], tablas = [], antecedentes = [], separarPaciente = false }) {
   const doc = sanitizeJsPdf(new jsPDF({ unit: 'pt', format: 'a4' }));
   const centro = getInstitucion(receta.institucion);
+  const medico = receta.medico || MEDICO;
+  if (!medicoCompleto(medico)) throw new Error('Completa nombre, RUT válido y título del médico.');
+  const incluirFirma = receta.firma && puedeUsarFirma(medico);
   const width = doc.internal.pageSize.getWidth();
   const height = doc.internal.pageSize.getHeight();
   const margin = 48;
   const contentWidth = width - margin * 2;
   const logo = await imagen(centro.logo);
   // Si se solicita firma y no carga, no emitir silenciosamente un documento sin ella.
-  const firma = receta.firma && centro.firma ? await imagen(centro.firma) : null;
+  const firma = incluirFirma && centro.firma ? await imagen(centro.firma) : null;
   let y;
   const header = () => {
     doc.addImage(logo, centro.logoFormato, margin, 35, 48, 48);
@@ -51,6 +57,13 @@ export async function buildDocumentoClinicoPdf(receta, { titulo, seccion, lineas
   line(`Dirección: ${receta.direccion}`);
   if (receta.diagnostico.trim()) line(`Dg.: ${receta.diagnostico}`);
   antecedentes.filter(Boolean).forEach(texto => line(texto));
+  if (separarPaciente) {
+    if (y + 48 > height - 65) { doc.addPage(); header(); }
+    doc.setDrawColor(148, 163, 184);
+    doc.setLineWidth(0.6);
+    doc.line(margin, y, width - margin, y);
+    y += 16;
+  }
   y += 8; if (seccion) line(seccion, true);
   if (tablas.length) {
     for (const tabla of tablas) {
@@ -105,10 +118,10 @@ export async function buildDocumentoClinicoPdf(receta, { titulo, seccion, lineas
   if (firma) doc.addImage(firma, 'PNG', width / 2 - 75, signatureY - 105, 150, 150 * (centro.firmaProporcion || 2 / 3));
   doc.setDrawColor(100); doc.line(width / 2 - 130, signatureY, width / 2 + 130, signatureY);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
-  doc.text(MEDICO.nombre, width / 2, signatureY + 17, { align: 'center' });
+  doc.text(medico.nombre, width / 2, signatureY + 17, { align: 'center' });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-  doc.text(`${MEDICO.titulo} · RUT ${MEDICO.rut}`, width / 2, signatureY + 32, { align: 'center' });
-  doc.text(receta.firma ? 'Firma electrónica simple · No constituye firma electrónica avanzada' : 'Firma y timbre', width / 2, signatureY + 48, { align: 'center' });
+  doc.text(`${medico.titulo} · RUT ${medico.rut}`, width / 2, signatureY + 32, { align: 'center' });
+  doc.text(incluirFirma ? 'Firma electrónica simple · No constituye firma electrónica avanzada' : 'Firma y timbre', width / 2, signatureY + 48, { align: 'center' });
   const pages = doc.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
     doc.setPage(page); doc.setFontSize(8);
@@ -119,7 +132,9 @@ export async function buildDocumentoClinicoPdf(receta, { titulo, seccion, lineas
 }
 
 export function buildRecetaPdf(receta) {
+  const errores = [...validarControlados(receta), ...validarMagistrales(receta.medicamentos)];
+  if (errores.length) throw new Error(errores.join('; '));
   return buildDocumentoClinicoPdf(receta, {
-    titulo: 'RECETA MÉDICA', seccion: 'Rp.', lineas: receta.medicamentos.map(textoMedicamento),
+    titulo: 'RECETA MÉDICA', seccion: 'Rp.', separarPaciente: true, lineas: receta.medicamentos.map(textoMedicamento),
   });
 }

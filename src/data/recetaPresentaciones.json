@@ -1146,5 +1146,207 @@
       "texto": "4 % · gel tópico",
       "fuente": "arsenal-bulnes"
     }
+  ],
+  "Clonazepam": [
+    {
+      "texto": "2 mg · comprimido",
+      "fuente": "https://www.ispch.cl/folleto/ravotril-comprimidos-2-mg/"
+    }
+  ],
+  "Alprazolam": [
+    {
+      "texto": "0,5 mg · comprimido",
+      "fuente": "https://www.ispch.cl/sites/default/files/uso_tratamiento.pdf"
+    },
+    {
+      "texto": "1 mg · comprimido",
+      "fuente": "https://www.ispch.cl/sites/default/files/uso_tratamiento.pdf"
+    }
+  ],
+  "Lorazepam": [
+    {
+      "texto": "2 mg · comprimido",
+      "fuente": "https://www.ispch.cl/wp-content/uploads/2023/08/Guia-Medicamentos-Almidon-declarado_v1.pdf"
+    },
+    {
+      "texto": "1 mg · comprimido",
+      "fuente": "https://www.ispch.cl/sites/default/files/Productos_Estupefacientes_y_Psicotropicos_Comercializados_RR_Julio_2015.pdf"
+    }
+  ],
+  "Diazepam": [
+    {
+      "texto": "10 mg · comprimido",
+      "fuente": "https://registrosanitario.ispch.gob.cl/Ficha.aspx?RegistroISP=F-3920%2F25"
+    },
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "https://www.ispch.cl/sites/default/files/Productos_Estupefacientes_y_Psicotropicos_Comercializados_RR_Julio_2015.pdf"
+    }
+  ],
+  "Bromazepam": [
+    {
+      "texto": "3 mg · comprimido",
+      "fuente": "https://registrosanitario.ispch.gob.cl/Ficha.aspx?RegistroISP=F-13494%2F24"
+    }
+  ],
+  "Clotiazepam": [
+    {
+      "texto": "5 mg · comprimido recubierto",
+      "fuente": "https://www.ispch.cl/sites/default/files/Productos_Estupefacientes_y_Psicotropicos_Comercializados_RR_Julio_2015.pdf"
+    },
+    {
+      "texto": "10 mg · comprimido recubierto",
+      "fuente": "https://www.ispch.cl/sites/default/files/Productos_Estupefacientes_y_Psicotropicos_Comercializados_RR_Julio_2015.pdf"
+    }
+  ],
+  "Ketazolam": [
+    {
+      "texto": "30 mg · comprimido",
+      "fuente": "https://www.ispch.cl/sites/default/files/Productos_Estupefacientes_y_Psicotropicos_Comercializados_RR_Julio_2015.pdf"
+    }
+  ],
+  "Lormetazepam": [
+    {
+      "texto": "2 mg · comprimido",
+      "fuente": "https://www.ispch.cl/sites/default/files/Productos_Estupefacientes_y_Psicotropicos_Comercializados_RR_Julio_2015.pdf"
+    }
+  ],
+  "Dextrometorfano": [
+    {
+      "texto": "15 mg/5 mL · jarabe",
+      "fuente": "https://www.ispch.cl/sites/default/files/Productos_Estupefacientes_y_Psicotropicos_Comercializados_RR_Julio_2015.pdf"
+    },
+    {
+      "texto": "7,5 mg/5 mL · jarabe",
+      "fuente": "https://www.ispch.cl/sites/default/files/Productos_Estupefacientes_y_Psicotropicos_Comercializados_RR_Julio_2015.pdf"
+    }
+  ],
+  "Bupropión": [
+    {
+      "texto": "150 mg · comprimido de liberación prolongada",
+      "fuente": "https://www.ispch.gob.cl/folleto/f-22896-16/"
+    }
+  ],
+  "Metotrexato": [
+    {
+      "texto": "2,5 mg · comprimido",
+      "fuente": "https://registrosanitario.ispch.gob.cl/Ficha.aspx?RegistroISP=F-26558%2F21"
+    },
+    {
+      "texto": "50 mg/2 mL · solución inyectable",
+      "fuente": "https://labeling.pfizer.com/ShowLabeling.aspx?id=19580"
+    },
+    {
+      "texto": "10 mg/0,2 mL · solución inyectable en jeringa prellenada",
+      "fuente": "https://www.ispch.cl/anamed/medicamentos/informacion-al-profesional/folletos-informacion/page/14/"
+    },
+    {
+      "texto": "15 mg/0,3 mL · solución inyectable en jeringa prellenada",
+      "fuente": "https://www.ispch.cl/anamed/medicamentos/informacion-al-profesional/folletos-informacion/page/14/"
+    },
+    {
+      "texto": "20 mg/0,4 mL · solución inyectable en jeringa prellenada",
+      "fuente": "https://www.ispch.cl/anamed/medicamentos/informacion-al-profesional/folletos-informacion/page/14/"
+    }
+  ],
+  "Hidroxicloroquina": [
+    {
+      "texto": "200 mg · comprimido recubierto (sulfato)",
+      "fuente": "https://www.laboratoriochile.cl/producto/hidroxicloroquina-sulfato-comprimidos-recubiertos-200-mg/"
+    }
+  ],
+  "Leflunomida": [
+    {
+      "texto": "20 mg · comprimido recubierto",
+      "fuente": "https://registrosanitario.ispch.gob.cl/Ficha.aspx?RegistroISP=F-24835%2F24"
+    }
+  ],
+  "Azatioprina": [
+    {
+      "texto": "50 mg · comprimido",
+      "fuente": "https://www.ispch.gob.cl/wp-content/uploads/2023/08/Guia-Medicamentos-Almidon-declarado_v1.pdf"
+    }
+  ],
+  "Sulfasalazina": [
+    {
+      "texto": "500 mg · comprimido gastrorresistente",
+      "fuente": "https://www.ispch.cl/sites/default/files/u7/PTR_16%20AL%2030%20DE%20SEPTIEMBRE%202010.pdf"
+    }
+  ],
+  "Micofenolato mofetilo": [
+    {
+      "texto": "250 mg · cápsula",
+      "fuente": "https://www.ispch.cl/sites/default/files/u24/PRODUCTOS%20REFERENCIA%20hasta%204%20junio_0.pdf"
+    },
+    {
+      "texto": "500 mg · comprimido recubierto",
+      "fuente": "https://www.ispch.cl/sites/default/files/u24/PRODUCTOS%20REFERENCIA%20hasta%204%20junio_0.pdf"
+    }
+  ],
+  "Micofenolato sódico": [
+    {
+      "texto": "180 mg · comprimido gastrorresistente",
+      "fuente": "https://www.ispch.cl/sites/default/files/u24/PRODUCTOS%20REFERENCIA%20hasta%204%20junio_0.pdf"
+    },
+    {
+      "texto": "360 mg · comprimido gastrorresistente",
+      "fuente": "https://www.ispch.cl/sites/default/files/u24/PRODUCTOS%20REFERENCIA%20hasta%204%20junio_0.pdf"
+    }
+  ],
+  "Tacrolimus": [
+    {
+      "texto": "0,5 mg · cápsula",
+      "fuente": "https://www.ispch.cl/sites/default/files/uso_tratamiento.pdf"
+    },
+    {
+      "texto": "1 mg · cápsula",
+      "fuente": "https://www.ispch.cl/sites/default/files/uso_tratamiento.pdf"
+    },
+    {
+      "texto": "5 mg · cápsula",
+      "fuente": "https://www.ispch.cl/sites/default/files/uso_tratamiento.pdf"
+    }
+  ],
+  "Apixabán": [
+    {
+      "texto": "2,5 mg · comprimido recubierto",
+      "fuente": "https://registrosanitario.ispch.gob.cl/Ficha.aspx?RegistroISP=F-20139%2F23"
+    },
+    {
+      "texto": "5 mg · comprimido recubierto",
+      "fuente": "https://www.ispch.cl/sites/default/files/eliquis_5mg.pdf"
+    }
+  ],
+  "Rivaroxabán": [
+    {
+      "texto": "20 mg · comprimido recubierto",
+      "fuente": "https://registrosanitario.ispch.gob.cl/Ficha.aspx?RegistroISP=F-26460%2F21"
+    }
+  ],
+  "Dabigatrán etexilato": [
+    {
+      "texto": "75 mg · cápsula",
+      "fuente": "https://www.ispch.cl/sites/default/files/pradaxa_capsulas_150mg.pdf"
+    },
+    {
+      "texto": "110 mg · cápsula",
+      "fuente": "https://www.ispch.cl/sites/default/files/pradaxa_capsulas_150mg.pdf"
+    },
+    {
+      "texto": "150 mg · cápsula",
+      "fuente": "https://www.ispch.cl/sites/default/files/pradaxa_capsulas_150mg.pdf"
+    }
+  ],
+  "Warfarina": [
+    {
+      "texto": "5 mg · comprimido",
+      "fuente": "https://www.ispch.cl/sites/default/files/comunicado/2019/07/Nota.pdf"
+    }
+  ],
+  "Acenocumarol": [
+    {
+      "texto": "4 mg · comprimido",
+      "fuente": "https://registrosanitario.ispch.gob.cl/Ficha.aspx?RegistroISP=F-16094%2F22"
+    }
   ]
 }

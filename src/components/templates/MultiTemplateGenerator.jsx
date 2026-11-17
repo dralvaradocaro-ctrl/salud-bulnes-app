@@ -25,6 +25,9 @@ const FIELD_DEFAULTS = { patient_comuna: 'Bulnes' };
 // Formularios con página propia que reciben los datos del paciente. `fields` son las claves de
 // patientProfile que cada página lee al abrirse; `next` es lo que queda por completar en ella.
 export const EXTERNAL_FORMS = [
+  { id: 'ext-derivacion', name: 'Derivación a otros profesionales', route: 'DerivacionProfesionales', description: 'Kinesioterapia y derivación a profesionales de salud.',
+    fields: ['patient_name', 'patient_rut', 'patient_edad', 'patient_direccion', 'diagnostico'],
+    next: 'Eliges el profesional y completas el motivo y los objetivos.' },
   { id: 'ext-receta', name: 'Receta médica', route: 'RecetaMedica', description: 'Medicamentos, presentaciones y posología.',
     fields: ['patient_name', 'patient_rut', 'patient_edad', 'patient_direccion', 'diagnostico'],
     next: 'Agregas los medicamentos, la posología y la firma.' },

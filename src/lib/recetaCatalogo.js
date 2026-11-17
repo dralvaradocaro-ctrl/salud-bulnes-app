@@ -1,7 +1,12 @@
 import presentaciones from '@/data/recetaPresentaciones.json';
+import comerciales from '@/data/recetaComerciales.json';
+import { esBenzodiacepina, cantidadControlada } from '@/lib/recetaControlados';
 
 // Catálogo orientativo por principio activo; no implica stock ni pauta terapéutica.
 const grupos = {
+  'Reumatología · Inmunosupresores': 'Metotrexato|Hidroxicloroquina|Leflunomida|Azatioprina|Sulfasalazina|Micofenolato mofetilo|Micofenolato sódico|Tacrolimus',
+  'Anticoagulantes': 'Apixabán|Rivaroxabán|Dabigatrán etexilato|Warfarina|Acenocumarol',
+  'Benzodiacepinas': 'Clonazepam|Alprazolam|Lorazepam|Diazepam|Bromazepam|Clotiazepam|Ketazolam|Lormetazepam',
   'HTA y cardiovascular': 'Losartán|Valsartán|Candesartán|Telmisartán|Enalapril|Lisinopril|Amlodipino|Nifedipino|Hidroclorotiazida|Clortalidona|Indapamida|Furosemida|Espironolactona|Carvedilol|Bisoprolol|Atenolol|Metoprolol|Ácido acetilsalicílico|Clopidogrel|Isosorbida dinitrato',
   'DLP · Dislipidemia': 'Atorvastatina|Rosuvastatina|Simvastatina|Ezetimiba|Fenofibrato|Gemfibrozilo',
   'DM2 · Diabetes': 'Metformina|Metformina liberación prolongada|Glibenclamida|Gliclazida|Glimepirida|Sitagliptina|Vildagliptina|Linagliptina|Empagliflozina|Dapagliflozina|Semaglutida|Liraglutida|Insulina NPH|Insulina cristalina|Insulina glargina|Insulina degludec|Insulina lispro|Insulina aspart',
@@ -20,11 +25,13 @@ const grupos = {
   'Vitaminas · Otros': 'Ácido fólico|Sulfato ferroso|Hierro polimaltosado|Cianocobalamina|Colecalciferol|Calcio carbonato|Calcio / vitamina D|Alopurinol|Colchicina|Alendronato|Ivermectina|Albendazol|Mebendazol',
 };
 export const RECETA_CATEGORIAS = Object.keys(grupos);
-export const RECETA_CATALOGO = Object.entries(grupos).flatMap(([categoria, nombres]) => nombres.split('|').map(nombre => ({ nombre, categoria, presentaciones: (presentaciones[nombre] || []).map(p => p.texto) })));
+export const RECETA_CATALOGO = Object.entries(grupos).flatMap(([categoria, nombres]) => nombres.split('|').map(nombre => ({ nombre, categoria, comerciales: comerciales[nombre] || [], presentaciones: (presentaciones[nombre] || []).map(p => p.texto) })));
 export const normalizarBusqueda = value => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+const indiceBusqueda = new Map(RECETA_CATALOGO.map(item => [item.nombre, normalizarBusqueda(`${item.nombre} ${item.categoria} ${item.comerciales.join(' ')} ${item.presentaciones.join(' ')}`).replace(/(\d),(\d)/g, '$1.$2')]));
 export const hoyChile = () => new Intl.DateTimeFormat('sv-SE', { timeZone: 'America/Santiago' }).format(new Date());
 export function textoMedicamento(item) {
-  return [item.nombre, item.presentacion && `Presentación: ${item.presentacion}`, item.dosis && `Dosis: ${item.dosis}`, item.via && `Vía: ${item.via}`, item.frecuencia && `Frecuencia: ${item.frecuencia}`, item.duracion && `Duración: ${item.duracion}`, item.cantidad && `Cantidad total: ${item.cantidad}`, item.indicaciones && `Indicaciones: ${item.indicaciones}`].filter(Boolean).join('\n');
+  const cantidad = esBenzodiacepina(item) ? cantidadControlada(item) : item.cantidad;
+  return [item.nombre, item.tipo === 'magistral' && 'Preparación magistral', item.formula && `Fórmula: ${item.formula}`, item.vehiculo && `Vehículo / base: ${item.vehiculo}`, item.presentacion && `Presentación: ${item.presentacion}`, item.dosis && `Dosis: ${item.dosis}`, item.via && `Vía: ${item.via}`, item.frecuencia && `Frecuencia: ${item.frecuencia}`, item.duracion && `Duración: ${item.duracion}`, cantidad && `Cantidad total: ${cantidad}`, item.indicaciones && `Indicaciones: ${item.indicaciones}`].filter(Boolean).join('\n');
 }
 
 // Opciones de escritura: ninguna frecuencia o dosis se asigna por diagnóstico.
@@ -40,10 +47,11 @@ export function opcionesDosis(presentacion = '') {
   if (/crema|unguento|gel/.test(p)) return ['Aplicar una capa fina'];
   return [];
 }
-export function buscarMedicamentos(query) {
-  const tokens = normalizarBusqueda(query).split(/\s+/).filter(Boolean);
+export function buscarMedicamentos(query, categoria = '') {
+  const tokens = normalizarBusqueda(query).replace(/(\d),(\d)/g, '$1.$2').split(/\s+/).filter(Boolean);
   return RECETA_CATALOGO.filter(item => {
-    const texto = normalizarBusqueda(`${item.nombre} ${item.categoria} ${item.presentaciones.join(' ')}`);
+    if (categoria && item.categoria !== categoria) return false;
+    const texto = indiceBusqueda.get(item.nombre);
     return tokens.every(token => texto.includes(token));
   });
 }
@@ -57,9 +65,19 @@ export function precargaPresentacion(presentacion = '') {
   if (/jarabe|suspension oral|solucion oral/.test(p)) return { dosis: '', via: 'Oral' };
   return { dosis: '', via: '' };
 }
+export const esMetotrexato = nombre => /\b(metotrexato|methotrexate|metoject)\b/.test(normalizarBusqueda(nombre || ''));
+export function precargaMedicamento(nombre, presentacion) {
+  const inicial = precargaPresentacion(presentacion);
+  return esMetotrexato(nombre) ? { ...inicial, dosis: '' } : inicial;
+}
+export function frecuenciasMedicamento(nombre) {
+  return esMetotrexato(nombre)
+    ? ['Una vez por semana', ...['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'].map(dia => `Una vez por semana (${dia})`)]
+    : [...FRECUENCIAS_RECETA, 'Una vez por semana', 'Dosis única'];
+}
 export function actualizarPresentacion(item, presentacion) {
-  const anterior = precargaPresentacion(item.presentacion);
-  const siguiente = precargaPresentacion(presentacion);
+  const anterior = precargaMedicamento(item.nombre, item.presentacion);
+  const siguiente = precargaMedicamento(item.nombre, presentacion);
   return {
     ...item,
     presentacion,

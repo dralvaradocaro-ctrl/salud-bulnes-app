@@ -7,8 +7,9 @@ const DOCUMENTOS = [
   { pagina: 'CertificadoMedico', titulo: 'Certificado médico' },
   { pagina: 'RecetaMedica', titulo: 'Receta médica' },
   { pagina: 'OrdenExamenes', titulo: 'Orden de exámenes' },
+  { pagina: 'DerivacionProfesionales', titulo: 'Derivación a otros profesionales' },
 ];
-export default function DocumentoHeader({ pagina, onNuevo, onBorrarContenido }) {
+export default function DocumentoHeader({ pagina, onNuevo, onBorrarContenido, medico = MEDICO }) {
   const navigate = useNavigate();
   const location = useLocation();
   const clinico = new URLSearchParams(location.search).get('contextoClinico');
@@ -17,7 +18,7 @@ export default function DocumentoHeader({ pagina, onNuevo, onBorrarContenido }) 
     <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-4">
       <Button variant="ghost" size="icon" aria-label="Volver" onClick={() => navigate(-1)}><ChevronLeft className="h-5 w-5" /></Button>
       <FileText className="h-6 w-6 shrink-0 text-blue-800" />
-      <div className="min-w-0 flex-1"><h1 className="text-lg font-semibold text-slate-900">{DOCUMENTOS.find(d => d.pagina === pagina)?.titulo}</h1><p className="text-xs text-slate-500">Documentos clínicos · {MEDICO.nombre}</p></div>
+      <div className="min-w-0 flex-1"><h1 className="text-lg font-semibold text-slate-900">{DOCUMENTOS.find(d => d.pagina === pagina)?.titulo}</h1><p className="text-xs text-slate-500">Documentos clínicos · {medico.nombre}</p></div>
       <nav aria-label="Documentos clínicos" className="flex w-full flex-wrap gap-2 lg:w-auto">
         {DOCUMENTOS.map(d => <Button key={d.pagina} asChild size="sm" variant={pagina === d.pagina ? 'default' : 'outline'}><Link to={`/${d.pagina}${contexto}`} aria-current={pagina === d.pagina ? 'page' : undefined}>{d.titulo}</Link></Button>)}
         {onBorrarContenido && <Button variant="outline" size="sm" onClick={onBorrarContenido}>Borrar contenido</Button>}
