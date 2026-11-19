@@ -1,3 +1,4 @@
+import EditorMagistralCapsulas from '@/components/documentos/EditorMagistralCapsulas';
 import { usePacienteGeneral, useAplicarPacienteGeneral } from '@/lib/PacienteGeneral';
 import { useEffect, useMemo, useState } from 'react';
 import { Download, Eye, Plus, Trash2, Stethoscope, ChevronDown, UserRound } from 'lucide-react';
@@ -149,7 +150,7 @@ export function RecetaMedica({ derivacion = false }) {
             <h2 className="font-semibold">Fórmulas por patología</h2>
             <p className="text-xs text-slate-600">Plantillas editables. Completa vehículo, cantidad final y pauta para cada paciente.</p>
             <label className="block text-sm">Patología<select className={inputClass} value={patologia} onChange={e => setPatologia(e.target.value)}><option value="">Todas las patologías</option>{[...new Set(MAGISTRALES.map(p => p.patologia))].map(p => <option key={p}>{p}</option>)}</select></label>
-            {MAGISTRALES.filter(p => !patologia || p.patologia === patologia).map(p => <div key={p.id} className="rounded-lg border bg-white p-3"><p className="text-xs text-violet-700">{p.patologia}</p><p className="font-medium">{p.formula} · {p.presentacion.split(' · ')[1]}</p><div className="mt-2 flex items-center gap-3"><Button size="sm" variant="outline" onClick={() => cambiar('medicamentos', [...receta.medicamentos, nuevaMagistral(p)])}>Agregar fórmula</Button><a className="text-xs underline" href={p.fuente} target="_blank" rel="noreferrer">Referencia</a></div></div>)}
+            {MAGISTRALES.filter(p => !patologia || p.patologia === patologia).map(p => <div key={p.id} className="rounded-lg border bg-white p-3"><p className="text-xs text-violet-700">{p.patologia}</p><p className="font-medium">{p.formula} · {p.presentacion.split(' · ')[1]}</p><div className="mt-2 flex items-center gap-3"><Button size="sm" variant="outline" onClick={() => cambiar('medicamentos', [...receta.medicamentos, nuevaMagistral(p)])}>Agregar fórmula</Button>{p.fuente && <a className="text-xs underline" href={p.fuente} target="_blank" rel="noreferrer">Referencia</a>}</div></div>)}
             <Button variant="outline" onClick={() => cambiar('medicamentos', [...receta.medicamentos, nuevaMagistral()])}>Fórmula personalizada</Button>
           </div> : <>
           <h2 className="font-semibold">Rp. · Medicamentos</h2>
@@ -175,9 +176,14 @@ export function RecetaMedica({ derivacion = false }) {
           <Button variant="outline" size="sm" onClick={() => agregar(busqueda.trim())}><Plus className="mr-2 h-4 w-4" />Agregar manualmente</Button></>}
           <div className="space-y-3">{receta.medicamentos.map((item, i) => {
             const controlado = esBenzodiacepina(item);
+            const capsulasMagistrales = item.tipo === 'magistral' && /cápsulas?/i.test(item.presentacion);
             const opciones = RECETA_CATALOGO.find(m => m.nombre === item.nombre)?.presentaciones || [];
             return <article key={item.id} className="space-y-3 rounded-xl border border-blue-100 bg-slate-50 p-4">
               <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold">{i + 1}. {item.nombre || 'Nuevo medicamento'}</h3><Button size="icon" variant="ghost" aria-label={`Eliminar medicamento ${i + 1}`} onClick={() => cambiar('medicamentos', receta.medicamentos.filter(m => m.id !== item.id))}><Trash2 className="h-4 w-4" /></Button></div>
+              {capsulasMagistrales ? <EditorMagistralCapsulas item={item} onChange={cambios => {
+                setPdfUrl('');
+                setReceta(r => ({ ...r, medicamentos: r.medicamentos.map(m => m.id === item.id ? { ...m, ...cambios } : m) }));
+              }} /> : <>
               <div className="grid gap-3 sm:grid-cols-2">
                 {item.tipo === 'magistral' && <><Campo label="Composición y concentraciones *" multiline rows={3} value={item.formula} onChange={v => editarItem(item.id, 'formula', v)} /><Campo label="Vehículo / base y c.s.p. *" placeholder="Especificar base y cantidad final" value={item.vehiculo} onChange={v => editarItem(item.id, 'vehiculo', v)} /></>}
                 <Campo label="Medicamento" value={item.nombre} onChange={v => editarItem(item.id, 'nombre', v)} />
@@ -193,6 +199,7 @@ export function RecetaMedica({ derivacion = false }) {
               <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={controlado} disabled={esBenzodiacepina({ nombre: item.nombre, formula: item.formula })} onChange={e => editarItem(item.id, 'controlado', e.target.checked)} />Benzodiacepina</label>
               {controlado && <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3"><p className="text-sm font-medium">Cantidad total: {cantidadControlada(item) || 'Pendiente'}</p>{calcularComprimidos(item) !== null ? <p className="text-xs">Calculada según comprimidos por toma × tomas del período; redondeada al comprimido entero superior.</p> : <><p className="text-xs">Usa dosis en comprimidos, frecuencia cada N horas y duración en días o semanas. Para pautas variables, SOS o instrucciones adicionales, indica el total manualmente.</p><Campo label="Cantidad manual a dispensar *" type="number" min="1" max="9999" step="1" value={item.cantidadManual || ''} onChange={v => editarItem(item.id, 'cantidadManual', v)} />{!item.presentacion.toLowerCase().includes('comprimido') && <label className="block text-sm">Unidad a dispensar *<select className={inputClass} value={item.unidadCantidad || ''} onChange={e => editarItem(item.id, 'unidadCantidad', e.target.value)}><option value="">Seleccionar unidad</option>{['comprimidos', 'frascos', 'ampollas', 'cápsulas'].map(u => <option key={u}>{u}</option>)}</select></label>}</>}</div>}
               <details open={item.tipo === 'magistral'} className="text-sm"><summary className="cursor-pointer text-slate-600">Cantidad e instrucciones adicionales</summary><div className="mt-3 space-y-3">{!controlado && <Campo label={item.tipo === 'magistral' ? "Cantidad final a preparar *" : "Cantidad total"} placeholder="Ej.: 30 comprimidos o 30 g" value={item.cantidad} onChange={v => editarItem(item.id, 'cantidad', v)} />}<Campo label="Instrucciones adicionales" value={item.indicaciones} onChange={v => editarItem(item.id, 'indicaciones', v)} multiline rows={2} /></div></details>
+              </>}
             </article>;
           })}</div>
           <details className="text-xs text-slate-500"><summary className="cursor-pointer">Acerca del catálogo</summary><p className="mt-2 leading-relaxed">Presentaciones de referencia del arsenal local, publicaciones ISP y <a className="underline" href="https://ascendlabs.cl/wp-content/uploads/2025/04/vademecum-2-1_compressed.pdf" target="_blank" rel="noreferrer">vademécum Ascend Chile</a>. Catálogo local de referencia; no está conectado a MINSAL ni confirma stock o vigencia comercial. Puedes editar cualquier presentación. Consulta el <a className="underline" href="https://registrosanitario.ispch.gob.cl/" target="_blank" rel="noreferrer">registro ISP</a>. Las opciones de posología son atajos de escritura; la pauta la eliges tú.</p></details>
